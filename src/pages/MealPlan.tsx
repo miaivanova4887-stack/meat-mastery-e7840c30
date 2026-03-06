@@ -260,6 +260,71 @@ const MealPlan = () => {
     setQuickIngredients([{ name: "", amount: "" }]);
   };
 
+  // Photo food recognition
+  const handlePhotoRecognize = useCallback(async (file: File, slot: MealSlot) => {
+    setPhotoLoading(true);
+    setPhotoSlot(slot);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]); // strip data:image/...;base64,
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("recognize-food", {
+        body: { imageBase64: base64, dietTier: profile.goal },
+      });
+
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      const r = data.result;
+      const meal: PlannedMeal = {
+        recipeName: r.recipeName,
+        cal: r.cal,
+        protein: r.protein,
+        fat: r.fat,
+        time: r.time || "N/A",
+        serving: r.serving || "1 serving",
+      };
+      assignMeal(activeDay, slot, meal);
+
+      // Save as custom recipe
+      if (!allRecipes.some((rec) => rec.name === r.recipeName)) {
+        addRecipe({
+          id: crypto.randomUUID(),
+          name: r.recipeName,
+          cal: r.cal || "0",
+          protein: r.protein || "0g",
+          fat: r.fat || "0g",
+          time: r.time || "N/A",
+          serving: r.serving || "1 serving",
+          desc: r.description || "Recognized from photo",
+          tags: ["📸 Photo"],
+          tier: ["strict"],
+          meal: slot === "snack" ? "snack" : slot as any,
+          cravings: [],
+          ingredients: r.ingredients || [],
+          steps: [],
+          createdAt: new Date().toISOString(),
+          isCustom: true,
+        });
+      }
+
+      toast.success(`Recognized: ${r.recipeName} (${r.confidence} confidence)`);
+    } catch (e: any) {
+      console.error("Photo recognition error:", e);
+      toast.error(e?.message || "Failed to recognize food");
+    } finally {
+      setPhotoLoading(false);
+      setPhotoSlot(null);
+    }
+  }, [activeDay, assignMeal, addRecipe, allRecipes, profile.goal]);
+
   // Enhanced ingredient list with quantities
   const weekIngredients = useMemo(() => {
     const ingMap = new Map<string, { amount: string; count: number }>();
