@@ -75,6 +75,13 @@ const MealPlan = () => {
   // Swipe state per slot
   const [swipedSlot, setSwipedSlot] = useState<MealSlot | null>(null);
 
+  // Photo recognition state
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoSlot, setPhotoSlot] = useState<MealSlot | null>(null);
+
+  // Current meal slot
+  const currentSlot = useMemo(() => isToday(activeDay) ? getCurrentSlot(userSlots) : null, [activeDay, userSlots]);
+
   const allRecipes = useMemo(() => [...customRecipes, ...recipes], [customRecipes]);
 
   // Recipe detail drawer
