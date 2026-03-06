@@ -102,45 +102,49 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Personalized tip */}
-      {tip && (
-        <div className="px-4 -mt-2 mb-3 relative z-10">
+      {/* Content with uniform spacing */}
+      <div className="px-4 space-y-3 -mt-2 relative z-10">
+        {/* Personalized tip */}
+        {tip && (
           <div className="ios-card px-4 py-3 animate-fade-in">
             <p className="text-xs text-foreground leading-relaxed">{tip}</p>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Feature Grid — sorted by interests */}
-      <div className="px-4 -mt-2 relative z-10">
+        {/* Feature Grid */}
         <div className="grid grid-cols-2 gap-3">
-          {sorted.map(({ icon: Icon, label, path, color, tags }, i) => {
+          {sorted.map(({ icon: Icon, label, path, color, tags }) => {
             const highlighted = tags.some((t) => profile.interests.includes(t as any));
             return (
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`ios-card p-4 text-left transition-all active:scale-[0.97] group ${
-                  highlighted ? "ring-1 ring-primary/20" : ""
+                className={`ios-card p-4 text-left transition-all active:scale-[0.97] ${
+                  highlighted ? "ring-1 ring-primary/15" : ""
                 }`}
-                style={{ animationDelay: `${i * 0.07}s` }}
               >
-                <Icon size={22} strokeWidth={1.8} className={`${color} mb-2 group-hover:scale-110 transition-transform`} />
-                <span className="text-sm font-semibold text-foreground">{label}</span>
-                {highlighted && <span className="block text-[10px] text-primary mt-0.5">For you</span>}
+                <Icon size={21} strokeWidth={1.5} className={`${color} mb-2`} />
+                <span className="text-[13px] font-semibold text-foreground">{label}</span>
+                {highlighted && <span className="block text-[10px] text-primary mt-0.5 font-medium">For you</span>}
               </button>
             );
           })}
         </div>
-      </div>
 
-      {/* Redo onboarding */}
-      <div className="px-4 mt-4">
+        {/* Quote */}
+        <div className="ios-card p-5">
+          <p className="text-[13px] italic text-foreground/65 leading-relaxed">
+            "{quote.text}"
+          </p>
+          <span className="text-xs text-muted-foreground mt-2 block">— {quote.author}</span>
+        </div>
+
+        {/* Redo onboarding */}
         <button
           onClick={() => setShowResetDialog(true)}
-          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-3"
+          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-1"
         >
-          <RotateCcw size={14} />
+          <RotateCcw size={13} />
           Update your preferences
         </button>
       </div>
@@ -168,16 +172,6 @@ const Index = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Quote — personalized */}
-      <div className="px-4 mt-3">
-        <div className="ios-card p-5">
-          <p className="text-sm italic text-foreground/80 leading-relaxed">
-            "{quote.text}"
-          </p>
-          <span className="text-xs text-muted-foreground mt-2 block">— {quote.author}</span>
-        </div>
-      </div>
     </div>
   );
 };
