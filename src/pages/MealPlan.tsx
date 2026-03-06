@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
@@ -12,6 +12,27 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } f
 
 type AIMode = "single" | "daily" | "weekly";
 
+/** Determine which meal slot is "now" based on time of day */
+function getCurrentSlot(slots: MealSlot[]): MealSlot | null {
+  const hour = new Date().getHours();
+  // breakfast: 5-11, lunch: 11-15, dinner: 15-21, snack: 21-5
+  if (slots.includes("breakfast") && hour >= 5 && hour < 11) return "breakfast";
+  if (slots.includes("lunch") && hour >= 11 && hour < 15) return "lunch";
+  if (slots.includes("dinner") && hour >= 15 && hour < 21) return "dinner";
+  if (slots.includes("snack") && (hour >= 21 || hour < 5)) return "snack";
+  // OMAD: dinner is always current during reasonable hours
+  if (slots.length === 1) return slots[0];
+  // 2 meals: lunch before 15, dinner after
+  if (slots.length === 2) return hour < 15 ? slots[0] : slots[1];
+  return null;
+}
+
+/** Check if activeDay is today */
+function isToday(day: DayKey): boolean {
+  const todayIdx = new Date().getDay();
+  const idx = todayIdx === 0 ? 6 : todayIdx - 1;
+  return DAYS[idx] === day;
+}
 
 const MealPlan = () => {
   const navigate = useNavigate();
