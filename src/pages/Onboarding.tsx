@@ -184,10 +184,14 @@ const Onboarding = () => {
           newAnswers[4] ?? 0,       // experience
           newAnswers[5] ?? [],      // struggles
           newAnswers[6] ?? 0,       // activity
-          newAnswers[7] ?? [],      // interests
+          newAnswers[8] ?? [],      // interests
         ];
         localStorage.setItem(STORAGE_KEY, "true");
         localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
+
+        // Save meals per day (step 7: 0=2meals, 1=3meals, 2=4meals)
+        const mealsPerDayVal = [2, 3, 4][(newAnswers[7] as number) ?? 1] ?? 3;
+        localStorage.setItem("carnivore-meals-per-day", String(mealsPerDayVal));
 
         // Save body stats separately
         const bodyData = {
