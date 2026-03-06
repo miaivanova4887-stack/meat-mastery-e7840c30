@@ -72,10 +72,11 @@ function computeTargets(goal: Goal, activity: ActivityLevel, body: BodyStats): N
 }
 
 function parseProfile(): UserProfile {
+  const storedMeals = parseInt(localStorage.getItem("carnivore-meals-per-day") || "3") || 3;
   const defaultBody: BodyStats = { sex: "unspecified", age: null, height: null, weight: null, goalWeight: null, healthTarget: "" };
   const defaults: UserProfile = {
     goal: "improve_health", experience: "beginner", struggles: [],
-    activityLevel: "light", interests: [], body: defaultBody, mealsPerDay: 3,
+    activityLevel: "light", interests: [], body: defaultBody, mealsPerDay: storedMeals,
     nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, isComplete: false,
   };
   try {
