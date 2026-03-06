@@ -1,7 +1,8 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Flame, BookOpen, Timer, Dumbbell, Heart, Shield, Zap, Apple } from "lucide-react";
 import heroImage from "@/assets/hero-steak.jpg";
 import ThemeToggle from "@/components/ThemeToggle";
+import { isOnboardingComplete } from "./Onboarding";
 
 const features = [
   { icon: Zap, label: "Benefits", path: "/benefits", color: "text-gold" },
@@ -17,6 +18,9 @@ const features = [
 const Index = () => {
   const navigate = useNavigate();
 
+  if (!isOnboardingComplete()) {
+    return <Navigate to="/onboarding" replace />;
+  }
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Hero */}
