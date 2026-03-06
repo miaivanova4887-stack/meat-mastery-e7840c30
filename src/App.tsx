@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ShoppingBagProvider } from "./contexts/ShoppingBagContext";
 import { UserProfileProvider } from "./contexts/UserProfileContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import BottomNav from "./components/BottomNav";
 import Index from "./pages/Index";
 import Benefits from "./pages/Benefits";
@@ -20,6 +21,8 @@ import Stories from "./pages/Stories";
 import Sustain from "./pages/Sustain";
 import ShoppingBag from "./pages/ShoppingBag";
 import Onboarding from "./pages/Onboarding";
+import Auth from "./pages/Auth";
+import Community from "./pages/Community";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +31,7 @@ const App = () => (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <AuthProvider>
         <ShoppingBagProvider>
         <UserProfileProvider>
           <Toaster />
@@ -47,12 +51,15 @@ const App = () => (
               <Route path="/stories" element={<Stories />} />
               <Route path="/sustain" element={<Sustain />} />
               <Route path="/shopping-bag" element={<ShoppingBag />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/community" element={<Community />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
           </BrowserRouter>
         </UserProfileProvider>
         </ShoppingBagProvider>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>
