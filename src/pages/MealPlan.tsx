@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
@@ -12,6 +12,27 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } f
 
 type AIMode = "single" | "daily" | "weekly";
 
+/** Determine which meal slot is "now" based on time of day */
+function getCurrentSlot(slots: MealSlot[]): MealSlot | null {
+  const hour = new Date().getHours();
+  // breakfast: 5-11, lunch: 11-15, dinner: 15-21, snack: 21-5
+  if (slots.includes("breakfast") && hour >= 5 && hour < 11) return "breakfast";
+  if (slots.includes("lunch") && hour >= 11 && hour < 15) return "lunch";
+  if (slots.includes("dinner") && hour >= 15 && hour < 21) return "dinner";
+  if (slots.includes("snack") && (hour >= 21 || hour < 5)) return "snack";
+  // OMAD: dinner is always current during reasonable hours
+  if (slots.length === 1) return slots[0];
+  // 2 meals: lunch before 15, dinner after
+  if (slots.length === 2) return hour < 15 ? slots[0] : slots[1];
+  return null;
+}
+
+/** Check if activeDay is today */
+function isToday(day: DayKey): boolean {
+  const todayIdx = new Date().getDay();
+  const idx = todayIdx === 0 ? 6 : todayIdx - 1;
+  return DAYS[idx] === day;
+}
 
 const MealPlan = () => {
   const navigate = useNavigate();
@@ -53,6 +74,13 @@ const MealPlan = () => {
 
   // Swipe state per slot
   const [swipedSlot, setSwipedSlot] = useState<MealSlot | null>(null);
+
+  // Photo recognition state
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoSlot, setPhotoSlot] = useState<MealSlot | null>(null);
+
+  // Current meal slot
+  const currentSlot = useMemo(() => isToday(activeDay) ? getCurrentSlot(userSlots) : null, [activeDay, userSlots]);
 
   const allRecipes = useMemo(() => [...customRecipes, ...recipes], [customRecipes]);
 
@@ -232,6 +260,71 @@ const MealPlan = () => {
     setQuickIngredients([{ name: "", amount: "" }]);
   };
 
+  // Photo food recognition
+  const handlePhotoRecognize = useCallback(async (file: File, slot: MealSlot) => {
+    setPhotoLoading(true);
+    setPhotoSlot(slot);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]); // strip data:image/...;base64,
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("recognize-food", {
+        body: { imageBase64: base64, dietTier: profile.goal },
+      });
+
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      const r = data.result;
+      const meal: PlannedMeal = {
+        recipeName: r.recipeName,
+        cal: r.cal,
+        protein: r.protein,
+        fat: r.fat,
+        time: r.time || "N/A",
+        serving: r.serving || "1 serving",
+      };
+      assignMeal(activeDay, slot, meal);
+
+      // Save as custom recipe
+      if (!allRecipes.some((rec) => rec.name === r.recipeName)) {
+        addRecipe({
+          id: crypto.randomUUID(),
+          name: r.recipeName,
+          cal: r.cal || "0",
+          protein: r.protein || "0g",
+          fat: r.fat || "0g",
+          time: r.time || "N/A",
+          serving: r.serving || "1 serving",
+          desc: r.description || "Recognized from photo",
+          tags: ["📸 Photo"],
+          tier: ["strict"],
+          meal: slot === "snack" ? "snack" : slot as any,
+          cravings: [],
+          ingredients: r.ingredients || [],
+          steps: [],
+          createdAt: new Date().toISOString(),
+          isCustom: true,
+        });
+      }
+
+      toast.success(`Recognized: ${r.recipeName} (${r.confidence} confidence)`);
+    } catch (e: any) {
+      console.error("Photo recognition error:", e);
+      toast.error(e?.message || "Failed to recognize food");
+    } finally {
+      setPhotoLoading(false);
+      setPhotoSlot(null);
+    }
+  }, [activeDay, assignMeal, addRecipe, allRecipes, profile.goal]);
+
   // Enhanced ingredient list with quantities
   const weekIngredients = useMemo(() => {
     const ingMap = new Map<string, { amount: string; count: number }>();
@@ -323,16 +416,20 @@ const MealPlan = () => {
           {DAYS.map((day) => {
             const dt = dayTotals(day);
             const isActive = activeDay === day;
+            const isTodayDay = isToday(day);
             return (
               <button
                 key={day}
                 onClick={() => setActiveDay(day)}
-                className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[52px] ${
+                className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[52px] relative ${
                   isActive
                     ? "bg-foreground text-background"
                     : "bg-secondary/60 text-muted-foreground hover:text-foreground"
                 }`}
               >
+                {isTodayDay && (
+                  <span className={`absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isActive ? "bg-primary" : "bg-primary"}`} />
+                )}
                 <span className="text-xs font-bold">{day}</span>
                 {dt.count > 0 && (
                   <span className={`text-[9px] mt-0.5 ${isActive ? "text-background/70" : "text-primary"}`}>
@@ -389,8 +486,9 @@ const MealPlan = () => {
           {userSlots.map((slot) => {
             const meal = plan[activeDay][slot];
             const isSwiped = swipedSlot === slot;
+            const isNow = currentSlot === slot;
             return (
-              <div key={slot} className="relative overflow-hidden rounded-2xl">
+              <div key={slot} className={`relative overflow-hidden rounded-2xl ${isNow ? "ring-2 ring-primary/40" : ""}`}>
                 {/* Swipe-revealed actions */}
                 {meal && (
                   <div className="absolute inset-y-0 right-0 flex items-stretch z-0">
@@ -453,9 +551,16 @@ const MealPlan = () => {
                   }}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      {SLOT_LABELS[slot]}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        {SLOT_LABELS[slot]}
+                      </span>
+                      {isNow && (
+                        <span className="text-[9px] font-bold text-primary-foreground bg-primary px-1.5 py-0.5 rounded-full animate-pulse">
+                          NOW
+                        </span>
+                      )}
+                    </div>
                     {meal && (
                       <span className="text-[9px] text-muted-foreground/60">← swipe</span>
                     )}
@@ -479,6 +584,24 @@ const MealPlan = () => {
                       >
                         <Plus size={14} /> Pick Recipe
                       </button>
+                      <label
+                        onClick={(e) => e.stopPropagation()}
+                        className={`px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium cursor-pointer flex items-center justify-center ${photoLoading && photoSlot === slot ? "opacity-50 pointer-events-none" : ""}`}
+                        title="Snap food photo"
+                      >
+                        {photoLoading && photoSlot === slot ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handlePhotoRecognize(file, slot);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
                       <button
                         onClick={(e) => { e.stopPropagation(); setQuickSlot(slot); setShowQuickAdd(true); }}
                         className="px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
