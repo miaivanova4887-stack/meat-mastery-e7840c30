@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Flame, BookOpen, Timer, Dumbbell, Heart, Shield, Zap, Apple } from "lucide-react";
 import heroImage from "@/assets/hero-steak.jpg";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const features = [
   { icon: Zap, label: "Benefits", path: "/benefits", color: "text-gold" },
