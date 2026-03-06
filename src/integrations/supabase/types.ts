@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_recipes: {
+        Row: {
+          cal: string
+          created_at: string
+          description: string
+          diet_tiers: string[]
+          fat: string
+          id: string
+          ingredients: Json
+          likes_count: number
+          meal_type: string
+          name: string
+          protein: string
+          serving: string
+          steps: string[]
+          tags: string[]
+          time: string
+          user_id: string
+        }
+        Insert: {
+          cal?: string
+          created_at?: string
+          description?: string
+          diet_tiers?: string[]
+          fat?: string
+          id?: string
+          ingredients?: Json
+          likes_count?: number
+          meal_type?: string
+          name: string
+          protein?: string
+          serving?: string
+          steps?: string[]
+          tags?: string[]
+          time?: string
+          user_id: string
+        }
+        Update: {
+          cal?: string
+          created_at?: string
+          description?: string
+          diet_tiers?: string[]
+          fat?: string
+          id?: string
+          ingredients?: Json
+          likes_count?: number
+          meal_type?: string
+          name?: string
+          protein?: string
+          serving?: string
+          steps?: string[]
+          tags?: string[]
+          time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          diet_tier: string | null
+          display_name: string | null
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          diet_tier?: string | null
+          display_name?: string | null
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          diet_tier?: string | null
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           created_at: string
@@ -37,6 +127,35 @@ export type Database = {
           keys_p256dh?: string
         }
         Relationships: []
+      }
+      recipe_likes: {
+        Row: {
+          created_at: string
+          id: string
+          recipe_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipe_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipe_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_likes_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "community_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vapid_config: {
         Row: {

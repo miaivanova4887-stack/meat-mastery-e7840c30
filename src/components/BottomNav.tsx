@@ -1,17 +1,18 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Flame, BookOpen, Dumbbell, Heart, Timer } from "lucide-react";
+import { Flame, BookOpen, Dumbbell, Timer, Users, User } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 const tabs = [
   { path: "/", icon: Flame, label: "Home" },
   { path: "/recipes", icon: BookOpen, label: "Recipes" },
   { path: "/timer", icon: Timer, label: "Ketosis" },
-  { path: "/exercise", icon: Dumbbell, label: "Exercise" },
-  { path: "/stories", icon: Heart, label: "Stories" },
+  { path: "/community", icon: Users, label: "Community" },
 ];
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   if (location.pathname === "/onboarding") return null;
   return (
@@ -32,6 +33,15 @@ const BottomNav = () => {
             </button>
           );
         })}
+        <button
+          onClick={() => navigate(user ? "/profile" : "/auth")}
+          className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors ${
+            ["/auth", "/profile"].includes(location.pathname) ? "text-primary" : "text-muted-foreground"
+          }`}
+        >
+          <User size={22} strokeWidth={["/auth", "/profile"].includes(location.pathname) ? 2.2 : 1.6} />
+          <span className="text-[10px] font-medium">{user ? "Profile" : "Sign In"}</span>
+        </button>
       </div>
     </nav>
   );

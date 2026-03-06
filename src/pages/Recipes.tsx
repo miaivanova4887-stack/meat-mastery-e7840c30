@@ -1,9 +1,20 @@
-import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { recipes, TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type CustomRecipe } from "@/data/recipes";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
+
+const MULTIPLIERS = [1, 2, 3, 4] as const;
+
+function scaleNumeric(value: string, multiplier: number): string {
+  const num = parseFloat(value);
+  if (isNaN(num)) return value;
+  const scaled = Math.round(num * multiplier);
+  // Preserve suffix like "g"
+  const suffix = value.replace(/[\d.]+/, "").trim();
+  return `${scaled}${suffix}`;
+}
 
 const tierFromProfile = (diet: string | undefined): DietTier | null => {
   if (diet === "lion") return "lion";
@@ -22,6 +33,7 @@ const Recipes = () => {
   const [activeMeal, setActiveMeal] = useState<MealType | "all">("all");
   const [search, setSearch] = useState("");
   const [expandedCustom, setExpandedCustom] = useState<string | null>(null);
+  const [multipliers, setMultipliers] = useState<Record<string, number>>({});
 
   const allRecipes = useMemo(() => {
     const custom = customRecipes.filter((r) => r.tier.includes(activeTier));
@@ -65,6 +77,14 @@ const Recipes = () => {
   const RecipeCard = ({ r, i, isCustom = false }: { r: any; i: number; isCustom?: boolean }) => {
     const custom = isCustom ? (r as CustomRecipe) : null;
     const isExpanded = custom && expandedCustom === custom.id;
+    const cardKey = custom?.id || r.name;
+    const mult = multipliers[cardKey] || 1;
+
+    const setMult = (m: number) => setMultipliers((prev) => ({ ...prev, [cardKey]: m }));
+
+    const scaledCal = scaleNumeric(r.cal, mult);
+    const scaledProtein = scaleNumeric(r.protein, mult);
+    const scaledFat = scaleNumeric(r.fat, mult);
 
     return (
       <div
@@ -82,15 +102,35 @@ const Recipes = () => {
             </div>
             <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Clock size={11} /> {r.time}</span>
-              <span className="flex items-center gap-1"><Flame size={11} /> {r.cal} cal</span>
-              {r.serving && <span className="text-[11px]">· {r.serving}</span>}
+              <span className="flex items-center gap-1"><Flame size={11} /> {scaledCal} cal</span>
+              {r.serving && <span className="text-[11px]">· {r.serving}{mult > 1 ? ` × ${mult}` : ""}</span>}
             </div>
           </div>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-            <span className="text-[11px] font-semibold text-primary">{r.protein} P</span>
-            <span className="text-[11px] font-medium text-muted-foreground">{r.fat} F</span>
+            <span className="text-[11px] font-semibold text-primary">{scaledProtein} P</span>
+            <span className="text-[11px] font-medium text-muted-foreground">{scaledFat} F</span>
           </div>
         </div>
+
+        {/* Portion multiplier */}
+        <div className="flex items-center gap-1.5 mt-2.5">
+          <Users size={12} className="text-muted-foreground" />
+          <span className="text-[10px] text-muted-foreground mr-0.5">Servings</span>
+          {MULTIPLIERS.map((m) => (
+            <button
+              key={m}
+              onClick={() => setMult(m)}
+              className={`w-7 h-7 rounded-lg text-[11px] font-semibold transition-all ${
+                mult === m
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {m}×
+            </button>
+          ))}
+        </div>
+
         <p className="text-xs text-secondary-foreground/70 mt-2.5 leading-relaxed">{r.desc}</p>
 
         {/* Expandable custom recipe details */}
