@@ -1,8 +1,9 @@
-import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info } from "lucide-react";
+import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
+import { toast } from "sonner";
 
 const KETOSIS_TARGET_HOURS = 72;
 
@@ -73,12 +74,46 @@ function getCurrentPhaseIndex(hours: number): number {
   return 3;
 }
 
+// Play a short chime using Web Audio API
+function playMilestoneChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 - a pleasant triad
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
+      gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + i * 0.15 + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + i * 0.15 + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.5);
+    });
+  } catch {
+    // Audio not available
+  }
+}
+
+// Send browser notification
+function sendNotification(title: string, body: string) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, { body, icon: "🔥" });
+  }
+}
+
 const KetosisTimer = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
   const [isRunning, setIsRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [alertsEnabled, setAlertsEnabled] = useState(() => {
+    return localStorage.getItem("ketosis-alerts") !== "false";
+  });
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const lastPhaseRef = useRef<number>(-1);
 
   useEffect(() => {
     const saved = localStorage.getItem("ketosis-timer");
@@ -105,7 +140,17 @@ const KetosisTimer = () => {
     return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
-  const reset = () => { setElapsed(0); setIsRunning(false); localStorage.removeItem("ketosis-timer"); };
+  const reset = () => { setElapsed(0); setIsRunning(false); lastPhaseRef.current = -1; localStorage.removeItem("ketosis-timer"); };
+
+  const toggleAlerts = useCallback(() => {
+    const next = !alertsEnabled;
+    setAlertsEnabled(next);
+    localStorage.setItem("ketosis-alerts", String(next));
+    if (next && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    toast(next ? "Milestone alerts enabled" : "Milestone alerts muted");
+  }, [alertsEnabled]);
 
   const hours = Math.floor(elapsed / 3600);
   const minutes = Math.floor((elapsed % 3600) / 60);
@@ -117,6 +162,21 @@ const KetosisTimer = () => {
   const currentPhaseIdx = getCurrentPhaseIndex(hours);
   const currentPhase = phases[currentPhaseIdx];
 
+  // Detect phase transitions and fire alerts
+  useEffect(() => {
+    if (lastPhaseRef.current === -1) {
+      lastPhaseRef.current = currentPhaseIdx;
+      return;
+    }
+    if (currentPhaseIdx > lastPhaseRef.current && isRunning && alertsEnabled) {
+      playMilestoneChime();
+      const phase = phases[currentPhaseIdx];
+      toast(`🔥 ${phase.name}`, { description: phase.tip, duration: 6000 });
+      sendNotification(`🔥 ${phase.name}`, phase.tip);
+    }
+    lastPhaseRef.current = currentPhaseIdx;
+  }, [currentPhaseIdx, isRunning, alertsEnabled, phases]);
+
   const circumference = 2 * Math.PI * 120;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
@@ -127,7 +187,10 @@ const KetosisTimer = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold tracking-tight">Ketosis Timer</h1>
+        <h1 className="text-lg font-display font-bold tracking-tight flex-1">Ketosis Timer</h1>
+        <button onClick={toggleAlerts} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Toggle milestone alerts">
+          {alertsEnabled ? <Bell size={18} strokeWidth={1.5} /> : <BellOff size={18} strokeWidth={1.5} />}
+        </button>
       </div>
 
       <div className="flex flex-col items-center pt-8 px-4">
