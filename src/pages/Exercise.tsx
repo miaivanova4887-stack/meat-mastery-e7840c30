@@ -25,19 +25,31 @@ const quizQuestions = [
   { q: "What's your energy level right now?", options: ["🔥 Fired up", "😌 Calm & steady", "😴 Low / fatigued", "⚡ Restless"] },
   { q: "What does your body need today?", options: ["💪 Strength", "🧘 Flexibility", "🫁 Breathwork", "🛌 Recovery"] },
   { q: "How much time do you have?", options: ["15 min", "30 min", "45 min", "60+ min"] },
+  { q: "How sore are you from yesterday?", options: ["😎 Not at all", "🤏 A little tight", "😬 Pretty sore", "🫠 Can barely move"] },
+  { q: "What's your mood?", options: ["🧠 Focused & driven", "🌊 Go with the flow", "😤 Need to blow off steam", "🕊️ Seeking peace"] },
 ];
 
 type QuizResult = { workout: string; icon: typeof Dumbbell; reason: string };
 
 function getQuizResult(answers: number[]): QuizResult {
-  const [energy, need, _time] = answers;
-  if (need === 3) return { workout: "Restorative Yoga", icon: Sparkles, reason: "Your body is asking for deep rest. Supported poses will help you recover faster on carnivore." };
+  const [energy, need, _time, soreness, mood] = answers;
+  // Heavy soreness or recovery need → restorative
+  if (soreness >= 2 || need === 3) return { workout: "Restorative Yoga", icon: Sparkles, reason: "Your body is calling for deep recovery. Supported poses + carnivore nutrition will rebuild you faster." };
+  // Fired up + strength + driven → power
   if (energy === 0 && need === 0) return { workout: "Power Yoga + Strength", icon: Flame, reason: "You're fired up and craving strength — channel that protein-fueled energy into power sequences." };
-  if (energy === 0) return { workout: "Vinyasa Flow", icon: Sun, reason: "High energy + movement craving = perfect Vinyasa session. Ride the wave." };
+  // Need to blow off steam → HIIT
+  if (mood === 2) return { workout: "HIIT Sprint Session", icon: Zap, reason: "You've got steam to release. Short intense bursts will clear your head and torch energy." };
+  // Seeking peace + flexibility → Yin
+  if (mood === 3 && need === 1) return { workout: "Yin Yoga", icon: Moon, reason: "Peace + flexibility — long passive holds will quiet your mind and open tight tissues." };
+  // High energy + flow mood → Vinyasa
+  if (energy === 0 || mood === 1) return { workout: "Vinyasa Flow", icon: Sun, reason: "High energy meets go-with-the-flow mindset. Ride the wave through dynamic sequences." };
+  // Low energy → Yin
   if (energy === 2) return { workout: "Yin Yoga", icon: Moon, reason: "Low energy days are ideal for deep passive stretches. Let gravity do the work." };
+  // Breathwork need
   if (need === 2) return { workout: "Breathwork & Mobility", icon: Wind, reason: "Pranayama will reset your nervous system and prep your joints for tomorrow." };
-  if (need === 1) return { workout: "Hatha Yoga", icon: TreePine, reason: "Steady-paced postures will open up tight areas without draining you." };
-  return { workout: "Vinyasa Flow", icon: Sun, reason: "A balanced flow session matches your current state perfectly." };
+  // Focused + flexibility → Hatha
+  if (mood === 0) return { workout: "Hatha Yoga", icon: TreePine, reason: "Your focused mindset pairs perfectly with deliberate, steady-paced postures." };
+  return { workout: "Hatha Yoga", icon: TreePine, reason: "A grounded Hatha session matches your current state — steady and intentional." };
 }
 
 const Exercise = () => {
@@ -53,7 +65,7 @@ const Exercise = () => {
 
   const resetQuiz = () => { setQuizStep(-1); setQuizAnswers([]); };
 
-  const quizResult = quizStep === 3 ? getQuizResult(quizAnswers) : null;
+  const quizResult = quizStep === 5 ? getQuizResult(quizAnswers) : null;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -77,9 +89,9 @@ const Exercise = () => {
             </Button>
           )}
 
-          {quizStep >= 0 && quizStep < 3 && (
+          {quizStep >= 0 && quizStep < 5 && (
             <div className="space-y-3 animate-fade-in-up">
-              <Progress value={((quizStep + 1) / 3) * 100} className="h-1.5" />
+              <Progress value={((quizStep + 1) / 5) * 100} className="h-1.5" />
               <p className="text-sm font-medium text-foreground">{quizQuestions[quizStep].q}</p>
               <div className="grid grid-cols-2 gap-2">
                 {quizQuestions[quizStep].options.map((opt, i) => (
