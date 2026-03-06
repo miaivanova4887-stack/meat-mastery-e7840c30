@@ -86,7 +86,7 @@ const Exercise = () => {
             <Sparkles size={18} className="text-accent" />
             <h2 className="font-display font-bold text-foreground text-sm">What Should I Do Today?</h2>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">Quick 3-question quiz to find your ideal workout</p>
+          <p className="text-xs text-muted-foreground mb-3">Quick 5-question quiz to find your ideal workout</p>
 
           {quizStep === -1 && (
             <Button size="sm" className="gap-1.5" onClick={() => setQuizStep(0)}>
