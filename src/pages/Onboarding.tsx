@@ -117,6 +117,7 @@ const steps: OnboardingStep[] = [
     subtitle: "We'll structure your meal plan around this",
     icon: Target,
     options: [
+      { label: "1 meal (OMAD)", emoji: "1️⃣", desc: "One meal a day" },
       { label: "2 meals", emoji: "2️⃣", desc: "e.g. Lunch + Dinner" },
       { label: "3 meals", emoji: "3️⃣", desc: "Breakfast, Lunch, Dinner" },
       { label: "4 meals", emoji: "4️⃣", desc: "3 meals + a snack" },
@@ -189,8 +190,8 @@ const Onboarding = () => {
         localStorage.setItem(STORAGE_KEY, "true");
         localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
 
-        // Save meals per day (step 7: 0=2meals, 1=3meals, 2=4meals)
-        const mealsPerDayVal = [2, 3, 4][(newAnswers[7] as number) ?? 1] ?? 3;
+        // Save meals per day (step 7: 0=1meal, 1=2meals, 2=3meals, 3=4meals)
+        const mealsPerDayVal = [1, 2, 3, 4][(newAnswers[7] as number) ?? 2] ?? 3;
         localStorage.setItem("carnivore-meals-per-day", String(mealsPerDayVal));
 
         // Save body stats separately
