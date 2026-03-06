@@ -14,6 +14,7 @@ const CreateRecipe = () => {
   const [cal, setCal] = useState("");
   const [protein, setProtein] = useState("");
   const [fat, setFat] = useState("");
+  const [serving, setServing] = useState("");
   const [tiers, setTiers] = useState<DietTier[]>(["strict"]);
   const [meal, setMeal] = useState<MealType>("dinner");
   const [tags, setTags] = useState("");
@@ -62,6 +63,7 @@ const CreateRecipe = () => {
       cal: cal.trim() || "0",
       protein: protein.trim() || "0g",
       fat: fat.trim() || "0g",
+      serving: serving.trim() || "1 serving",
       desc: validSteps.length > 0 ? validSteps[0].slice(0, 200) : "Custom recipe",
       tags: tags
         .split(",")
