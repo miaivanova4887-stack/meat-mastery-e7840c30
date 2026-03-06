@@ -124,7 +124,14 @@ function parseProfile(): UserProfile {
 const UserProfileContext = createContext<UserProfile | undefined>(undefined);
 
 export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const profile = useMemo(() => parseProfile(), []);
+  const [profile, setProfile] = useState<UserProfile>(() => parseProfile());
+
+  useEffect(() => {
+    const handleStorage = () => setProfile(parseProfile());
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   return (
     <UserProfileContext.Provider value={profile}>
       {children}
