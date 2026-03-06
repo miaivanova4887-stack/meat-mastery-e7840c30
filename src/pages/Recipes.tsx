@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Flame, Search, X, Dumbbell } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, Dumbbell, Bot } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { recipes, TIER_LABELS, MEAL_LABELS, type DietTier, type MealType } from "@/data/recipes";
