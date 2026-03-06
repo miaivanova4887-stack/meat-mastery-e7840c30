@@ -113,6 +113,17 @@ const steps: OnboardingStep[] = [
   },
   {
     type: "options",
+    title: "How many meals do you eat per day?",
+    subtitle: "We'll structure your meal plan around this",
+    icon: Target,
+    options: [
+      { label: "2 meals", emoji: "2️⃣", desc: "e.g. Lunch + Dinner" },
+      { label: "3 meals", emoji: "3️⃣", desc: "Breakfast, Lunch, Dinner" },
+      { label: "4 meals", emoji: "4️⃣", desc: "3 meals + a snack" },
+    ],
+  },
+  {
+    type: "options",
     title: "What interests you most?",
     subtitle: "Select all you'd like to explore",
     icon: Brain,
@@ -127,8 +138,8 @@ const steps: OnboardingStep[] = [
 ];
 
 // Map step indices to the legacy answer array positions
-// Option steps that map to original answers: goal(0), experience(4), struggles(5), activity(6), interests(7)
-const OPTION_ANSWER_KEYS = [0, 4, 5, 6, 7]; // indices of option-type steps
+// Option steps: goal(0), sex(1), experience(4), struggles(5), activity(6), mealsPerDay(7), interests(8)
+const OPTION_ANSWER_KEYS = [0, 4, 5, 6, 7, 8]; // indices of option-type steps
 
 const STORAGE_KEY = "carnivore-onboarding-complete";
 
@@ -173,10 +184,14 @@ const Onboarding = () => {
           newAnswers[4] ?? 0,       // experience
           newAnswers[5] ?? [],      // struggles
           newAnswers[6] ?? 0,       // activity
-          newAnswers[7] ?? [],      // interests
+          newAnswers[8] ?? [],      // interests
         ];
         localStorage.setItem(STORAGE_KEY, "true");
         localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
+
+        // Save meals per day (step 7: 0=2meals, 1=3meals, 2=4meals)
+        const mealsPerDayVal = [2, 3, 4][(newAnswers[7] as number) ?? 1] ?? 3;
+        localStorage.setItem("carnivore-meals-per-day", String(mealsPerDayVal));
 
         // Save body stats separately
         const bodyData = {

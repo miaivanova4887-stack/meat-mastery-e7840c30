@@ -1,7 +1,8 @@
 import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback, useRef } from "react";
-import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
+import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { recipes, TIER_LABELS, type Recipe, type DietTier } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag } from "@/contexts/ShoppingBagContext";
@@ -17,6 +18,9 @@ const MealPlan = () => {
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
   const { addItem, hasItem } = useShoppingBag();
+  const profile = useUserProfile();
+  const userSlots = useMemo(() => activeSlots(profile.mealsPerDay), [profile.mealsPerDay]);
+  const { nutritionTargets } = profile;
 
   const [activeDay, setActiveDay] = useState<DayKey>(() => {
     const today = new Date().getDay();
@@ -87,7 +91,14 @@ const MealPlan = () => {
     setAiLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("meal-plan-ai", {
-        body: { mode: aiMode, dietTier: aiTier, preferences: aiPrefs || undefined },
+        body: {
+          mode: aiMode,
+          dietTier: aiTier,
+          preferences: aiPrefs || undefined,
+          mealsPerDay: profile.mealsPerDay,
+          nutritionTargets,
+          goal: profile.goal,
+        },
       });
 
       if (error) throw error;
@@ -154,7 +165,7 @@ const MealPlan = () => {
     } finally {
       setAiLoading(false);
     }
-  }, [aiMode, aiTier, aiPrefs, activeDay, assignMeal]);
+  }, [aiMode, aiTier, aiPrefs, activeDay, assignMeal, profile, nutritionTargets]);
 
   const saveAIMealAsRecipe = (m: any) => {
     // Don't save if it already exists
@@ -333,21 +344,30 @@ const MealPlan = () => {
           })}
         </div>
 
-        {/* Day Summary */}
-        {totals.count > 0 && (
-          <div className="ios-card p-3 flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">{activeDay} Totals</span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1 text-muted-foreground"><Flame size={11} /> {totals.cal} cal</span>
-              <span className="font-semibold text-primary">{totals.protein}g P</span>
-              <span className="text-muted-foreground">{totals.fat}g F</span>
-            </div>
+        {/* Day Summary with targets */}
+        <div className="ios-card p-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold text-foreground">{activeDay} · {profile.mealsPerDay} meals/day</span>
+            {totals.count > 0 && (
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1 text-muted-foreground"><Flame size={11} /> {totals.cal}/{nutritionTargets.calories}</span>
+                <span className="font-semibold text-primary">{totals.protein}g/{nutritionTargets.protein}g P</span>
+                <span className="text-muted-foreground">{totals.fat}g/{nutritionTargets.fat}g F</span>
+              </div>
+            )}
           </div>
-        )}
+          {totals.count > 0 && (
+            <div className="flex gap-1.5 mt-1.5">
+              <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (totals.cal / nutritionTargets.calories) * 100)}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Meal Slots */}
         <div className="space-y-2.5">
-          {MEAL_SLOTS.map((slot) => {
+          {userSlots.map((slot) => {
             const meal = plan[activeDay][slot];
             const isSwiped = swipedSlot === slot;
             return (
@@ -633,9 +653,9 @@ const MealPlan = () => {
             <div className="ios-card p-3">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {aiMode === "single" && `AI will generate 1 recipe and add it to ${activeDay}'s plan.`}
-                {aiMode === "daily" && `AI will fill all meal slots for ${activeDay} with tailored recipes.`}
-                {aiMode === "weekly" && "AI will generate meals for all 7 days. This may take a moment."}
-                {" "}Generated recipes are saved to your recipe collection automatically.
+                {aiMode === "daily" && `AI will fill ${profile.mealsPerDay} meal slots for ${activeDay} targeting ${nutritionTargets.calories} cal.`}
+                {aiMode === "weekly" && `AI will generate ${profile.mealsPerDay} meals/day for all 7 days targeting ${nutritionTargets.calories} cal/day.`}
+                {" "}Personalized to your goal: {profile.goal.replace("_", " ")}.
               </p>
             </div>
 
