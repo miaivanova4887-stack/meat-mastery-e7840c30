@@ -1,12 +1,13 @@
-import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
 import { recipes, TIER_LABELS, type Recipe, type DietTier } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 
 type AIMode = "single" | "daily" | "weekly";
 
@@ -46,7 +47,17 @@ const MealPlan = () => {
   // Shopping list expanded
   const [shoppingExpanded, setShoppingExpanded] = useState(false);
 
+  // Swipe state per slot
+  const [swipedSlot, setSwipedSlot] = useState<MealSlot | null>(null);
+
   const allRecipes = useMemo(() => [...customRecipes, ...recipes], [customRecipes]);
+
+  // Recipe detail drawer
+  const [detailMeal, setDetailMeal] = useState<{ day: DayKey; slot: MealSlot; meal: PlannedMeal } | null>(null);
+  const detailRecipe = useMemo(() => {
+    if (!detailMeal) return null;
+    return allRecipes.find((r) => r.name === detailMeal.meal.recipeName) || null;
+  }, [detailMeal, allRecipes]);
 
   const filteredRecipes = useMemo(() => {
     if (!recipeSearch) return allRecipes.slice(0, 20);
@@ -338,50 +349,107 @@ const MealPlan = () => {
         <div className="space-y-2.5">
           {MEAL_SLOTS.map((slot) => {
             const meal = plan[activeDay][slot];
+            const isSwiped = swipedSlot === slot;
             return (
-              <div key={slot} className="ios-card p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                    {SLOT_LABELS[slot]}
-                  </span>
-                  {meal && (
-                    <button onClick={() => removeMeal(activeDay, slot)} className="text-muted-foreground hover:text-destructive">
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-
-                {meal ? (
-                  <button
-                    onClick={() => { setPickingSlot(slot); setRecipeSearch(""); }}
-                    className="w-full text-left group"
-                  >
-                    <h3 className="font-display font-bold text-foreground text-[15px] group-hover:text-primary transition-colors">{meal.recipeName}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{meal.cal} cal</span>
-                      <span className="font-semibold text-primary">{meal.protein} P</span>
-                      <span>{meal.fat} F</span>
-                      <span>· {meal.time}</span>
-                      <span className="ml-auto text-[10px] opacity-0 group-hover:opacity-100 text-primary transition-opacity">Tap to change</span>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
+              <div key={slot} className="relative overflow-hidden rounded-2xl">
+                {/* Swipe-revealed actions */}
+                {meal && (
+                  <div className="absolute inset-y-0 right-0 flex items-stretch z-0">
                     <button
-                      onClick={() => setPickingSlot(slot)}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
+                      onClick={() => { setSwipedSlot(null); setPickingSlot(slot); setRecipeSearch(""); }}
+                      className="w-16 flex flex-col items-center justify-center gap-1 bg-primary text-primary-foreground text-[10px] font-semibold"
                     >
-                      <Plus size={14} /> Pick Recipe
+                      <RefreshCw size={16} />
+                      Change
                     </button>
                     <button
-                      onClick={() => { setQuickSlot(slot); setShowQuickAdd(true); }}
-                      className="px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
-                      title="Add custom"
+                      onClick={() => { setSwipedSlot(null); removeMeal(activeDay, slot); toast(`Removed from ${activeDay} ${slot}`); }}
+                      className="w-16 flex flex-col items-center justify-center gap-1 bg-destructive text-destructive-foreground text-[10px] font-semibold"
                     >
-                      ✏️
+                      <Trash2 size={16} />
+                      Delete
                     </button>
                   </div>
                 )}
+
+                {/* Main card - slides left on swipe */}
+                <div
+                  className={`ios-card p-4 relative z-10 bg-card transition-transform duration-200 ease-out ${isSwiped && meal ? "-translate-x-32" : "translate-x-0"}`}
+                  onTouchStart={(e) => {
+                    if (!meal) return;
+                    const el = e.currentTarget as any;
+                    el._touchStartX = e.touches[0].clientX;
+                    el._touchStartY = e.touches[0].clientY;
+                    el._swiping = false;
+                  }}
+                  onTouchMove={(e) => {
+                    if (!meal) return;
+                    const el = e.currentTarget as any;
+                    if (el._touchStartX == null) return;
+                    const dx = e.touches[0].clientX - el._touchStartX;
+                    const dy = e.touches[0].clientY - el._touchStartY;
+                    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+                      el._swiping = true;
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (!meal) return;
+                    const el = e.currentTarget as any;
+                    if (el._touchStartX == null) return;
+                    const dx = e.changedTouches[0].clientX - el._touchStartX;
+                    const wasSwiping = el._swiping;
+                    el._touchStartX = null;
+                    el._swiping = false;
+                    if (wasSwiping) {
+                      if (dx < -50) setSwipedSlot(slot);
+                      else if (dx > 30) setSwipedSlot(null);
+                    }
+                  }}
+                  onClick={() => {
+                    if (meal && !swipedSlot) {
+                      setDetailMeal({ day: activeDay, slot, meal });
+                    } else if (swipedSlot) {
+                      setSwipedSlot(null);
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      {SLOT_LABELS[slot]}
+                    </span>
+                    {meal && (
+                      <span className="text-[9px] text-muted-foreground/60">← swipe</span>
+                    )}
+                  </div>
+
+                  {meal ? (
+                    <div>
+                      <h3 className="font-display font-bold text-foreground text-[15px]">{meal.recipeName}</h3>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>{meal.cal} cal</span>
+                        <span className="font-semibold text-primary">{meal.protein} P</span>
+                        <span>{meal.fat} F</span>
+                        <span>· {meal.time}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPickingSlot(slot); }}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
+                      >
+                        <Plus size={14} /> Pick Recipe
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setQuickSlot(slot); setShowQuickAdd(true); }}
+                        className="px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
+                        title="Add custom"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -682,6 +750,101 @@ const MealPlan = () => {
           </div>
         </div>
       )}
+
+      {/* Recipe Detail Bottom Sheet */}
+      <Drawer open={!!detailMeal} onOpenChange={(open) => { if (!open) setDetailMeal(null); }}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle className="font-display text-xl">{detailMeal?.meal.recipeName}</DrawerTitle>
+            <DrawerDescription>
+              {detailMeal?.day} · {detailMeal?.slot ? SLOT_LABELS[detailMeal.slot] : ""}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-8 overflow-y-auto space-y-4">
+            {/* Macros */}
+            <div className="flex items-center gap-4 text-sm">
+              <span className="flex items-center gap-1"><Flame size={14} className="text-primary" /> {detailMeal?.meal.cal} cal</span>
+              <span className="font-semibold text-primary">{detailMeal?.meal.protein} P</span>
+              <span className="text-muted-foreground">{detailMeal?.meal.fat} F</span>
+              <span className="text-muted-foreground">· {detailMeal?.meal.time}</span>
+            </div>
+            <div className="text-xs text-muted-foreground">Serving: {detailMeal?.meal.serving}</div>
+
+            {/* Description */}
+            {detailRecipe?.desc && (
+              <p className="text-sm text-foreground leading-relaxed">{detailRecipe.desc}</p>
+            )}
+
+            {/* Ingredients */}
+            {detailRecipe && "ingredients" in detailRecipe && Array.isArray((detailRecipe as any).ingredients) && (detailRecipe as any).ingredients.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Ingredients</h3>
+                <ul className="space-y-1.5">
+                  {(detailRecipe as any).ingredients.map((ing: any, i: number) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-foreground">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                      {ing.amount && <span className="font-medium">{ing.amount}</span>}
+                      <span>{ing.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Steps */}
+            {detailRecipe && "steps" in detailRecipe && Array.isArray((detailRecipe as any).steps) && (detailRecipe as any).steps.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Instructions</h3>
+                <ol className="space-y-2">
+                  {(detailRecipe as any).steps.map((step: string, i: number) => (
+                    <li key={i} className="flex gap-3 text-sm text-foreground">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                      <span className="leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* Tags */}
+            {detailRecipe?.tags && detailRecipe.tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {detailRecipe.tags.map((t) => (
+                  <span key={t} className="text-[10px] px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  if (detailMeal) {
+                    setDetailMeal(null);
+                    setPickingSlot(detailMeal.slot);
+                    setRecipeSearch("");
+                  }
+                }}
+                className="flex-1 py-3 rounded-2xl bg-secondary text-foreground font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <RefreshCw size={14} /> Change
+              </button>
+              <button
+                onClick={() => {
+                  if (detailMeal) {
+                    removeMeal(detailMeal.day, detailMeal.slot);
+                    toast(`Removed from ${detailMeal.day} ${detailMeal.slot}`);
+                    setDetailMeal(null);
+                  }
+                }}
+                className="py-3 px-6 rounded-2xl bg-destructive/10 text-destructive font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} /> Remove
+              </button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };
