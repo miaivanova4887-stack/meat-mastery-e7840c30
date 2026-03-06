@@ -72,6 +72,7 @@ const CreateRecipe = () => {
         .slice(0, 5),
       tier: tiers,
       meal,
+      cravings: [],
       ingredients: validIngredients,
       steps: validSteps,
       createdAt: new Date().toISOString(),

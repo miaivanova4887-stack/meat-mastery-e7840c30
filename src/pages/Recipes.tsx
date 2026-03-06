@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
-import { recipes, TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type CustomRecipe } from "@/data/recipes";
+import { recipes, TIER_LABELS, MEAL_LABELS, CRAVING_LABELS, type DietTier, type MealType, type CravingType, type CustomRecipe } from "@/data/recipes";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 
@@ -31,6 +31,7 @@ const Recipes = () => {
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
   const [activeMeal, setActiveMeal] = useState<MealType | "all">("all");
+  const [activeCraving, setActiveCraving] = useState<CravingType | "all">("all");
   const [search, setSearch] = useState("");
   const [expandedCustom, setExpandedCustom] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
@@ -46,6 +47,7 @@ const Recipes = () => {
       list.filter((r) => {
         if (!r.tier.includes(activeTier)) return false;
         if (activeMeal !== "all" && r.meal !== activeMeal) return false;
+        if (activeCraving !== "all" && !(r.cravings || []).includes(activeCraving)) return false;
         if (search) {
           const q = search.toLowerCase();
           return (
@@ -61,7 +63,7 @@ const Recipes = () => {
       custom: filter(customRecipes) as CustomRecipe[],
       builtIn: filter(recipes),
     };
-  }, [activeTier, activeMeal, search, customRecipes]);
+  }, [activeTier, activeMeal, activeCraving, search, customRecipes]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
@@ -257,6 +259,23 @@ const Recipes = () => {
           ))}
         </div>
 
+        {/* Craving Filters */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+          {(Object.keys(CRAVING_LABELS) as (CravingType | "all")[]).map((craving) => (
+            <button
+              key={craving}
+              onClick={() => setActiveCraving(craving)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
+                activeCraving === craving
+                  ? "bg-foreground text-background"
+                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {CRAVING_LABELS[craving]}
+            </button>
+          ))}
+        </div>
+
         {/* Meal Type Tabs */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
           {(Object.keys(MEAL_LABELS) as (MealType | "all")[]).map((meal) => (
@@ -265,8 +284,8 @@ const Recipes = () => {
               onClick={() => setActiveMeal(meal)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 activeMeal === meal
-                  ? "bg-foreground text-background"
-                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "bg-secondary/40 text-muted-foreground hover:text-foreground"
               }`}
             >
               {MEAL_LABELS[meal]}
