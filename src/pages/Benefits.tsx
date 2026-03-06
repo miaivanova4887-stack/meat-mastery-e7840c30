@@ -10,8 +10,9 @@ const benefits = [
   { icon: Scale, title: "Fat Loss", desc: "High protein and fat satiety naturally reduces caloric intake. Many report effortless weight loss without counting calories." },
   { icon: BatteryCharging, title: "Sustained Energy", desc: "No sugar crashes. Fat-adapted metabolism provides steady energy throughout the day." },
   { icon: Shield, title: "Gut Healing", desc: "Removing fiber and plant irritants allows the gut lining to heal, improving digestion and nutrient absorption." },
-  { icon: Eye, title: "Better Skin", desc: "Many report clearing of acne, eczema, and psoriasis after eliminating plant-based irritants." },
-  { icon: Zap, title: "Hormone Optimization", desc: "Cholesterol and saturated fats are building blocks for testosterone, estrogen, and other critical hormones." },
+  { icon: Eye, title: "Overall Glow-Up", desc: "Beyond clearing acne, eczema, and psoriasis — many experience brighter eyes, thicker hair, stronger nails, and a radiant complexion that reflects deep internal health." },
+  { icon: Zap, title: "Higher Sports Performance", desc: "Fat-adapted athletes report improved endurance, faster recovery, and greater explosive power. Reduced inflammation means less downtime between training sessions." },
+  { icon: Shield, title: "Stress Resistance", desc: "Stable blood sugar and optimized hormones build a resilient nervous system. Many report handling pressure with calm focus instead of anxiety and burnout." },
 ];
 
 const Benefits = () => {
