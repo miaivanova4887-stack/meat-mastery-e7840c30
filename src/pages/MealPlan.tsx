@@ -347,7 +347,26 @@ const MealPlan = () => {
         {/* Day Summary with targets */}
         <div className="ios-card p-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-semibold text-foreground">{activeDay} · {profile.mealsPerDay} meals/day</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-foreground">{activeDay}</span>
+              <div className="flex bg-secondary rounded-lg overflow-hidden">
+                {[2, 3, 4].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => {
+                      localStorage.setItem("carnivore-meals-per-day", String(n));
+                      window.dispatchEvent(new Event("storage"));
+                    }}
+                    className={`px-2 py-0.5 text-[10px] font-semibold transition-all ${
+                      profile.mealsPerDay === n ? "bg-foreground text-background" : "text-muted-foreground"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <span className="text-[10px] text-muted-foreground">meals</span>
+            </div>
             {totals.count > 0 && (
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1 text-muted-foreground"><Flame size={11} /> {totals.cal}/{nutritionTargets.calories}</span>
