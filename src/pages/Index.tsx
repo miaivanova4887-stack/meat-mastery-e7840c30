@@ -122,8 +122,23 @@ const Index = () => {
         </div>
       </div>
 
+      {/* Redo onboarding */}
+      <div className="px-4 mt-4">
+        <button
+          onClick={() => {
+            localStorage.removeItem("carnivore-onboarding-complete");
+            localStorage.removeItem("carnivore-onboarding-answers");
+            navigate("/onboarding");
+          }}
+          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-3"
+        >
+          <RotateCcw size={14} />
+          Update your preferences
+        </button>
+      </div>
+
       {/* Quote — personalized */}
-      <div className="px-4 mt-6">
+      <div className="px-4 mt-2">
         <div className="bg-gradient-card rounded-lg p-5 border border-primary/20 glow-flame">
           <p className="text-sm font-display italic text-bone/90 leading-relaxed">
             "{quote.text}"
