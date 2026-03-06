@@ -453,7 +453,7 @@ const MealPlan = () => {
                     key={n}
                     onClick={() => {
                       localStorage.setItem("carnivore-meals-per-day", String(n));
-                      window.dispatchEvent(new Event("storage"));
+                      window.dispatchEvent(new Event("profile-update"));
                     }}
                     className={`px-2 py-0.5 text-[10px] font-semibold transition-all ${
                       profile.mealsPerDay === n ? "bg-foreground text-background" : "text-muted-foreground"

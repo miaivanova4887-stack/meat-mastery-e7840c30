@@ -129,7 +129,11 @@ export const UserProfileProvider: React.FC<{ children: React.ReactNode }> = ({ c
   useEffect(() => {
     const handleStorage = () => setProfile(parseProfile());
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener("profile-update", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("profile-update", handleStorage);
+    };
   }, []);
 
   return (
