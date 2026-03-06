@@ -24,6 +24,13 @@ export const SLOT_LABELS: Record<MealSlot, string> = {
   snack: "🍖 Snack",
 };
 
+/** Returns which slots are active for a given meals-per-day count */
+export function activeSlots(mealsPerDay: number): MealSlot[] {
+  if (mealsPerDay <= 2) return ["lunch", "dinner"];
+  if (mealsPerDay === 3) return ["breakfast", "lunch", "dinner"];
+  return ["breakfast", "lunch", "dinner", "snack"];
+}
+
 export type WeekPlan = Record<DayKey, DayPlan>;
 
 const emptyDay = (): DayPlan => ({ breakfast: null, lunch: null, dinner: null, snack: null });
