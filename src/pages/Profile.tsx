@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -298,6 +298,37 @@ const Profile = () => {
                     {label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Meals Per Day */}
+            <div className="ios-card p-4">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">
+                <UtensilsCrossed size={11} className="inline mr-1" />
+                Meals Per Day
+              </label>
+              <div className="flex gap-2">
+                {[2, 3, 4].map((n) => {
+                  const current = parseInt(localStorage.getItem("carnivore-meals-per-day") || "3") || 3;
+                  const labels: Record<number, string> = { 2: "2 meals", 3: "3 meals", 4: "4 meals" };
+                  const descs: Record<number, string> = { 2: "Lunch + Dinner", 3: "Breakfast, Lunch, Dinner", 4: "3 meals + Snack" };
+                  return (
+                    <button
+                      key={n}
+                      onClick={() => {
+                        localStorage.setItem("carnivore-meals-per-day", String(n));
+                        window.dispatchEvent(new Event("storage"));
+                        toast.success(`Updated to ${n} meals/day`);
+                      }}
+                      className={`flex-1 flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                        current === n ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
+                      }`}
+                    >
+                      <span>{labels[n]}</span>
+                      <span className={`text-[9px] font-normal ${current === n ? "text-background/70" : "text-muted-foreground/70"}`}>{descs[n]}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
