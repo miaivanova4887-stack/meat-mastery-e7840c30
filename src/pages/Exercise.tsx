@@ -32,14 +32,24 @@ const quizQuestions = [
 type QuizResult = { workout: string; icon: typeof Dumbbell; reason: string };
 
 function getQuizResult(answers: number[]): QuizResult {
-  const [energy, need, _time] = answers;
-  if (need === 3) return { workout: "Restorative Yoga", icon: Sparkles, reason: "Your body is asking for deep rest. Supported poses will help you recover faster on carnivore." };
+  const [energy, need, _time, soreness, mood] = answers;
+  // Heavy soreness or recovery need → restorative
+  if (soreness >= 2 || need === 3) return { workout: "Restorative Yoga", icon: Sparkles, reason: "Your body is calling for deep recovery. Supported poses + carnivore nutrition will rebuild you faster." };
+  // Fired up + strength + driven → power
   if (energy === 0 && need === 0) return { workout: "Power Yoga + Strength", icon: Flame, reason: "You're fired up and craving strength — channel that protein-fueled energy into power sequences." };
-  if (energy === 0) return { workout: "Vinyasa Flow", icon: Sun, reason: "High energy + movement craving = perfect Vinyasa session. Ride the wave." };
+  // Need to blow off steam → HIIT
+  if (mood === 2) return { workout: "HIIT Sprint Session", icon: Zap, reason: "You've got steam to release. Short intense bursts will clear your head and torch energy." };
+  // Seeking peace + flexibility → Yin
+  if (mood === 3 && need === 1) return { workout: "Yin Yoga", icon: Moon, reason: "Peace + flexibility — long passive holds will quiet your mind and open tight tissues." };
+  // High energy + flow mood → Vinyasa
+  if (energy === 0 || mood === 1) return { workout: "Vinyasa Flow", icon: Sun, reason: "High energy meets go-with-the-flow mindset. Ride the wave through dynamic sequences." };
+  // Low energy → Yin
   if (energy === 2) return { workout: "Yin Yoga", icon: Moon, reason: "Low energy days are ideal for deep passive stretches. Let gravity do the work." };
+  // Breathwork need
   if (need === 2) return { workout: "Breathwork & Mobility", icon: Wind, reason: "Pranayama will reset your nervous system and prep your joints for tomorrow." };
-  if (need === 1) return { workout: "Hatha Yoga", icon: TreePine, reason: "Steady-paced postures will open up tight areas without draining you." };
-  return { workout: "Vinyasa Flow", icon: Sun, reason: "A balanced flow session matches your current state perfectly." };
+  // Focused + flexibility → Hatha
+  if (mood === 0) return { workout: "Hatha Yoga", icon: TreePine, reason: "Your focused mindset pairs perfectly with deliberate, steady-paced postures." };
+  return { workout: "Hatha Yoga", icon: TreePine, reason: "A grounded Hatha session matches your current state — steady and intentional." };
 }
 
 const Exercise = () => {
