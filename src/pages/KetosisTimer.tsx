@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
+import { subscribeToPush, sendPushToAll } from "@/lib/pushNotifications";
 
 const KETOSIS_TARGET_HOURS = 72;
 
@@ -142,14 +143,24 @@ const KetosisTimer = () => {
 
   const reset = () => { setElapsed(0); setIsRunning(false); lastPhaseRef.current = -1; localStorage.removeItem("ketosis-timer"); };
 
-  const toggleAlerts = useCallback(() => {
+  const toggleAlerts = useCallback(async () => {
     const next = !alertsEnabled;
     setAlertsEnabled(next);
     localStorage.setItem("ketosis-alerts", String(next));
-    if (next && "Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
+    if (next) {
+      // Request notification permission and subscribe to push
+      if ("Notification" in window && Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      const subscribed = await subscribeToPush();
+      if (subscribed) {
+        toast("Push notifications enabled — you'll be alerted even when the app is closed");
+      } else {
+        toast("Milestone alerts enabled (in-app only)");
+      }
+    } else {
+      toast("Milestone alerts muted");
     }
-    toast(next ? "Milestone alerts enabled" : "Milestone alerts muted");
   }, [alertsEnabled]);
 
   const hours = Math.floor(elapsed / 3600);
@@ -173,6 +184,8 @@ const KetosisTimer = () => {
       const phase = phases[currentPhaseIdx];
       toast(`🔥 ${phase.name}`, { description: phase.tip, duration: 6000 });
       sendNotification(`🔥 ${phase.name}`, phase.tip);
+      // Also send true push notification for background delivery
+      sendPushToAll(`🔥 ${phase.name}`, phase.tip).catch(() => {});
     }
     lastPhaseRef.current = currentPhaseIdx;
   }, [currentPhaseIdx, isRunning, alertsEnabled, phases]);
