@@ -1,13 +1,83 @@
-import { ArrowLeft, Flame, Play, Pause, RotateCcw } from "lucide-react";
+import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { useUserProfile } from "@/contexts/UserProfileContext";
+import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
 
 const KETOSIS_TARGET_HOURS = 72;
 
+interface PhaseInfo {
+  name: string;
+  range: string;
+  tip: string;
+}
+
+function getPhases(goal: Goal, activity: ActivityLevel, struggles: Struggle[], weight: number | null): PhaseInfo[] {
+  const isActive = activity === "moderate" || activity === "very_active";
+  const hasCravings = struggles.includes("sugar_cravings");
+  const hasLowEnergy = struggles.includes("low_energy");
+  const hasDigestive = struggles.includes("digestive");
+
+  return [
+    {
+      name: "Glycogen Depletion",
+      range: "0 – 12h",
+      tip: isActive
+        ? "Your active lifestyle means glycogen may deplete faster. Stay hydrated with electrolytes."
+        : hasCravings
+        ? "Cravings may spike here — beef jerky or bone broth can help you push through."
+        : "Your body is using up stored glucose. Drink water and stay busy.",
+    },
+    {
+      name: "Fat Burning Begins",
+      range: "12 – 24h",
+      tip: goal === "lose_weight"
+        ? "This is where fat loss accelerates. Your body is switching fuel sources — keep going."
+        : hasLowEnergy
+        ? "Energy may dip as your body transitions. Rest is productive right now."
+        : goal === "build_muscle"
+        ? "Protein synthesis continues. Keep protein high to protect lean mass during the switch."
+        : "Your metabolism is shifting. Gentle movement helps the transition.",
+    },
+    {
+      name: "Deep Fat Adaptation",
+      range: "24 – 48h",
+      tip: goal === "lose_weight" && weight
+        ? `At ${weight}kg, your body is now heavily drawing from fat stores. Mental clarity often improves here.`
+        : hasDigestive
+        ? "Digestive discomfort usually eases by this phase as your gut adapts to fat metabolism."
+        : goal === "improve_health"
+        ? "Autophagy ramps up — your body is actively repairing and recycling damaged cells."
+        : isActive
+        ? "Fat-fueled workouts may feel different. Lower intensity is fine — adaptation takes time."
+        : "Deep adaptation is underway. Many people notice improved focus and stable energy.",
+    },
+    {
+      name: "Full Ketosis",
+      range: "48 – 72h",
+      tip: goal === "build_muscle"
+        ? "Ketones are now your primary fuel. Strength may feel different but endurance often improves."
+        : goal === "lose_weight"
+        ? "Peak fat burning. Your body is now a fat-adapted machine — this is where results compound."
+        : goal === "improve_health"
+        ? "Maximum cellular repair mode. Inflammation markers are typically at their lowest."
+        : "You've reached full nutritional ketosis. Maintain with quality animal fats and protein.",
+    },
+  ];
+}
+
+function getCurrentPhaseIndex(hours: number): number {
+  if (hours < 12) return 0;
+  if (hours < 24) return 1;
+  if (hours < 48) return 2;
+  return 3;
+}
+
 const KetosisTimer = () => {
   const navigate = useNavigate();
+  const profile = useUserProfile();
   const [isRunning, setIsRunning] = useState(false);
-  const [elapsed, setElapsed] = useState(0); // seconds
+  const [elapsed, setElapsed] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
@@ -43,26 +113,32 @@ const KetosisTimer = () => {
   const progress = Math.min((elapsed / (KETOSIS_TARGET_HOURS * 3600)) * 100, 100);
   const inKetosis = hours >= KETOSIS_TARGET_HOURS;
 
-  const phase = hours < 12 ? "Glycogen Depletion" : hours < 24 ? "Fat Burning Begins" : hours < 48 ? "Deep Fat Adaptation" : hours < 72 ? "Approaching Ketosis" : "Full Ketosis! 🔥";
+  const phases = getPhases(profile.goal, profile.activityLevel, profile.struggles, profile.body.weight);
+  const currentPhaseIdx = getCurrentPhaseIndex(hours);
+  const currentPhase = phases[currentPhaseIdx];
 
   const circumference = 2 * Math.PI * 120;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
+  const milestoneHours = [12, 24, 48, 72];
+
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold">Ketosis Timer</h1>
+        <h1 className="text-lg font-display font-bold tracking-tight">Ketosis Timer</h1>
       </div>
 
       <div className="flex flex-col items-center pt-8 px-4">
+        {/* Ring */}
         <div className="relative w-64 h-64">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 260 260">
-            <circle cx="130" cy="130" r="120" stroke="hsl(var(--border))" strokeWidth="8" fill="none" />
+            <circle cx="130" cy="130" r="120" stroke="hsl(var(--border))" strokeWidth="6" fill="none" />
             <circle
               cx="130" cy="130" r="120"
               stroke={inKetosis ? "hsl(var(--gold))" : "hsl(var(--primary))"}
-              strokeWidth="8" fill="none"
+              strokeWidth="6" fill="none"
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
@@ -70,43 +146,63 @@ const KetosisTimer = () => {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <Flame size={24} className={`text-primary ${isRunning ? "animate-pulse-flame" : ""}`} />
-            <span className="text-3xl font-display font-black text-foreground mt-1">
+            <Flame size={22} strokeWidth={1.5} className={`text-primary ${isRunning ? "animate-pulse-flame" : ""}`} />
+            <span className="text-3xl font-display font-bold text-foreground mt-1 tracking-tight">
               {String(hours).padStart(2, "0")}:{String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
             </span>
-            <span className="text-xs text-muted-foreground mt-1">{phase}</span>
+            <span className="text-xs text-muted-foreground mt-1">{currentPhase.name}{inKetosis ? " 🔥" : ""}</span>
           </div>
         </div>
 
-        <div className="flex gap-4 mt-8">
+        {/* Controls */}
+        <div className="flex gap-3 mt-8">
           <button
             onClick={() => setIsRunning(!isRunning)}
-            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm transition-all active:scale-[0.97]"
           >
             {isRunning ? <Pause size={18} /> : <Play size={18} />}
             {isRunning ? "Pause" : "Start"}
           </button>
-          <button onClick={reset} className="flex items-center gap-2 px-4 py-3 rounded-lg bg-secondary text-secondary-foreground text-sm">
+          <button onClick={reset} className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-secondary text-secondary-foreground text-sm transition-all active:scale-[0.97]">
             <RotateCcw size={16} /> Reset
           </button>
         </div>
 
-        <div className="w-full mt-8 space-y-2">
-          <p className="text-xs text-muted-foreground text-center">Target: {KETOSIS_TARGET_HOURS} hours for full ketosis adaptation</p>
-          {[
-            { h: 12, label: "Glycogen stores begin depleting" },
-            { h: 24, label: "Body shifts to burning fat" },
-            { h: 48, label: "Deep fat adaptation accelerates" },
-            { h: 72, label: "Full nutritional ketosis achieved" },
-          ].map(m => (
-            <div key={m.h} className={`flex items-center gap-3 p-3 rounded-lg border ${hours >= m.h ? "border-primary/40 bg-primary/5" : "border-border bg-card"}`}>
-              <div className={`w-3 h-3 rounded-full ${hours >= m.h ? "bg-primary" : "bg-muted"}`} />
-              <div>
-                <span className="text-xs font-semibold text-foreground">{m.h}h</span>
-                <span className="text-xs text-muted-foreground ml-2">{m.label}</span>
-              </div>
+        {/* Current phase personalised tip */}
+        <div className="w-full mt-8">
+          <div className="ios-card p-4 flex gap-3 items-start">
+            <Info size={16} strokeWidth={1.5} className="text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-[13px] font-semibold text-foreground">{currentPhase.name}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{currentPhase.tip}</p>
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* Phase milestones */}
+        <div className="w-full mt-4 space-y-2">
+          <p className="text-xs text-muted-foreground text-center mb-3">Target: {KETOSIS_TARGET_HOURS}h for full ketosis</p>
+          {phases.map((phase, i) => {
+            const h = milestoneHours[i];
+            const reached = hours >= h;
+            const isCurrent = i === currentPhaseIdx;
+            return (
+              <div
+                key={h}
+                className={`ios-card flex items-center gap-3 p-3 transition-all ${
+                  isCurrent ? "ring-1 ring-primary/20" : ""
+                }`}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${reached ? "bg-primary" : isCurrent ? "bg-primary/40" : "bg-muted"}`} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-semibold text-foreground">{phase.name}</span>
+                    <span className="text-[11px] text-muted-foreground">{phase.range}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
