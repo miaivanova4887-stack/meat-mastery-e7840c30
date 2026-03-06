@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
-import { recipes, TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type CustomRecipe } from "@/data/recipes";
+import { recipes, TIER_LABELS, MEAL_LABELS, CRAVING_LABELS, type DietTier, type MealType, type CravingType, type CustomRecipe } from "@/data/recipes";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 
@@ -31,6 +31,7 @@ const Recipes = () => {
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
   const [activeMeal, setActiveMeal] = useState<MealType | "all">("all");
+  const [activeCraving, setActiveCraving] = useState<CravingType | "all">("all");
   const [search, setSearch] = useState("");
   const [expandedCustom, setExpandedCustom] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
@@ -46,6 +47,7 @@ const Recipes = () => {
       list.filter((r) => {
         if (!r.tier.includes(activeTier)) return false;
         if (activeMeal !== "all" && r.meal !== activeMeal) return false;
+        if (activeCraving !== "all" && !(r.cravings || []).includes(activeCraving)) return false;
         if (search) {
           const q = search.toLowerCase();
           return (
@@ -61,7 +63,7 @@ const Recipes = () => {
       custom: filter(customRecipes) as CustomRecipe[],
       builtIn: filter(recipes),
     };
-  }, [activeTier, activeMeal, search, customRecipes]);
+  }, [activeTier, activeMeal, activeCraving, search, customRecipes]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
