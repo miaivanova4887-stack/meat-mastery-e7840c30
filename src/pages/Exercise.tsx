@@ -95,15 +95,16 @@ const Exercise = () => {
           )}
 
           {quizStep >= 0 && quizStep < 5 && (
-            <div className="space-y-3 animate-fade-in-up">
-              <Progress value={((quizStep + 1) / 5) * 100} className="h-1.5" />
+            <div className={`space-y-3 transition-all duration-250 ease-out ${transitioning ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
+              <Progress value={((quizStep + 1) / 5) * 100} className="h-1.5 transition-all duration-500" />
               <p className="text-sm font-medium text-foreground">{quizQuestions[quizStep].q}</p>
               <div className="grid grid-cols-2 gap-2">
                 {quizQuestions[quizStep].options.map((opt, i) => (
                   <button
-                    key={opt}
+                    key={`${quizStep}-${opt}`}
                     onClick={() => handleQuizAnswer(i)}
-                    className="text-xs bg-secondary/60 hover:bg-primary/20 border border-border hover:border-primary/40 rounded-md px-3 py-2.5 text-secondary-foreground transition-colors text-left"
+                    className="text-xs bg-secondary/60 hover:bg-primary/20 border border-border hover:border-primary/40 rounded-md px-3 py-2.5 text-secondary-foreground transition-all duration-200 text-left hover:scale-105 active:scale-95"
+                    style={{ animationDelay: `${i * 0.05}s` }}
                   >
                     {opt}
                   </button>
