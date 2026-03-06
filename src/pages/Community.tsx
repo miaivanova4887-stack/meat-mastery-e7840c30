@@ -36,9 +36,9 @@ const Community = () => {
   const fetchRecipes = useCallback(async () => {
     setLoading(true);
     const order = tab === "popular" ? "likes_count" : "created_at";
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("community_recipes")
-      .select("*, profile:profiles!community_recipes_user_id_fkey(display_name, avatar_url)")
+      .select("*, profile:profiles(display_name, avatar_url)")
       .order(order, { ascending: false })
       .limit(50);
 
