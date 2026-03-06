@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ShoppingBagProvider } from "./contexts/ShoppingBagContext";
+import { UserProfileProvider } from "./contexts/UserProfileContext";
 import BottomNav from "./components/BottomNav";
 import Index from "./pages/Index";
 import Benefits from "./pages/Benefits";
@@ -45,6 +46,7 @@ const App = () => (
             </Routes>
             <BottomNav />
           </BrowserRouter>
+        </UserProfileProvider>
         </ShoppingBagProvider>
       </TooltipProvider>
     </QueryClientProvider>
