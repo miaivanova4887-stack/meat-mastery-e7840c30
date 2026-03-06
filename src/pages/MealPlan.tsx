@@ -47,17 +47,17 @@ const MealPlan = () => {
   // Shopping list expanded
   const [shoppingExpanded, setShoppingExpanded] = useState(false);
 
+  // Swipe state per slot
+  const [swipedSlot, setSwipedSlot] = useState<MealSlot | null>(null);
+
+  const allRecipes = useMemo(() => [...customRecipes, ...recipes], [customRecipes]);
+
   // Recipe detail drawer
   const [detailMeal, setDetailMeal] = useState<{ day: DayKey; slot: MealSlot; meal: PlannedMeal } | null>(null);
   const detailRecipe = useMemo(() => {
     if (!detailMeal) return null;
     return allRecipes.find((r) => r.name === detailMeal.meal.recipeName) || null;
   }, [detailMeal, allRecipes]);
-
-  // Swipe state per slot
-  const [swipedSlot, setSwipedSlot] = useState<MealSlot | null>(null);
-
-  const allRecipes = useMemo(() => [...customRecipes, ...recipes], [customRecipes]);
 
   const filteredRecipes = useMemo(() => {
     if (!recipeSearch) return allRecipes.slice(0, 20);
