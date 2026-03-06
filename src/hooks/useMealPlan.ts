@@ -39,6 +39,7 @@ const emptyWeek = (): WeekPlan =>
   Object.fromEntries(DAYS.map((d) => [d, emptyDay()])) as WeekPlan;
 
 const STORAGE_KEY = "carnivore-meal-plan";
+const COMPLETED_KEY = "carnivore-meal-completed";
 
 function load(): WeekPlan {
   try {
@@ -49,13 +50,28 @@ function load(): WeekPlan {
   }
 }
 
+export type CompletedMeals = Record<string, boolean>; // key: "day-slot"
+
+function loadCompleted(): CompletedMeals {
+  try {
+    const raw = localStorage.getItem(COMPLETED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function useMealPlan() {
   const [plan, setPlan] = useState<WeekPlan>(load);
+  const [completed, setCompleted] = useState<CompletedMeals>(loadCompleted);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
   }, [plan]);
 
+  useEffect(() => {
+    localStorage.setItem(COMPLETED_KEY, JSON.stringify(completed));
+  }, [completed]);
   const assignMeal = useCallback((day: DayKey, slot: MealSlot, meal: PlannedMeal) => {
     setPlan((prev) => ({ ...prev, [day]: { ...prev[day], [slot]: meal } }));
   }, []);
@@ -70,8 +86,28 @@ export function useMealPlan() {
 
   const clearWeek = useCallback(() => {
     setPlan(emptyWeek());
+    setCompleted({});
   }, []);
 
+  const toggleCompleted = useCallback((day: DayKey, slot: MealSlot) => {
+    const key = `${day}-${slot}`;
+    setCompleted((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const isCompleted = useCallback((day: DayKey, slot: MealSlot) => {
+    return !!completed[`${day}-${slot}`];
+  }, [completed]);
+
+  const dayCompletionCount = useCallback((day: DayKey, slots: MealSlot[]) => {
+    let total = 0, done = 0;
+    for (const slot of slots) {
+      if (plan[day][slot]) {
+        total++;
+        if (completed[`${day}-${slot}`]) done++;
+      }
+    }
+    return { total, done };
+  }, [plan, completed]);
   // Compute daily & weekly totals
   const dayTotals = useCallback((day: DayKey) => {
     const d = plan[day];
@@ -88,5 +124,5 @@ export function useMealPlan() {
     return { cal, protein, fat, count };
   }, [plan]);
 
-  return { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals };
+  return { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals, toggleCompleted, isCompleted, dayCompletionCount };
 }

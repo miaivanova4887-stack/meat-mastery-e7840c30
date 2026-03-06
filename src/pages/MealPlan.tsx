@@ -36,7 +36,7 @@ function isToday(day: DayKey): boolean {
 
 const MealPlan = () => {
   const navigate = useNavigate();
-  const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals } = useMealPlan();
+  const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals, toggleCompleted, isCompleted, dayCompletionCount } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
   const { addItem, hasItem } = useShoppingBag();
   const profile = useUserProfile();
@@ -417,6 +417,7 @@ const MealPlan = () => {
             const dt = dayTotals(day);
             const isActive = activeDay === day;
             const isTodayDay = isToday(day);
+            const comp = dayCompletionCount(day, userSlots);
             return (
               <button
                 key={day}
@@ -428,12 +429,12 @@ const MealPlan = () => {
                 }`}
               >
                 {isTodayDay && (
-                  <span className={`absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isActive ? "bg-primary" : "bg-primary"}`} />
+                  <span className={`absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary`} />
                 )}
                 <span className="text-xs font-bold">{day}</span>
                 {dt.count > 0 && (
                   <span className={`text-[9px] mt-0.5 ${isActive ? "text-background/70" : "text-primary"}`}>
-                    {dt.cal} cal
+                    {comp.done}/{comp.total} ✓
                   </span>
                 )}
               </button>
@@ -567,13 +568,25 @@ const MealPlan = () => {
                   </div>
 
                   {meal ? (
-                    <div>
-                      <h3 className="font-display font-bold text-foreground text-[15px]">{meal.recipeName}</h3>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        <span>{meal.cal} cal</span>
-                        <span className="font-semibold text-primary">{meal.protein} P</span>
-                        <span>{meal.fat} F</span>
-                        <span>· {meal.time}</span>
+                    <div className="flex items-start gap-3">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleCompleted(activeDay, slot); }}
+                        className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          isCompleted(activeDay, slot)
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "border-border/60 text-transparent hover:border-primary/40"
+                        }`}
+                      >
+                        <Check size={12} />
+                      </button>
+                      <div className={`flex-1 ${isCompleted(activeDay, slot) ? "opacity-50" : ""}`}>
+                        <h3 className={`font-display font-bold text-foreground text-[15px] ${isCompleted(activeDay, slot) ? "line-through" : ""}`}>{meal.recipeName}</h3>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span>{meal.cal} cal</span>
+                          <span className="font-semibold text-primary">{meal.protein} P</span>
+                          <span>{meal.fat} F</span>
+                          <span>· {meal.time}</span>
+                        </div>
                       </div>
                     </div>
                   ) : (
