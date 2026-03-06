@@ -154,6 +154,16 @@ const Exercise = () => {
 
   const resetQuiz = () => { setQuizStep(-1); setQuizAnswers([]); setTransitioning(false); };
 
+  const goBack = () => {
+    if (quizStep <= 0) return resetQuiz();
+    setTransitioning(true);
+    setTimeout(() => {
+      setQuizAnswers((prev) => prev.slice(0, -1));
+      setQuizStep((s) => s - 1);
+      setTransitioning(false);
+    }, 250);
+  };
+
   const quizResult = quizStep === TOTAL_QUESTIONS ? getQuizResult(quizAnswers) : null;
 
   const [expandedApp, setExpandedApp] = useState<string | null>(null);
