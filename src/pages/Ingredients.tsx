@@ -1,6 +1,7 @@
-import { ArrowLeft, Check, Crown, Shield, Leaf } from "lucide-react";
+import { ArrowLeft, Check, Crown, Shield, Leaf, Plus, ShoppingBag, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 
 const diets = [
   {
@@ -52,11 +53,23 @@ const diets = [
 
 const Ingredients = () => {
   const navigate = useNavigate();
+  const { addItem, removeItem, hasItem, count } = useShoppingBag();
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-display font-bold">Approved Ingredients</h1>
+        <button
+          onClick={() => navigate("/shopping-bag")}
+          className="ml-auto relative text-primary hover:text-primary/80 transition-colors"
+        >
+          <ShoppingBag size={22} />
+          {count > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-accent text-accent-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              {count}
+            </span>
+          )}
+        </button>
       </div>
 
       <Tabs defaultValue="lion" className="w-full">
@@ -78,12 +91,23 @@ const Ingredients = () => {
                 <div key={i} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
                   <h3 className="font-display font-bold text-foreground mb-3">{cat.name}</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {cat.items.map(item => (
-                      <div key={item} className="flex items-center gap-2 text-xs text-secondary-foreground/80">
-                        <Check size={12} className="text-primary flex-shrink-0" />
-                        <span>{item}</span>
-                      </div>
-                    ))}
+                    {cat.items.map(item => {
+                      const inBag = hasItem(item);
+                      return (
+                        <button
+                          key={item}
+                          onClick={() => inBag ? removeItem(item) : addItem(item)}
+                          className={`flex items-center gap-2 text-xs text-left rounded-md px-2 py-1.5 transition-colors ${
+                            inBag
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-secondary-foreground/80 hover:bg-muted"
+                          }`}
+                        >
+                          {inBag ? <Minus size={12} className="text-primary flex-shrink-0" /> : <Plus size={12} className="text-muted-foreground flex-shrink-0" />}
+                          <span>{item}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
