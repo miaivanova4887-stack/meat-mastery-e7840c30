@@ -2,3 +2,6 @@ project_id = "gueosugzlebbaijzcxgh"
 
 [functions.push-notifications]
 verify_jwt = false
+
+[functions.recipe-coach]
+verify_jwt = false
