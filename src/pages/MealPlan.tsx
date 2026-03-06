@@ -352,15 +352,19 @@ const MealPlan = () => {
                 </div>
 
                 {meal ? (
-                  <div>
-                    <h3 className="font-display font-bold text-foreground text-[15px]">{meal.recipeName}</h3>
+                  <button
+                    onClick={() => { setPickingSlot(slot); setRecipeSearch(""); }}
+                    className="w-full text-left group"
+                  >
+                    <h3 className="font-display font-bold text-foreground text-[15px] group-hover:text-primary transition-colors">{meal.recipeName}</h3>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                       <span>{meal.cal} cal</span>
                       <span className="font-semibold text-primary">{meal.protein} P</span>
                       <span>{meal.fat} F</span>
                       <span>· {meal.time}</span>
+                      <span className="ml-auto text-[10px] opacity-0 group-hover:opacity-100 text-primary transition-opacity">Tap to change</span>
                     </div>
-                  </div>
+                  </button>
                 ) : (
                   <div className="flex gap-2">
                     <button
