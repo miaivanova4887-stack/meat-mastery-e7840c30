@@ -74,12 +74,46 @@ function getCurrentPhaseIndex(hours: number): number {
   return 3;
 }
 
+// Play a short chime using Web Audio API
+function playMilestoneChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 - a pleasant triad
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
+      gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + i * 0.15 + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + i * 0.15 + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.5);
+    });
+  } catch {
+    // Audio not available
+  }
+}
+
+// Send browser notification
+function sendNotification(title: string, body: string) {
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, { body, icon: "🔥" });
+  }
+}
+
 const KetosisTimer = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
   const [isRunning, setIsRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [alertsEnabled, setAlertsEnabled] = useState(() => {
+    return localStorage.getItem("ketosis-alerts") !== "false";
+  });
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const lastPhaseRef = useRef<number>(-1);
 
   useEffect(() => {
     const saved = localStorage.getItem("ketosis-timer");
