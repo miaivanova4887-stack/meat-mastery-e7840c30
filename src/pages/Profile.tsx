@@ -308,10 +308,10 @@ const Profile = () => {
                 Meals Per Day
               </label>
               <div className="flex gap-2">
-                {[2, 3, 4].map((n) => {
+                {[1, 2, 3, 4].map((n) => {
                   const current = parseInt(localStorage.getItem("carnivore-meals-per-day") || "3") || 3;
-                  const labels: Record<number, string> = { 2: "2 meals", 3: "3 meals", 4: "4 meals" };
-                  const descs: Record<number, string> = { 2: "Lunch + Dinner", 3: "Breakfast, Lunch, Dinner", 4: "3 meals + Snack" };
+                  const labels: Record<number, string> = { 1: "1 meal", 2: "2 meals", 3: "3 meals", 4: "4 meals" };
+                  const descs: Record<number, string> = { 1: "OMAD", 2: "Lunch + Dinner", 3: "Breakfast, Lunch, Dinner", 4: "3 meals + Snack" };
                   return (
                     <button
                       key={n}

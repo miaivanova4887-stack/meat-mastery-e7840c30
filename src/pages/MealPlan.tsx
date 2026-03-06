@@ -350,7 +350,7 @@ const MealPlan = () => {
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-foreground">{activeDay}</span>
               <div className="flex bg-secondary rounded-lg overflow-hidden">
-                {[2, 3, 4].map((n) => (
+                {[1, 2, 3, 4].map((n) => (
                   <button
                     key={n}
                     onClick={() => {
