@@ -162,6 +162,21 @@ const KetosisTimer = () => {
   const currentPhaseIdx = getCurrentPhaseIndex(hours);
   const currentPhase = phases[currentPhaseIdx];
 
+  // Detect phase transitions and fire alerts
+  useEffect(() => {
+    if (lastPhaseRef.current === -1) {
+      lastPhaseRef.current = currentPhaseIdx;
+      return;
+    }
+    if (currentPhaseIdx > lastPhaseRef.current && isRunning && alertsEnabled) {
+      playMilestoneChime();
+      const phase = phases[currentPhaseIdx];
+      toast(`🔥 ${phase.name}`, { description: phase.tip, duration: 6000 });
+      sendNotification(`🔥 ${phase.name}`, phase.tip);
+    }
+    lastPhaseRef.current = currentPhaseIdx;
+  }, [currentPhaseIdx, isRunning, alertsEnabled, phases]);
+
   const circumference = 2 * Math.PI * 120;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
