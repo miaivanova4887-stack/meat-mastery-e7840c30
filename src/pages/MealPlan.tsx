@@ -416,16 +416,20 @@ const MealPlan = () => {
           {DAYS.map((day) => {
             const dt = dayTotals(day);
             const isActive = activeDay === day;
+            const isTodayDay = isToday(day);
             return (
               <button
                 key={day}
                 onClick={() => setActiveDay(day)}
-                className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[52px] ${
+                className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[52px] relative ${
                   isActive
                     ? "bg-foreground text-background"
                     : "bg-secondary/60 text-muted-foreground hover:text-foreground"
                 }`}
               >
+                {isTodayDay && (
+                  <span className={`absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isActive ? "bg-primary" : "bg-primary"}`} />
+                )}
                 <span className="text-xs font-bold">{day}</span>
                 {dt.count > 0 && (
                   <span className={`text-[9px] mt-0.5 ${isActive ? "text-background/70" : "text-primary"}`}>
