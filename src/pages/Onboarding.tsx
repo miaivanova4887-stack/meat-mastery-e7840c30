@@ -138,8 +138,8 @@ const steps: OnboardingStep[] = [
 ];
 
 // Map step indices to the legacy answer array positions
-// Option steps that map to original answers: goal(0), experience(4), struggles(5), activity(6), interests(7)
-const OPTION_ANSWER_KEYS = [0, 4, 5, 6, 7]; // indices of option-type steps
+// Option steps: goal(0), sex(1), experience(4), struggles(5), activity(6), mealsPerDay(7), interests(8)
+const OPTION_ANSWER_KEYS = [0, 4, 5, 6, 7, 8]; // indices of option-type steps
 
 const STORAGE_KEY = "carnivore-onboarding-complete";
 
