@@ -7,6 +7,7 @@ export interface Recipe {
   cal: string;
   protein: string;
   fat: string;
+  serving: string;
   desc: string;
   tags: string[];
   tier: DietTier[];
