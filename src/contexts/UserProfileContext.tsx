@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from "react";
+import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
 
 export type Goal = "lose_weight" | "build_muscle" | "maintain" | "improve_health";
 export type Experience = "beginner" | "tried_briefly" | "months_in" | "veteran";
