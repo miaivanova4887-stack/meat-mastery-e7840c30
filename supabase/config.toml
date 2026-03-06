@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.recipe-coach]
 verify_jwt = false
+
+[functions.meal-plan-ai]
+verify_jwt = false
