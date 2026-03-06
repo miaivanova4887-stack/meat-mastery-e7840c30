@@ -54,16 +54,21 @@ function getQuizResult(answers: number[]): QuizResult {
 
 const Exercise = () => {
   const navigate = useNavigate();
-  const [quizStep, setQuizStep] = useState(-1); // -1 = not started, 0-2 = questions, 3 = result
+  const [quizStep, setQuizStep] = useState(-1);
   const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
+  const [transitioning, setTransitioning] = useState(false);
 
   const handleQuizAnswer = (answerIdx: number) => {
-    const next = [...quizAnswers, answerIdx];
-    setQuizAnswers(next);
-    setQuizStep((s) => s + 1);
+    setTransitioning(true);
+    setTimeout(() => {
+      const next = [...quizAnswers, answerIdx];
+      setQuizAnswers(next);
+      setQuizStep((s) => s + 1);
+      setTransitioning(false);
+    }, 250);
   };
 
-  const resetQuiz = () => { setQuizStep(-1); setQuizAnswers([]); };
+  const resetQuiz = () => { setQuizStep(-1); setQuizAnswers([]); setTransitioning(false); };
 
   const quizResult = quizStep === 5 ? getQuizResult(quizAnswers) : null;
 
