@@ -351,7 +351,7 @@ const MealPlan = () => {
 
         {/* Meal Slots */}
         <div className="space-y-2.5">
-          {MEAL_SLOTS.map((slot) => {
+          {userSlots.map((slot) => {
             const meal = plan[activeDay][slot];
             const isSwiped = swipedSlot === slot;
             return (
