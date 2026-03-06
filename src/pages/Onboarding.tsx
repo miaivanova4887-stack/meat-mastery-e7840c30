@@ -113,6 +113,17 @@ const steps: OnboardingStep[] = [
   },
   {
     type: "options",
+    title: "How many meals do you eat per day?",
+    subtitle: "We'll structure your meal plan around this",
+    icon: Target,
+    options: [
+      { label: "2 meals", emoji: "2️⃣", desc: "e.g. Lunch + Dinner" },
+      { label: "3 meals", emoji: "3️⃣", desc: "Breakfast, Lunch, Dinner" },
+      { label: "4 meals", emoji: "4️⃣", desc: "3 meals + a snack" },
+    ],
+  },
+  {
+    type: "options",
     title: "What interests you most?",
     subtitle: "Select all you'd like to explore",
     icon: Brain,
