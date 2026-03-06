@@ -165,7 +165,7 @@ const MealPlan = () => {
     } finally {
       setAiLoading(false);
     }
-  }, [aiMode, aiTier, aiPrefs, activeDay, assignMeal]);
+  }, [aiMode, aiTier, aiPrefs, activeDay, assignMeal, profile, nutritionTargets]);
 
   const saveAIMealAsRecipe = (m: any) => {
     // Don't save if it already exists
