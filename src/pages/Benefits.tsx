@@ -2,10 +2,12 @@ import { ArrowLeft, Zap, Brain, Heart, Scale, Flame, Shield, Eye, BatteryChargin
 import { useNavigate } from "react-router-dom";
 
 const benefits = [
+  { icon: Leaf, title: "Eating Incredibly Clean", desc: "Zero sugars, zero preservatives, no artificial colours or flavours. Your body receives pure, whole-animal nutrition exactly as nature intended — nothing processed, nothing synthetic." },
+  { icon: Sparkles, title: "Autophagy & Cellular Renewal", desc: "Your body activates powerful self-healing mechanisms, recycling damaged cells and regenerating new ones. Many report looking and feeling up to 10 years younger as their body repairs from the inside out." },
+  { icon: Heart, title: "Women's Hormonal Balance", desc: "Many women experience vanishing period pain, lighter and more predictable cycles, and a stable, consistent hormonal rhythm — often within the first few months." },
   { icon: Flame, title: "Reduced Inflammation", desc: "Eliminating plant toxins and seed oils can dramatically lower systemic inflammation, helping with joint pain and autoimmune conditions." },
   { icon: Brain, title: "Mental Clarity", desc: "Stable blood sugar and ketones fuel the brain efficiently, leading to sharper focus and reduced brain fog." },
   { icon: Scale, title: "Fat Loss", desc: "High protein and fat satiety naturally reduces caloric intake. Many report effortless weight loss without counting calories." },
-  { icon: Heart, title: "Heart Health", desc: "Improved triglyceride-to-HDL ratio and reduced insulin resistance support cardiovascular health." },
   { icon: BatteryCharging, title: "Sustained Energy", desc: "No sugar crashes. Fat-adapted metabolism provides steady energy throughout the day." },
   { icon: Shield, title: "Gut Healing", desc: "Removing fiber and plant irritants allows the gut lining to heal, improving digestion and nutrient absorption." },
   { icon: Eye, title: "Better Skin", desc: "Many report clearing of acne, eczema, and psoriasis after eliminating plant-based irritants." },
