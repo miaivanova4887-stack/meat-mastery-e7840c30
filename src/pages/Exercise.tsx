@@ -154,8 +154,9 @@ const Exercise = () => {
 
   const resetQuiz = () => { setQuizStep(-1); setQuizAnswers([]); setTransitioning(false); };
 
-  const quizResult = quizStep === 5 ? getQuizResult(quizAnswers) : null;
+  const quizResult = quizStep === TOTAL_QUESTIONS ? getQuizResult(quizAnswers) : null;
 
+  const [expandedApp, setExpandedApp] = useState<string | null>(null);
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
@@ -170,7 +171,7 @@ const Exercise = () => {
             <Sparkles size={18} className="text-accent" />
             <h2 className="font-display font-bold text-foreground text-sm">What Should I Do Today?</h2>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">Quick 5-question quiz to find your ideal workout</p>
+          <p className="text-xs text-muted-foreground mb-3">Quick 7-question quiz to find your ideal workout</p>
 
           {quizStep === -1 && (
             <Button size="sm" className="gap-1.5 animate-scale-in" onClick={() => setQuizStep(0)}>
@@ -178,9 +179,9 @@ const Exercise = () => {
             </Button>
           )}
 
-          {quizStep >= 0 && quizStep < 5 && (
+          {quizStep >= 0 && quizStep < TOTAL_QUESTIONS && (
             <div className={`space-y-3 transition-all duration-250 ease-out ${transitioning ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
-              <Progress value={((quizStep + 1) / 5) * 100} className="h-1.5 transition-all duration-500" />
+              <Progress value={((quizStep + 1) / TOTAL_QUESTIONS) * 100} className="h-1.5 transition-all duration-500" />
               <p className="text-sm font-medium text-foreground">{quizQuestions[quizStep].q}</p>
               <div className="grid grid-cols-2 gap-2">
                 {quizQuestions[quizStep].options.map((opt, i) => (
@@ -201,7 +202,10 @@ const Exercise = () => {
             <div className="space-y-3 animate-fade-in-up">
               <div className="flex items-center gap-2">
                 <quizResult.icon size={22} className="text-primary" />
-                <span className="font-display font-bold text-foreground">{quizResult.workout}</span>
+                <div>
+                  <span className="font-display font-bold text-foreground">{quizResult.workout}</span>
+                  <span className="text-[10px] ml-2 bg-primary/10 text-primary px-2 py-0.5 rounded-full">{quizResult.app}</span>
+                </div>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">{quizResult.reason}</p>
               <Button variant="outline" size="sm" onClick={resetQuiz}>Try Again</Button>
@@ -209,27 +213,43 @@ const Exercise = () => {
           )}
         </div>
 
-        {/* Yoga Styles Section */}
+        {/* Yoga Buddhi Co. Apps */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <Sun size={18} className="text-accent" />
-            <h2 className="font-display font-bold text-foreground">Yoga & Mobility</h2>
-            <span className="text-[10px] text-muted-foreground ml-auto italic">inspired by Yoga Buddi Co.</span>
+            <Sparkles size={18} className="text-accent" />
+            <h2 className="font-display font-bold text-foreground">Yoga Buddhi Co.</h2>
+            <span className="text-[10px] text-muted-foreground ml-auto italic">All apps</span>
           </div>
           <div className="space-y-3">
-            {yogaStyles.map(({ icon: Icon, name, level, duration, desc, color }, i) => (
-              <div key={name} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
-                <div className="flex items-center justify-between mb-1.5">
+            {buddhiApps.map(({ app, icon: AppIcon, color, styles }, i) => (
+              <div key={app} className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
+                <button
+                  onClick={() => setExpandedApp(expandedApp === app ? null : app)}
+                  className="w-full flex items-center justify-between p-4 text-left"
+                >
                   <div className="flex items-center gap-2">
-                    <Icon size={18} className={color} />
-                    <h3 className="font-display font-bold text-foreground text-sm">{name}</h3>
+                    <AppIcon size={20} className={color} />
+                    <h3 className="font-display font-bold text-foreground text-sm">{app}</h3>
+                    <span className="text-[10px] bg-secondary/60 text-secondary-foreground px-2 py-0.5 rounded-full">{styles.length} styles</span>
                   </div>
-                  <div className="flex gap-2">
-                    <span className="text-[10px] bg-secondary/60 text-secondary-foreground px-2 py-0.5 rounded-full">{level}</span>
-                    <span className="text-[10px] bg-secondary/60 text-secondary-foreground px-2 py-0.5 rounded-full">{duration}</span>
+                  <ChevronRight size={16} className={`text-muted-foreground transition-transform duration-200 ${expandedApp === app ? 'rotate-90' : ''}`} />
+                </button>
+                {expandedApp === app && (
+                  <div className="px-4 pb-4 space-y-2 animate-fade-in">
+                    {styles.map((style) => (
+                      <div key={style.name} className="bg-background/60 rounded-md p-3 border border-border/50">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-foreground">{style.name}</span>
+                          <div className="flex gap-1.5">
+                            <span className="text-[9px] bg-secondary/50 text-secondary-foreground px-1.5 py-0.5 rounded-full">{style.level}</span>
+                            <span className="text-[9px] bg-secondary/50 text-secondary-foreground px-1.5 py-0.5 rounded-full">{style.duration}</span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{style.desc}</p>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
+                )}
               </div>
             ))}
           </div>
