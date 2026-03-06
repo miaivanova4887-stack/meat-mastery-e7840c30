@@ -16,6 +16,7 @@ import Cravings from "./pages/Cravings";
 import Stories from "./pages/Stories";
 import Sustain from "./pages/Sustain";
 import ShoppingBag from "./pages/ShoppingBag";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/" element={<Index />} />
               <Route path="/benefits" element={<Benefits />} />
               <Route path="/recipes" element={<Recipes />} />
