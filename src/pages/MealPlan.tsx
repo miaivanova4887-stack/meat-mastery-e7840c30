@@ -1,12 +1,13 @@
-import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
 import { recipes, TIER_LABELS, type Recipe, type DietTier } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 
 type AIMode = "single" | "daily" | "weekly";
 
