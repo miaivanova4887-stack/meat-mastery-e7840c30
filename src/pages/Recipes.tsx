@@ -83,6 +83,7 @@ const Recipes = () => {
             <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><Clock size={11} /> {r.time}</span>
               <span className="flex items-center gap-1"><Flame size={11} /> {r.cal} cal</span>
+              {r.serving && <span className="text-[11px]">· {r.serving}</span>}
             </div>
           </div>
           <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
