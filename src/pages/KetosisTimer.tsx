@@ -140,7 +140,17 @@ const KetosisTimer = () => {
     return () => clearInterval(intervalRef.current);
   }, [isRunning]);
 
-  const reset = () => { setElapsed(0); setIsRunning(false); localStorage.removeItem("ketosis-timer"); };
+  const reset = () => { setElapsed(0); setIsRunning(false); lastPhaseRef.current = -1; localStorage.removeItem("ketosis-timer"); };
+
+  const toggleAlerts = useCallback(() => {
+    const next = !alertsEnabled;
+    setAlertsEnabled(next);
+    localStorage.setItem("ketosis-alerts", String(next));
+    if (next && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    toast(next ? "Milestone alerts enabled" : "Milestone alerts muted");
+  }, [alertsEnabled]);
 
   const hours = Math.floor(elapsed / 3600);
   const minutes = Math.floor((elapsed % 3600) / 60);
