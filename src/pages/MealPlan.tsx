@@ -18,6 +18,9 @@ const MealPlan = () => {
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
   const { addItem, hasItem } = useShoppingBag();
+  const profile = useUserProfile();
+  const userSlots = useMemo(() => activeSlots(profile.mealsPerDay), [profile.mealsPerDay]);
+  const { nutritionTargets } = profile;
 
   const [activeDay, setActiveDay] = useState<DayKey>(() => {
     const today = new Date().getDay();
