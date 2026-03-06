@@ -547,9 +547,16 @@ const MealPlan = () => {
                   }}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      {SLOT_LABELS[slot]}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        {SLOT_LABELS[slot]}
+                      </span>
+                      {isNow && (
+                        <span className="text-[9px] font-bold text-primary-foreground bg-primary px-1.5 py-0.5 rounded-full animate-pulse">
+                          NOW
+                        </span>
+                      )}
+                    </div>
                     {meal && (
                       <span className="text-[9px] text-muted-foreground/60">← swipe</span>
                     )}
