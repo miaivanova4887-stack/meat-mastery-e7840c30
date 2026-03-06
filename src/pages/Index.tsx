@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { Flame, BookOpen, Timer, Dumbbell, Heart, Shield, Zap, Apple, RotateCcw } from "lucide-react";
 import heroImage from "@/assets/hero-steak.jpg";
@@ -5,6 +6,16 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal } from "@/contexts/UserProfileContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const allFeatures = [
   { icon: Zap, label: "Benefits", path: "/benefits", color: "text-gold", tags: [] as string[] },
