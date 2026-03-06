@@ -25,6 +25,8 @@ const quizQuestions = [
   { q: "What's your energy level right now?", options: ["🔥 Fired up", "😌 Calm & steady", "😴 Low / fatigued", "⚡ Restless"] },
   { q: "What does your body need today?", options: ["💪 Strength", "🧘 Flexibility", "🫁 Breathwork", "🛌 Recovery"] },
   { q: "How much time do you have?", options: ["15 min", "30 min", "45 min", "60+ min"] },
+  { q: "How sore are you from yesterday?", options: ["😎 Not at all", "🤏 A little tight", "😬 Pretty sore", "🫠 Can barely move"] },
+  { q: "What's your mood?", options: ["🧠 Focused & driven", "🌊 Go with the flow", "😤 Need to blow off steam", "🕊️ Seeking peace"] },
 ];
 
 type QuizResult = { workout: string; icon: typeof Dumbbell; reason: string };
