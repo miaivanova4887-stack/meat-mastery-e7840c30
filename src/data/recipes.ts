@@ -1,5 +1,6 @@
 export type DietTier = "lion" | "strict" | "animal_based";
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "staple";
+export type CravingType = "sweets" | "seafood" | "bakery" | "comfort" | "quick" | "organs" | "cheesy" | "crispy" | "grilling";
 
 export interface Recipe {
   name: string;
@@ -12,6 +13,7 @@ export interface Recipe {
   tags: string[];
   tier: DietTier[];
   meal: MealType;
+  cravings: CravingType[];
 }
 
 export interface Ingredient {
@@ -40,6 +42,19 @@ export const MEAL_LABELS: Record<MealType | "all", string> = {
   dinner: "Dinner",
   snack: "Snack",
   staple: "Staple",
+};
+
+export const CRAVING_LABELS: Record<CravingType | "all", string> = {
+  all: "🔥 All",
+  sweets: "🍯 Sweets",
+  seafood: "🦐 Seafood",
+  bakery: "🥞 Bakery",
+  comfort: "🍖 Comfort",
+  quick: "⚡ Quick Bites",
+  organs: "🦴 Organ Meats",
+  cheesy: "🧀 Cheesy",
+  crispy: "🥓 Crispy",
+  grilling: "🔥 Grilling",
 };
 
 export const recipes: Recipe[] = [
