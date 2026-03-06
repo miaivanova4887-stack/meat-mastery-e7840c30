@@ -259,6 +259,23 @@ const Recipes = () => {
           ))}
         </div>
 
+        {/* Craving Filters */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+          {(Object.keys(CRAVING_LABELS) as (CravingType | "all")[]).map((craving) => (
+            <button
+              key={craving}
+              onClick={() => setActiveCraving(craving)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
+                activeCraving === craving
+                  ? "bg-foreground text-background"
+                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {CRAVING_LABELS[craving]}
+            </button>
+          ))}
+        </div>
+
         {/* Meal Type Tabs */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
           {(Object.keys(MEAL_LABELS) as (MealType | "all")[]).map((meal) => (
@@ -267,8 +284,8 @@ const Recipes = () => {
               onClick={() => setActiveMeal(meal)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                 activeMeal === meal
-                  ? "bg-foreground text-background"
-                  : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "bg-secondary/40 text-muted-foreground hover:text-foreground"
               }`}
             >
               {MEAL_LABELS[meal]}
