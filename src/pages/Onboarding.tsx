@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Flame, ArrowLeft, ChevronRight, Target, Dumbbell, Clock, Leaf, Zap, Heart, Scale, TrendingUp, Shield, Brain, Check } from "lucide-react";
+import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 
@@ -10,16 +10,28 @@ interface StepOption {
   desc?: string;
 }
 
-interface OnboardingStep {
+interface OptionStep {
+  type: "options";
   title: string;
   subtitle: string;
-  icon: typeof Flame;
+  icon: typeof Target;
   options: StepOption[];
   multiSelect?: boolean;
 }
 
+interface InputStep {
+  type: "input";
+  title: string;
+  subtitle: string;
+  icon: typeof Target;
+  fields: { key: string; label: string; placeholder: string; unit?: string; type?: string }[];
+}
+
+type OnboardingStep = OptionStep | InputStep;
+
 const steps: OnboardingStep[] = [
   {
+    type: "options",
     title: "What's your primary goal?",
     subtitle: "We'll tailor your carnivore journey to match",
     icon: Target,
@@ -31,6 +43,39 @@ const steps: OnboardingStep[] = [
     ],
   },
   {
+    type: "options",
+    title: "What's your sex?",
+    subtitle: "This helps us personalize nutrition recommendations",
+    icon: User,
+    options: [
+      { label: "Male", emoji: "♂️" },
+      { label: "Female", emoji: "♀️" },
+      { label: "Prefer not to say", emoji: "🤐" },
+    ],
+  },
+  {
+    type: "input",
+    title: "Tell us about yourself",
+    subtitle: "Used to personalize calorie and macro suggestions",
+    icon: Ruler,
+    fields: [
+      { key: "age", label: "Age", placeholder: "e.g. 30", unit: "years", type: "number" },
+      { key: "height", label: "Height", placeholder: "e.g. 175", unit: "cm", type: "number" },
+      { key: "weight", label: "Current weight", placeholder: "e.g. 80", unit: "kg", type: "number" },
+    ],
+  },
+  {
+    type: "input",
+    title: "What's your target?",
+    subtitle: "A goal gives you direction — leave blank if unsure",
+    icon: Crosshair,
+    fields: [
+      { key: "goalWeight", label: "Goal weight", placeholder: "e.g. 72", unit: "kg", type: "number" },
+      { key: "healthTarget", label: "Health target (optional)", placeholder: "e.g. Lower blood pressure", type: "text" },
+    ],
+  },
+  {
+    type: "options",
     title: "What's your experience level?",
     subtitle: "No wrong answers — we all start somewhere",
     icon: TrendingUp,
@@ -42,6 +87,7 @@ const steps: OnboardingStep[] = [
     ],
   },
   {
+    type: "options",
     title: "Any current struggles?",
     subtitle: "Select all that apply — we'll help with these",
     icon: Shield,
@@ -54,6 +100,7 @@ const steps: OnboardingStep[] = [
     ],
   },
   {
+    type: "options",
     title: "How active are you?",
     subtitle: "This helps us recommend the right exercise plan",
     icon: Dumbbell,
@@ -65,6 +112,7 @@ const steps: OnboardingStep[] = [
     ],
   },
   {
+    type: "options",
     title: "What interests you most?",
     subtitle: "Select all you'd like to explore",
     icon: Brain,
@@ -78,22 +126,26 @@ const steps: OnboardingStep[] = [
   },
 ];
 
+// Map step indices to the legacy answer array positions
+// Option steps that map to original answers: goal(0), experience(4), struggles(5), activity(6), interests(7)
+const OPTION_ANSWER_KEYS = [0, 4, 5, 6, 7]; // indices of option-type steps
+
 const STORAGE_KEY = "carnivore-onboarding-complete";
 
 const Onboarding = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<(number | number[])[]>([]);
+  const [answers, setAnswers] = useState<Record<number, number | number[]>>({});
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [multiSelected, setMultiSelected] = useState<number[]>([]);
   const [transitioning, setTransitioning] = useState(false);
 
   const current = steps[step];
-  const isMulti = current.multiSelect;
   const totalSteps = steps.length;
   const isLastStep = step === totalSteps - 1;
 
   const handleSelect = (idx: number) => {
-    if (isMulti) {
+    if (current.type === "options" && current.multiSelect) {
       setMultiSelected((prev) =>
         prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx]
       );
@@ -102,17 +154,41 @@ const Onboarding = () => {
     }
   };
 
-  const advance = (selection: number | number[]) => {
+  const advance = (selection?: number | number[]) => {
     setTransitioning(true);
     setTimeout(() => {
-      setAnswers([...answers, selection]);
+      const newAnswers = { ...answers };
+      if (selection !== undefined) {
+        newAnswers[step] = selection;
+      }
+      setAnswers(newAnswers);
+
       if (step < totalSteps - 1) {
         setStep(step + 1);
         setMultiSelected([]);
       } else {
-        // Complete onboarding
+        // Build the legacy answer array: [goal, experience, struggles, activity, interests]
+        const legacyAnswers = [
+          newAnswers[0] ?? 0,       // goal
+          newAnswers[4] ?? 0,       // experience
+          newAnswers[5] ?? [],      // struggles
+          newAnswers[6] ?? 0,       // activity
+          newAnswers[7] ?? [],      // interests
+        ];
         localStorage.setItem(STORAGE_KEY, "true");
-        localStorage.setItem("carnivore-onboarding-answers", JSON.stringify([...answers, selection]));
+        localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
+
+        // Save body stats separately
+        const bodyData = {
+          sex: newAnswers[1] ?? 0,
+          age: inputValues.age || "",
+          height: inputValues.height || "",
+          weight: inputValues.weight || "",
+          goalWeight: inputValues.goalWeight || "",
+          healthTarget: inputValues.healthTarget || "",
+        };
+        localStorage.setItem("carnivore-onboarding-body", JSON.stringify(bodyData));
+
         navigate("/", { replace: true });
       }
       setTransitioning(false);
@@ -123,11 +199,24 @@ const Onboarding = () => {
     if (step === 0) return;
     setTransitioning(true);
     setTimeout(() => {
-      setAnswers(answers.slice(0, -1));
+      const newAnswers = { ...answers };
+      delete newAnswers[step];
+      setAnswers(newAnswers);
       setStep(step - 1);
       setMultiSelected([]);
       setTransitioning(false);
     }, 250);
+  };
+
+  const handleInputChange = (key: string, value: string) => {
+    setInputValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const isInputStepValid = () => {
+    if (current.type !== "input") return true;
+    // At least one field should have a value (except fully optional steps like target)
+    if (step === 3) return true; // target step is optional
+    return current.fields.some((f) => (inputValues[f.key] || "").trim() !== "");
   };
 
   const Icon = current.icon;
@@ -158,10 +247,10 @@ const Onboarding = () => {
           <p className="text-sm text-muted-foreground mt-2">{current.subtitle}</p>
         </div>
 
-        {/* Options */}
+        {/* Options or Inputs */}
         <div className="space-y-3 flex-1">
-          {current.options.map((opt, i) => {
-            const selected = isMulti ? multiSelected.includes(i) : false;
+          {current.type === "options" && current.options.map((opt, i) => {
+            const selected = current.multiSelect ? multiSelected.includes(i) : false;
             return (
               <button
                 key={`${step}-${i}`}
@@ -186,20 +275,49 @@ const Onboarding = () => {
               </button>
             );
           })}
+
+          {current.type === "input" && current.fields.map((field) => (
+            <div key={field.key} className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">{field.label}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type={field.type || "text"}
+                  inputMode={field.type === "number" ? "numeric" : undefined}
+                  placeholder={field.placeholder}
+                  value={inputValues[field.key] || ""}
+                  onChange={(e) => handleInputChange(field.key, e.target.value)}
+                  className="flex-1 h-12 rounded-xl border border-border bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/50 transition-all"
+                  maxLength={field.type === "number" ? 6 : 200}
+                />
+                {field.unit && (
+                  <span className="text-sm text-muted-foreground w-10">{field.unit}</span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Continue button for multi-select steps */}
-        {isMulti && (
+        {/* Continue button for multi-select & input steps */}
+        {((current.type === "options" && current.multiSelect) || current.type === "input") && (
           <div className="pt-6">
             <Button
               className="w-full gap-2 h-12 text-base font-semibold"
-              disabled={multiSelected.length === 0}
-              onClick={() => advance(multiSelected)}
+              disabled={
+                (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
+                (current.type === "input" && !isInputStepValid())
+              }
+              onClick={() => {
+                if (current.type === "options" && current.multiSelect) {
+                  advance(multiSelected);
+                } else {
+                  advance();
+                }
+              }}
             >
               {isLastStep ? "Get Started" : "Continue"}
               <ChevronRight size={18} />
             </Button>
-            {multiSelected.length === 0 && (
+            {current.type === "options" && current.multiSelect && multiSelected.length === 0 && (
               <p className="text-[11px] text-muted-foreground text-center mt-2">Select at least one option</p>
             )}
           </div>

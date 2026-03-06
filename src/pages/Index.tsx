@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { Flame, BookOpen, Timer, Dumbbell, Heart, Shield, Zap, Apple, RotateCcw } from "lucide-react";
 import heroImage from "@/assets/hero-steak.jpg";
@@ -5,6 +6,16 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal } from "@/contexts/UserProfileContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const allFeatures = [
   { icon: Zap, label: "Benefits", path: "/benefits", color: "text-gold", tags: [] as string[] },
@@ -41,6 +52,7 @@ const quotes: Record<Goal, { text: string; author: string }> = {
 const Index = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
+  const [showResetDialog, setShowResetDialog] = useState(false);
 
   if (!isOnboardingComplete()) {
     return <Navigate to="/onboarding" replace />;
@@ -125,17 +137,37 @@ const Index = () => {
       {/* Redo onboarding */}
       <div className="px-4 mt-4">
         <button
-          onClick={() => {
-            localStorage.removeItem("carnivore-onboarding-complete");
-            localStorage.removeItem("carnivore-onboarding-answers");
-            navigate("/onboarding");
-          }}
+          onClick={() => setShowResetDialog(true)}
           className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-3"
         >
           <RotateCcw size={14} />
           Update your preferences
         </button>
       </div>
+
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset your preferences?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear your current profile and restart the onboarding quiz. Your personalized content will update based on your new answers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                localStorage.removeItem("carnivore-onboarding-complete");
+                localStorage.removeItem("carnivore-onboarding-answers");
+                localStorage.removeItem("carnivore-onboarding-body");
+                navigate("/onboarding");
+              }}
+            >
+              Reset & Redo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Quote — personalized */}
       <div className="px-4 mt-2">
