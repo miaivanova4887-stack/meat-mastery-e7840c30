@@ -178,6 +178,24 @@ const Exercise = () => {
       </div>
 
       <div className="p-4 space-y-6">
+        {/* Personalized recommendation */}
+        {profile.isComplete && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex items-start gap-3 animate-fade-in">
+            <Info size={18} className="text-primary mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-foreground mb-0.5">Your plan</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {profile.goal === "lose_weight" && profile.activityLevel === "sedentary" && "Start with daily walks and low-impact HIIT. Build the habit, then increase intensity."}
+                {profile.goal === "lose_weight" && profile.activityLevel === "light" && "Add 2-3 HIIT sessions per week alongside your walking. Fat will melt off on carnivore."}
+                {profile.goal === "lose_weight" && (profile.activityLevel === "moderate" || profile.activityLevel === "very_active") && "Your activity level is great for fat loss. Mix strength training with HIIT for maximum results."}
+                {profile.goal === "build_muscle" && "Focus on strength training 4-5x/week. Carnivore provides the protein — you provide the effort."}
+                {profile.goal === "maintain" && "Keep a balanced mix of strength, cardio, and recovery. Consistency beats intensity."}
+                {profile.goal === "improve_health" && profile.activityLevel === "sedentary" && "Start gentle — yoga, walking, and breathwork. Movement is medicine, especially on carnivore."}
+                {profile.goal === "improve_health" && profile.activityLevel !== "sedentary" && "Pair your workouts with recovery practices. Yoga and meditation amplify carnivore's healing effects."}
+              </p>
+            </div>
+          </div>
+        )}
         {/* Quick Quiz Card */}
         <div className="bg-card border border-primary/30 rounded-lg p-4 animate-fade-in-up">
           <div className="flex items-center gap-2 mb-1">
