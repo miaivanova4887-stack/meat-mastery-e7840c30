@@ -1,7 +1,8 @@
 import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback, useRef } from "react";
-import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
+import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 import { recipes, TIER_LABELS, type Recipe, type DietTier } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag } from "@/contexts/ShoppingBagContext";
