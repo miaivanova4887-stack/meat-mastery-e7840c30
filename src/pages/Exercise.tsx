@@ -91,7 +91,7 @@ const Exercise = () => {
 
           {quizStep >= 0 && quizStep < 5 && (
             <div className="space-y-3 animate-fade-in-up">
-              <Progress value={((quizStep + 1) / 3) * 100} className="h-1.5" />
+              <Progress value={((quizStep + 1) / 5) * 100} className="h-1.5" />
               <p className="text-sm font-medium text-foreground">{quizQuestions[quizStep].q}</p>
               <div className="grid grid-cols-2 gap-2">
                 {quizQuestions[quizStep].options.map((opt, i) => (
