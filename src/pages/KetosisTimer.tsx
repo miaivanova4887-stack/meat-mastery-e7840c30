@@ -1,8 +1,9 @@
-import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info } from "lucide-react";
+import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
+import { toast } from "sonner";
 
 const KETOSIS_TARGET_HOURS = 72;
 
