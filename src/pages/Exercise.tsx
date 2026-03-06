@@ -205,6 +205,9 @@ const Exercise = () => {
                   </button>
                 ))}
               </div>
+              <button onClick={goBack} className="text-[11px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 mt-1">
+                <ArrowLeft size={12} /> {quizStep === 0 ? "Cancel" : "Previous question"}
+              </button>
             </div>
           )}
 
