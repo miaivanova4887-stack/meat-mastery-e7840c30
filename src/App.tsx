@@ -23,6 +23,7 @@ import ShoppingBag from "./pages/ShoppingBag";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
 import Community from "./pages/Community";
+import ProfilePage from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/shopping-bag" element={<ShoppingBag />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/community" element={<Community />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
