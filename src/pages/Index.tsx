@@ -1,5 +1,5 @@
 import { useNavigate, Navigate } from "react-router-dom";
-import { Flame, BookOpen, Timer, Dumbbell, Heart, Shield, Zap, Apple, Brain } from "lucide-react";
+import { Flame, BookOpen, Timer, Dumbbell, Heart, Shield, Zap, Apple, RotateCcw } from "lucide-react";
 import heroImage from "@/assets/hero-steak.jpg";
 import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
