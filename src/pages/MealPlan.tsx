@@ -91,7 +91,14 @@ const MealPlan = () => {
     setAiLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("meal-plan-ai", {
-        body: { mode: aiMode, dietTier: aiTier, preferences: aiPrefs || undefined },
+        body: {
+          mode: aiMode,
+          dietTier: aiTier,
+          preferences: aiPrefs || undefined,
+          mealsPerDay: profile.mealsPerDay,
+          nutritionTargets,
+          goal: profile.goal,
+        },
       });
 
       if (error) throw error;

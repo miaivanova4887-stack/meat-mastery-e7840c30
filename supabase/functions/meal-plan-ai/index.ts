@@ -51,7 +51,7 @@ serve(async (req) => {
   }
 
   try {
-    const { mode, dietTier, preferences } = await req.json();
+    const { mode, dietTier, preferences, mealsPerDay, nutritionTargets, goal } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(
@@ -60,16 +60,27 @@ serve(async (req) => {
       );
     }
 
+    const mealCount = mealsPerDay || 3;
     let userPrompt = `Generate a ${mode} meal plan for the "${dietTier}" diet tier.`;
+    
+    // Add personalization
+    if (nutritionTargets) {
+      userPrompt += ` Daily targets: ${nutritionTargets.calories} calories, ${nutritionTargets.protein}g protein, ${nutritionTargets.fat}g fat.`;
+    }
+    if (goal) {
+      userPrompt += ` User goal: ${goal.replace("_", " ")}.`;
+    }
+    userPrompt += ` The user eats ${mealCount} meals per day.`;
+    
     if (preferences) {
       userPrompt += ` Preferences: ${preferences}`;
     }
     if (mode === "single") {
       userPrompt += " Return exactly 1 recipe.";
     } else if (mode === "daily") {
-      userPrompt += " Return 3-4 meals for one day.";
+      userPrompt += ` Return exactly ${mealCount} meals for one day, distributing macros evenly across meals.`;
     } else {
-      userPrompt += " Return meals for all 7 days (Mon-Sun), 3-4 meals per day.";
+      userPrompt += ` Return meals for all 7 days (Mon-Sun), ${mealCount} meals per day, hitting the daily macro targets.`;
     }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
