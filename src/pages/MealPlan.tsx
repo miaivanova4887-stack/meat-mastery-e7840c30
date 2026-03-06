@@ -653,9 +653,9 @@ const MealPlan = () => {
             <div className="ios-card p-3">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {aiMode === "single" && `AI will generate 1 recipe and add it to ${activeDay}'s plan.`}
-                {aiMode === "daily" && `AI will fill all meal slots for ${activeDay} with tailored recipes.`}
-                {aiMode === "weekly" && "AI will generate meals for all 7 days. This may take a moment."}
-                {" "}Generated recipes are saved to your recipe collection automatically.
+                {aiMode === "daily" && `AI will fill ${profile.mealsPerDay} meal slots for ${activeDay} targeting ${nutritionTargets.calories} cal.`}
+                {aiMode === "weekly" && `AI will generate ${profile.mealsPerDay} meals/day for all 7 days targeting ${nutritionTargets.calories} cal/day.`}
+                {" "}Personalized to your goal: {profile.goal.replace("_", " ")}.
               </p>
             </div>
 
