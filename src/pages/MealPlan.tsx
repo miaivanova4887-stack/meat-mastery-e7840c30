@@ -482,8 +482,9 @@ const MealPlan = () => {
           {userSlots.map((slot) => {
             const meal = plan[activeDay][slot];
             const isSwiped = swipedSlot === slot;
+            const isNow = currentSlot === slot;
             return (
-              <div key={slot} className="relative overflow-hidden rounded-2xl">
+              <div key={slot} className={`relative overflow-hidden rounded-2xl ${isNow ? "ring-2 ring-primary/40" : ""}`}>
                 {/* Swipe-revealed actions */}
                 {meal && (
                   <div className="absolute inset-y-0 right-0 flex items-stretch z-0">
