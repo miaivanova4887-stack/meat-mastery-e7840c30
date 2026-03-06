@@ -85,18 +85,18 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Hero */}
-      <div className="relative h-[55vh] overflow-hidden">
+      <div className="relative h-[50vh] overflow-hidden">
         <img src={heroImage} alt="Seared steak on flame" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
         <div className="absolute top-4 right-4 z-10">
           <ThemeToggle />
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-6">
-          <p className="text-sm text-accent font-medium mb-1 animate-fade-in">{greeting}</p>
-          <h1 className="text-4xl font-display font-black text-gradient-flame leading-tight">
-            CARNIVORE<br />LIFESTYLE
+        <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">
+          <p className="text-sm text-primary font-semibold mb-1 animate-fade-in">{greeting}</p>
+          <h1 className="text-3xl font-display font-bold text-foreground leading-tight tracking-tight">
+            Carnivore<br />Lifestyle
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm font-light max-w-xs">
+          <p className="text-muted-foreground mt-1.5 text-sm max-w-xs">
             {subtitle}
           </p>
         </div>
@@ -104,8 +104,8 @@ const Index = () => {
 
       {/* Personalized tip */}
       {tip && (
-        <div className="px-4 -mt-2 mb-2 relative z-10">
-          <div className="bg-accent/10 border border-accent/20 rounded-lg px-4 py-3 animate-fade-in">
+        <div className="px-4 -mt-2 mb-3 relative z-10">
+          <div className="ios-card px-4 py-3 animate-fade-in">
             <p className="text-xs text-foreground leading-relaxed">{tip}</p>
           </div>
         </div>
@@ -120,14 +120,14 @@ const Index = () => {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`bg-card border rounded-lg p-4 text-left hover:border-primary/40 transition-all active:scale-[0.97] group ${
-                  highlighted ? "border-primary/30 ring-1 ring-primary/10" : "border-border"
+                className={`ios-card p-4 text-left transition-all active:scale-[0.97] group ${
+                  highlighted ? "ring-1 ring-primary/20" : ""
                 }`}
                 style={{ animationDelay: `${i * 0.07}s` }}
               >
-                <Icon size={24} className={`${color} mb-2 group-hover:scale-110 transition-transform`} />
+                <Icon size={22} strokeWidth={1.8} className={`${color} mb-2 group-hover:scale-110 transition-transform`} />
                 <span className="text-sm font-semibold text-foreground">{label}</span>
-                {highlighted && <span className="block text-[9px] text-primary mt-0.5">Recommended for you</span>}
+                {highlighted && <span className="block text-[10px] text-primary mt-0.5">For you</span>}
               </button>
             );
           })}
@@ -170,9 +170,9 @@ const Index = () => {
       </AlertDialog>
 
       {/* Quote — personalized */}
-      <div className="px-4 mt-2">
-        <div className="bg-gradient-card rounded-lg p-5 border border-primary/20 glow-flame">
-          <p className="text-sm font-display italic text-bone/90 leading-relaxed">
+      <div className="px-4 mt-3">
+        <div className="ios-card p-5">
+          <p className="text-sm italic text-foreground/80 leading-relaxed">
             "{quote.text}"
           </p>
           <span className="text-xs text-muted-foreground mt-2 block">— {quote.author}</span>
