@@ -137,6 +137,12 @@ const CreateRecipe = () => {
           </div>
         </div>
 
+        {/* Portion Size */}
+        <div>
+          <label className={labelClass}>Portion Size</label>
+          <input type="text" value={serving} onChange={(e) => setServing(e.target.value)} placeholder="e.g. 8 oz steak, 2 patties, 3 eggs" className={inputClass} />
+        </div>
+
         {/* Diet Tiers */}
         <div>
           <label className={labelClass}>Diet Tiers *</label>
