@@ -10,6 +10,7 @@ import { toast } from "sonner";
 
 type AIMode = "single" | "daily" | "weekly";
 
+
 const MealPlan = () => {
   const navigate = useNavigate();
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals } = useMealPlan();
