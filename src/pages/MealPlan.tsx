@@ -750,6 +750,101 @@ const MealPlan = () => {
           </div>
         </div>
       )}
+
+      {/* Recipe Detail Bottom Sheet */}
+      <Drawer open={!!detailMeal} onOpenChange={(open) => { if (!open) setDetailMeal(null); }}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle className="font-display text-xl">{detailMeal?.meal.recipeName}</DrawerTitle>
+            <DrawerDescription>
+              {detailMeal?.day} · {detailMeal?.slot ? SLOT_LABELS[detailMeal.slot] : ""}
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-8 overflow-y-auto space-y-4">
+            {/* Macros */}
+            <div className="flex items-center gap-4 text-sm">
+              <span className="flex items-center gap-1"><Flame size={14} className="text-primary" /> {detailMeal?.meal.cal} cal</span>
+              <span className="font-semibold text-primary">{detailMeal?.meal.protein} P</span>
+              <span className="text-muted-foreground">{detailMeal?.meal.fat} F</span>
+              <span className="text-muted-foreground">· {detailMeal?.meal.time}</span>
+            </div>
+            <div className="text-xs text-muted-foreground">Serving: {detailMeal?.meal.serving}</div>
+
+            {/* Description */}
+            {detailRecipe?.desc && (
+              <p className="text-sm text-foreground leading-relaxed">{detailRecipe.desc}</p>
+            )}
+
+            {/* Ingredients */}
+            {detailRecipe && "ingredients" in detailRecipe && Array.isArray((detailRecipe as any).ingredients) && (detailRecipe as any).ingredients.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Ingredients</h3>
+                <ul className="space-y-1.5">
+                  {(detailRecipe as any).ingredients.map((ing: any, i: number) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-foreground">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                      {ing.amount && <span className="font-medium">{ing.amount}</span>}
+                      <span>{ing.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Steps */}
+            {detailRecipe && "steps" in detailRecipe && Array.isArray((detailRecipe as any).steps) && (detailRecipe as any).steps.length > 0 && (
+              <div>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Instructions</h3>
+                <ol className="space-y-2">
+                  {(detailRecipe as any).steps.map((step: string, i: number) => (
+                    <li key={i} className="flex gap-3 text-sm text-foreground">
+                      <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                      <span className="leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* Tags */}
+            {detailRecipe?.tags && detailRecipe.tags.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap">
+                {detailRecipe.tags.map((t) => (
+                  <span key={t} className="text-[10px] px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => {
+                  if (detailMeal) {
+                    setDetailMeal(null);
+                    setPickingSlot(detailMeal.slot);
+                    setRecipeSearch("");
+                  }
+                }}
+                className="flex-1 py-3 rounded-2xl bg-secondary text-foreground font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <RefreshCw size={14} /> Change
+              </button>
+              <button
+                onClick={() => {
+                  if (detailMeal) {
+                    removeMeal(detailMeal.day, detailMeal.slot);
+                    toast(`Removed from ${detailMeal.day} ${detailMeal.slot}`);
+                    setDetailMeal(null);
+                  }
+                }}
+                className="py-3 px-6 rounded-2xl bg-destructive/10 text-destructive font-semibold text-sm flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} /> Remove
+              </button>
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };
