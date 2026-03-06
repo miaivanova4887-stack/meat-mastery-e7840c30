@@ -237,14 +237,14 @@ const Onboarding = () => {
       </div>
 
       {/* Content */}
-      <div className={`flex-1 flex flex-col px-6 pt-8 pb-6 transition-all duration-300 ease-out ${transitioning ? "opacity-0 translate-y-3 scale-[0.97]" : "opacity-100 translate-y-0 scale-100"}`}>
+      <div className={`flex-1 flex flex-col px-6 pt-8 pb-6 transition-all duration-300 ease-out ${transitioning ? "opacity-0 translate-y-3 scale-[0.98]" : "opacity-100 translate-y-0 scale-100"}`}>
         {/* Icon + Title */}
         <div className="mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-5">
-            <Icon size={28} className="text-primary" />
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+            <Icon size={24} strokeWidth={1.8} className="text-primary" />
           </div>
-          <h1 className="text-2xl font-display font-black text-foreground leading-tight">{current.title}</h1>
-          <p className="text-sm text-muted-foreground mt-2">{current.subtitle}</p>
+          <h1 className="text-2xl font-display font-bold text-foreground leading-tight tracking-tight">{current.title}</h1>
+          <p className="text-sm text-muted-foreground mt-1.5">{current.subtitle}</p>
         </div>
 
         {/* Options or Inputs */}
@@ -255,10 +255,10 @@ const Onboarding = () => {
               <button
                 key={`${step}-${i}`}
                 onClick={() => handleSelect(i)}
-                className={`w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.97] ${
+                className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 text-left active:scale-[0.97] ${
                   selected
-                    ? "bg-primary/10 border-primary/50 shadow-sm"
-                    : "bg-card border-border hover:border-primary/30 hover:bg-card/80"
+                    ? "bg-primary/8 border-primary/40 shadow-sm"
+                    : "bg-card border-border/50 shadow-xs"
                 }`}
                 style={{ animationDelay: `${i * 0.06}s` }}
               >
@@ -286,7 +286,7 @@ const Onboarding = () => {
                   placeholder={field.placeholder}
                   value={inputValues[field.key] || ""}
                   onChange={(e) => handleInputChange(field.key, e.target.value)}
-                  className="flex-1 h-12 rounded-xl border border-border bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary/50 transition-all"
+                  className="flex-1 h-12 rounded-2xl border border-border/50 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all shadow-xs"
                   maxLength={field.type === "number" ? 6 : 200}
                 />
                 {field.unit && (
@@ -301,7 +301,7 @@ const Onboarding = () => {
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
           <div className="pt-6">
             <Button
-              className="w-full gap-2 h-12 text-base font-semibold"
+              className="w-full gap-2 h-12 text-base font-semibold rounded-2xl"
               disabled={
                 (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
                 (current.type === "input" && !isInputStepValid())
