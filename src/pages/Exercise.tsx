@@ -65,7 +65,7 @@ const Exercise = () => {
 
   const resetQuiz = () => { setQuizStep(-1); setQuizAnswers([]); };
 
-  const quizResult = quizStep === 3 ? getQuizResult(quizAnswers) : null;
+  const quizResult = quizStep === 5 ? getQuizResult(quizAnswers) : null;
 
   return (
     <div className="min-h-screen bg-background pb-24">
