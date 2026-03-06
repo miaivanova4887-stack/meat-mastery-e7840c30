@@ -13,6 +13,19 @@ export interface Recipe {
   meal: MealType;
 }
 
+export interface Ingredient {
+  name: string;
+  amount: string;
+}
+
+export interface CustomRecipe extends Recipe {
+  id: string;
+  ingredients: Ingredient[];
+  steps: string[];
+  createdAt: string;
+  isCustom: true;
+}
+
 export const TIER_LABELS: Record<DietTier, string> = {
   lion: "🦁 Lion",
   strict: "🥩 Strict Carnivore",

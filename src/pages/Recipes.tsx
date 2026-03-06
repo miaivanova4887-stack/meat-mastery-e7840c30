@@ -1,8 +1,9 @@
-import { ArrowLeft, Clock, Flame, Search, X, Dumbbell, Bot } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
-import { recipes, TIER_LABELS, MEAL_LABELS, type DietTier, type MealType } from "@/data/recipes";
+import { recipes, TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type CustomRecipe } from "@/data/recipes";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 
 const tierFromProfile = (diet: string | undefined): DietTier | null => {
   if (diet === "lion") return "lion";
@@ -15,35 +16,139 @@ const Recipes = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
   const defaultTier = tierFromProfile((profile as any).diet) ?? "strict";
+  const { customRecipes, deleteRecipe } = useCustomRecipes();
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
   const [activeMeal, setActiveMeal] = useState<MealType | "all">("all");
   const [search, setSearch] = useState("");
+  const [expandedCustom, setExpandedCustom] = useState<string | null>(null);
+
+  const allRecipes = useMemo(() => {
+    const custom = customRecipes.filter((r) => r.tier.includes(activeTier));
+    const builtIn = recipes.filter((r) => r.tier.includes(activeTier));
+    return { custom, builtIn };
+  }, [activeTier, customRecipes]);
 
   const filtered = useMemo(() => {
-    return recipes.filter((r) => {
-      if (!r.tier.includes(activeTier)) return false;
-      if (activeMeal !== "all" && r.meal !== activeMeal) return false;
-      if (search) {
-        const q = search.toLowerCase();
-        return (
-          r.name.toLowerCase().includes(q) ||
-          r.tags.some((t) => t.toLowerCase().includes(q)) ||
-          r.desc.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [activeTier, activeMeal, search]);
+    const filter = (list: typeof recipes) =>
+      list.filter((r) => {
+        if (!r.tier.includes(activeTier)) return false;
+        if (activeMeal !== "all" && r.meal !== activeMeal) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          return (
+            r.name.toLowerCase().includes(q) ||
+            r.tags.some((t) => t.toLowerCase().includes(q)) ||
+            r.desc.toLowerCase().includes(q)
+          );
+        }
+        return true;
+      });
+
+    return {
+      custom: filter(customRecipes) as CustomRecipe[],
+      builtIn: filter(recipes),
+    };
+  }, [activeTier, activeMeal, search, customRecipes]);
+
+  const totalCount = filtered.custom.length + filtered.builtIn.length;
 
   const mealCounts = useMemo(() => {
-    const tierFiltered = recipes.filter((r) => r.tier.includes(activeTier));
-    const counts: Record<string, number> = { all: tierFiltered.length };
-    for (const r of tierFiltered) {
+    const all = [...recipes, ...customRecipes].filter((r) => r.tier.includes(activeTier));
+    const counts: Record<string, number> = { all: all.length };
+    for (const r of all) {
       counts[r.meal] = (counts[r.meal] || 0) + 1;
     }
     return counts;
-  }, [activeTier]);
+  }, [activeTier, customRecipes]);
+
+  const RecipeCard = ({ r, i, isCustom = false }: { r: any; i: number; isCustom?: boolean }) => {
+    const custom = isCustom ? (r as CustomRecipe) : null;
+    const isExpanded = custom && expandedCustom === custom.id;
+
+    return (
+      <div
+        key={r.name + i}
+        className="ios-card p-4 animate-fade-in-up"
+        style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-display font-bold text-foreground text-[15px] leading-tight">{r.name}</h3>
+              {isCustom && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gold/20 text-foreground font-semibold">MY</span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1"><Clock size={11} /> {r.time}</span>
+              <span className="flex items-center gap-1"><Flame size={11} /> {r.cal} cal</span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+            <span className="text-[11px] font-semibold text-primary">{r.protein} P</span>
+            <span className="text-[11px] font-medium text-muted-foreground">{r.fat} F</span>
+          </div>
+        </div>
+        <p className="text-xs text-secondary-foreground/70 mt-2.5 leading-relaxed">{r.desc}</p>
+
+        {/* Expandable custom recipe details */}
+        {custom && (
+          <>
+            <button
+              onClick={() => setExpandedCustom(isExpanded ? null : custom.id)}
+              className="flex items-center gap-1 mt-2 text-[11px] text-primary font-medium"
+            >
+              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {isExpanded ? "Less" : "Ingredients & Steps"}
+            </button>
+
+            {isExpanded && (
+              <div className="mt-3 space-y-3 border-t border-border/30 pt-3">
+                {custom.ingredients.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground mb-1">Ingredients</p>
+                    <ul className="space-y-0.5">
+                      {custom.ingredients.map((ing, j) => (
+                        <li key={j} className="text-xs text-muted-foreground">
+                          {ing.amount && <span className="font-medium text-foreground">{ing.amount}</span>} {ing.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {custom.steps.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-semibold text-foreground mb-1">Steps</p>
+                    <ol className="space-y-1">
+                      {custom.steps.map((step, j) => (
+                        <li key={j} className="text-xs text-muted-foreground flex gap-2">
+                          <span className="text-primary font-bold flex-shrink-0">{j + 1}.</span>
+                          {step}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+                <button
+                  onClick={() => deleteRecipe(custom.id)}
+                  className="flex items-center gap-1.5 text-[11px] text-destructive font-medium mt-1"
+                >
+                  <Trash2 size={12} /> Delete recipe
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex gap-1.5 mt-3 flex-wrap">
+          {r.tags.map((t: string) => (
+            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -53,7 +158,12 @@ const Recipes = () => {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">Carnivore Recipes</h1>
-        <span className="text-xs text-muted-foreground">{filtered.length} recipes</span>
+        <button
+          onClick={() => navigate("/create-recipe")}
+          className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
+        >
+          <Plus size={16} />
+        </button>
       </div>
 
       <div className="px-4 pt-4 space-y-3">
@@ -126,43 +236,30 @@ const Recipes = () => {
 
         {/* Recipe Cards */}
         <div className="space-y-3 pt-1">
-          {filtered.length === 0 && (
+          <span className="text-xs text-muted-foreground">{totalCount} recipes</span>
+
+          {/* Custom recipes first */}
+          {filtered.custom.length > 0 && (
+            <>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">My Recipes</p>
+              {filtered.custom.map((r, i) => (
+                <RecipeCard key={r.id} r={r} i={i} isCustom />
+              ))}
+              {filtered.builtIn.length > 0 && (
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-2">All Recipes</p>
+              )}
+            </>
+          )}
+
+          {filtered.builtIn.map((r, i) => (
+            <RecipeCard key={r.name} r={r} i={i} />
+          ))}
+
+          {totalCount === 0 && (
             <div className="text-center py-12 text-muted-foreground text-sm">
               No recipes found. Try adjusting your filters.
             </div>
           )}
-          {filtered.map((r, i) => (
-            <div
-              key={r.name}
-              className="ios-card p-4 animate-fade-in-up"
-              style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-display font-bold text-foreground text-[15px] leading-tight">{r.name}</h3>
-                  <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Clock size={11} /> {r.time}</span>
-                    <span className="flex items-center gap-1"><Flame size={11} /> {r.cal} cal</span>
-                  </div>
-                </div>
-                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                  <span className="text-[11px] font-semibold text-primary">{r.protein} P</span>
-                  <span className="text-[11px] font-medium text-muted-foreground">{r.fat} F</span>
-                </div>
-              </div>
-              <p className="text-xs text-secondary-foreground/70 mt-2.5 leading-relaxed">{r.desc}</p>
-              <div className="flex gap-1.5 mt-3 flex-wrap">
-                {r.tags.map((t) => (
-                  <span
-                    key={t}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium"
-                  >
-                    {t}
-                  </span>
-                ))}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
