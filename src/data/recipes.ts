@@ -1,0 +1,82 @@
+export type DietTier = "lion" | "strict" | "animal_based";
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "staple";
+
+export interface Recipe {
+  name: string;
+  time: string;
+  cal: string;
+  protein: string;
+  fat: string;
+  desc: string;
+  tags: string[];
+  tier: DietTier[];
+  meal: MealType;
+}
+
+export const TIER_LABELS: Record<DietTier, string> = {
+  lion: "🦁 Lion",
+  strict: "🥩 Strict Carnivore",
+  animal_based: "🍳 Animal Based",
+};
+
+export const MEAL_LABELS: Record<MealType | "all", string> = {
+  all: "All",
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+  snack: "Snack",
+  staple: "Staple",
+};
+
+export const recipes: Recipe[] = [
+  // === LION DIET (meat, organs, fat only — no dairy, eggs, fish) ===
+  { name: "Reverse-Seared Ribeye", time: "45 min", cal: "650", protein: "52g", fat: "48g", desc: "Oven at 250°F until 115°F internal, then sear in cast iron with tallow. Rest 5 minutes.", tags: ["Beef", "Beginner"], tier: ["lion", "strict", "animal_based"], meal: "dinner" },
+  { name: "Smash Burgers", time: "15 min", cal: "480", protein: "38g", fat: "36g", desc: "Season ground beef with salt. Form balls, smash on screaming hot griddle. Cook 2 min per side.", tags: ["Beef", "Quick"], tier: ["lion", "strict", "animal_based"], meal: "lunch" },
+  { name: "Bone Broth", time: "24 hrs", cal: "80", protein: "10g", fat: "2g", desc: "Roast marrow bones at 400°F, then simmer with water, salt for 24 hours. Strain.", tags: ["Healing", "Staple"], tier: ["lion", "strict", "animal_based"], meal: "staple" },
+  { name: "Pan-Seared Liver & Bacon", time: "15 min", cal: "380", protein: "32g", fat: "24g", desc: "Slice liver thin. Cook bacon first, then sear liver 2 min per side in bacon fat. Don't overcook.", tags: ["Organ Meat", "Nutrient Dense"], tier: ["lion", "strict", "animal_based"], meal: "lunch" },
+  { name: "Slow-Cooked Beef Short Ribs", time: "6 hrs", cal: "720", protein: "58g", fat: "54g", desc: "Season with salt. Sear in dutch oven, add beef broth. Cook at 275°F for 5-6 hours until fall-off-bone.", tags: ["Beef", "Weekend"], tier: ["lion", "strict", "animal_based"], meal: "dinner" },
+  { name: "Beef Tongue Tacos (No Shell)", time: "3 hrs", cal: "340", protein: "30g", fat: "22g", desc: "Simmer tongue for 3 hours. Peel, slice, and sear in tallow. Serve with salt.", tags: ["Organ Meat", "Unique"], tier: ["lion", "strict", "animal_based"], meal: "dinner" },
+  { name: "Bone Marrow on the Bone", time: "25 min", cal: "420", protein: "8g", fat: "42g", desc: "Roast split marrow bones at 450°F for 20 min. Scoop with salt. Nature's butter.", tags: ["Organ Meat", "Easy"], tier: ["lion", "strict", "animal_based"], meal: "snack" },
+  { name: "Beef Heart Skewers", time: "20 min", cal: "290", protein: "36g", fat: "14g", desc: "Cube heart, marinate in tallow and salt. Grill on skewers 3-4 min per side. Tender and lean.", tags: ["Organ Meat", "Grilling"], tier: ["lion", "strict", "animal_based"], meal: "dinner" },
+  { name: "Ground Beef Patties", time: "10 min", cal: "400", protein: "32g", fat: "30g", desc: "80/20 beef, season with salt. Pan-fry 4 min per side. The simplest carnivore meal.", tags: ["Beef", "Quick"], tier: ["lion", "strict", "animal_based"], meal: "lunch" },
+  { name: "Tallow-Fried Steak Bites", time: "12 min", cal: "520", protein: "42g", fat: "38g", desc: "Cube sirloin, fry in hot tallow until crispy outside, pink inside. Salt generously.", tags: ["Beef", "Quick"], tier: ["lion", "strict", "animal_based"], meal: "snack" },
+  { name: "Braised Oxtail", time: "4 hrs", cal: "580", protein: "44g", fat: "42g", desc: "Sear oxtail, braise in bone broth at 300°F for 4 hours. Collagen-rich and deeply flavored.", tags: ["Beef", "Weekend"], tier: ["lion", "strict", "animal_based"], meal: "dinner" },
+  { name: "Breakfast Steak", time: "10 min", cal: "500", protein: "44g", fat: "36g", desc: "Thin NY strip, seared hot in tallow. 2 min per side. Start your day with real fuel.", tags: ["Beef", "Quick"], tier: ["lion", "strict", "animal_based"], meal: "breakfast" },
+  { name: "Pork Belly Slices", time: "35 min", cal: "620", protein: "22g", fat: "58g", desc: "Score skin, salt heavily. Roast at 425°F for 30 min until crackling. Slice thick.", tags: ["Pork", "Crispy"], tier: ["lion", "strict", "animal_based"], meal: "dinner" },
+  { name: "Lamb Chops", time: "15 min", cal: "480", protein: "36g", fat: "36g", desc: "Season with salt. Sear 3 min per side for medium-rare. Rest 5 minutes.", tags: ["Lamb", "Easy"], tier: ["lion", "strict", "animal_based"], meal: "dinner" },
+  { name: "Beef Kidney Stir-Fry", time: "15 min", cal: "260", protein: "34g", fat: "12g", desc: "Soak kidneys in salt water 1 hour. Slice thin, stir-fry in tallow on high heat 3 min.", tags: ["Organ Meat", "Quick"], tier: ["lion", "strict", "animal_based"], meal: "lunch" },
+
+  // === STRICT CARNIVORE (adds eggs, dairy, seafood) ===
+  { name: "Bacon-Wrapped Chicken Thighs", time: "35 min", cal: "520", protein: "42g", fat: "36g", desc: "Wrap skin-on thighs with bacon. Bake at 400°F for 30 min until crispy. Season with salt.", tags: ["Poultry", "Easy"], tier: ["strict", "animal_based"], meal: "dinner" },
+  { name: "Butter-Basted Salmon", time: "20 min", cal: "440", protein: "38g", fat: "30g", desc: "Sear skin-side down 4 min. Flip, add butter and baste. Finish in 350°F oven for 8 min.", tags: ["Seafood", "Omega-3"], tier: ["strict", "animal_based"], meal: "dinner" },
+  { name: "Carnivore Egg Muffins", time: "25 min", cal: "320", protein: "24g", fat: "24g", desc: "Whisk 6 eggs with crumbled bacon and shredded cheese. Pour into muffin tin. Bake 375°F for 18 min.", tags: ["Eggs", "Meal Prep"], tier: ["strict", "animal_based"], meal: "breakfast" },
+  { name: "Shrimp in Garlic Butter", time: "10 min", cal: "280", protein: "28g", fat: "18g", desc: "Sauté large shrimp in butter with garlic salt for 3 min per side. Quick and satisfying.", tags: ["Seafood", "Quick"], tier: ["strict", "animal_based"], meal: "lunch" },
+  { name: "Bacon & Egg Cups", time: "20 min", cal: "350", protein: "22g", fat: "28g", desc: "Line muffin tin with bacon, crack egg inside each. Bake 375°F for 15 min. Perfect grab-and-go.", tags: ["Eggs", "Meal Prep"], tier: ["strict", "animal_based"], meal: "breakfast" },
+  { name: "Cream Cheese Stuffed Burgers", time: "20 min", cal: "580", protein: "40g", fat: "46g", desc: "Form two thin patties, add cream cheese between, seal edges. Grill 5 min per side.", tags: ["Beef", "Cheese"], tier: ["strict", "animal_based"], meal: "dinner" },
+  { name: "Butter-Poached Lobster Tail", time: "25 min", cal: "380", protein: "32g", fat: "26g", desc: "Gently poach lobster tail in melted butter at low heat for 10 min. Decadent and simple.", tags: ["Seafood", "Special"], tier: ["strict", "animal_based"], meal: "dinner" },
+  { name: "Cheese Crisps", time: "10 min", cal: "220", protein: "14g", fat: "18g", desc: "Pile shredded cheddar on parchment. Bake 400°F for 7 min until golden. Crunchy zero-carb snack.", tags: ["Cheese", "Snack"], tier: ["strict", "animal_based"], meal: "snack" },
+  { name: "Steak & Eggs", time: "15 min", cal: "650", protein: "52g", fat: "48g", desc: "Sear strip steak 3 min/side. Rest while you fry 3 eggs in butter. The classic carnivore breakfast.", tags: ["Beef", "Eggs"], tier: ["strict", "animal_based"], meal: "breakfast" },
+  { name: "Sardines on Pork Rinds", time: "5 min", cal: "310", protein: "26g", fat: "22g", desc: "Top pork rinds with canned sardines and a squeeze of lemon. Omega-3 powerhouse in seconds.", tags: ["Seafood", "Quick"], tier: ["strict", "animal_based"], meal: "snack" },
+  { name: "Brie-Stuffed Chicken Breast", time: "30 min", cal: "480", protein: "44g", fat: "32g", desc: "Butterfly chicken breast, stuff with brie, wrap in bacon. Bake 375°F for 25 min.", tags: ["Poultry", "Cheese"], tier: ["strict", "animal_based"], meal: "dinner" },
+  { name: "Crab Legs in Butter", time: "15 min", cal: "320", protein: "34g", fat: "18g", desc: "Steam king crab legs 8 min. Serve with melted butter and salt. Pure indulgence.", tags: ["Seafood", "Special"], tier: ["strict", "animal_based"], meal: "dinner" },
+  { name: "Egg Drop Bone Broth", time: "10 min", cal: "180", protein: "18g", fat: "10g", desc: "Heat bone broth to simmer. Drizzle beaten eggs while stirring. Season with salt.", tags: ["Eggs", "Healing"], tier: ["strict", "animal_based"], meal: "staple" },
+  { name: "Deviled Eggs", time: "20 min", cal: "240", protein: "14g", fat: "20g", desc: "Hard boil eggs, halve, mix yolks with mayo and mustard. Pipe filling back. Top with paprika.", tags: ["Eggs", "Snack"], tier: ["strict", "animal_based"], meal: "snack" },
+  { name: "Tuna Steak Seared Rare", time: "8 min", cal: "320", protein: "44g", fat: "14g", desc: "Pat dry, salt well. Sear in hot tallow 90 seconds per side. Should be red in center.", tags: ["Seafood", "Quick"], tier: ["strict", "animal_based"], meal: "lunch" },
+  { name: "Parmesan Chicken Wings", time: "40 min", cal: "440", protein: "36g", fat: "32g", desc: "Bake wings at 425°F for 35 min. Toss in butter and grated parmesan while hot.", tags: ["Poultry", "Cheese"], tier: ["strict", "animal_based"], meal: "snack" },
+  { name: "Scrambled Eggs in Butter", time: "5 min", cal: "300", protein: "18g", fat: "24g", desc: "Low heat, lots of butter, stir constantly. Remove while still slightly wet. Creamy perfection.", tags: ["Eggs", "Quick"], tier: ["strict", "animal_based"], meal: "breakfast" },
+  { name: "Mackerel Fillets", time: "12 min", cal: "360", protein: "30g", fat: "26g", desc: "Score skin, season with salt. Pan-fry skin-down 4 min, flip 2 min. Rich in omega-3s.", tags: ["Seafood", "Omega-3"], tier: ["strict", "animal_based"], meal: "lunch" },
+
+  // === ANIMAL BASED (adds fruits, honey, select veg) ===
+  { name: "Steak with Honey Glaze", time: "20 min", cal: "580", protein: "46g", fat: "38g", desc: "Sear ribeye, rest. Drizzle with raw honey and sea salt. Sweet meets savory perfection.", tags: ["Beef", "Honey"], tier: ["animal_based"], meal: "dinner" },
+  { name: "Carnivore Pancakes", time: "15 min", cal: "280", protein: "20g", fat: "18g", desc: "Blend 2 eggs, cream cheese, and a drizzle of honey. Cook like regular pancakes in butter.", tags: ["Eggs", "Sweet"], tier: ["animal_based"], meal: "breakfast" },
+  { name: "Beef & Berry Bowl", time: "15 min", cal: "450", protein: "36g", fat: "28g", desc: "Ground beef patty over mixed berries with a drizzle of honey and sea salt.", tags: ["Beef", "Fruit"], tier: ["animal_based"], meal: "lunch" },
+  { name: "Honey Butter Chicken Thighs", time: "35 min", cal: "490", protein: "38g", fat: "34g", desc: "Roast thighs at 400°F. Glaze with honey-butter mix in last 5 min. Crispy and sweet.", tags: ["Poultry", "Honey"], tier: ["animal_based"], meal: "dinner" },
+  { name: "Fruit & Yogurt with Honey", time: "5 min", cal: "220", protein: "12g", fat: "8g", desc: "Full-fat Greek yogurt, mixed berries, raw honey drizzle. Quick animal-based breakfast.", tags: ["Dairy", "Fruit"], tier: ["animal_based"], meal: "breakfast" },
+  { name: "Grilled Steak with Mango Salsa", time: "25 min", cal: "540", protein: "48g", fat: "30g", desc: "Grill NY strip. Top with diced mango, salt, and lime juice. Tropical carnivore vibes.", tags: ["Beef", "Fruit"], tier: ["animal_based"], meal: "dinner" },
+  { name: "Egg & Avocado Plate", time: "10 min", cal: "380", protein: "18g", fat: "32g", desc: "Fried eggs over sliced avocado with salt and honey drizzle. Simple animal-based fuel.", tags: ["Eggs", "Easy"], tier: ["animal_based"], meal: "breakfast" },
+  { name: "Salmon with Honey Mustard", time: "20 min", cal: "460", protein: "38g", fat: "28g", desc: "Glaze salmon with honey-mustard mix. Bake 400°F for 15 min. Pair with sliced oranges.", tags: ["Seafood", "Honey"], tier: ["animal_based"], meal: "dinner" },
+  { name: "Banana Egg Pancakes", time: "10 min", cal: "260", protein: "16g", fat: "12g", desc: "Mash 1 banana, mix with 2 eggs. Cook in butter. Top with honey. 3 ingredients.", tags: ["Eggs", "Fruit"], tier: ["animal_based"], meal: "breakfast" },
+  { name: "Beef Bone Broth Ramen", time: "20 min", cal: "380", protein: "28g", fat: "22g", desc: "Rich bone broth with soft-boiled egg, sliced beef, and sweet potato noodles.", tags: ["Beef", "Healing"], tier: ["animal_based"], meal: "dinner" },
+  { name: "Honey-Glazed Pork Ribs", time: "4 hrs", cal: "680", protein: "42g", fat: "52g", desc: "Slow cook ribs at 275°F for 3.5 hrs. Brush with honey in final 30 min. Sticky and tender.", tags: ["Pork", "Weekend"], tier: ["animal_based"], meal: "dinner" },
+  { name: "Cottage Cheese & Fruit Bowl", time: "5 min", cal: "250", protein: "20g", fat: "10g", desc: "Full-fat cottage cheese with blueberries, strawberries, and a honey drizzle.", tags: ["Dairy", "Fruit"], tier: ["animal_based"], meal: "snack" },
+];
