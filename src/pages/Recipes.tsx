@@ -33,6 +33,7 @@ const Recipes = () => {
   const [activeMeal, setActiveMeal] = useState<MealType | "all">("all");
   const [search, setSearch] = useState("");
   const [expandedCustom, setExpandedCustom] = useState<string | null>(null);
+  const [multipliers, setMultipliers] = useState<Record<string, number>>({});
 
   const allRecipes = useMemo(() => {
     const custom = customRecipes.filter((r) => r.tier.includes(activeTier));
