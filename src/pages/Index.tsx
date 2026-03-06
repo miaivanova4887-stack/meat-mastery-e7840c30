@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Flame, BookOpen, Timer, Dumbbell, Heart, Shield, Zap, Apple } from "lucide-react";
 import heroImage from "@/assets/hero-steak.jpg";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const features = [
   { icon: Zap, label: "Benefits", path: "/benefits", color: "text-gold" },
@@ -22,11 +23,14 @@ const Index = () => {
       <div className="relative h-[55vh] overflow-hidden">
         <img src={heroImage} alt="Seared steak on flame" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+        <div className="absolute top-4 right-4 z-10">
+          <ThemeToggle />
+        </div>
         <div className="absolute bottom-0 left-0 right-0 p-6">
           <h1 className="text-4xl font-display font-black text-gradient-flame leading-tight">
             CARNIVORE<br />LIFESTYLE
           </h1>
-          <p className="text-bone/80 mt-2 text-sm font-light max-w-xs">
+          <p className="text-muted-foreground mt-2 text-sm font-light max-w-xs">
             Your complete guide to thriving on an animal-based diet.
           </p>
         </div>
