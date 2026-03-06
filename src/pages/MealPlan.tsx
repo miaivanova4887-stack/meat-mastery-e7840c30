@@ -337,17 +337,26 @@ const MealPlan = () => {
           })}
         </div>
 
-        {/* Day Summary */}
-        {totals.count > 0 && (
-          <div className="ios-card p-3 flex items-center justify-between">
-            <span className="text-xs font-semibold text-foreground">{activeDay} Totals</span>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1 text-muted-foreground"><Flame size={11} /> {totals.cal} cal</span>
-              <span className="font-semibold text-primary">{totals.protein}g P</span>
-              <span className="text-muted-foreground">{totals.fat}g F</span>
-            </div>
+        {/* Day Summary with targets */}
+        <div className="ios-card p-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-semibold text-foreground">{activeDay} · {profile.mealsPerDay} meals/day</span>
+            {totals.count > 0 && (
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1 text-muted-foreground"><Flame size={11} /> {totals.cal}/{nutritionTargets.calories}</span>
+                <span className="font-semibold text-primary">{totals.protein}g/{nutritionTargets.protein}g P</span>
+                <span className="text-muted-foreground">{totals.fat}g/{nutritionTargets.fat}g F</span>
+              </div>
+            )}
           </div>
-        )}
+          {totals.count > 0 && (
+            <div className="flex gap-1.5 mt-1.5">
+              <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (totals.cal / nutritionTargets.calories) * 100)}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Meal Slots */}
         <div className="space-y-2.5">
