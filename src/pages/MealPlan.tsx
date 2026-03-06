@@ -349,50 +349,107 @@ const MealPlan = () => {
         <div className="space-y-2.5">
           {MEAL_SLOTS.map((slot) => {
             const meal = plan[activeDay][slot];
+            const isSwiped = swipedSlot === slot;
             return (
-              <div key={slot} className="ios-card p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-                    {SLOT_LABELS[slot]}
-                  </span>
-                  {meal && (
-                    <button onClick={() => removeMeal(activeDay, slot)} className="text-muted-foreground hover:text-destructive">
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-
-                {meal ? (
-                  <button
-                    onClick={() => { setPickingSlot(slot); setRecipeSearch(""); }}
-                    className="w-full text-left group"
-                  >
-                    <h3 className="font-display font-bold text-foreground text-[15px] group-hover:text-primary transition-colors">{meal.recipeName}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{meal.cal} cal</span>
-                      <span className="font-semibold text-primary">{meal.protein} P</span>
-                      <span>{meal.fat} F</span>
-                      <span>· {meal.time}</span>
-                      <span className="ml-auto text-[10px] opacity-0 group-hover:opacity-100 text-primary transition-opacity">Tap to change</span>
-                    </div>
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
+              <div key={slot} className="relative overflow-hidden rounded-2xl">
+                {/* Swipe-revealed actions */}
+                {meal && (
+                  <div className="absolute inset-y-0 right-0 flex items-stretch z-0">
                     <button
-                      onClick={() => setPickingSlot(slot)}
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
+                      onClick={() => { setSwipedSlot(null); setPickingSlot(slot); setRecipeSearch(""); }}
+                      className="w-16 flex flex-col items-center justify-center gap-1 bg-primary text-primary-foreground text-[10px] font-semibold"
                     >
-                      <Plus size={14} /> Pick Recipe
+                      <RefreshCw size={16} />
+                      Change
                     </button>
                     <button
-                      onClick={() => { setQuickSlot(slot); setShowQuickAdd(true); }}
-                      className="px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
-                      title="Add custom"
+                      onClick={() => { setSwipedSlot(null); removeMeal(activeDay, slot); toast(`Removed from ${activeDay} ${slot}`); }}
+                      className="w-16 flex flex-col items-center justify-center gap-1 bg-destructive text-destructive-foreground text-[10px] font-semibold"
                     >
-                      ✏️
+                      <Trash2 size={16} />
+                      Delete
                     </button>
                   </div>
                 )}
+
+                {/* Main card - slides left on swipe */}
+                <div
+                  className={`ios-card p-4 relative z-10 bg-card transition-transform duration-200 ease-out ${isSwiped && meal ? "-translate-x-32" : "translate-x-0"}`}
+                  onTouchStart={(e) => {
+                    if (!meal) return;
+                    const el = e.currentTarget as any;
+                    el._touchStartX = e.touches[0].clientX;
+                    el._touchStartY = e.touches[0].clientY;
+                    el._swiping = false;
+                  }}
+                  onTouchMove={(e) => {
+                    if (!meal) return;
+                    const el = e.currentTarget as any;
+                    if (el._touchStartX == null) return;
+                    const dx = e.touches[0].clientX - el._touchStartX;
+                    const dy = e.touches[0].clientY - el._touchStartY;
+                    if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+                      el._swiping = true;
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (!meal) return;
+                    const el = e.currentTarget as any;
+                    if (el._touchStartX == null) return;
+                    const dx = e.changedTouches[0].clientX - el._touchStartX;
+                    const wasSwiping = el._swiping;
+                    el._touchStartX = null;
+                    el._swiping = false;
+                    if (wasSwiping) {
+                      if (dx < -50) setSwipedSlot(slot);
+                      else if (dx > 30) setSwipedSlot(null);
+                    }
+                  }}
+                  onClick={() => {
+                    if (meal && !swipedSlot) {
+                      setDetailMeal({ day: activeDay, slot, meal });
+                    } else if (swipedSlot) {
+                      setSwipedSlot(null);
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      {SLOT_LABELS[slot]}
+                    </span>
+                    {meal && (
+                      <span className="text-[9px] text-muted-foreground/60">← swipe</span>
+                    )}
+                  </div>
+
+                  {meal ? (
+                    <div>
+                      <h3 className="font-display font-bold text-foreground text-[15px]">{meal.recipeName}</h3>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>{meal.cal} cal</span>
+                        <span className="font-semibold text-primary">{meal.protein} P</span>
+                        <span>{meal.fat} F</span>
+                        <span>· {meal.time}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPickingSlot(slot); }}
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
+                      >
+                        <Plus size={14} /> Pick Recipe
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setQuickSlot(slot); setShowQuickAdd(true); }}
+                        className="px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium"
+                        title="Add custom"
+                      >
+                        ✏️
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
