@@ -1,4 +1,4 @@
-import { ArrowLeft, Zap, Brain, Heart, Scale, Flame, Shield, Eye, BatteryCharging } from "lucide-react";
+import { ArrowLeft, Zap, Brain, Heart, Scale, Flame, Shield, Eye, BatteryCharging, Leaf, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const benefits = [
