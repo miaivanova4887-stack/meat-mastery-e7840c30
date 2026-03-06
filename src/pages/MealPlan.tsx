@@ -588,6 +588,24 @@ const MealPlan = () => {
                           <span>· {meal.time}</span>
                         </div>
                       </div>
+                      <label
+                        onClick={(e) => e.stopPropagation()}
+                        className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-secondary transition-colors cursor-pointer ${photoLoading && photoSlot === slot ? "opacity-50 pointer-events-none" : ""}`}
+                        title="Re-snap photo"
+                      >
+                        {photoLoading && photoSlot === slot ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handlePhotoRecognize(file, slot);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
                     </div>
                   ) : (
                     <div className="flex gap-2">
