@@ -1,9 +1,20 @@
-import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { recipes, TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type CustomRecipe } from "@/data/recipes";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
+
+const MULTIPLIERS = [1, 2, 3, 4] as const;
+
+function scaleNumeric(value: string, multiplier: number): string {
+  const num = parseFloat(value);
+  if (isNaN(num)) return value;
+  const scaled = Math.round(num * multiplier);
+  // Preserve suffix like "g"
+  const suffix = value.replace(/[\d.]+/, "").trim();
+  return `${scaled}${suffix}`;
+}
 
 const tierFromProfile = (diet: string | undefined): DietTier | null => {
   if (diet === "lion") return "lion";
