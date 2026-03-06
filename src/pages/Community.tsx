@@ -57,7 +57,7 @@ const Community = () => {
 
   const fetchLikes = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("recipe_likes")
       .select("recipe_id")
       .eq("user_id", user.id);
@@ -76,11 +76,11 @@ const Community = () => {
 
     const liked = likedIds.has(recipeId);
     if (liked) {
-      await supabase.from("recipe_likes").delete().eq("user_id", user.id).eq("recipe_id", recipeId);
+      await (supabase as any).from("recipe_likes").delete().eq("user_id", user.id).eq("recipe_id", recipeId);
       setLikedIds((prev) => { const next = new Set(prev); next.delete(recipeId); return next; });
       setRecipes((prev) => prev.map((r) => r.id === recipeId ? { ...r, likes_count: r.likes_count - 1 } : r));
     } else {
-      await supabase.from("recipe_likes").insert({ user_id: user.id, recipe_id: recipeId });
+      await (supabase as any).from("recipe_likes").insert({ user_id: user.id, recipe_id: recipeId });
       setLikedIds((prev) => new Set(prev).add(recipeId));
       setRecipes((prev) => prev.map((r) => r.id === recipeId ? { ...r, likes_count: r.likes_count + 1 } : r));
     }
