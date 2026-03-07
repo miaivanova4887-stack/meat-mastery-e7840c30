@@ -205,6 +205,7 @@ const Onboarding = () => {
         };
         localStorage.setItem("carnivore-onboarding-body", JSON.stringify(bodyData));
 
+        window.dispatchEvent(new Event("profile-update"));
         navigate("/", { replace: true });
       }
       setTransitioning(false);
