@@ -13,6 +13,7 @@ const benefits = [
   { icon: Eye, title: "Overall Glow-Up", desc: "Beyond clearing acne, eczema, and psoriasis — many experience brighter eyes, thicker hair, stronger nails, and a radiant complexion that reflects deep internal health." },
   { icon: Zap, title: "Higher Sports Performance", desc: "Fat-adapted athletes report improved endurance, faster recovery, and greater explosive power. Reduced inflammation means less downtime between training sessions." },
   { icon: Shield, title: "Stress Resistance", desc: "Stable blood sugar and optimized hormones build a resilient nervous system. Many report handling pressure with calm focus instead of anxiety and burnout." },
+  { icon: Scale, title: "Forget Calorie Counting Forever", desc: "High-protein, high-fat meals naturally regulate appetite and satiety hormones. Most people effortlessly eat the right amount — no tracking apps, no food scales, no mental math." },
 ];
 
 const Benefits = () => {
