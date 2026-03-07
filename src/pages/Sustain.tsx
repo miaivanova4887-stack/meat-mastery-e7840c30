@@ -22,17 +22,20 @@ const Sustain = () => {
       <div className="p-4">
         <p className="text-xs text-muted-foreground mb-4">Long-term success requires more than willpower. Build systems that make carnivore your default.</p>
         <div className="space-y-3">
-          {tips.map(({ icon: Icon, title, desc }, i) => (
-            <div key={i} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
-              <div className="flex items-start gap-3">
-                <div className="p-2 rounded-md bg-gold/10"><Icon size={18} className="text-gold" /></div>
-                <div>
-                  <h3 className="font-semibold text-foreground text-sm">{title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{desc}</p>
+          {tips.map(({ icon: Icon, title, desc, link }, i) => {
+            const card = (
+              <div key={i} className={`bg-card border border-border rounded-lg p-4 animate-fade-in-up ${link ? "cursor-pointer hover:border-primary/40 transition-colors" : ""}`} style={{ animationDelay: `${i * 0.05}s` }} onClick={link ? () => navigate(link) : undefined}>
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-md bg-gold/10"><Icon size={18} className="text-gold" /></div>
+                  <div>
+                    <h3 className="font-semibold text-foreground text-sm">{title}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{desc}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+            return card;
+          })}
         </div>
       </div>
       <MotivationCTA />
