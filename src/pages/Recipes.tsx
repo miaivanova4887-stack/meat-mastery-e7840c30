@@ -6,6 +6,8 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
 import { toast } from "sonner";
+import heroMealMale from "@/assets/hero-meal-male.jpg";
+import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
 const MULTIPLIERS = [1, 2, 3, 4] as const;
 
@@ -209,6 +211,20 @@ const Recipes = () => {
         <button onClick={() => navigate("/create-recipe")} className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
           <Plus size={16} />
         </button>
+      </div>
+
+      {/* Hero meal image */}
+      <div className="relative w-full h-40 overflow-hidden">
+        <img
+          src={(profile as any).gender === "female" ? heroMealFemale : heroMealMale}
+          alt="Carnivore meal"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute bottom-3 left-4">
+          <p className="text-xs text-muted-foreground font-medium">Fuel your body</p>
+          <p className="text-lg font-display font-bold text-foreground">Ready to Cook</p>
+        </div>
       </div>
 
       <div className="px-4 pt-4 space-y-3">
