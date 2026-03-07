@@ -847,7 +847,7 @@ const MealPlan = () => {
                 {aiMode === "single" && `AI will generate 1 recipe and add it to ${activeDay}'s plan.`}
                 {aiMode === "daily" && `AI will fill ${profile.mealsPerDay} meal slots for ${activeDay} targeting ${nutritionTargets.calories} cal.`}
                 {aiMode === "weekly" && `AI will generate ${profile.mealsPerDay} meals/day for all 7 days targeting ${nutritionTargets.calories} cal/day.`}
-                {" "}Personalized to your goal: {profile.goal.replace("_", " ")}.
+                {" "}Personalized to your goal: {String(profile.goal).replace("_", " ")}.
               </p>
             </div>
 
