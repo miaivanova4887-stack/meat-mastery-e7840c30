@@ -273,12 +273,12 @@ const MealPlan = () => {
 
       const r = data.result;
       const meal: PlannedMeal = {
-        recipeName: r.recipeName,
-        cal: r.cal,
-        protein: r.protein,
-        fat: r.fat,
-        time: r.time || "N/A",
-        serving: r.serving || "1 serving",
+        recipeName: String(r.recipeName || ""),
+        cal: String(r.cal || "0"),
+        protein: String(r.protein || "0g"),
+        fat: String(r.fat || "0g"),
+        time: String(r.time || "N/A"),
+        serving: String(r.serving || "1 serving"),
       };
       assignMeal(activeDay, slot, meal);
 
@@ -286,13 +286,13 @@ const MealPlan = () => {
       if (!allRecipes.some((rec) => rec.name === r.recipeName)) {
         addRecipe({
           id: crypto.randomUUID(),
-          name: r.recipeName,
-          cal: r.cal || "0",
-          protein: r.protein || "0g",
-          fat: r.fat || "0g",
-          time: r.time || "N/A",
-          serving: r.serving || "1 serving",
-          desc: r.description || "Recognized from photo",
+          name: String(r.recipeName || "Photo Recipe"),
+          cal: String(r.cal || "0"),
+          protein: String(r.protein || "0g"),
+          fat: String(r.fat || "0g"),
+          time: String(r.time || "N/A"),
+          serving: String(r.serving || "1 serving"),
+          desc: String(r.description || "Recognized from photo"),
           tags: ["📸 Photo"],
           tier: ["strict"],
           meal: slot === "snack" ? "snack" : slot as any,
