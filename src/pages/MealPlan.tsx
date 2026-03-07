@@ -136,31 +136,25 @@ const MealPlan = () => {
 
       const result = data.plan;
 
+      const toMeal = (m: any): PlannedMeal => ({
+        recipeName: String(m.recipeName || ""),
+        cal: String(m.cal || "0"),
+        protein: String(m.protein || "0g"),
+        fat: String(m.fat || "0g"),
+        time: String(m.time || "N/A"),
+        serving: String(m.serving || "1 serving"),
+      });
+
       if (aiMode === "single" && result?.meals?.[0]) {
         const m = result.meals[0];
-        assignMeal(activeDay, m.slot || "dinner", {
-          recipeName: m.recipeName,
-          cal: m.cal,
-          protein: m.protein,
-          fat: m.fat,
-          time: m.time,
-          serving: m.serving,
-        });
-        // Save as custom recipe
+        assignMeal(activeDay, m.slot || "dinner", toMeal(m));
         saveAIMealAsRecipe(m);
         toast.success(`AI recipe added to ${activeDay}!`);
       } else if (aiMode === "daily" && result?.meals) {
         for (const m of result.meals) {
           const slot = m.slot as MealSlot;
           if (MEAL_SLOTS.includes(slot)) {
-            assignMeal(activeDay, slot, {
-              recipeName: m.recipeName,
-              cal: m.cal,
-              protein: m.protein,
-              fat: m.fat,
-              time: m.time,
-              serving: m.serving,
-            });
+            assignMeal(activeDay, slot, toMeal(m));
             saveAIMealAsRecipe(m);
           }
         }
@@ -172,14 +166,7 @@ const MealPlan = () => {
             for (const m of dayData.meals) {
               const slot = m.slot as MealSlot;
               if (MEAL_SLOTS.includes(slot)) {
-                assignMeal(day, slot, {
-                  recipeName: m.recipeName,
-                  cal: m.cal,
-                  protein: m.protein,
-                  fat: m.fat,
-                  time: m.time,
-                  serving: m.serving,
-                });
+                assignMeal(day, slot, toMeal(m));
                 saveAIMealAsRecipe(m);
               }
             }
