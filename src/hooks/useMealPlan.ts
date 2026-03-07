@@ -44,7 +44,24 @@ const COMPLETED_KEY = "carnivore-meal-completed";
 function load(): WeekPlan {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : emptyWeek();
+    if (!raw) return emptyWeek();
+    const parsed = JSON.parse(raw);
+    // Sanitize: ensure all meal values are strings
+    for (const day of DAYS) {
+      if (!parsed[day]) { parsed[day] = emptyDay(); continue; }
+      for (const slot of MEAL_SLOTS) {
+        const m = parsed[day][slot];
+        if (m) {
+          m.cal = String(m.cal ?? "0");
+          m.protein = String(m.protein ?? "0g");
+          m.fat = String(m.fat ?? "0g");
+          m.time = String(m.time ?? "N/A");
+          m.serving = String(m.serving ?? "1 serving");
+          m.recipeName = String(m.recipeName ?? "");
+        }
+      }
+    }
+    return parsed;
   } catch {
     return emptyWeek();
   }
