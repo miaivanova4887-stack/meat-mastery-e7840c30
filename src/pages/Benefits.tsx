@@ -6,6 +6,7 @@ const Benefits = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
   const isFemale = profile.body.sex === "female";
+  const isMale = profile.body.sex === "male";
 
   const benefits = [
     { icon: Flame, title: "Reduced Inflammation", desc: "Eliminating plant toxins and seed oils can dramatically lower systemic inflammation, helping with joint pain and autoimmune conditions." },
