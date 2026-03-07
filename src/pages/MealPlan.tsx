@@ -136,31 +136,25 @@ const MealPlan = () => {
 
       const result = data.plan;
 
+      const toMeal = (m: any): PlannedMeal => ({
+        recipeName: String(m.recipeName || ""),
+        cal: String(m.cal || "0"),
+        protein: String(m.protein || "0g"),
+        fat: String(m.fat || "0g"),
+        time: String(m.time || "N/A"),
+        serving: String(m.serving || "1 serving"),
+      });
+
       if (aiMode === "single" && result?.meals?.[0]) {
         const m = result.meals[0];
-        assignMeal(activeDay, m.slot || "dinner", {
-          recipeName: m.recipeName,
-          cal: m.cal,
-          protein: m.protein,
-          fat: m.fat,
-          time: m.time,
-          serving: m.serving,
-        });
-        // Save as custom recipe
+        assignMeal(activeDay, m.slot || "dinner", toMeal(m));
         saveAIMealAsRecipe(m);
         toast.success(`AI recipe added to ${activeDay}!`);
       } else if (aiMode === "daily" && result?.meals) {
         for (const m of result.meals) {
           const slot = m.slot as MealSlot;
           if (MEAL_SLOTS.includes(slot)) {
-            assignMeal(activeDay, slot, {
-              recipeName: m.recipeName,
-              cal: m.cal,
-              protein: m.protein,
-              fat: m.fat,
-              time: m.time,
-              serving: m.serving,
-            });
+            assignMeal(activeDay, slot, toMeal(m));
             saveAIMealAsRecipe(m);
           }
         }
@@ -172,14 +166,7 @@ const MealPlan = () => {
             for (const m of dayData.meals) {
               const slot = m.slot as MealSlot;
               if (MEAL_SLOTS.includes(slot)) {
-                assignMeal(day, slot, {
-                  recipeName: m.recipeName,
-                  cal: m.cal,
-                  protein: m.protein,
-                  fat: m.fat,
-                  time: m.time,
-                  serving: m.serving,
-                });
+                assignMeal(day, slot, toMeal(m));
                 saveAIMealAsRecipe(m);
               }
             }
@@ -202,13 +189,13 @@ const MealPlan = () => {
     if (allRecipes.some((r) => r.name === m.recipeName)) return;
     addRecipe({
       id: crypto.randomUUID(),
-      name: m.recipeName,
-      cal: m.cal || "0",
-      protein: m.protein || "0g",
-      fat: m.fat || "0g",
-      time: m.time || "N/A",
-      serving: m.serving || "1 serving",
-      desc: m.steps?.[0] || "AI-generated recipe",
+      name: String(m.recipeName || "AI Recipe"),
+      cal: String(m.cal || "0"),
+      protein: String(m.protein || "0g"),
+      fat: String(m.fat || "0g"),
+      time: String(m.time || "N/A"),
+      serving: String(m.serving || "1 serving"),
+      desc: String(m.steps?.[0] || "AI-generated recipe"),
       tags: ["AI"],
       tier: [aiTier],
       meal: (m.slot as any) || "dinner",
@@ -286,12 +273,12 @@ const MealPlan = () => {
 
       const r = data.result;
       const meal: PlannedMeal = {
-        recipeName: r.recipeName,
-        cal: r.cal,
-        protein: r.protein,
-        fat: r.fat,
-        time: r.time || "N/A",
-        serving: r.serving || "1 serving",
+        recipeName: String(r.recipeName || ""),
+        cal: String(r.cal || "0"),
+        protein: String(r.protein || "0g"),
+        fat: String(r.fat || "0g"),
+        time: String(r.time || "N/A"),
+        serving: String(r.serving || "1 serving"),
       };
       assignMeal(activeDay, slot, meal);
 
@@ -299,13 +286,13 @@ const MealPlan = () => {
       if (!allRecipes.some((rec) => rec.name === r.recipeName)) {
         addRecipe({
           id: crypto.randomUUID(),
-          name: r.recipeName,
-          cal: r.cal || "0",
-          protein: r.protein || "0g",
-          fat: r.fat || "0g",
-          time: r.time || "N/A",
-          serving: r.serving || "1 serving",
-          desc: r.description || "Recognized from photo",
+          name: String(r.recipeName || "Photo Recipe"),
+          cal: String(r.cal || "0"),
+          protein: String(r.protein || "0g"),
+          fat: String(r.fat || "0g"),
+          time: String(r.time || "N/A"),
+          serving: String(r.serving || "1 serving"),
+          desc: String(r.description || "Recognized from photo"),
           tags: ["📸 Photo"],
           tier: ["strict"],
           meal: slot === "snack" ? "snack" : slot as any,
@@ -847,7 +834,7 @@ const MealPlan = () => {
                 {aiMode === "single" && `AI will generate 1 recipe and add it to ${activeDay}'s plan.`}
                 {aiMode === "daily" && `AI will fill ${profile.mealsPerDay} meal slots for ${activeDay} targeting ${nutritionTargets.calories} cal.`}
                 {aiMode === "weekly" && `AI will generate ${profile.mealsPerDay} meals/day for all 7 days targeting ${nutritionTargets.calories} cal/day.`}
-                {" "}Personalized to your goal: {profile.goal.replace("_", " ")}.
+                {" "}Personalized to your goal: {String(profile.goal).replace("_", " ")}.
               </p>
             </div>
 

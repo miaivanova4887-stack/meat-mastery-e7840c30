@@ -11,11 +11,12 @@ import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
 const MULTIPLIERS = [1, 2, 3, 4] as const;
 
-function scaleNumeric(value: string, multiplier: number): string {
-  const num = parseFloat(value);
-  if (isNaN(num)) return value;
+function scaleNumeric(value: string | number, multiplier: number): string {
+  const str = String(value ?? "0");
+  const num = parseFloat(str);
+  if (isNaN(num)) return str;
   const scaled = Math.round(num * multiplier);
-  const suffix = value.replace(/[\d.]+/, "").trim();
+  const suffix = str.replace(/[\d.]+/, "").trim();
   return `${scaled}${suffix}`;
 }
 
