@@ -9,6 +9,8 @@ import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import heroMealMale from "@/assets/hero-meal-male.jpg";
+import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
 type AIMode = "single" | "daily" | "weekly";
 
@@ -393,6 +395,20 @@ const MealPlan = () => {
         >
           Clear Week
         </button>
+      </div>
+
+      {/* Hero meal image */}
+      <div className="relative w-full h-40 overflow-hidden">
+        <img
+          src={(profile as any).gender === "female" ? heroMealFemale : heroMealMale}
+          alt="Meal planning"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute bottom-3 left-4">
+          <p className="text-xs text-muted-foreground font-medium">Plan ahead</p>
+          <p className="text-lg font-display font-bold text-foreground">Your Weekly Fuel</p>
+        </div>
       </div>
 
       <div className="px-4 pt-4 space-y-4">
