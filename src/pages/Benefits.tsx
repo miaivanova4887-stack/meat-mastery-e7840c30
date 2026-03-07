@@ -1,6 +1,7 @@
 import { ArrowLeft, Zap, Brain, Heart, Scale, Flame, Shield, Eye, BatteryCharging, Leaf, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import MotivationCTA from "@/components/MotivationCTA";
 
 const Benefits = () => {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ const Benefits = () => {
           </div>
         ))}
       </div>
+      <MotivationCTA />
     </div>
   );
 };
