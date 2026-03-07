@@ -4,7 +4,7 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 
 const Benefits = () => {
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
+  const profile = useUserProfile();
   const isFemale = profile.body.sex === "female";
 
   const benefits = [
