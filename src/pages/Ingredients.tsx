@@ -1,13 +1,12 @@
-import { ArrowLeft, Check, Crown, Shield, Leaf, Plus, ShoppingBag, Minus } from "lucide-react";
+import { ArrowLeft, Plus, ShoppingBag, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useShoppingBag } from "@/contexts/ShoppingBagContext";
+import { Crown, Shield, Leaf } from "lucide-react";
 
 const diets = [
   {
-    id: "lion",
-    label: "🦁 Lion",
-    icon: Crown,
+    id: "lion", label: "🦁 Lion", icon: Crown,
     desc: "Meats only. No dairy, eggs, or fish.",
     categories: [
       { name: "🥩 Red Meat", items: ["Ribeye Steak", "Ground Beef (80/20)", "NY Strip", "Chuck Roast", "Lamb Chops", "Bison", "Venison", "Beef Short Ribs"] },
@@ -18,9 +17,7 @@ const diets = [
     ],
   },
   {
-    id: "strict",
-    label: "🥩 Strict",
-    icon: Shield,
+    id: "strict", label: "🥩 Strict", icon: Shield,
     desc: "Meats, eggs, dairy, and seafood.",
     categories: [
       { name: "🥩 Red Meat", items: ["Ribeye Steak", "Ground Beef (80/20)", "NY Strip", "Chuck Roast", "Lamb Chops", "Bison", "Venison", "Beef Short Ribs"] },
@@ -33,9 +30,7 @@ const diets = [
     ],
   },
   {
-    id: "animal",
-    label: "🌿 Animal Based",
-    icon: Leaf,
+    id: "animal", label: "🌿 Animal Based", icon: Leaf,
     desc: "Meats, eggs, dairy, fruits, veggies, honey.",
     categories: [
       { name: "🥩 Red Meat", items: ["Ribeye Steak", "Ground Beef (80/20)", "NY Strip", "Chuck Roast", "Lamb Chops", "Bison", "Venison", "Beef Short Ribs"] },

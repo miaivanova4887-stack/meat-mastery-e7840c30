@@ -1,5 +1,6 @@
 import { ArrowLeft, Target, RefreshCw, Users, BarChart3, Calendar, BookHeart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MotivationCTA from "@/components/MotivationCTA";
 
 const tips = [
   { icon: Target, title: "Set Non-Scale Goals", desc: "Track energy, sleep quality, mental clarity, and strength gains — not just weight. These victories keep motivation alive long-term." },
@@ -34,6 +35,7 @@ const Sustain = () => {
           ))}
         </div>
       </div>
+      <MotivationCTA />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { ArrowLeft, ShieldCheck, Coffee, Droplets, Moon, Brain, Utensils } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import MotivationCTA from "@/components/MotivationCTA";
 
 const strategies = [
   { icon: Utensils, title: "Eat More Fat", desc: "Cravings often mean you're not eating enough. Add butter, tallow, or fatty cuts. Your body craves energy — give it animal fat, not sugar." },
@@ -34,6 +35,7 @@ const Cravings = () => {
           ))}
         </div>
       </div>
+      <MotivationCTA />
     </div>
   );
 };

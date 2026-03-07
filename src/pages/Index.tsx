@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { ChevronRight, RotateCcw, MessageCircle } from "lucide-react";
+import { ChevronRight, RotateCcw, Phone } from "lucide-react";
 import heroMale from "@/assets/hero-athletic.jpg";
 import heroFemale from "@/assets/hero-athletic-female.jpg";
 import iconBenefits from "@/assets/icon-benefits.png";
@@ -25,6 +25,9 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
+
+// Replace with your actual Calendly link
+const CALENDLY_URL = "https://calendly.com";
 
 const allFeatures = [
   { icon: iconBenefits, label: "Benefits", path: "/benefits", tags: [] as string[] },
@@ -124,7 +127,7 @@ const Index = () => {
           </div>
         )}
 
-        {/* Feature Grid — Nike-inspired */}
+        {/* Feature Grid */}
         <div className="grid grid-cols-2 gap-3">
           {sorted.map(({ icon, label, path, tags }) => {
             const highlighted = tags.some((t) => profile.interests.includes(t as any));
@@ -157,22 +160,24 @@ const Index = () => {
           <span className="text-[11px] text-muted-foreground mt-2 block font-medium">— {quote.author}</span>
         </div>
 
-        {/* Motivation CTA */}
-        <button
-          onClick={() => navigate("/community")}
-          className="w-full ios-card p-4 flex items-center gap-3 active:scale-[0.98] transition-all"
+        {/* Motivation CTA — Calendly */}
+        <a
+          href={CALENDLY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full ios-card p-4 flex items-center gap-3 active:scale-[0.98] transition-all block"
         >
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <MessageCircle size={18} className="text-primary" />
+            <Phone size={18} className="text-primary" />
           </div>
           <div className="text-left flex-1">
             <p className="text-[13px] font-bold text-foreground">Need extra motivation?</p>
-            <p className="text-[11px] text-muted-foreground">Talk to seasoned carnivores who've been there.</p>
+            <p className="text-[11px] text-muted-foreground">Talk to seasoned carnivores — book a free call.</p>
           </div>
           <ChevronRight size={16} className="text-muted-foreground shrink-0" />
-        </button>
+        </a>
 
-        {/* Update preferences — opens slide-up drawer */}
+        {/* Update preferences */}
         <button
           onClick={() => setShowResetDrawer(true)}
           className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
