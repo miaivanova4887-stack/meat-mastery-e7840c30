@@ -579,8 +579,11 @@ const MealPlan = () => {
                       >
                         <Check size={12} />
                       </button>
-                      <div className={`flex-1 ${isCompleted(activeDay, slot) ? "opacity-50" : ""}`}>
-                        <h3 className={`font-display font-bold text-foreground text-[15px] ${isCompleted(activeDay, slot) ? "line-through" : ""}`}>{meal.recipeName}</h3>
+                      <div className={`flex-1 ${isCompleted(activeDay, slot) ? "opacity-60" : ""}`}>
+                        <h3 className={`font-display font-bold text-[15px] ${isCompleted(activeDay, slot) ? "text-primary" : "text-foreground"}`}>
+                          {isCompleted(activeDay, slot) && <Check size={13} className="inline mr-1 -mt-0.5" />}
+                          {meal.recipeName}
+                        </h3>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                           <span>{meal.cal} cal</span>
                           <span className="font-semibold text-primary">{meal.protein} P</span>
