@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed, Bell, ChevronRight } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed, Bell, ChevronRight, BookOpen, Zap, ExternalLink, Newspaper } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
@@ -333,6 +333,61 @@ const Profile = () => {
                 </div>
               ))}
             </div>
+
+            {/* News Feed Preview */}
+            <h2 className="text-xl font-display font-bold text-foreground pt-3">Your Feed</h2>
+            <p className="text-xs text-muted-foreground -mt-2">Articles based on your preferences above</p>
+
+            {(() => {
+              const newsItems = [
+                { id: "1", title: "Red Meat and Heart Health: New Meta-Analysis Challenges Old Assumptions", summary: "A 2025 meta-analysis of 14 studies found no significant link between unprocessed red meat consumption and cardiovascular disease risk.", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Journal of Nutrition", date: "2026-03-08" },
+                { id: "2", title: "From Chronic Fatigue to Competitive Athlete: Mark's 18-Month Journey", summary: "After years of battling autoimmune symptoms, Mark adopted a strict carnivore diet and documented his transformation to completing his first marathon.", category: "caseStudyNews", catLabel: "Case Study", catIcon: Heart, catColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", date: "2026-03-07" },
+                { id: "3", title: "The Power of Organ Meats: Why Liver is Nature's Multivitamin", summary: "Gram for gram, beef liver contains more bioavailable nutrients than any plant food. Here's how to incorporate it weekly.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-07" },
+                { id: "4", title: "You Are Stronger Than You Think: Embrace the Journey", summary: "Every day on the carnivore diet is a step toward reclaiming your health. The cravings fade, the energy rises, and the results speak for themselves.", category: "motivationNews", catLabel: "Motivation", catIcon: Zap, catColor: "bg-primary/10 text-primary", date: "2026-03-06" },
+                { id: "5", title: "Carnivore Diet and Gut Microbiome: Latest Research", summary: "Emerging research suggests bile-tolerant bacteria thrive on carnivore, potentially reducing systemic inflammation.", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Gut Microbiome Journal", date: "2026-03-06" },
+                { id: "6", title: "Budget Carnivore: Feed a Family of Four for Under $100/Week", summary: "Ground beef, eggs, and strategic bulk buying can make the carnivore diet surprisingly affordable.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-05" },
+              ];
+              const filtered = newsItems.filter((n) => notifPrefs[n.category]);
+              if (filtered.length === 0) return (
+                <div className="text-center py-10 text-muted-foreground">
+                  <Newspaper size={36} className="mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Enable categories above to see news</p>
+                </div>
+              );
+              const formatDate = (ds: string) => {
+                const diff = Math.floor((Date.now() - new Date(ds).getTime()) / 86400000);
+                if (diff === 0) return "Today";
+                if (diff === 1) return "Yesterday";
+                if (diff < 7) return `${diff}d ago`;
+                return new Date(ds).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              };
+              return (
+                <div className="space-y-3">
+                  {filtered.map((item) => {
+                    const CatIcon = item.catIcon;
+                    return (
+                      <article key={item.id} className="ios-card p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${item.catColor}`}>
+                            <CatIcon size={10} />
+                            {item.catLabel}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">{formatDate(item.date)}</span>
+                        </div>
+                        <h3 className="text-sm font-semibold text-foreground leading-snug">{item.title}</h3>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{item.summary}</p>
+                        {item.source && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <ExternalLink size={10} />
+                            {item.source}
+                          </span>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
