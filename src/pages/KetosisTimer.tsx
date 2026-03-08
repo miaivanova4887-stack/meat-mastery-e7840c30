@@ -1,4 +1,4 @@
-import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, PlayCircle } from "lucide-react";
+import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ketosisPhase1Video from "@/assets/ketosis-phase-1.mp4";
@@ -131,6 +131,7 @@ const KetosisTimer = () => {
   const [alertsEnabled, setAlertsEnabled] = useState(() => {
     return localStorage.getItem("ketosis-alerts") !== "false";
   });
+  const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const lastPhaseRef = useRef<number>(-1);
 
