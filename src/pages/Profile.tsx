@@ -313,13 +313,16 @@ const Profile = () => {
                           </div>
                         )}
                         {item.url && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setWebviewUrl(item.url!); }}
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => { e.stopPropagation(); }}
                             className="inline-flex items-center gap-1 text-[10px] text-primary font-medium mt-1"
                           >
                             <ExternalLink size={10} />
                             Read source — {item.source || "View article"}
-                          </button>
+                          </a>
                         )}
                         {!item.url && item.source && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
