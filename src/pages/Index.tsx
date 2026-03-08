@@ -41,7 +41,7 @@ const allFeatures = [
   { icon: iconIngredients, label: "Ingredients", path: "/ingredients", tags: ["recipes"] },
   { icon: iconExercise, label: "Exercise", path: "/exercise", tags: ["exercise"] },
   { icon: iconCravings, label: "Cravings", path: "/cravings", tags: [] },
-  { icon: iconStories, label: "Success Stories", path: "/stories", tags: [] },
+  // { icon: iconStories, label: "Success Stories", path: "/stories", tags: [] },
   { icon: iconSustain, label: "Sustain Results", path: "/sustain", tags: [] },
   { icon: iconMyths, label: "Myths Busted", path: "/myths", tags: [] as string[] },
   { icon: iconGuide, label: "Complete Guide", path: "/guide", tags: [] as string[] },
