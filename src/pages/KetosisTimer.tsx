@@ -20,10 +20,10 @@ import { subscribeToPush, sendPushToAll } from "@/lib/pushNotifications";
 const KETOSIS_TARGET_HOURS = 72;
 
 const PHASE_BODY_DESCRIPTIONS: Record<number, string> = {
-  0: "Your liver is burning through its glycogen reserves. Glucose levels drop, triggering the metabolic switch toward fat oxidation.",
-  1: "Fatty acids are being mobilised from adipose tissue and converted to ketone bodies in the liver. Insulin levels fall sharply.",
-  2: "Mitochondria are adapting to burn ketones efficiently. Autophagy accelerates — cells are recycling damaged proteins and organelles.",
-  3: "Ketones (BHB) are now your brain's primary fuel. Inflammation markers drop, growth hormone surges, and cellular repair peaks.",
+  0: "Your liver is rapidly depleting its glycogen stores — around 100g of liver glycogen is being broken down into glucose. As blood sugar drops, insulin levels fall and glucagon rises, signalling your body to start mobilising fatty acids from adipose tissue. You may feel hunger pangs and slight irritability as your brain adjusts to declining glucose availability.",
+  1: "Your body has shifted into lipolysis — fat cells are releasing stored triglycerides, which travel to the liver and are converted into acetoacetate and beta-hydroxybutyrate (BHB). These ketone bodies enter the bloodstream as an alternative fuel. Insulin is now at its lowest, growth hormone begins to rise, and your muscles increasingly oxidise fatty acids directly for energy.",
+  2: "Mitochondria throughout your body are upregulating the enzymes needed to efficiently burn ketones. Autophagy — your cellular recycling system — is now in full swing, breaking down damaged proteins, misfolded structures, and even dysfunctional mitochondria. Your brain is drawing roughly 25–50% of its energy from ketones. Many people report a surge in mental clarity as the brain adapts to this cleaner-burning fuel.",
+  3: "You've achieved sustained nutritional ketosis. Blood BHB levels are typically 1.5–3.0 mmol/L. Your brain now derives up to 75% of its energy from ketones. Growth hormone can be elevated by up to 300%, accelerating fat metabolism and preserving lean muscle. Inflammatory markers like CRP and IL-6 are significantly reduced. Cellular repair mechanisms are operating at peak capacity — this is the body's deepest regenerative state.",
 };
 
 interface PhaseInfo {
@@ -324,19 +324,25 @@ const KetosisTimer = () => {
                   </div>
                 </button>
                 {isExpanded && video && (
-                  <div className={`rounded-xl overflow-hidden border border-border ${isCurrent ? '' : 'opacity-60'}`}>
+                  <div className={`rounded-xl overflow-hidden border border-border ${isCurrent ? '' : 'opacity-70'}`}>
                     <div className="relative">
                       <video
                         src={video}
-                        autoPlay={isCurrent}
+                        autoPlay
                         loop
                         muted
                         playsInline
+                        preload="auto"
                         className="w-full aspect-video object-cover"
+                        ref={(el) => {
+                          if (el) {
+                            el.play().catch(() => {});
+                          }
+                        }}
                       />
                       {bodyDesc && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8">
-                          <p className="text-[11px] text-white/90 leading-relaxed">{bodyDesc}</p>
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 pt-12">
+                          <p className="text-[11px] text-white/95 leading-relaxed font-medium">{bodyDesc}</p>
                         </div>
                       )}
                     </div>
