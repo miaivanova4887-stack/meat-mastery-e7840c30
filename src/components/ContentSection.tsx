@@ -89,18 +89,7 @@ const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = 
             <p className="text-sm text-muted-foreground leading-relaxed">{children}</p>
           )}
 
-          {items && (
-            <ul className="space-y-2">
-              {items.map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${config.bgColor.replace("/10", "")} ${config.color.replace("text-", "bg-")}`} />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {type === "tips" && items && (
+          {items && type === "tips" && (
             <div className="space-y-2">
               {items.map((item, i) => (
                 <div key={i} className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2.5 text-sm text-muted-foreground">
@@ -109,6 +98,17 @@ const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = 
                 </div>
               ))}
             </div>
+          )}
+
+          {items && type !== "tips" && (
+            <ul className="space-y-2">
+              {items.map((item, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <span className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${config.color.replace("text-", "bg-")}`} />
+                  {item}
+                </li>
+              ))}
+            </ul>
           )}
 
           {dataRows && (
