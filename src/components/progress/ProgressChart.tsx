@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { format } from "date-fns";
+import { format, startOfWeek, startOfMonth } from "date-fns";
 import type { ProgressEntry, ProgressGoal } from "@/hooks/useProgress";
 
 interface Props {
@@ -8,18 +8,60 @@ interface Props {
   metricKey: string;
   goal?: ProgressGoal;
   color?: string;
+  rangeDays?: number;
+  /** If true, values in each bucket are summed (e.g. daily calories). Otherwise averaged. */
+  sumValues?: boolean;
 }
 
-const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))" }: Props) => {
+type AggMode = "daily" | "weekly" | "monthly";
+
+function getAggMode(days: number): AggMode {
+  if (days <= 30) return "daily";
+  if (days <= 180) return "weekly";
+  return "monthly";
+}
+
+function bucketKey(date: Date, mode: AggMode): string {
+  if (mode === "daily") return format(date, "yyyy-MM-dd");
+  if (mode === "weekly") return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  return format(startOfMonth(date), "yyyy-MM");
+}
+
+function bucketLabel(key: string, mode: AggMode): string {
+  if (mode === "monthly") {
+    const [y, m] = key.split("-");
+    return format(new Date(Number(y), Number(m) - 1), "MMM yy");
+  }
+  const d = new Date(key + "T00:00:00");
+  if (mode === "weekly") return format(d, "MMM dd");
+  return format(d, "MMM dd");
+}
+
+const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))", rangeDays = 30, sumValues = false }: Props) => {
   const data = useMemo(() => {
-    return entries
-      .filter((e) => e.metric === metricKey)
-      .map((e) => ({
-        date: format(new Date(e.recorded_at), "MMM dd"),
-        value: Number(e.value),
-        time: format(new Date(e.recorded_at), "h:mm a"),
-      }));
-  }, [entries, metricKey]);
+    const filtered = entries.filter((e) => e.metric === metricKey);
+    if (filtered.length === 0) return [];
+
+    const mode = getAggMode(rangeDays);
+    const buckets = new Map<string, number[]>();
+
+    for (const e of filtered) {
+      const key = bucketKey(new Date(e.recorded_at), mode);
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key)!.push(Number(e.value));
+    }
+
+    return Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, values]) => {
+        const total = values.reduce((s, v) => s + v, 0);
+        const agg = sumValues ? total : total / values.length;
+        return {
+          date: bucketLabel(key, mode),
+          value: Math.round(agg * 10) / 10,
+        };
+      });
+  }, [entries, metricKey, rangeDays, sumValues]);
 
   if (data.length === 0) {
     return (
