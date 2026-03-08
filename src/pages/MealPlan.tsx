@@ -7,6 +7,7 @@ import { recipes, TIER_LABELS, type Recipe, type DietTier } from "@/data/recipes
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { supabase } from "@/integrations/supabase/client";
+import { MealImage } from "@/hooks/useMealImage";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useMealSync } from "@/hooks/useMealSync";
@@ -589,6 +590,7 @@ const MealPlan = () => {
                       >
                         <Check size={12} />
                       </button>
+                      <MealImage recipeName={meal.recipeName} className="w-12 h-12 flex-shrink-0" />
                       <div className={`flex-1 ${isCompleted(activeDay, slot) ? "opacity-60" : ""}`}>
                         <h3 className={`font-display font-bold text-[15px] ${isCompleted(activeDay, slot) ? "text-primary" : "text-foreground"}`}>
                           {isCompleted(activeDay, slot) && <Check size={13} className="inline mr-1 -mt-0.5" />}
