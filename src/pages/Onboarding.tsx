@@ -231,6 +231,14 @@ const Onboarding = () => {
         };
         localStorage.setItem("carnivore-onboarding-body", JSON.stringify(bodyData));
 
+        // Save cuisine preferences (steps 8 and 9)
+        const CUISINE_MAP_1 = ["indian", "thai", "chinese", "mexican"];
+        const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
+        const selectedCuisines: string[] = [];
+        ((newAnswers[8] as number[]) || []).forEach(i => { if (CUISINE_MAP_1[i]) selectedCuisines.push(CUISINE_MAP_1[i]); });
+        ((newAnswers[9] as number[]) || []).forEach(i => { if (CUISINE_MAP_2[i]) selectedCuisines.push(CUISINE_MAP_2[i]); });
+        localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
+
         window.dispatchEvent(new Event("profile-update"));
         navigate("/", { replace: true });
       }
