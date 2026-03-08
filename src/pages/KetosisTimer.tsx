@@ -1,4 +1,4 @@
-import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { ArrowLeft, Flame, Play, Pause, RotateCcw, Bell, BellOff, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ketosisPhase1Video from "@/assets/ketosis-phase-1.mp4";
@@ -265,12 +265,9 @@ const KetosisTimer = () => {
 
         {/* Current phase personalised tip */}
         <div className="w-full mt-8">
-          <div className="ios-card p-4 flex gap-3 items-start">
-            <Info size={16} strokeWidth={1.5} className="text-primary mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">{currentPhase.name}</p>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{currentPhase.tip}</p>
-            </div>
+          <div className="ios-card p-4">
+            <p className="text-[13px] font-semibold text-foreground">{currentPhase.name}</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{currentPhase.tip}</p>
           </div>
         </div>
 
@@ -315,6 +312,12 @@ const KetosisTimer = () => {
                         {!isCurrent && (isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />)}
                       </div>
                     </div>
+                    {isCurrent && isRunning && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Flame size={11} className="text-primary" />
+                        <span className="text-[11px] text-primary font-medium">You are currently here</span>
+                      </div>
+                    )}
                     {timeUntilText && (
                       <div className="flex items-center gap-1 mt-1">
                         <Clock size={11} className="text-primary/60" />
