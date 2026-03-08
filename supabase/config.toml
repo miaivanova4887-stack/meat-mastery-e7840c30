@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.voice-log]
 verify_jwt = false
+
+[functions.generate-meal-image]
+verify_jwt = false
+
+[functions.recognize-food]
+verify_jwt = false
