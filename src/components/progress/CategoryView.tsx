@@ -25,13 +25,14 @@ const CategoryView = ({ category }: Props) => {
   const [range, setRange] = useState(30);
   const [showAdd, setShowAdd] = useState(false);
   const [showGoal, setShowGoal] = useState(false);
-  const [activeMetric, setActiveMetric] = useState(metrics[0].key);
+  const [activeMetric, setActiveMetric] = useState(metrics[0]?.key || "");
 
   const { data: entries = [], isLoading } = useProgressEntries(category, range);
   const { data: goals = [] } = useProgressGoals(category);
   const deleteEntry = useDeleteEntry();
 
-  const currentMeta = metrics.find((m) => m.key === activeMetric)!;
+  const currentMeta = metrics.find((m) => m.key === activeMetric) || metrics[0];
+  if (!currentMeta) return null;
   const currentGoal = goals.find((g) => g.metric === activeMetric);
   const metricEntries = entries.filter((e) => e.metric === activeMetric);
   const latestValue = metricEntries.length > 0 ? Number(metricEntries[metricEntries.length - 1].value) : null;
