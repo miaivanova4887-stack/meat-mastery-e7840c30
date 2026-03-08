@@ -28,6 +28,8 @@ import ProfilePage from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import CmsEditor from "./pages/CmsEditor";
 import CmsPageView from "./pages/CmsPageView";
+import ProgressPage from "./pages/Progress";
+import HealthSync from "./pages/HealthSync";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +61,8 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/community" element={<Community />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/progress" element={<ProgressPage />} />
+              <Route path="/progress/sync" element={<HealthSync />} />
               <Route path="/cms" element={<CmsEditor />} />
               <Route path="/p/:slug" element={<CmsPageView />} />
               <Route path="*" element={<NotFound />} />

@@ -1,12 +1,12 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Flame, BookOpen, Timer, CalendarDays, User } from "lucide-react";
+import { Flame, BookOpen, Timer, CalendarDays, User, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const tabs = [
   { path: "/", icon: Flame, label: "Home" },
   { path: "/recipes", icon: BookOpen, label: "Recipes" },
   { path: "/meal-plan", icon: CalendarDays, label: "Plan" },
-  { path: "/timer", icon: Timer, label: "Ketosis" },
+  { path: "/progress", icon: TrendingUp, label: "Progress" },
 ];
 
 const BottomNav = () => {
