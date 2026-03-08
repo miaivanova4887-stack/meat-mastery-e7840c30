@@ -6,6 +6,7 @@ import { CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import CategoryView from "@/components/progress/CategoryView";
 import NutrientBreakdown from "@/components/progress/NutrientBreakdown";
 import PhotoRecognition from "@/components/progress/PhotoRecognition";
+import BarcodeScanner from "@/components/progress/BarcodeScanner";
 import VoiceRecognition from "@/components/progress/VoiceRecognition";
 import {
   Select,
@@ -62,6 +63,9 @@ const Progress = () => {
 
         {/* Photo Recognition */}
         <PhotoRecognition />
+
+        {/* Barcode Scanner */}
+        <BarcodeScanner />
 
         {/* Voice Recognition */}
         <VoiceRecognition />
