@@ -296,7 +296,15 @@ const Recipes = () => {
           ))}
         </div>
 
-        <div className="space-y-3 pt-1">
+        {/* Cuisine filter */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+          {(Object.entries(CUISINE_LABELS) as [string, string][]).map(([key, label]) => (
+            <button key={key} onClick={() => setActiveCuisine(key)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeCuisine === key ? "bg-primary/20 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
+            >{label}</button>
+          ))}
+        </div>
+
           <span className="text-xs text-muted-foreground">{totalCount} recipes</span>
 
           {filtered.custom.length > 0 && (
