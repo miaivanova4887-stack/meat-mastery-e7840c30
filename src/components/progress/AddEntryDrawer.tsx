@@ -25,13 +25,15 @@ const MOOD_COLORS = [
 
 const AddEntryDrawer = ({ open, onOpenChange, category, metricKey }: Props) => {
   const metrics = METRICS[category];
-  const [selectedMetric, setSelectedMetric] = useState(metricKey || metrics[0].key);
+  const defaultMetric = metricKey || metrics[0]?.key || "";
+  const [selectedMetric, setSelectedMetric] = useState(defaultMetric);
   const [value, setValue] = useState("");
   const [notes, setNotes] = useState("");
   const [dateTime, setDateTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const addEntry = useAddEntry();
 
-  const currentMeta = metrics.find((m) => m.key === selectedMetric)!;
+  const currentMeta = metrics.find((m) => m.key === selectedMetric) || metrics[0];
+  if (!currentMeta) return null;
   const isScale = currentMeta.unit === "0-4";
 
   const handleSave = () => {
