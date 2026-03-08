@@ -253,95 +253,8 @@ const Profile = () => {
           ) : likedRecipes.map((r) => <RecipeCard key={r.id} r={r} />)
         )}
 
-        {/* Notifications */}
-        {tab === "notifications" && (
-          <div className="space-y-3">
-            <h2 className="text-xl font-display font-bold text-foreground">Notification Settings</h2>
-
-            {/* Enable Notifications */}
-            <div className="ios-card p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 mr-4">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Enable Notifications</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Allow Vore to send you helpful reminders</p>
-                </div>
-                <Switch checked={notifPrefs.enabled} onCheckedChange={(v) => updateNotifPref("enabled", v)} />
-              </div>
-            </div>
-
-            {/* Daily Reminder */}
-            <div className={`ios-card p-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 mr-4">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Daily Reminder</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Get reminded to log your meals every day</p>
-                </div>
-                <Switch checked={notifPrefs.dailyReminder} onCheckedChange={(v) => updateNotifPref("dailyReminder", v)} />
-              </div>
-              {notifPrefs.dailyReminder && (
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
-                  <span className="text-sm text-muted-foreground">Reminder Time</span>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="time"
-                      value={notifPrefs.reminderTime}
-                      onChange={(e) => updateNotifPref("reminderTime", e.target.value)}
-                      className="bg-transparent text-primary text-sm font-semibold focus:outline-none"
-                    />
-                    <ChevronRight size={14} className="text-muted-foreground" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Streak Reminders */}
-            <div className={`ios-card p-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 mr-4">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Streak Reminders</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Get notified at 8 PM if your streak is at risk</p>
-                </div>
-                <Switch checked={notifPrefs.streakReminder} onCheckedChange={(v) => updateNotifPref("streakReminder", v)} />
-              </div>
-            </div>
-
-            {/* Weekly Progress Summary */}
-            <div className={`ios-card p-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex-1 mr-4">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Weekly Progress Summary</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Receive your weekly stats every Monday morning</p>
-                </div>
-                <Switch checked={notifPrefs.weeklySummary} onCheckedChange={(v) => updateNotifPref("weeklySummary", v)} />
-              </div>
-            </div>
-
-            {/* News Preferences */}
-            <h2 className="text-xl font-display font-bold text-foreground pt-3">News Feed Preferences</h2>
-            <p className="text-xs text-muted-foreground -mt-2">Choose which news categories appear in your feed</p>
-
-            <div className={`ios-card p-4 space-y-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
-              {[
-                { key: "scienceNews", label: "🔬 Science & Research", desc: "Latest carnivore diet studies and findings" },
-                { key: "motivationNews", label: "⚡ Motivation", desc: "Daily inspiration and success mindset" },
-                { key: "caseStudyNews", label: "❤️ Case Studies", desc: "Real transformation stories" },
-                { key: "tipNews", label: "💡 Tips & Tricks", desc: "Practical advice for your journey" },
-              ].map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between">
-                  <div className="flex-1 mr-4">
-                    <h3 className="font-display font-bold text-foreground text-[14px]">{label}</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
-                  </div>
-                  <Switch checked={notifPrefs[key]} onCheckedChange={(v) => updateNotifPref(key, v)} />
-                </div>
-              ))}
-            </div>
-
-            {/* News Feed Preview */}
-            <h2 className="text-xl font-display font-bold text-foreground pt-3">Your Feed</h2>
-            <p className="text-xs text-muted-foreground -mt-2">Articles based on your preferences above</p>
-
-            {(() => {
+        {/* Your Feed */}
+        {tab === "feed" && (() => {
                 const newsItems = [
                 { id: "1", title: "Red Meat and Heart Health: New Meta-Analysis Challenges Old Assumptions", summary: "A 2025 meta-analysis of 14 studies found no significant link between unprocessed red meat consumption and cardiovascular disease risk.", body: "The comprehensive meta-analysis reviewed data from over 1.2 million participants across 14 prospective cohort studies. Researchers found that consuming up to 100g of unprocessed red meat daily showed no statistically significant association with cardiovascular disease, stroke, or all-cause mortality.\n\nThis challenges decades of dietary advice that broadly categorized all red meat as harmful. The key distinction appears to be between processed and unprocessed meats.\n\nDr. Sarah Mitchell, lead author, noted: \"Our findings suggest that the relationship between red meat and heart health is far more nuanced than previous guidelines indicated.\"", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Journal of Nutrition", url: "https://academic.oup.com/jn/article/150/3/520/5673196", date: "2026-03-08" },
                 { id: "2", title: "From Chronic Fatigue to Competitive Athlete: Mark's 18-Month Journey", summary: "After years of battling autoimmune symptoms, Mark adopted a strict carnivore diet and documented his transformation to completing his first marathon.", body: "Mark Reynolds, 34, spent five years battling Hashimoto's thyroiditis, chronic fatigue, and debilitating brain fog. After conventional treatments provided limited relief, he decided to try strict carnivore.\n\n\"The first two weeks were rough,\" Mark recalls. \"But by week three, the fog started lifting. By month two, I had energy I hadn't felt since my twenties.\"\n\nOver 18 months, Mark lost 45 pounds, saw his thyroid antibodies drop by 60%, and went from barely walking a mile to completing the Chicago Marathon.", category: "caseStudyNews", catLabel: "Case Study", catIcon: Heart, catColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", date: "2026-03-07" },
@@ -354,7 +267,7 @@ const Profile = () => {
               if (filtered.length === 0) return (
                 <div className="text-center py-10 text-muted-foreground">
                   <Newspaper size={36} className="mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Enable categories above to see news</p>
+                  <p className="text-sm">Enable categories in Settings → News Preferences</p>
                 </div>
               );
               const formatDate = (ds: string) => {
@@ -420,8 +333,6 @@ const Profile = () => {
                 </div>
               );
             })()}
-          </div>
-        )}
 
         {/* Settings */}
         {tab === "settings" && (
