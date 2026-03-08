@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
+import type { CuisineType } from "@/data/recipes";
 
 export type Goal = "lose_weight" | "build_muscle" | "maintain" | "improve_health";
 export type Experience = "beginner" | "tried_briefly" | "months_in" | "veteran";
@@ -31,6 +32,7 @@ export interface UserProfile {
   body: BodyStats;
   mealsPerDay: number;
   nutritionTargets: NutritionTargets;
+  cuisines: CuisineType[];
   isComplete: boolean;
 }
 
@@ -77,7 +79,7 @@ function parseProfile(): UserProfile {
   const defaults: UserProfile = {
     goal: "improve_health", experience: "beginner", struggles: [],
     activityLevel: "light", interests: [], body: defaultBody, mealsPerDay: storedMeals,
-    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, isComplete: false,
+    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, cuisines: [], isComplete: false,
   };
   try {
     const raw = localStorage.getItem("carnivore-onboarding-answers");
