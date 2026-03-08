@@ -150,7 +150,7 @@ const Index = () => {
                 }`}
               >
                 <div className="flex items-start justify-between mb-2.5">
-                  <img src={icon} alt={label} className="w-9 h-9 object-contain" />
+                  <img src={icon} alt={label} className="w-9 h-9 object-cover rounded-lg" />
                   <ChevronRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
                 </div>
                 <span className="text-[13px] font-bold text-foreground block">{label}</span>
