@@ -13,6 +13,9 @@ import iconStories from "@/assets/icon-stories.png";
 import iconSustain from "@/assets/icon-sustain.png";
 import iconMyths from "@/assets/icon-myths.png";
 import iconGuide from "@/assets/icon-guide.png";
+import iconGettingStarted from "@/assets/icon-getting-started.png";
+import iconBudget from "@/assets/icon-budget.png";
+import iconAthletic from "@/assets/icon-athletic.png";
 import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -42,6 +45,9 @@ const allFeatures = [
   { icon: iconSustain, label: "Sustain Results", path: "/sustain", tags: [] },
   { icon: iconMyths, label: "Myths Busted", path: "/myths", tags: [] as string[] },
   { icon: iconGuide, label: "Complete Guide", path: "/guide", tags: [] as string[] },
+  { icon: iconGettingStarted, label: "First 30 Days", path: "/getting-started", tags: [] as string[] },
+  { icon: iconBudget, label: "Eat on a Budget", path: "/budget", tags: [] as string[] },
+  { icon: iconAthletic, label: "Athletic Fuel", path: "/athletic", tags: ["exercise"] },
 ];
 
 const greetings: Record<Goal, string> = {

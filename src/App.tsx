@@ -22,6 +22,9 @@ import Stories from "./pages/Stories";
 import Sustain from "./pages/Sustain";
 import Myths from "./pages/Myths";
 import Guide from "./pages/Guide";
+import GettingStarted from "./pages/GettingStarted";
+import BudgetEating from "./pages/BudgetEating";
+import AthleticPerformance from "./pages/AthleticPerformance";
 import ShoppingBag from "./pages/ShoppingBag";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
@@ -61,6 +64,9 @@ const App = () => (
               <Route path="/sustain" element={<Sustain />} />
               <Route path="/myths" element={<Myths />} />
               <Route path="/guide" element={<Guide />} />
+              <Route path="/getting-started" element={<GettingStarted />} />
+              <Route path="/budget" element={<BudgetEating />} />
+              <Route path="/athletic" element={<AthleticPerformance />} />
               <Route path="/shopping-bag" element={<ShoppingBag />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/community" element={<Community />} />
