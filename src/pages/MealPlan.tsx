@@ -575,7 +575,12 @@ const MealPlan = () => {
                   {meal ? (
                     <div className="flex items-start gap-3">
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleCompleted(activeDay, slot); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const wasCompleted = isCompleted(activeDay, slot);
+                          toggleCompleted(activeDay, slot);
+                          if (meal) syncMealToProgress(meal, wasCompleted);
+                        }}
                         className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           isCompleted(activeDay, slot)
                             ? "bg-primary border-primary text-primary-foreground"
