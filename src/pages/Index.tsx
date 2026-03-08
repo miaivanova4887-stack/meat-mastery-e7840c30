@@ -85,7 +85,7 @@ const Index = () => {
   const isFemale = profile.body.sex === "female";
   const heroImage = isFemale ? heroFemale : heroMale;
 
-  const sorted = [...allFeatures].sort((a, b) => {
+  const sorted = [...getFeatures(isFemale)].sort((a, b) => {
     const aMatch = a.tags.some((t) => profile.interests.includes(t as any));
     const bMatch = b.tags.some((t) => profile.interests.includes(t as any));
     if (aMatch && !bMatch) return -1;
