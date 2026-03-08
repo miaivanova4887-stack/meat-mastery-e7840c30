@@ -145,18 +145,23 @@ const Index = () => {
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className={`ios-card p-4 text-left transition-all active:scale-[0.97] group ${
+                className={`ios-card overflow-hidden text-left transition-all active:scale-[0.97] group ${
                   highlighted ? "ring-1 ring-primary/20" : ""
                 }`}
               >
-                <div className="flex items-start justify-between mb-2.5">
-                  <img src={icon} alt={label} className="w-9 h-9 object-cover rounded-lg" />
-                  <ChevronRight size={14} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity mt-1" />
+                <div className="relative h-24 w-full">
+                  <img src={icon} alt={label} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
                 </div>
-                <span className="text-[13px] font-bold text-foreground block">{label}</span>
-                {highlighted && (
-                  <span className="text-[10px] text-primary mt-0.5 font-semibold block">Recommended for you</span>
-                )}
+                <div className="px-3 pb-3 pt-1 flex items-center justify-between">
+                  <div>
+                    <span className="text-[13px] font-bold text-foreground block">{label}</span>
+                    {highlighted && (
+                      <span className="text-[10px] text-primary mt-0.5 font-semibold block">Recommended for you</span>
+                    )}
+                  </div>
+                  <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                </div>
               </button>
             );
           })}
