@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Newspaper, Heart, Zap, BookOpen, RefreshCw, ExternalLink } from "lucide-react";
+import { ArrowLeft, Newspaper, Heart, Zap, BookOpen, RefreshCw, ExternalLink, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,29 +11,28 @@ interface NewsItem {
   id: string;
   title: string;
   summary: string;
-  category: NewsCategory;
+  category: Exclude<NewsCategory, "all">;
   source?: string;
   date: string;
-  liked?: boolean;
 }
 
-const categoryConfig: Record<Exclude<NewsCategory, "all">, { label: string; icon: typeof Newspaper; color: string }> = {
-  science: { label: "Science", icon: BookOpen, color: "bg-blue-500/10 text-blue-600 dark:text-blue-400" },
-  motivation: { label: "Motivation", icon: Zap, color: "bg-primary/10 text-primary" },
-  case_study: { label: "Case Study", icon: Heart, color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-  tip: { label: "Tip", icon: Zap, color: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
+const categoryConfig: Record<Exclude<NewsCategory, "all">, { label: string; icon: typeof Newspaper; color: string; prefKey: string }> = {
+  science: { label: "Science", icon: BookOpen, color: "bg-blue-500/10 text-blue-600 dark:text-blue-400", prefKey: "scienceNews" },
+  motivation: { label: "Motivation", icon: Zap, color: "bg-primary/10 text-primary", prefKey: "motivationNews" },
+  case_study: { label: "Case Study", icon: Heart, color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", prefKey: "caseStudyNews" },
+  tip: { label: "Tip", icon: Zap, color: "bg-amber-500/10 text-amber-600 dark:text-amber-400", prefKey: "tipNews" },
 };
 
-const filters: { value: NewsCategory; label: string }[] = [
-  { value: "all", label: "All" },
-  { value: "science", label: "Science" },
-  { value: "motivation", label: "Motivation" },
-  { value: "case_study", label: "Case Studies" },
-  { value: "tip", label: "Tips" },
-];
+function getNotifPrefs() {
+  try {
+    const stored = localStorage.getItem("carnivore-notif-prefs");
+    return stored ? JSON.parse(stored) : { scienceNews: true, motivationNews: true, caseStudyNews: false, tipNews: true };
+  } catch {
+    return { scienceNews: true, motivationNews: true, caseStudyNews: false, tipNews: true };
+  }
+}
 
-// Placeholder content until backend is connected
-const placeholderNews: NewsItem[] = [
+const allNews: NewsItem[] = [
   {
     id: "1",
     title: "Red Meat and Heart Health: New Meta-Analysis Challenges Old Assumptions",
@@ -86,9 +85,28 @@ const NewsFeed = () => {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [loading] = useState(false);
 
-  const filtered = activeFilter === "all"
-    ? placeholderNews
-    : placeholderNews.filter((n) => n.category === activeFilter);
+  const prefs = getNotifPrefs();
+
+  const enabledCategories = useMemo(() => {
+    return (Object.entries(categoryConfig) as [Exclude<NewsCategory, "all">, typeof categoryConfig[keyof typeof categoryConfig]][])
+      .filter(([, cfg]) => prefs[cfg.prefKey] !== false)
+      .map(([key]) => key);
+  }, [prefs]);
+
+  const availableFilters = useMemo(() => {
+    const base: { value: NewsCategory; label: string }[] = [{ value: "all", label: "All" }];
+    if (enabledCategories.includes("science")) base.push({ value: "science", label: "Science" });
+    if (enabledCategories.includes("motivation")) base.push({ value: "motivation", label: "Motivation" });
+    if (enabledCategories.includes("case_study")) base.push({ value: "case_study", label: "Case Studies" });
+    if (enabledCategories.includes("tip")) base.push({ value: "tip", label: "Tips" });
+    return base;
+  }, [enabledCategories]);
+
+  const filtered = useMemo(() => {
+    const byPrefs = allNews.filter((n) => enabledCategories.includes(n.category));
+    if (activeFilter === "all") return byPrefs;
+    return byPrefs.filter((n) => n.category === activeFilter);
+  }, [activeFilter, enabledCategories]);
 
   const toggleLike = (id: string) => {
     setLikedIds((prev) => {
@@ -118,8 +136,13 @@ const NewsFeed = () => {
           </button>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-foreground">Daily Feed</h1>
-            <p className="text-[11px] text-muted-foreground">Science, stories & motivation</p>
+            <p className="text-[11px] text-muted-foreground">
+              {enabledCategories.length === 4 ? "All categories" : `${enabledCategories.length} categories active`}
+            </p>
           </div>
+          <Button variant="ghost" size="icon" className="text-muted-foreground" onClick={() => navigate("/profile")}>
+            <Settings2 size={18} />
+          </Button>
           <Button variant="ghost" size="icon" className="text-muted-foreground">
             <RefreshCw size={18} />
           </Button>
@@ -127,7 +150,7 @@ const NewsFeed = () => {
 
         {/* Filter chips */}
         <div className="flex gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
-          {filters.map((f) => (
+          {availableFilters.map((f) => (
             <button
               key={f.value}
               onClick={() => setActiveFilter(f.value)}
@@ -145,7 +168,16 @@ const NewsFeed = () => {
 
       {/* Content */}
       <div className="px-4 py-4 space-y-3">
-        {loading ? (
+        {enabledCategories.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <Settings2 size={40} className="mx-auto mb-3 opacity-40" />
+            <p className="text-sm font-medium">No categories enabled</p>
+            <p className="text-xs mt-1">Go to Profile → Alerts to choose your news preferences</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => navigate("/profile")}>
+              Open Settings
+            </Button>
+          </div>
+        ) : loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="bg-card border border-border rounded-xl p-4 space-y-3">
               <Skeleton className="h-4 w-20" />
