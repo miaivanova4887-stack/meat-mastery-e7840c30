@@ -26,6 +26,7 @@ import Auth from "./pages/Auth";
 import Community from "./pages/Community";
 import ProfilePage from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import CmsEditor from "./pages/CmsEditor";
 
 const queryClient = new QueryClient();
 

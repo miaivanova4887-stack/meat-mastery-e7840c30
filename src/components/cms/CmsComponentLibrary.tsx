@@ -34,7 +34,7 @@ export default function CmsComponentLibrary({ onAddComponent }: Props) {
   };
 
   const getIcon = (name: string) => {
-    const Icon = (Icons as Record<string, React.ComponentType<{ className?: string }>>)[name];
+    const Icon = (Icons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[name];
     return Icon ? <Icon className="h-4 w-4 text-muted-foreground shrink-0" /> : null;
   };
 
