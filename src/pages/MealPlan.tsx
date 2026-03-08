@@ -43,6 +43,7 @@ const MealPlan = () => {
   const { customRecipes, addRecipe } = useCustomRecipes();
   const { addItem, hasItem } = useShoppingBag();
   const profile = useUserProfile();
+  const { syncMealToProgress } = useMealSync();
   const userSlots = useMemo(() => activeSlots(profile.mealsPerDay), [profile.mealsPerDay]);
   const { nutritionTargets } = profile;
 
