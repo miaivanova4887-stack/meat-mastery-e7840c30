@@ -212,6 +212,7 @@ const Recipes = () => {
             <span key={t} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
           ))}
         </div>
+        </div>
       </div>
     );
   };
