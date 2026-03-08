@@ -39,7 +39,7 @@ export default function CmsComponentLibrary({ onAddComponent }: Props) {
   };
 
   return (
-    <div className="w-56 border-r border-border bg-card flex flex-col shrink-0">
+    <div className="flex flex-col h-full">
       <div className="p-3 border-b border-border">
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
