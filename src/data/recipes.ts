@@ -1,6 +1,7 @@
 export type DietTier = "lion" | "strict" | "animal_based";
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack" | "staple";
 export type CravingType = "sweets" | "seafood" | "bakery" | "comfort" | "quick" | "organs" | "cheesy" | "crispy" | "grilling";
+export type CuisineType = "western" | "indian" | "thai" | "chinese" | "mexican" | "korean" | "japanese" | "african" | "middle_eastern" | "mediterranean";
 
 export interface Ingredient {
   name: string;
@@ -20,6 +21,7 @@ export interface Recipe {
   meal: MealType;
   cravings: CravingType[];
   ingredients?: Ingredient[];
+  cuisine?: CuisineType[];
 }
 
 export interface CustomRecipe extends Recipe {
@@ -56,6 +58,20 @@ export const CRAVING_LABELS: Record<CravingType | "all", string> = {
   cheesy: "🧀 Cheesy",
   crispy: "🥓 Crispy",
   grilling: "🔥 Grilling",
+};
+
+export const CUISINE_LABELS: Record<CuisineType | "all", string> = {
+  all: "🌍 All Cuisines",
+  western: "🇺🇸 Western",
+  indian: "🇮🇳 Indian",
+  thai: "🇹🇭 Thai",
+  chinese: "🇨🇳 Chinese",
+  mexican: "🇲🇽 Mexican",
+  korean: "🇰🇷 Korean",
+  japanese: "🇯🇵 Japanese",
+  african: "🌍 African",
+  middle_eastern: "🕌 Middle Eastern",
+  mediterranean: "🫒 Mediterranean",
 };
 
 export const recipes: Recipe[] = [
