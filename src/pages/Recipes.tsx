@@ -5,6 +5,7 @@ import { recipes, TIER_LABELS, CRAVING_LABELS, type DietTier, type MealType, typ
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
+import { MealImage } from "@/hooks/useMealImage";
 import { toast } from "sonner";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
 import heroMealFemale from "@/assets/hero-meal-female.jpg";
@@ -103,7 +104,8 @@ const Recipes = () => {
 
     return (
       <div key={r.name + i} className="ios-card p-5 animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <MealImage recipeName={r.name} tags={r.tags} className="w-16 h-16 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-display font-bold text-foreground text-base leading-tight">{r.name}</h3>
