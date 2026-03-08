@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
-import { recipes, TIER_LABELS, CRAVING_LABELS, type DietTier, type MealType, type CravingType, type CustomRecipe, type Ingredient } from "@/data/recipes";
+import { recipes, TIER_LABELS, CRAVING_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
@@ -50,13 +50,15 @@ const Recipes = () => {
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
   const [activeFilter, setActiveFilter] = useState<string>("all"); // "all" | "snack" | CravingType
+  const [activeCuisine, setActiveCuisine] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
 
   const filtered = useMemo(() => {
-    const filter = (list: typeof recipes) =>
-      list.filter((r) => {
+    const userCuisines = profile.cuisines || [];
+    const filter = (list: typeof recipes) => {
+      const matches = list.filter((r) => {
         // Diet tier filter
         if (!r.tier.includes(activeTier)) return false;
         // Upper menu filter
@@ -64,6 +66,10 @@ const Recipes = () => {
           if (r.meal !== "snack") return false;
         } else if (activeFilter !== "all") {
           if (!(r.cravings || []).includes(activeFilter as CravingType)) return false;
+        }
+        // Cuisine filter
+        if (activeCuisine !== "all") {
+          if (!(r.cuisine || []).includes(activeCuisine as CuisineType)) return false;
         }
         // Search
         if (search) {
@@ -73,11 +79,22 @@ const Recipes = () => {
         return true;
       });
 
+      // Sort: cuisine-matching recipes first when no specific cuisine filter
+      if (activeCuisine === "all" && userCuisines.length > 0) {
+        matches.sort((a, b) => {
+          const aMatch = (a.cuisine || []).some(c => userCuisines.includes(c)) ? 1 : 0;
+          const bMatch = (b.cuisine || []).some(c => userCuisines.includes(c)) ? 1 : 0;
+          return bMatch - aMatch;
+        });
+      }
+      return matches;
+    };
+
     return {
       custom: filter(customRecipes) as CustomRecipe[],
       builtIn: filter(recipes),
     };
-  }, [activeTier, activeFilter, search, customRecipes]);
+  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
@@ -275,6 +292,15 @@ const Recipes = () => {
           {Object.entries(FINAL_MENU).map(([key, label]) => (
             <button key={key} onClick={() => setActiveFilter(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeFilter === key ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
+            >{label}</button>
+          ))}
+        </div>
+
+        {/* Cuisine filter */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+          {(Object.entries(CUISINE_LABELS) as [string, string][]).map(([key, label]) => (
+            <button key={key} onClick={() => setActiveCuisine(key)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeCuisine === key ? "bg-primary/20 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
             >{label}</button>
           ))}
         </div>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from "react";
+import type { CuisineType } from "@/data/recipes";
 
 export type Goal = "lose_weight" | "build_muscle" | "maintain" | "improve_health";
 export type Experience = "beginner" | "tried_briefly" | "months_in" | "veteran";
@@ -31,6 +32,7 @@ export interface UserProfile {
   body: BodyStats;
   mealsPerDay: number;
   nutritionTargets: NutritionTargets;
+  cuisines: CuisineType[];
   isComplete: boolean;
 }
 
@@ -77,7 +79,7 @@ function parseProfile(): UserProfile {
   const defaults: UserProfile = {
     goal: "improve_health", experience: "beginner", struggles: [],
     activityLevel: "light", interests: [], body: defaultBody, mealsPerDay: storedMeals,
-    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, isComplete: false,
+    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, cuisines: [], isComplete: false,
   };
   try {
     const raw = localStorage.getItem("carnivore-onboarding-answers");
@@ -106,6 +108,13 @@ function parseProfile(): UserProfile {
     const activityLevel = ACTIVITY_MAP[answers[3] as number] ?? "light";
     const mealsPerDay = parseInt(localStorage.getItem("carnivore-meals-per-day") || "3") || 3;
 
+    // Parse cuisine preferences
+    let cuisines: CuisineType[] = [];
+    try {
+      const cuisineRaw = localStorage.getItem("carnivore-cuisines");
+      if (cuisineRaw) cuisines = JSON.parse(cuisineRaw);
+    } catch { /* ignore */ }
+
     return {
       goal,
       experience: EXP_MAP[answers[1] as number] ?? "beginner",
@@ -115,6 +124,7 @@ function parseProfile(): UserProfile {
       body,
       mealsPerDay,
       nutritionTargets: computeTargets(goal, activityLevel, body),
+      cuisines,
       isComplete: true,
     };
   } catch {

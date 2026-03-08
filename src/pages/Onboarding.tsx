@@ -125,6 +125,32 @@ const steps: OnboardingStep[] = [
   },
   {
     type: "options",
+    title: "What cuisines inspire you?",
+    subtitle: "We'll prioritise recipes from your favourite food cultures",
+    icon: Target,
+    multiSelect: true,
+    options: [
+      { label: "Indian", emoji: "🇮🇳", desc: "Tandoori, keema, spiced meats" },
+      { label: "Thai", emoji: "🇹🇭", desc: "Lemongrass, grilled meats" },
+      { label: "Chinese", emoji: "🇨🇳", desc: "Five-spice, stir-fry, Peking" },
+      { label: "Mexican", emoji: "🇲🇽", desc: "Carne asada, carnitas, chorizo" },
+    ],
+  },
+  {
+    type: "options",
+    title: "Any more cuisines?",
+    subtitle: "Select all that appeal to you",
+    icon: Target,
+    multiSelect: true,
+    options: [
+      { label: "Korean", emoji: "🇰🇷", desc: "Bulgogi, galbi, samgyeopsal" },
+      { label: "Japanese", emoji: "🇯🇵", desc: "Wagyu, sashimi, yakitori" },
+      { label: "African", emoji: "🌍", desc: "Suya, boerewors, kitfo" },
+      { label: "Middle Eastern", emoji: "🕌", desc: "Shawarma, kofta, kebabs" },
+    ],
+  },
+  {
+    type: "options",
     title: "What interests you most?",
     subtitle: "Select all you'd like to explore",
     icon: Brain,
@@ -185,7 +211,7 @@ const Onboarding = () => {
           newAnswers[4] ?? 0,       // experience
           newAnswers[5] ?? [],      // struggles
           newAnswers[6] ?? 0,       // activity
-          newAnswers[8] ?? [],      // interests
+          newAnswers[10] ?? [],     // interests (now at step 10)
         ];
         localStorage.setItem(STORAGE_KEY, "true");
         localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
@@ -204,6 +230,14 @@ const Onboarding = () => {
           healthTarget: inputValues.healthTarget || "",
         };
         localStorage.setItem("carnivore-onboarding-body", JSON.stringify(bodyData));
+
+        // Save cuisine preferences (steps 8 and 9)
+        const CUISINE_MAP_1 = ["indian", "thai", "chinese", "mexican"];
+        const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
+        const selectedCuisines: string[] = [];
+        ((newAnswers[8] as number[]) || []).forEach(i => { if (CUISINE_MAP_1[i]) selectedCuisines.push(CUISINE_MAP_1[i]); });
+        ((newAnswers[9] as number[]) || []).forEach(i => { if (CUISINE_MAP_2[i]) selectedCuisines.push(CUISINE_MAP_2[i]); });
+        localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
 
         window.dispatchEvent(new Event("profile-update"));
         navigate("/", { replace: true });
