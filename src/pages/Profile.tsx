@@ -423,7 +423,7 @@ const Profile = () => {
                 {editingField === "display_name" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("display_name")} className="text-primary"><Check size={14} /></button>
-                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><X size={14} /></button>
+                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><XIcon size={14} /></button>
                   </div>
                 ) : (
                   <button onClick={() => setEditingField("display_name")} className="text-muted-foreground"><Pencil size={14} /></button>
@@ -449,7 +449,7 @@ const Profile = () => {
                 {editingField === "bio" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("bio")} className="text-primary"><Check size={14} /></button>
-                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><X size={14} /></button>
+                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><XIcon size={14} /></button>
                   </div>
                 ) : (
                   <button onClick={() => setEditingField("bio")} className="text-muted-foreground"><Pencil size={14} /></button>
