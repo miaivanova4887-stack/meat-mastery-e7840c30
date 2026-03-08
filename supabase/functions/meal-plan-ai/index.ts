@@ -51,7 +51,7 @@ serve(async (req) => {
   }
 
   try {
-    const { mode, dietTier, preferences, mealsPerDay, nutritionTargets, goal } = await req.json();
+    const { mode, dietTier, preferences, mealsPerDay, nutritionTargets, goal, cuisines } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       return new Response(
@@ -71,6 +71,9 @@ serve(async (req) => {
       userPrompt += ` User goal: ${goal.replace("_", " ")}.`;
     }
     userPrompt += ` The user eats ${mealCount} meals per day.`;
+    if (cuisines?.length) {
+      userPrompt += ` Preferred cuisines: ${cuisines.join(", ")}. Prioritize recipes from these food cultures while keeping them carnivore-compliant.`;
+    }
     
     if (preferences) {
       userPrompt += ` Preferences: ${preferences}`;
