@@ -11,6 +11,8 @@ import iconExercise from "@/assets/icon-exercise.png";
 import iconCravings from "@/assets/icon-cravings.png";
 import iconStories from "@/assets/icon-stories.png";
 import iconSustain from "@/assets/icon-sustain.png";
+import iconMyths from "@/assets/icon-myths.png";
+import iconGuide from "@/assets/icon-guide.png";
 import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -38,6 +40,8 @@ const allFeatures = [
   { icon: iconCravings, label: "Cravings", path: "/cravings", tags: [] },
   { icon: iconStories, label: "Success Stories", path: "/stories", tags: [] },
   { icon: iconSustain, label: "Sustain Results", path: "/sustain", tags: [] },
+  { icon: iconMyths, label: "Myths Busted", path: "/myths", tags: [] as string[] },
+  { icon: iconGuide, label: "Complete Guide", path: "/guide", tags: [] as string[] },
 ];
 
 const greetings: Record<Goal, string> = {
