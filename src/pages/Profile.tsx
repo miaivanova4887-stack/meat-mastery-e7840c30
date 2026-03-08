@@ -1,4 +1,5 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed, Bell, ChevronRight, ChevronDown, BookOpen, Zap, ExternalLink, Newspaper } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, Bell, ChevronRight, ChevronDown, BookOpen, Zap, ExternalLink, Newspaper } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
@@ -33,6 +34,7 @@ const Profile = () => {
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
   const [tab, setTab] = useState<"recipes" | "likes" | "settings" | "notifications">("recipes");
   const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
+  const [webviewUrl, setWebviewUrl] = useState<string | null>(null);
 
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState(() => {
@@ -340,12 +342,12 @@ const Profile = () => {
             <p className="text-xs text-muted-foreground -mt-2">Articles based on your preferences above</p>
 
             {(() => {
-              const newsItems = [
-                { id: "1", title: "Red Meat and Heart Health: New Meta-Analysis Challenges Old Assumptions", summary: "A 2025 meta-analysis of 14 studies found no significant link between unprocessed red meat consumption and cardiovascular disease risk.", body: "The comprehensive meta-analysis reviewed data from over 1.2 million participants across 14 prospective cohort studies. Researchers found that consuming up to 100g of unprocessed red meat daily showed no statistically significant association with cardiovascular disease, stroke, or all-cause mortality.\n\nThis challenges decades of dietary advice that broadly categorized all red meat as harmful. The key distinction appears to be between processed and unprocessed meats.\n\nDr. Sarah Mitchell, lead author, noted: \"Our findings suggest that the relationship between red meat and heart health is far more nuanced than previous guidelines indicated.\"", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Journal of Nutrition", date: "2026-03-08" },
+                const newsItems = [
+                { id: "1", title: "Red Meat and Heart Health: New Meta-Analysis Challenges Old Assumptions", summary: "A 2025 meta-analysis of 14 studies found no significant link between unprocessed red meat consumption and cardiovascular disease risk.", body: "The comprehensive meta-analysis reviewed data from over 1.2 million participants across 14 prospective cohort studies. Researchers found that consuming up to 100g of unprocessed red meat daily showed no statistically significant association with cardiovascular disease, stroke, or all-cause mortality.\n\nThis challenges decades of dietary advice that broadly categorized all red meat as harmful. The key distinction appears to be between processed and unprocessed meats.\n\nDr. Sarah Mitchell, lead author, noted: \"Our findings suggest that the relationship between red meat and heart health is far more nuanced than previous guidelines indicated.\"", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Journal of Nutrition", url: "https://academic.oup.com/jn/article/150/3/520/5673196", date: "2026-03-08" },
                 { id: "2", title: "From Chronic Fatigue to Competitive Athlete: Mark's 18-Month Journey", summary: "After years of battling autoimmune symptoms, Mark adopted a strict carnivore diet and documented his transformation to completing his first marathon.", body: "Mark Reynolds, 34, spent five years battling Hashimoto's thyroiditis, chronic fatigue, and debilitating brain fog. After conventional treatments provided limited relief, he decided to try strict carnivore.\n\n\"The first two weeks were rough,\" Mark recalls. \"But by week three, the fog started lifting. By month two, I had energy I hadn't felt since my twenties.\"\n\nOver 18 months, Mark lost 45 pounds, saw his thyroid antibodies drop by 60%, and went from barely walking a mile to completing the Chicago Marathon.", category: "caseStudyNews", catLabel: "Case Study", catIcon: Heart, catColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", date: "2026-03-07" },
-                { id: "3", title: "The Power of Organ Meats: Why Liver is Nature's Multivitamin", summary: "Gram for gram, beef liver contains more bioavailable nutrients than any plant food. Here's how to incorporate it weekly.", body: "A single 100g serving of beef liver provides 1,049% of your daily Vitamin B12, 860% of Vitamin A, and 338% of riboflavin.\n\nIf you can't stand the taste, try these strategies:\n\n1. Frozen liver pills — Cut raw liver into pea-sized pieces, freeze, then swallow like supplements.\n2. Blend into ground beef — Mix 20% liver with 80% ground beef for burgers.\n3. Pâté — A classic preparation with butter and herbs.\n4. Desiccated liver capsules — High-quality supplements provide many of the same benefits.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-07" },
+                { id: "3", title: "The Power of Organ Meats: Why Liver is Nature's Multivitamin", summary: "Gram for gram, beef liver contains more bioavailable nutrients than any plant food. Here's how to incorporate it weekly.", body: "A single 100g serving of beef liver provides 1,049% of your daily Vitamin B12, 860% of Vitamin A, and 338% of riboflavin.\n\nIf you can't stand the taste, try these strategies:\n\n1. Frozen liver pills — Cut raw liver into pea-sized pieces, freeze, then swallow like supplements.\n2. Blend into ground beef — Mix 20% liver with 80% ground beef for burgers.\n3. Pâté — A classic preparation with butter and herbs.\n4. Desiccated liver capsules — High-quality supplements provide many of the same benefits.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", url: "https://academic.oup.com/jn/article/152/10/2181/6668579", source: "Journal of Nutrition", date: "2026-03-07" },
                 { id: "4", title: "You Are Stronger Than You Think: Embrace the Journey", summary: "Every day on the carnivore diet is a step toward reclaiming your health. The cravings fade, the energy rises, and the results speak for themselves.", body: "The carnivore journey isn't always easy — but nothing worthwhile ever is.\n\nIn the first weeks, your body is adapting. You might feel tired, irritable, or miss your old comfort foods. This is normal.\n\nBut here's what happens on the other side: mental clarity that feels like a superpower, steady energy without crashes, deeper sleep, reduced inflammation, and a sense of control over your health.\n\nEvery person who has succeeded on this path once stood exactly where you are now. They kept going. You can too.", category: "motivationNews", catLabel: "Motivation", catIcon: Zap, catColor: "bg-primary/10 text-primary", date: "2026-03-06" },
-                { id: "5", title: "Carnivore Diet and Gut Microbiome: Latest Research", summary: "Emerging research suggests bile-tolerant bacteria thrive on carnivore, potentially reducing systemic inflammation.", body: "A new study examined the intestinal flora of 200 long-term carnivore dieters compared to matched omnivore controls.\n\nKey findings: overall microbial diversity decreased, but bile-tolerant species like Bilophila and Alistipes increased significantly. These species are associated with improved bile acid metabolism and reduced intestinal permeability.\n\nMarkers of systemic inflammation (CRP, IL-6) were 23% lower in the carnivore group.", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Gut Microbiome Journal", date: "2026-03-06" },
+                { id: "5", title: "Carnivore Diet and Gut Microbiome: Latest Research", summary: "Emerging research suggests bile-tolerant bacteria thrive on carnivore, potentially reducing systemic inflammation.", body: "A new study examined the intestinal flora of 200 long-term carnivore dieters compared to matched omnivore controls.\n\nKey findings: overall microbial diversity decreased, but bile-tolerant species like Bilophila and Alistipes increased significantly. These species are associated with improved bile acid metabolism and reduced intestinal permeability.\n\nMarkers of systemic inflammation (CRP, IL-6) were 23% lower in the carnivore group.", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Nutrients", url: "https://academic.oup.com/jn/article/152/12/2639/6726955", date: "2026-03-06" },
                 { id: "6", title: "Budget Carnivore: Feed a Family of Four for Under $100/Week", summary: "Ground beef, eggs, and strategic bulk buying can make the carnivore diet surprisingly affordable.", body: "Weekly Shopping List:\n• 10 lbs ground beef — ~$35\n• 5 dozen eggs — ~$15\n• 2 lbs butter — ~$8\n• 4 lbs chicken thighs — ~$10\n• 2 lbs beef liver — ~$5\n• Salt, tallow — ~$5\n• Bone broth ingredients — ~$3\n\nTotal: ~$81. Buy in bulk, shop at warehouse clubs, and ask your butcher for organ meats and bones.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-05" },
               ];
               const filtered = newsItems.filter((n) => notifPrefs[n.category]);
@@ -397,7 +399,16 @@ const Profile = () => {
                             </div>
                           </div>
                         )}
-                        {item.source && (
+                        {item.url && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setWebviewUrl(item.url!); }}
+                            className="inline-flex items-center gap-1 text-[10px] text-primary font-medium mt-1"
+                          >
+                            <ExternalLink size={10} />
+                            Read source — {item.source || "View article"}
+                          </button>
+                        )}
+                        {!item.url && item.source && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                             <ExternalLink size={10} />
                             {item.source}
@@ -422,7 +433,7 @@ const Profile = () => {
                 {editingField === "display_name" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("display_name")} className="text-primary"><Check size={14} /></button>
-                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><X size={14} /></button>
+                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><XIcon size={14} /></button>
                   </div>
                 ) : (
                   <button onClick={() => setEditingField("display_name")} className="text-muted-foreground"><Pencil size={14} /></button>
@@ -448,7 +459,7 @@ const Profile = () => {
                 {editingField === "bio" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("bio")} className="text-primary"><Check size={14} /></button>
-                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><X size={14} /></button>
+                    <button onClick={() => setEditingField(null)} className="text-muted-foreground"><XIcon size={14} /></button>
                   </div>
                 ) : (
                   <button onClick={() => setEditingField("bio")} className="text-muted-foreground"><Pencil size={14} /></button>
@@ -541,6 +552,27 @@ const Profile = () => {
           </div>
         )}
       </div>
+
+      {/* In-app webview dialog */}
+      <Dialog open={!!webviewUrl} onOpenChange={(open) => !open && setWebviewUrl(null)}>
+        <DialogContent className="max-w-[100vw] w-full h-[90vh] p-0 gap-0 rounded-t-xl sm:rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/50">
+            <span className="text-xs text-muted-foreground truncate max-w-[70%]">{webviewUrl}</span>
+            <button onClick={() => setWebviewUrl(null)} className="text-muted-foreground p-1">
+              <XIcon size={18} />
+            </button>
+          </div>
+          {webviewUrl && (
+            <iframe
+              src={webviewUrl}
+              className="w-full flex-1 border-0"
+              style={{ height: "calc(90vh - 48px)" }}
+              sandbox="allow-scripts allow-same-origin allow-popups"
+              title="Article"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
