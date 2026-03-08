@@ -16,8 +16,8 @@ interface Props {
 type AggMode = "daily" | "weekly" | "monthly";
 
 function getAggMode(days: number): AggMode {
-  if (days <= 30) return "daily";
-  if (days <= 180) return "weekly";
+  if (days <= 7) return "daily";
+  if (days <= 30) return "weekly";
   return "monthly";
 }
 
