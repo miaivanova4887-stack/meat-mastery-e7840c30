@@ -60,6 +60,7 @@ const App = () => (
               <Route path="/community" element={<Community />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/cms" element={<CmsEditor />} />
+              <Route path="/p/:slug" element={<CmsPageView />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
