@@ -76,6 +76,7 @@ const App = () => (
               <Route path="/progress/sync" element={<HealthSync />} />
               <Route path="/cms" element={<CmsEditor />} />
               <Route path="/p/:slug" element={<CmsPageView />} />
+              <Route path="/news" element={<NewsFeed />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
