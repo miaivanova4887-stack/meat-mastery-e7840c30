@@ -26,6 +26,7 @@ import Auth from "./pages/Auth";
 import Community from "./pages/Community";
 import ProfilePage from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import CmsEditor from "./pages/CmsEditor";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/community" element={<Community />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/cms" element={<CmsEditor />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
