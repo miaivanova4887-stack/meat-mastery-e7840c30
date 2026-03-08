@@ -661,6 +661,7 @@ const MealPlan = () => {
                       </button>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             );
