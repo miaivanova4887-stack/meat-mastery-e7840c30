@@ -19,6 +19,13 @@ import { subscribeToPush, sendPushToAll } from "@/lib/pushNotifications";
 
 const KETOSIS_TARGET_HOURS = 72;
 
+const PHASE_BODY_DESCRIPTIONS: Record<number, string> = {
+  0: "Your liver is burning through its glycogen reserves. Glucose levels drop, triggering the metabolic switch toward fat oxidation.",
+  1: "Fatty acids are being mobilised from adipose tissue and converted to ketone bodies in the liver. Insulin levels fall sharply.",
+  2: "Mitochondria are adapting to burn ketones efficiently. Autophagy accelerates — cells are recycling damaged proteins and organelles.",
+  3: "Ketones (BHB) are now your brain's primary fuel. Inflammation markers drop, growth hormone surges, and cellular repair peaks.",
+};
+
 interface PhaseInfo {
   name: string;
   range: string;
