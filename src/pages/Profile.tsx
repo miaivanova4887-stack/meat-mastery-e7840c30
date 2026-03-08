@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed, Bell, ChevronRight, BookOpen, Zap, ExternalLink, Newspaper } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed, Bell, ChevronRight, ChevronDown, BookOpen, Zap, ExternalLink, Newspaper } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
@@ -32,6 +32,7 @@ const Profile = () => {
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
   const [tab, setTab] = useState<"recipes" | "likes" | "settings" | "notifications">("recipes");
+  const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
 
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState(() => {
@@ -340,12 +341,12 @@ const Profile = () => {
 
             {(() => {
               const newsItems = [
-                { id: "1", title: "Red Meat and Heart Health: New Meta-Analysis Challenges Old Assumptions", summary: "A 2025 meta-analysis of 14 studies found no significant link between unprocessed red meat consumption and cardiovascular disease risk.", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Journal of Nutrition", date: "2026-03-08" },
-                { id: "2", title: "From Chronic Fatigue to Competitive Athlete: Mark's 18-Month Journey", summary: "After years of battling autoimmune symptoms, Mark adopted a strict carnivore diet and documented his transformation to completing his first marathon.", category: "caseStudyNews", catLabel: "Case Study", catIcon: Heart, catColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", date: "2026-03-07" },
-                { id: "3", title: "The Power of Organ Meats: Why Liver is Nature's Multivitamin", summary: "Gram for gram, beef liver contains more bioavailable nutrients than any plant food. Here's how to incorporate it weekly.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-07" },
-                { id: "4", title: "You Are Stronger Than You Think: Embrace the Journey", summary: "Every day on the carnivore diet is a step toward reclaiming your health. The cravings fade, the energy rises, and the results speak for themselves.", category: "motivationNews", catLabel: "Motivation", catIcon: Zap, catColor: "bg-primary/10 text-primary", date: "2026-03-06" },
-                { id: "5", title: "Carnivore Diet and Gut Microbiome: Latest Research", summary: "Emerging research suggests bile-tolerant bacteria thrive on carnivore, potentially reducing systemic inflammation.", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Gut Microbiome Journal", date: "2026-03-06" },
-                { id: "6", title: "Budget Carnivore: Feed a Family of Four for Under $100/Week", summary: "Ground beef, eggs, and strategic bulk buying can make the carnivore diet surprisingly affordable.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-05" },
+                { id: "1", title: "Red Meat and Heart Health: New Meta-Analysis Challenges Old Assumptions", summary: "A 2025 meta-analysis of 14 studies found no significant link between unprocessed red meat consumption and cardiovascular disease risk.", body: "The comprehensive meta-analysis reviewed data from over 1.2 million participants across 14 prospective cohort studies. Researchers found that consuming up to 100g of unprocessed red meat daily showed no statistically significant association with cardiovascular disease, stroke, or all-cause mortality.\n\nThis challenges decades of dietary advice that broadly categorized all red meat as harmful. The key distinction appears to be between processed and unprocessed meats.\n\nDr. Sarah Mitchell, lead author, noted: \"Our findings suggest that the relationship between red meat and heart health is far more nuanced than previous guidelines indicated.\"", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Journal of Nutrition", date: "2026-03-08" },
+                { id: "2", title: "From Chronic Fatigue to Competitive Athlete: Mark's 18-Month Journey", summary: "After years of battling autoimmune symptoms, Mark adopted a strict carnivore diet and documented his transformation to completing his first marathon.", body: "Mark Reynolds, 34, spent five years battling Hashimoto's thyroiditis, chronic fatigue, and debilitating brain fog. After conventional treatments provided limited relief, he decided to try strict carnivore.\n\n\"The first two weeks were rough,\" Mark recalls. \"But by week three, the fog started lifting. By month two, I had energy I hadn't felt since my twenties.\"\n\nOver 18 months, Mark lost 45 pounds, saw his thyroid antibodies drop by 60%, and went from barely walking a mile to completing the Chicago Marathon.", category: "caseStudyNews", catLabel: "Case Study", catIcon: Heart, catColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", date: "2026-03-07" },
+                { id: "3", title: "The Power of Organ Meats: Why Liver is Nature's Multivitamin", summary: "Gram for gram, beef liver contains more bioavailable nutrients than any plant food. Here's how to incorporate it weekly.", body: "A single 100g serving of beef liver provides 1,049% of your daily Vitamin B12, 860% of Vitamin A, and 338% of riboflavin.\n\nIf you can't stand the taste, try these strategies:\n\n1. Frozen liver pills — Cut raw liver into pea-sized pieces, freeze, then swallow like supplements.\n2. Blend into ground beef — Mix 20% liver with 80% ground beef for burgers.\n3. Pâté — A classic preparation with butter and herbs.\n4. Desiccated liver capsules — High-quality supplements provide many of the same benefits.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-07" },
+                { id: "4", title: "You Are Stronger Than You Think: Embrace the Journey", summary: "Every day on the carnivore diet is a step toward reclaiming your health. The cravings fade, the energy rises, and the results speak for themselves.", body: "The carnivore journey isn't always easy — but nothing worthwhile ever is.\n\nIn the first weeks, your body is adapting. You might feel tired, irritable, or miss your old comfort foods. This is normal.\n\nBut here's what happens on the other side: mental clarity that feels like a superpower, steady energy without crashes, deeper sleep, reduced inflammation, and a sense of control over your health.\n\nEvery person who has succeeded on this path once stood exactly where you are now. They kept going. You can too.", category: "motivationNews", catLabel: "Motivation", catIcon: Zap, catColor: "bg-primary/10 text-primary", date: "2026-03-06" },
+                { id: "5", title: "Carnivore Diet and Gut Microbiome: Latest Research", summary: "Emerging research suggests bile-tolerant bacteria thrive on carnivore, potentially reducing systemic inflammation.", body: "A new study examined the intestinal flora of 200 long-term carnivore dieters compared to matched omnivore controls.\n\nKey findings: overall microbial diversity decreased, but bile-tolerant species like Bilophila and Alistipes increased significantly. These species are associated with improved bile acid metabolism and reduced intestinal permeability.\n\nMarkers of systemic inflammation (CRP, IL-6) were 23% lower in the carnivore group.", category: "scienceNews", catLabel: "Science", catIcon: BookOpen, catColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", source: "Gut Microbiome Journal", date: "2026-03-06" },
+                { id: "6", title: "Budget Carnivore: Feed a Family of Four for Under $100/Week", summary: "Ground beef, eggs, and strategic bulk buying can make the carnivore diet surprisingly affordable.", body: "Weekly Shopping List:\n• 10 lbs ground beef — ~$35\n• 5 dozen eggs — ~$15\n• 2 lbs butter — ~$8\n• 4 lbs chicken thighs — ~$10\n• 2 lbs beef liver — ~$5\n• Salt, tallow — ~$5\n• Bone broth ingredients — ~$3\n\nTotal: ~$81. Buy in bulk, shop at warehouse clubs, and ask your butcher for organ meats and bones.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", date: "2026-03-05" },
               ];
               const filtered = newsItems.filter((n) => notifPrefs[n.category]);
               if (filtered.length === 0) return (
@@ -365,17 +366,37 @@ const Profile = () => {
                 <div className="space-y-3">
                   {filtered.map((item) => {
                     const CatIcon = item.catIcon;
+                    const isExpanded = expandedNewsId === item.id;
                     return (
-                      <article key={item.id} onClick={() => navigate("/news")} className="ios-card p-4 space-y-2 cursor-pointer active:scale-[0.98] transition-transform">
+                      <article
+                        key={item.id}
+                        onClick={() => setExpandedNewsId(isExpanded ? null : item.id)}
+                        className="ios-card p-4 space-y-2 cursor-pointer active:scale-[0.99] transition-all"
+                      >
                         <div className="flex items-center justify-between">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${item.catColor}`}>
                             <CatIcon size={10} />
                             {item.catLabel}
                           </span>
-                          <span className="text-[10px] text-muted-foreground">{formatDate(item.date)}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground">{formatDate(item.date)}</span>
+                            <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                          </div>
                         </div>
                         <h3 className="text-sm font-semibold text-foreground leading-snug">{item.title}</h3>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{item.summary}</p>
+                        {!isExpanded && (
+                          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{item.summary}</p>
+                        )}
+                        {isExpanded && (
+                          <div className="animate-fade-in-up">
+                            <p className="text-xs text-muted-foreground leading-relaxed mb-3">{item.summary}</p>
+                            <div className="border-t border-border/40 pt-3 space-y-2">
+                              {item.body.split("\n\n").map((paragraph, i) => (
+                                <p key={i} className="text-xs text-foreground/90 leading-relaxed whitespace-pre-line">{paragraph}</p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {item.source && (
                           <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                             <ExternalLink size={10} />
