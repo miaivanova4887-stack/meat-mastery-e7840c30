@@ -97,6 +97,8 @@ const steps: OnboardingStep[] = [
       { label: "Low energy", emoji: "😴" },
       { label: "Digestive issues", emoji: "🫤" },
       { label: "Social pressure", emoji: "👥" },
+      { label: "New recipe ideas", emoji: "💡", desc: "Need exciting meal inspiration" },
+      { label: "Discipline", emoji: "🎯", desc: "Cooking, planning & staying consistent" },
     ],
   },
   {
@@ -160,6 +162,8 @@ const steps: OnboardingStep[] = [
       { label: "Exercise routines", emoji: "🏋️" },
       { label: "Ketosis tracking", emoji: "⏱️" },
       { label: "Mental clarity tips", emoji: "🧠" },
+      { label: "Progress tracking", emoji: "📊", desc: "Monitor body & health metrics" },
+      { label: "Motivation", emoji: "🔥", desc: "Stay inspired and accountable" },
     ],
   },
 ];
