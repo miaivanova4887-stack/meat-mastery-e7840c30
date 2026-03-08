@@ -6,6 +6,7 @@ import { CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import CategoryView from "@/components/progress/CategoryView";
 import NutrientBreakdown from "@/components/progress/NutrientBreakdown";
 import PhotoRecognition from "@/components/progress/PhotoRecognition";
+import VoiceRecognition from "@/components/progress/VoiceRecognition";
 import {
   Select,
   SelectContent,
@@ -61,6 +62,9 @@ const Progress = () => {
 
         {/* Photo Recognition */}
         <PhotoRecognition />
+
+        {/* Voice Recognition */}
+        <VoiceRecognition />
 
         {/* Category dropdown */}
         <Select value={category} onValueChange={(v) => setCategory(v as ProgressCategory)}>

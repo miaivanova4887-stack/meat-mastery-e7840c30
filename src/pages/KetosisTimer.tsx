@@ -1,6 +1,7 @@
-import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff } from "lucide-react";
+import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, PlayCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
+import ketosisPhase2Video from "@/assets/ketosis-phase-2.mp4";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";

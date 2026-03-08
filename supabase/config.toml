@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.meal-plan-ai]
 verify_jwt = false
+
+[functions.voice-log]
+verify_jwt = false
