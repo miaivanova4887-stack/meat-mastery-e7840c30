@@ -64,6 +64,9 @@ const Progress = () => {
         {/* Photo Recognition */}
         <PhotoRecognition />
 
+        {/* Barcode Scanner */}
+        <BarcodeScanner />
+
         {/* Voice Recognition */}
         <VoiceRecognition />
 
