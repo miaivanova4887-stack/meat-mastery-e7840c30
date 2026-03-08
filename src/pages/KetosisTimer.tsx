@@ -1,11 +1,12 @@
 import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, PlayCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
+import ketosisPhase1Video from "@/assets/ketosis-phase-1.mp4";
 import ketosisPhase2Video from "@/assets/ketosis-phase-2.mp4";
 import ketosisPhase4Video from "@/assets/ketosis-phase-4.mp4";
 
 const PHASE_VIDEOS: Record<number, string | null> = {
-  0: null, // Phase 1 - generation pending
+  0: ketosisPhase1Video,
   1: ketosisPhase2Video,
   2: null, // Phase 3 - generation pending
   3: ketosisPhase4Video,
