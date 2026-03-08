@@ -201,6 +201,7 @@ const Profile = () => {
         {([
           { key: "recipes", label: "My Recipes", icon: ChefHat },
           { key: "likes", label: "Liked", icon: Heart },
+          { key: "notifications", label: "Alerts", icon: Bell },
           { key: "settings", label: "Settings", icon: Settings },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
