@@ -1,4 +1,4 @@
-import { ArrowLeft, Target, RefreshCw, Users, BarChart3, Calendar, BookHeart } from "lucide-react";
+import { ArrowLeft, Target, RefreshCw, Users, BarChart3, Calendar, BookHeart, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 
@@ -22,20 +22,18 @@ const Sustain = () => {
       <div className="p-4">
         <p className="text-xs text-muted-foreground mb-4">Long-term success requires more than willpower. Build systems that make carnivore your default.</p>
         <div className="space-y-3">
-          {tips.map(({ icon: Icon, title, desc, link }, i) => {
-            const card = (
-              <div key={i} className={`bg-card border border-border rounded-lg p-4 animate-fade-in-up ${link ? "cursor-pointer hover:border-primary/40 transition-colors" : ""}`} style={{ animationDelay: `${i * 0.05}s` }} onClick={link ? () => navigate(link) : undefined}>
+          {tips.map(({ icon: Icon, title, desc, link }, i) => (
+              <div key={i} className={`bg-card border border-border rounded-lg p-4 animate-fade-in-up ${link ? "cursor-pointer hover:border-primary/40 active:scale-[0.98] transition-all" : ""}`} style={{ animationDelay: `${i * 0.05}s` }} onClick={link ? () => navigate(link) : undefined}>
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-md bg-gold/10"><Icon size={18} className="text-gold" /></div>
-                  <div>
+                  <div className="p-2 rounded-md bg-accent"><Icon size={18} className="text-accent-foreground" /></div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-foreground text-sm">{title}</h3>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{desc}</p>
                   </div>
+                  {link && <ChevronRight size={16} className="text-muted-foreground shrink-0 mt-1" />}
                 </div>
               </div>
-            );
-            return card;
-          })}
+          ))}
         </div>
       </div>
       <MotivationCTA />
