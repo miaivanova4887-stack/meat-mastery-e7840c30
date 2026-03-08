@@ -557,6 +557,11 @@ const MealPlan = () => {
                     }
                   }}
                 >
+                  {meal && (
+                    <MealImage recipeName={meal.recipeName} className="w-full h-32" />
+                  )}
+
+                  <div className="p-4">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
@@ -590,7 +595,6 @@ const MealPlan = () => {
                       >
                         <Check size={12} />
                       </button>
-                      <MealImage recipeName={meal.recipeName} className="w-12 h-12 flex-shrink-0" />
                       <div className={`flex-1 ${isCompleted(activeDay, slot) ? "opacity-60" : ""}`}>
                         <h3 className={`font-display font-bold text-[15px] ${isCompleted(activeDay, slot) ? "text-primary" : "text-foreground"}`}>
                           {isCompleted(activeDay, slot) && <Check size={13} className="inline mr-1 -mt-0.5" />}
