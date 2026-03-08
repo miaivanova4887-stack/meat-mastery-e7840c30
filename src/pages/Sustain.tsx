@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 
 const tips = [
-  { icon: Target, title: "Set Non-Scale Goals", desc: "Track energy, sleep quality, mental clarity, and strength gains — not just weight. These victories keep motivation alive long-term." },
-  { icon: Calendar, title: "Meal Prep Weekly", desc: "Cook in bulk on weekends. Pre-cooked ground beef, hard-boiled eggs, and pre-seasoned steaks make compliance effortless during busy weeks." },
-  { icon: RefreshCw, title: "Rotate Your Proteins", desc: "Avoid food fatigue by rotating beef, lamb, pork, seafood, and organ meats. Variety within carnivore keeps meals exciting." },
+  { icon: Target, title: "Set Non-Scale Goals", desc: "Track energy, sleep quality, mental clarity, and strength gains — not just weight. These victories keep motivation alive long-term.", link: "/progress" },
+  { icon: Calendar, title: "Meal Prep Weekly", desc: "Cook in bulk on weekends. Pre-cooked ground beef, hard-boiled eggs, and pre-seasoned steaks make compliance effortless during busy weeks.", link: "/meal-plan" },
+  { icon: RefreshCw, title: "Rotate Your Proteins", desc: "Avoid food fatigue by rotating beef, lamb, pork, seafood, and organ meats. Variety within carnivore keeps meals exciting.", link: "/ingredients" },
   { icon: Users, title: "Join a Community", desc: "Connect with other carnivores online or locally. Accountability and shared experiences make the lifestyle feel natural, not restrictive.", link: "/community" },
-  { icon: BarChart3, title: "Track Your Progress", desc: "Take monthly photos, track body measurements, and log how you feel. Reviewing progress during tough weeks reignites motivation." },
-  { icon: BookHeart, title: "Embrace It as Lifestyle", desc: "This isn't a 30-day challenge — it's how humans ate for millennia. Shift your mindset from 'diet' to 'the way I eat.' Sustainability follows identity." },
+  { icon: BarChart3, title: "Track Your Progress", desc: "Take monthly photos, track body measurements, and log how you feel. Reviewing progress during tough weeks reignites motivation.", link: "/progress" },
+  { icon: BookHeart, title: "Embrace It as Lifestyle", desc: "This isn't a 30-day challenge — it's how humans ate for millennia. Shift your mindset from 'diet' to 'the way I eat.' Sustainability follows identity.", link: "/guide" },
 ];
 
 const Sustain = () => {
