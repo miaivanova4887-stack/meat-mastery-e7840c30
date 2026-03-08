@@ -552,6 +552,27 @@ const Profile = () => {
           </div>
         )}
       </div>
+
+      {/* In-app webview dialog */}
+      <Dialog open={!!webviewUrl} onOpenChange={(open) => !open && setWebviewUrl(null)}>
+        <DialogContent className="max-w-[100vw] w-full h-[90vh] p-0 gap-0 rounded-t-xl sm:rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/50">
+            <span className="text-xs text-muted-foreground truncate max-w-[70%]">{webviewUrl}</span>
+            <button onClick={() => setWebviewUrl(null)} className="text-muted-foreground p-1">
+              <XIcon size={18} />
+            </button>
+          </div>
+          {webviewUrl && (
+            <iframe
+              src={webviewUrl}
+              className="w-full flex-1 border-0"
+              style={{ height: "calc(90vh - 48px)" }}
+              sandbox="allow-scripts allow-same-origin allow-popups"
+              title="Article"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
