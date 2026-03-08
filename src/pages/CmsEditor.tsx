@@ -1,21 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import CmsToolbar from "@/components/cms/CmsToolbar";
 import CmsComponentLibrary from "@/components/cms/CmsComponentLibrary";
 import CmsCanvas from "@/components/cms/CmsCanvas";
 import CmsPropertiesPanel from "@/components/cms/CmsPropertiesPanel";
+import CmsPageManager from "@/components/cms/CmsPageManager";
 import { useCmsStore } from "@/components/cms/useCmsStore";
+import { PlacedComponent } from "@/components/cms/cmsTypes";
+import { Layers, FileText } from "lucide-react";
 
 export default function CmsEditor() {
   const [previewMode, setPreviewMode] = useState("desktop");
+  const [leftTab, setLeftTab] = useState<"components" | "pages">("components");
+  const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const store = useCmsStore();
 
-  // Place new component at a default position
   const handleAddComponent = (type: string) => {
     const y = store.components.length * 20 + 40;
     store.addComponent(type, 40, y);
   };
 
-  // Keyboard shortcuts
+  const handleSelectPage = useCallback((page: { id: string; layout: PlacedComponent[] }) => {
+    setCurrentPageId(page.id);
+    store.loadComponents(page.layout);
+  }, [store]);
+
+  const handleNewPage = useCallback(() => {
+    setCurrentPageId(null);
+    store.loadComponents([]);
+  }, [store]);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -48,7 +61,36 @@ export default function CmsEditor() {
         onPreviewMode={setPreviewMode}
       />
       <div className="flex flex-1 overflow-hidden">
-        <CmsComponentLibrary onAddComponent={handleAddComponent} />
+        {/* Left sidebar with tabs */}
+        <div className="w-56 border-r border-border bg-card flex flex-col shrink-0">
+          <div className="flex border-b border-border">
+            <button
+              onClick={() => setLeftTab("components")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${leftTab === "components" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <Layers className="h-3.5 w-3.5" /> Components
+            </button>
+            <button
+              onClick={() => setLeftTab("pages")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${leftTab === "pages" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <FileText className="h-3.5 w-3.5" /> Pages
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {leftTab === "components" ? (
+              <CmsComponentLibrary onAddComponent={handleAddComponent} />
+            ) : (
+              <CmsPageManager
+                currentPageId={currentPageId}
+                onSelectPage={handleSelectPage}
+                onNewPage={handleNewPage}
+                components={store.components}
+              />
+            )}
+          </div>
+        </div>
+
         <CmsCanvas
           components={store.components}
           selectedId={store.selectedId}
