@@ -87,6 +87,13 @@ export function useCmsStore() {
     setSelectedId(null);
   }, [history, historyIndex]);
 
+  const loadComponents = useCallback((comps: PlacedComponent[]) => {
+    setComponents(comps);
+    setSelectedId(null);
+    setHistory([comps]);
+    setHistoryIndex(0);
+  }, []);
+
   const selectedComponent = components.find(c => c.id === selectedId) || null;
 
   return {
@@ -100,6 +107,7 @@ export function useCmsStore() {
     updateProps,
     deleteComponent,
     duplicateComponent,
+    loadComponents,
     undo,
     redo,
     canUndo: historyIndex > 0,
