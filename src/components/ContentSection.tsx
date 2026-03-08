@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ChevronDown, FileText, List, Lightbulb, TrendingUp, AlertCircle } from "lucide-react";
+import ArticleFeedback from "./ArticleFeedback";
 
 type SectionType = "overview" | "key_points" | "tips" | "data" | "important";
 
@@ -15,6 +16,10 @@ interface ContentSectionProps {
   items?: string[];
   dataRows?: DataRow[];
   defaultOpen?: boolean;
+  /** Unique ID for feedback tracking. If provided, shows feedback prompt. */
+  feedbackId?: string;
+  /** Custom feedback question */
+  feedbackQuestion?: string;
 }
 
 const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
@@ -25,7 +30,7 @@ const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
   important: { icon: AlertCircle },
 };
 
-const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true }: ContentSectionProps) => {
+const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true, feedbackId, feedbackQuestion }: ContentSectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
   const Icon = typeConfig[type].icon;
   const isImportant = type === "important";
@@ -92,6 +97,9 @@ const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = 
                 </div>
               ))}
             </div>
+          )}
+          {feedbackId && type !== "important" && (
+            <ArticleFeedback articleId={feedbackId} question={feedbackQuestion} />
           )}
         </div>
       )}

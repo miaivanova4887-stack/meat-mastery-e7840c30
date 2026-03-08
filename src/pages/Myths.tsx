@@ -30,7 +30,13 @@ const Myths = () => {
         <p className="text-xs text-muted-foreground">{myths.length} common myths — debunked with science</p>
 
         {myths.map((myth, i) => (
-          <ContentSection key={i} type="overview" title={`${i + 1}. ${myth.title}`}>
+          <ContentSection
+            key={i}
+            type="overview"
+            title={`${i + 1}. ${myth.title}`}
+            feedbackId={`myths-${i}`}
+            feedbackQuestion="Did this change your perspective?"
+          >
             {myth.content}
           </ContentSection>
         ))}
