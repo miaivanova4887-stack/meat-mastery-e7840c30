@@ -2,6 +2,14 @@ import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, PlayCirc
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ketosisPhase2Video from "@/assets/ketosis-phase-2.mp4";
+import ketosisPhase4Video from "@/assets/ketosis-phase-4.mp4";
+
+const PHASE_VIDEOS: Record<number, string | null> = {
+  0: null, // Phase 1 - generation pending
+  1: ketosisPhase2Video,
+  2: null, // Phase 3 - generation pending
+  3: ketosisPhase4Video,
+};
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
@@ -263,20 +271,34 @@ const KetosisTimer = () => {
             const h = milestoneHours[i];
             const reached = hours >= h;
             const isCurrent = i === currentPhaseIdx;
+            const video = PHASE_VIDEOS[i];
             return (
-              <div
-                key={h}
-                className={`ios-card flex items-center gap-3 p-3 transition-all ${
-                  isCurrent ? "ring-1 ring-primary/20" : ""
-                }`}
-              >
-                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${reached ? "bg-primary" : isCurrent ? "bg-primary/40" : "bg-muted"}`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-foreground">{phase.name}</span>
-                    <span className="text-[11px] text-muted-foreground">{phase.range}</span>
+              <div key={h} className="space-y-2">
+                <div
+                  className={`ios-card flex items-center gap-3 p-3 transition-all ${
+                    isCurrent ? "ring-1 ring-primary/20" : ""
+                  }`}
+                >
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${reached ? "bg-primary" : isCurrent ? "bg-primary/40" : "bg-muted"}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-foreground">{phase.name}</span>
+                      <span className="text-[11px] text-muted-foreground">{phase.range}</span>
+                    </div>
                   </div>
                 </div>
+                {isCurrent && video && (
+                  <div className="rounded-xl overflow-hidden border border-border">
+                    <video
+                      src={video}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="w-full aspect-video object-cover"
+                    />
+                  </div>
+                )}
               </div>
             );
           })}
