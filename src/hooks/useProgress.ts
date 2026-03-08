@@ -37,10 +37,10 @@ export const METRICS: Record<ProgressCategory, { key: string; label: string; uni
   ],
   body_measurements: [
     { key: "weight", label: "Weight", unit: "kg", icon: "⚖️" },
-    { key: "body_fat", label: "Body Fat", unit: "%", icon: "📏" },
     { key: "waist", label: "Waist", unit: "cm", icon: "📐" },
     { key: "chest", label: "Chest", unit: "cm", icon: "📐" },
     { key: "hips", label: "Hips", unit: "cm", icon: "📐" },
+    { key: "body_fat", label: "Body Fat", unit: "%", icon: "📏" },
   ],
   vitals: [
     { key: "bp_systolic", label: "BP Systolic", unit: "mmHg", icon: "❤️" },
