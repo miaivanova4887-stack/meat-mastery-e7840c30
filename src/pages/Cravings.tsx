@@ -25,7 +25,7 @@ const Cravings = () => {
           {strategies.map(({ icon: Icon, title, desc }, i) => (
             <div key={i} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
               <div className="flex items-start gap-3">
-                <div className="p-2 rounded-md bg-accent/10"><Icon size={18} className="text-accent" /></div>
+                <div className="p-2 rounded-md bg-accent"><Icon size={18} className="text-accent-foreground" /></div>
                 <div>
                   <h3 className="font-semibold text-foreground text-sm">{title}</h3>
                   <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{desc}</p>
