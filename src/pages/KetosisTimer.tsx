@@ -288,11 +288,11 @@ const KetosisTimer = () => {
                     </div>
                   </div>
                 </div>
-                {isCurrent && video && (
-                  <div className="rounded-xl overflow-hidden border border-border">
+                {video && (
+                  <div className={`rounded-xl overflow-hidden border border-border ${isCurrent ? '' : 'opacity-50'}`}>
                     <video
                       src={video}
-                      autoPlay
+                      autoPlay={isCurrent}
                       loop
                       muted
                       playsInline
