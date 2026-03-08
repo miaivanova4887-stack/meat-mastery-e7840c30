@@ -452,6 +452,85 @@ const Profile = () => {
               <p className="text-sm text-foreground">{user?.email}</p>
             </div>
 
+            {/* Alerts / Notification Settings */}
+            <h2 className="text-lg font-display font-bold text-foreground pt-3">Alerts</h2>
+
+            {/* Enable Notifications */}
+            <div className="ios-card p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 mr-4">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Enable Notifications</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Allow Vore to send you helpful reminders</p>
+                </div>
+                <Switch checked={notifPrefs.enabled} onCheckedChange={(v) => updateNotifPref("enabled", v)} />
+              </div>
+            </div>
+
+            <div className={`space-y-3 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
+              {/* Daily Reminder */}
+              <div className="ios-card p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 mr-4">
+                    <h3 className="font-display font-bold text-foreground text-[15px]">Daily Reminder</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Get reminded to log your meals every day</p>
+                  </div>
+                  <Switch checked={notifPrefs.dailyReminder} onCheckedChange={(v) => updateNotifPref("dailyReminder", v)} />
+                </div>
+                {notifPrefs.dailyReminder && (
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
+                    <span className="text-sm text-muted-foreground">Reminder Time</span>
+                    <input
+                      type="time"
+                      value={notifPrefs.reminderTime}
+                      onChange={(e) => updateNotifPref("reminderTime", e.target.value)}
+                      className="bg-transparent text-primary text-sm font-semibold focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Streak Reminders */}
+              <div className="ios-card p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 mr-4">
+                    <h3 className="font-display font-bold text-foreground text-[15px]">Streak Reminders</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Get notified at 8 PM if your streak is at risk</p>
+                  </div>
+                  <Switch checked={notifPrefs.streakReminder} onCheckedChange={(v) => updateNotifPref("streakReminder", v)} />
+                </div>
+              </div>
+
+              {/* Weekly Progress Summary */}
+              <div className="ios-card p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 mr-4">
+                    <h3 className="font-display font-bold text-foreground text-[15px]">Weekly Progress Summary</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Receive your weekly stats every Monday morning</p>
+                  </div>
+                  <Switch checked={notifPrefs.weeklySummary} onCheckedChange={(v) => updateNotifPref("weeklySummary", v)} />
+                </div>
+              </div>
+
+              {/* News Preferences */}
+              <h3 className="text-sm font-display font-bold text-foreground pt-2">News Feed Preferences</h3>
+              <div className="ios-card p-4 space-y-4">
+                {[
+                  { key: "scienceNews", label: "🔬 Science & Research", desc: "Latest carnivore diet studies and findings" },
+                  { key: "motivationNews", label: "⚡ Motivation", desc: "Daily inspiration and success mindset" },
+                  { key: "caseStudyNews", label: "❤️ Case Studies", desc: "Real transformation stories" },
+                  { key: "tipNews", label: "💡 Tips & Tricks", desc: "Practical advice for your journey" },
+                ].map(({ key, label, desc }) => (
+                  <div key={key} className="flex items-center justify-between">
+                    <div className="flex-1 mr-4">
+                      <h3 className="font-display font-bold text-foreground text-[14px]">{label}</h3>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+                    </div>
+                    <Switch checked={notifPrefs[key]} onCheckedChange={(v) => updateNotifPref(key, v)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
