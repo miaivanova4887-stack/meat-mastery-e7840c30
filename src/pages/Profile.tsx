@@ -32,7 +32,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
-  const [tab, setTab] = useState<"recipes" | "likes" | "settings" | "notifications">("recipes");
+  const [tab, setTab] = useState<"feed" | "recipes" | "likes" | "settings">("feed");
   const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
   const [webviewUrl, setWebviewUrl] = useState<string | null>(null);
 
@@ -202,9 +202,9 @@ const Profile = () => {
       {/* Tabs */}
       <div className="px-4 flex gap-2 mb-3">
         {([
+          { key: "feed", label: "Your Feed", icon: Newspaper },
           { key: "recipes", label: "My Recipes", icon: ChefHat },
           { key: "likes", label: "Liked", icon: Heart },
-          { key: "notifications", label: "Alerts", icon: Bell },
           { key: "settings", label: "Settings", icon: Settings },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
