@@ -211,7 +211,7 @@ const Onboarding = () => {
           newAnswers[4] ?? 0,       // experience
           newAnswers[5] ?? [],      // struggles
           newAnswers[6] ?? 0,       // activity
-          newAnswers[8] ?? [],      // interests
+          newAnswers[10] ?? [],     // interests (now at step 10)
         ];
         localStorage.setItem(STORAGE_KEY, "true");
         localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
