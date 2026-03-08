@@ -1,4 +1,4 @@
-import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, PlayCircle } from "lucide-react";
+import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ketosisPhase1Video from "@/assets/ketosis-phase-1.mp4";
@@ -18,6 +18,13 @@ import { toast } from "sonner";
 import { subscribeToPush, sendPushToAll } from "@/lib/pushNotifications";
 
 const KETOSIS_TARGET_HOURS = 72;
+
+const PHASE_BODY_DESCRIPTIONS: Record<number, string> = {
+  0: "Your liver is burning through its glycogen reserves. Glucose levels drop, triggering the metabolic switch toward fat oxidation.",
+  1: "Fatty acids are being mobilised from adipose tissue and converted to ketone bodies in the liver. Insulin levels fall sharply.",
+  2: "Mitochondria are adapting to burn ketones efficiently. Autophagy accelerates — cells are recycling damaged proteins and organelles.",
+  3: "Ketones (BHB) are now your brain's primary fuel. Inflammation markers drop, growth hormone surges, and cellular repair peaks.",
+};
 
 interface PhaseInfo {
   name: string;
@@ -124,6 +131,7 @@ const KetosisTimer = () => {
   const [alertsEnabled, setAlertsEnabled] = useState(() => {
     return localStorage.getItem("ketosis-alerts") !== "false";
   });
+  const [expandedPhase, setExpandedPhase] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const lastPhaseRef = useRef<number>(-1);
 
@@ -273,32 +281,65 @@ const KetosisTimer = () => {
             const h = milestoneHours[i];
             const reached = hours >= h;
             const isCurrent = i === currentPhaseIdx;
+            const isFuture = i > currentPhaseIdx;
             const video = PHASE_VIDEOS[i];
+            const isExpanded = expandedPhase === i || isCurrent;
+            const bodyDesc = PHASE_BODY_DESCRIPTIONS[i];
+
+            // Calculate time until this phase
+            let timeUntilText = "";
+            if (isFuture && isRunning) {
+              const phaseStartSeconds = h * 3600;
+              const remaining = phaseStartSeconds - elapsed;
+              if (remaining > 0) {
+                const rh = Math.floor(remaining / 3600);
+                const rm = Math.floor((remaining % 3600) / 60);
+                timeUntilText = `You will be in this phase in ${rh}h ${rm}m`;
+              }
+            }
+
             return (
               <div key={h} className="space-y-2">
-                <div
-                  className={`ios-card flex items-center gap-3 p-3 transition-all ${
+                <button
+                  onClick={() => setExpandedPhase(expandedPhase === i ? null : i)}
+                  className={`ios-card flex items-center gap-3 p-3 transition-all w-full text-left ${
                     isCurrent ? "ring-1 ring-primary/20" : ""
-                  }`}
+                  } ${!isCurrent ? "cursor-pointer active:scale-[0.99]" : ""}`}
                 >
                   <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${reached ? "bg-primary" : isCurrent ? "bg-primary/40" : "bg-muted"}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <span className="text-[13px] font-semibold text-foreground">{phase.name}</span>
-                      <span className="text-[11px] text-muted-foreground">{phase.range}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground">{phase.range}</span>
+                        {!isCurrent && (isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />)}
+                      </div>
                     </div>
+                    {timeUntilText && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Clock size={11} className="text-primary/60" />
+                        <span className="text-[11px] text-primary/80 font-medium">{timeUntilText}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-                {video && (
-                  <div className={`rounded-xl overflow-hidden border border-border ${isCurrent ? '' : 'opacity-50'}`}>
-                    <video
-                      src={video}
-                      autoPlay={isCurrent}
-                      loop
-                      muted
-                      playsInline
-                      className="w-full aspect-video object-cover"
-                    />
+                </button>
+                {isExpanded && video && (
+                  <div className={`rounded-xl overflow-hidden border border-border ${isCurrent ? '' : 'opacity-60'}`}>
+                    <div className="relative">
+                      <video
+                        src={video}
+                        autoPlay={isCurrent}
+                        loop
+                        muted
+                        playsInline
+                        className="w-full aspect-video object-cover"
+                      />
+                      {bodyDesc && (
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3 pt-8">
+                          <p className="text-[11px] text-white/90 leading-relaxed">{bodyDesc}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
