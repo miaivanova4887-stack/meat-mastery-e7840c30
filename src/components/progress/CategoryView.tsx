@@ -37,7 +37,6 @@ const CategoryView = ({ category }: Props) => {
   const metricEntries = entries.filter((e) => e.metric === activeMetric);
   const latestValue = metricEntries.length > 0 ? Number(metricEntries[metricEntries.length - 1].value) : null;
 
-  // Calculate daily average
   const avg = metricEntries.length > 0
     ? Math.round((metricEntries.reduce((s, e) => s + Number(e.value), 0) / metricEntries.length) * 10) / 10
     : null;
@@ -56,8 +55,8 @@ const CategoryView = ({ category }: Props) => {
             onClick={() => setRange(r.days)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
               range === r.days
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground"
+                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
           >
             {r.label}
@@ -66,7 +65,7 @@ const CategoryView = ({ category }: Props) => {
       </div>
 
       {/* Metric tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {metrics.map((m) => (
           <button
             key={m.key}
@@ -74,7 +73,7 @@ const CategoryView = ({ category }: Props) => {
             className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
               activeMetric === m.key
                 ? "bg-card border border-primary/30 text-foreground shadow-sm"
-                : "text-muted-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
             {m.icon} {m.label}
@@ -82,32 +81,47 @@ const CategoryView = ({ category }: Props) => {
         ))}
       </div>
 
-      {/* Summary cards */}
+      {/* Summary cards with gradient */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card rounded-xl p-3 border border-border">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Daily Avg</p>
-          <p className="text-2xl font-bold text-foreground mt-1">
-            {avg ?? "—"}<span className="text-xs text-muted-foreground ml-1">{currentMeta.unit}</span>
-          </p>
+        <div className="relative overflow-hidden bg-card rounded-xl p-4 border border-border">
+          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--gold))] opacity-[0.06]" />
+          <div className="relative">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Daily Avg</p>
+            <p className="text-3xl font-bold text-foreground mt-1.5">
+              {avg ?? "—"}
+            </p>
+            <span className="text-xs text-muted-foreground">{currentMeta.unit}</span>
+          </div>
         </div>
-        <div className="bg-card rounded-xl p-3 border border-border">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Goal</p>
-          <p className="text-2xl font-bold text-foreground mt-1">
-            {currentGoal ? currentGoal.target_value : "—"}
-            <span className="text-xs text-muted-foreground ml-1">{currentMeta.unit}</span>
-          </p>
-          {goalPct != null && (
-            <span className={`text-[10px] font-bold ${goalPct >= 100 ? "text-green-500" : "text-primary"}`}>
-              {goalPct}%
-            </span>
-          )}
+        <div className="relative overflow-hidden bg-card rounded-xl p-4 border border-border">
+          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--gold))] to-[hsl(var(--flame))] opacity-[0.06]" />
+          <div className="relative">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Goal</p>
+            <p className="text-3xl font-bold text-foreground mt-1.5">
+              {currentGoal ? currentGoal.target_value : "—"}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{currentMeta.unit}</span>
+              {goalPct != null && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                  goalPct >= 100 ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"
+                }`}>
+                  {goalPct}%
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart - larger */}
       <div className="bg-card rounded-xl p-4 border border-border">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-bold text-foreground uppercase tracking-wider">{currentMeta.icon} {currentMeta.label} Trend</p>
+          <p className="text-[10px] text-muted-foreground">{RANGE_OPTIONS.find(r => r.days === range)?.label} range</p>
+        </div>
         {isLoading ? (
-          <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
+          <div className="h-56 flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
         ) : (
           <ProgressChart entries={entries} metricKey={activeMetric} goal={currentGoal} />
         )}
@@ -138,10 +152,10 @@ const CategoryView = ({ category }: Props) => {
 
       {/* Action buttons */}
       <div className="flex gap-3">
-        <Button onClick={() => setShowAdd(true)} className="flex-1 gap-2">
+        <Button onClick={() => setShowAdd(true)} className="flex-1 gap-2 h-11 shadow-md shadow-primary/10">
           <Plus size={16} /> Add Entry
         </Button>
-        <Button variant="outline" onClick={() => setShowGoal(true)} className="gap-2">
+        <Button variant="outline" onClick={() => setShowGoal(true)} className="gap-2 h-11">
           <Crosshair size={16} /> Goals
         </Button>
       </div>

@@ -9,6 +9,7 @@ import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { useMealSync } from "@/hooks/useMealSync";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
 import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
@@ -42,6 +43,7 @@ const MealPlan = () => {
   const { customRecipes, addRecipe } = useCustomRecipes();
   const { addItem, hasItem } = useShoppingBag();
   const profile = useUserProfile();
+  const { syncMealToProgress } = useMealSync();
   const userSlots = useMemo(() => activeSlots(profile.mealsPerDay), [profile.mealsPerDay]);
   const { nutritionTargets } = profile;
 
@@ -573,7 +575,12 @@ const MealPlan = () => {
                   {meal ? (
                     <div className="flex items-start gap-3">
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleCompleted(activeDay, slot); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const wasCompleted = isCompleted(activeDay, slot);
+                          toggleCompleted(activeDay, slot);
+                          if (meal) syncMealToProgress(meal, wasCompleted);
+                        }}
                         className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           isCompleted(activeDay, slot)
                             ? "bg-primary border-primary text-primary-foreground"

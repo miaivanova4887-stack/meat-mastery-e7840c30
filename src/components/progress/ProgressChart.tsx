@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { format } from "date-fns";
 import type { ProgressEntry, ProgressGoal } from "@/hooks/useProgress";
 
@@ -23,37 +23,64 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
 
   if (data.length === 0) {
     return (
-      <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">
-        No data yet. Add your first entry!
+      <div className="h-56 flex flex-col items-center justify-center text-muted-foreground">
+        <span className="text-3xl mb-2">📈</span>
+        <p className="text-sm font-medium">No data yet</p>
+        <p className="text-xs">Add your first entry to see trends</p>
       </div>
     );
   }
 
   return (
-    <div className="h-48">
+    <div className="h-56">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+        <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id={`gradient-${metricKey}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.5} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+            axisLine={false}
+            tickLine={false}
+          />
           <Tooltip
             contentStyle={{
               background: "hsl(var(--card))",
               border: "1px solid hsl(var(--border))",
-              borderRadius: "8px",
+              borderRadius: "12px",
               fontSize: "12px",
+              boxShadow: "0 8px 30px -10px hsl(var(--foreground) / 0.1)",
             }}
           />
           {goal && (
             <ReferenceLine
               y={goal.target_value}
-              stroke="hsl(var(--destructive))"
-              strokeDasharray="5 5"
-              label={{ value: "Goal", fill: "hsl(var(--destructive))", fontSize: 10 }}
+              stroke="hsl(var(--gold))"
+              strokeDasharray="6 4"
+              strokeWidth={2}
+              label={{ value: `Goal: ${goal.target_value}`, fill: "hsl(var(--gold))", fontSize: 10, position: "insideTopRight" }}
             />
           )}
-          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={{ r: 4, fill: color }} activeDot={{ r: 6 }} />
-        </LineChart>
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={2.5}
+            fill={`url(#gradient-${metricKey})`}
+            dot={{ r: 4, fill: color, strokeWidth: 2, stroke: "hsl(var(--card))" }}
+            activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--card))" }}
+          />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
