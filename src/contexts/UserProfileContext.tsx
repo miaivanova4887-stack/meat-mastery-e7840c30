@@ -108,6 +108,13 @@ function parseProfile(): UserProfile {
     const activityLevel = ACTIVITY_MAP[answers[3] as number] ?? "light";
     const mealsPerDay = parseInt(localStorage.getItem("carnivore-meals-per-day") || "3") || 3;
 
+    // Parse cuisine preferences
+    let cuisines: CuisineType[] = [];
+    try {
+      const cuisineRaw = localStorage.getItem("carnivore-cuisines");
+      if (cuisineRaw) cuisines = JSON.parse(cuisineRaw);
+    } catch { /* ignore */ }
+
     return {
       goal,
       experience: EXP_MAP[answers[1] as number] ?? "beginner",
@@ -117,6 +124,7 @@ function parseProfile(): UserProfile {
       body,
       mealsPerDay,
       nutritionTargets: computeTargets(goal, activityLevel, body),
+      cuisines,
       isComplete: true,
     };
   } catch {
