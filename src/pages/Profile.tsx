@@ -31,7 +31,35 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
-  const [tab, setTab] = useState<"recipes" | "likes" | "settings">("recipes");
+  const [tab, setTab] = useState<"recipes" | "likes" | "settings" | "notifications">("recipes");
+
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState(() => {
+    try {
+      const stored = localStorage.getItem("carnivore-notif-prefs");
+      return stored ? JSON.parse(stored) : {
+        enabled: true,
+        dailyReminder: true,
+        reminderTime: "19:00",
+        streakReminder: true,
+        weeklySummary: true,
+        scienceNews: true,
+        motivationNews: true,
+        caseStudyNews: false,
+        tipNews: true,
+      };
+    } catch { return { enabled: true, dailyReminder: true, reminderTime: "19:00", streakReminder: true, weeklySummary: true, scienceNews: true, motivationNews: true, caseStudyNews: false, tipNews: true }; }
+  });
+
+  const updateNotifPref = (key: string, value: boolean | string) => {
+    setNotifPrefs((prev: any) => {
+      const next = { ...prev, [key]: value };
+      localStorage.setItem("carnivore-notif-prefs", JSON.stringify(next));
+      window.dispatchEvent(new Event("profile-update"));
+      return next;
+    });
+    toast.success("Notification preference updated");
+  };
   const [loading, setLoading] = useState(true);
 
   // Settings editing state
