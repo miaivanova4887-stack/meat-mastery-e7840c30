@@ -94,23 +94,8 @@ const Guide = () => {
         />
 
         <ContentSection type="important" title="Medical Disclaimer">
-          {null}
+          Consult your healthcare provider before starting any new dietary approach, especially if you have pre-existing conditions or take medications. This guide is educational — not medical advice.
         </ContentSection>
-        {/* Re-render with proper important content */}
-      </div>
-
-      {/* Important section outside the map */}
-      <div className="px-4 -mt-4 mb-4">
-        <div className="bg-card border border-border rounded-lg overflow-hidden border-l-4 border-l-destructive">
-          <div className="p-4">
-            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 flex gap-2 text-sm text-muted-foreground">
-              <span className="text-destructive shrink-0 mt-0.5">⚠️</span>
-              <span>
-                Consult your healthcare provider before starting any new dietary approach, especially if you have pre-existing conditions or take medications. This guide is educational — not medical advice.
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       <MotivationCTA />
