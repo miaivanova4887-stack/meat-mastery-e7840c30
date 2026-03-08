@@ -518,7 +518,7 @@ const MealPlan = () => {
 
                 {/* Main card - slides left on swipe */}
                 <div
-                  className={`ios-card p-4 relative z-10 bg-card transition-transform duration-200 ease-out ${isSwiped && meal ? "-translate-x-32" : "translate-x-0"}`}
+                  className={`ios-card overflow-hidden relative z-10 bg-card transition-transform duration-200 ease-out ${isSwiped && meal ? "-translate-x-32" : "translate-x-0"}`}
                   onTouchStart={(e) => {
                     if (!meal) return;
                     const el = e.currentTarget as any;
