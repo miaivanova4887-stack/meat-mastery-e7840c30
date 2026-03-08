@@ -1,4 +1,5 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X, UtensilsCrossed, Bell, ChevronRight } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -30,7 +31,35 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
-  const [tab, setTab] = useState<"recipes" | "likes" | "settings">("recipes");
+  const [tab, setTab] = useState<"recipes" | "likes" | "settings" | "notifications">("recipes");
+
+  // Notification preferences
+  const [notifPrefs, setNotifPrefs] = useState(() => {
+    try {
+      const stored = localStorage.getItem("carnivore-notif-prefs");
+      return stored ? JSON.parse(stored) : {
+        enabled: true,
+        dailyReminder: true,
+        reminderTime: "19:00",
+        streakReminder: true,
+        weeklySummary: true,
+        scienceNews: true,
+        motivationNews: true,
+        caseStudyNews: false,
+        tipNews: true,
+      };
+    } catch { return { enabled: true, dailyReminder: true, reminderTime: "19:00", streakReminder: true, weeklySummary: true, scienceNews: true, motivationNews: true, caseStudyNews: false, tipNews: true }; }
+  });
+
+  const updateNotifPref = (key: string, value: boolean | string) => {
+    setNotifPrefs((prev: any) => {
+      const next = { ...prev, [key]: value };
+      localStorage.setItem("carnivore-notif-prefs", JSON.stringify(next));
+      window.dispatchEvent(new Event("profile-update"));
+      return next;
+    });
+    toast.success("Notification preference updated");
+  };
   const [loading, setLoading] = useState(true);
 
   // Settings editing state
@@ -172,6 +201,7 @@ const Profile = () => {
         {([
           { key: "recipes", label: "My Recipes", icon: ChefHat },
           { key: "likes", label: "Liked", icon: Heart },
+          { key: "notifications", label: "Alerts", icon: Bell },
           { key: "settings", label: "Settings", icon: Settings },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
@@ -218,6 +248,92 @@ const Profile = () => {
               </button>
             </div>
           ) : likedRecipes.map((r) => <RecipeCard key={r.id} r={r} />)
+        )}
+
+        {/* Notifications */}
+        {tab === "notifications" && (
+          <div className="space-y-3">
+            <h2 className="text-xl font-display font-bold text-foreground">Notification Settings</h2>
+
+            {/* Enable Notifications */}
+            <div className="ios-card p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 mr-4">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Enable Notifications</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Allow Vore to send you helpful reminders</p>
+                </div>
+                <Switch checked={notifPrefs.enabled} onCheckedChange={(v) => updateNotifPref("enabled", v)} />
+              </div>
+            </div>
+
+            {/* Daily Reminder */}
+            <div className={`ios-card p-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 mr-4">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Daily Reminder</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Get reminded to log your meals every day</p>
+                </div>
+                <Switch checked={notifPrefs.dailyReminder} onCheckedChange={(v) => updateNotifPref("dailyReminder", v)} />
+              </div>
+              {notifPrefs.dailyReminder && (
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
+                  <span className="text-sm text-muted-foreground">Reminder Time</span>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="time"
+                      value={notifPrefs.reminderTime}
+                      onChange={(e) => updateNotifPref("reminderTime", e.target.value)}
+                      className="bg-transparent text-primary text-sm font-semibold focus:outline-none"
+                    />
+                    <ChevronRight size={14} className="text-muted-foreground" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Streak Reminders */}
+            <div className={`ios-card p-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 mr-4">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Streak Reminders</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Get notified at 8 PM if your streak is at risk</p>
+                </div>
+                <Switch checked={notifPrefs.streakReminder} onCheckedChange={(v) => updateNotifPref("streakReminder", v)} />
+              </div>
+            </div>
+
+            {/* Weekly Progress Summary */}
+            <div className={`ios-card p-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 mr-4">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Weekly Progress Summary</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Receive your weekly stats every Monday morning</p>
+                </div>
+                <Switch checked={notifPrefs.weeklySummary} onCheckedChange={(v) => updateNotifPref("weeklySummary", v)} />
+              </div>
+            </div>
+
+            {/* News Preferences */}
+            <h2 className="text-xl font-display font-bold text-foreground pt-3">News Feed Preferences</h2>
+            <p className="text-xs text-muted-foreground -mt-2">Choose which news categories appear in your feed</p>
+
+            <div className={`ios-card p-4 space-y-4 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
+              {[
+                { key: "scienceNews", label: "🔬 Science & Research", desc: "Latest carnivore diet studies and findings" },
+                { key: "motivationNews", label: "⚡ Motivation", desc: "Daily inspiration and success mindset" },
+                { key: "caseStudyNews", label: "❤️ Case Studies", desc: "Real transformation stories" },
+                { key: "tipNews", label: "💡 Tips & Tricks", desc: "Practical advice for your journey" },
+              ].map(({ key, label, desc }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <div className="flex-1 mr-4">
+                    <h3 className="font-display font-bold text-foreground text-[14px]">{label}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>
+                  </div>
+                  <Switch checked={notifPrefs[key]} onCheckedChange={(v) => updateNotifPref(key, v)} />
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Settings */}
