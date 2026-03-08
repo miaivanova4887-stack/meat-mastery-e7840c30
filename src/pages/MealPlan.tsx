@@ -9,6 +9,7 @@ import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { useMealSync } from "@/hooks/useMealSync";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
 import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
