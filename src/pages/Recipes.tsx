@@ -103,9 +103,12 @@ const Recipes = () => {
     const ingredients: Ingredient[] = custom?.ingredients || r.ingredients || [];
 
     return (
-      <div key={r.name + i} className="ios-card p-5 animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
-        <div className="flex items-start gap-3">
-          <MealImage recipeName={r.name} tags={r.tags} className="w-16 h-16 flex-shrink-0" />
+      <div key={r.name + i} className="ios-card overflow-hidden animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
+        {/* Full-width hero image */}
+        <MealImage recipeName={r.name} tags={r.tags} className="w-full h-40" />
+
+        <div className="p-5 pt-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-display font-bold text-foreground text-base leading-tight">{r.name}</h3>
@@ -208,6 +211,7 @@ const Recipes = () => {
           {r.tags.map((t: string) => (
             <span key={t} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
           ))}
+        </div>
         </div>
       </div>
     );
