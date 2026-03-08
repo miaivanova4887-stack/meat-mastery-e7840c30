@@ -85,8 +85,15 @@ const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = 
 
       {open && (
         <div className="px-4 pb-4">
-          {children && (
+          {children && type !== "important" && (
             <p className="text-sm text-muted-foreground leading-relaxed">{children}</p>
+          )}
+
+          {children && type === "important" && (
+            <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 flex gap-2 text-sm text-muted-foreground">
+              <AlertCircle size={16} className="text-destructive shrink-0 mt-0.5" />
+              <span>{children}</span>
+            </div>
           )}
 
           {items && type === "tips" && (
