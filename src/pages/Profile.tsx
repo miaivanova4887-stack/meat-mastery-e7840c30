@@ -366,7 +366,7 @@ const Profile = () => {
                   {filtered.map((item) => {
                     const CatIcon = item.catIcon;
                     return (
-                      <article key={item.id} className="ios-card p-4 space-y-2">
+                      <article key={item.id} onClick={() => navigate("/news")} className="ios-card p-4 space-y-2 cursor-pointer active:scale-[0.98] transition-transform">
                         <div className="flex items-center justify-between">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${item.catColor}`}>
                             <CatIcon size={10} />
