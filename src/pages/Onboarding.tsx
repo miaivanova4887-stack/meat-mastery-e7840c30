@@ -125,6 +125,32 @@ const steps: OnboardingStep[] = [
   },
   {
     type: "options",
+    title: "What cuisines inspire you?",
+    subtitle: "We'll prioritise recipes from your favourite food cultures",
+    icon: Target,
+    multiSelect: true,
+    options: [
+      { label: "Indian", emoji: "🇮🇳", desc: "Tandoori, keema, spiced meats" },
+      { label: "Thai", emoji: "🇹🇭", desc: "Lemongrass, grilled meats" },
+      { label: "Chinese", emoji: "🇨🇳", desc: "Five-spice, stir-fry, Peking" },
+      { label: "Mexican", emoji: "🇲🇽", desc: "Carne asada, carnitas, chorizo" },
+    ],
+  },
+  {
+    type: "options",
+    title: "Any more cuisines?",
+    subtitle: "Select all that appeal to you",
+    icon: Target,
+    multiSelect: true,
+    options: [
+      { label: "Korean", emoji: "🇰🇷", desc: "Bulgogi, galbi, samgyeopsal" },
+      { label: "Japanese", emoji: "🇯🇵", desc: "Wagyu, sashimi, yakitori" },
+      { label: "African", emoji: "🌍", desc: "Suya, boerewors, kitfo" },
+      { label: "Middle Eastern", emoji: "🕌", desc: "Shawarma, kofta, kebabs" },
+    ],
+  },
+  {
+    type: "options",
     title: "What interests you most?",
     subtitle: "Select all you'd like to explore",
     icon: Brain,
