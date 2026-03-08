@@ -1,7 +1,7 @@
 import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
-import { recipes, TIER_LABELS, MEAL_LABELS, CRAVING_LABELS, type DietTier, type MealType, type CravingType, type CustomRecipe, type Ingredient } from "@/data/recipes";
+import { recipes, TIER_LABELS, CRAVING_LABELS, type DietTier, type MealType, type CravingType, type CustomRecipe, type Ingredient } from "@/data/recipes";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
@@ -27,6 +27,19 @@ const tierFromProfile = (diet: string | undefined): DietTier | null => {
   return null;
 };
 
+// Snack is now in the upper craving-style menu, not in meal breakdown
+const UPPER_MENU: Record<string, string> = {
+  all: "🔥 All",
+  snack: "🍖 Snacks",
+  ...CRAVING_LABELS,
+};
+// Remove "all" duplicate from CRAVING_LABELS since we include it above
+delete (UPPER_MENU as any)["all"];
+const FINAL_MENU: Record<string, string> = { all: "🔥 All", snack: "🍖 Snacks" };
+for (const [k, v] of Object.entries(CRAVING_LABELS)) {
+  if (k !== "all") FINAL_MENU[k] = v;
+}
+
 const Recipes = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
@@ -35,8 +48,7 @@ const Recipes = () => {
   const { addItem } = useShoppingBag();
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
-  const [activeMeal, setActiveMeal] = useState<MealType | "all">("all");
-  const [activeCraving, setActiveCraving] = useState<CravingType | "all">("all");
+  const [activeFilter, setActiveFilter] = useState<string>("all"); // "all" | "snack" | CravingType
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
@@ -44,9 +56,15 @@ const Recipes = () => {
   const filtered = useMemo(() => {
     const filter = (list: typeof recipes) =>
       list.filter((r) => {
+        // Diet tier filter
         if (!r.tier.includes(activeTier)) return false;
-        if (activeMeal !== "all" && r.meal !== activeMeal) return false;
-        if (activeCraving !== "all" && !(r.cravings || []).includes(activeCraving)) return false;
+        // Upper menu filter
+        if (activeFilter === "snack") {
+          if (r.meal !== "snack") return false;
+        } else if (activeFilter !== "all") {
+          if (!(r.cravings || []).includes(activeFilter as CravingType)) return false;
+        }
+        // Search
         if (search) {
           const q = search.toLowerCase();
           return r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q)) || r.desc.toLowerCase().includes(q);
@@ -58,16 +76,9 @@ const Recipes = () => {
       custom: filter(customRecipes) as CustomRecipe[],
       builtIn: filter(recipes),
     };
-  }, [activeTier, activeMeal, activeCraving, search, customRecipes]);
+  }, [activeTier, activeFilter, search, customRecipes]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
-
-  const mealCounts = useMemo(() => {
-    const all = [...recipes, ...customRecipes].filter((r) => r.tier.includes(activeTier));
-    const counts: Record<string, number> = { all: all.length };
-    for (const r of all) counts[r.meal] = (counts[r.meal] || 0) + 1;
-    return counts;
-  }, [activeTier, customRecipes]);
 
   const addIngredientsToCart = useCallback((ingredients: Ingredient[], mult: number) => {
     ingredients.forEach(ing => {
@@ -91,45 +102,45 @@ const Recipes = () => {
     const ingredients: Ingredient[] = custom?.ingredients || r.ingredients || [];
 
     return (
-      <div key={r.name + i} className="ios-card p-4 animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
+      <div key={r.name + i} className="ios-card p-5 animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-display font-bold text-foreground text-[15px] leading-tight">{r.name}</h3>
-              {isCustom && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gold/20 text-foreground font-semibold">MY</span>}
+              <h3 className="font-display font-bold text-foreground text-base leading-tight">{r.name}</h3>
+              {isCustom && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gold/20 text-foreground font-semibold">MY</span>}
             </div>
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1"><Clock size={11} /> {r.time}</span>
-              <span className="flex items-center gap-1"><Flame size={11} /> {scaledCal} cal</span>
-              {r.serving && <span className="text-[11px]">· {r.serving}{mult > 1 ? ` × ${mult}` : ""}</span>}
+            <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+              <span className="flex items-center gap-1"><Clock size={13} /> {r.time}</span>
+              <span className="flex items-center gap-1"><Flame size={13} /> {scaledCal} cal</span>
+              {r.serving && <span className="text-xs">· {r.serving}{mult > 1 ? ` × ${mult}` : ""}</span>}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-            <span className="text-[11px] font-semibold text-primary">{scaledProtein} P</span>
-            <span className="text-[11px] font-medium text-muted-foreground">{scaledFat} F</span>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className="text-xs font-semibold text-primary">{scaledProtein} P</span>
+            <span className="text-xs font-medium text-muted-foreground">{scaledFat} F</span>
           </div>
         </div>
 
         {/* Portion multiplier */}
-        <div className="flex items-center gap-1.5 mt-2.5">
-          <Users size={12} className="text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground mr-0.5">Servings</span>
+        <div className="flex items-center gap-2 mt-3">
+          <Users size={14} className="text-muted-foreground" />
+          <span className="text-xs text-muted-foreground mr-1">Servings</span>
           {MULTIPLIERS.map((m) => (
             <button key={m} onClick={() => setMult(m)}
-              className={`w-7 h-7 rounded-lg text-[11px] font-semibold transition-all ${mult === m ? "bg-primary text-primary-foreground" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
+              className={`w-9 h-9 rounded-lg text-xs font-semibold transition-all ${mult === m ? "bg-primary text-primary-foreground" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
             >{m}×</button>
           ))}
         </div>
 
-        <p className="text-xs text-secondary-foreground/70 mt-2.5 leading-relaxed">{r.desc}</p>
+        <p className="text-sm text-secondary-foreground/70 mt-3 leading-relaxed">{r.desc}</p>
 
         {/* Expand toggle for ingredients */}
         {ingredients.length > 0 && (
           <>
             <button onClick={() => setExpanded(isExpanded ? null : cardKey)}
-              className="flex items-center gap-1 mt-2 text-[11px] text-primary font-medium"
+              className="flex items-center gap-1 mt-3 text-xs text-primary font-medium min-h-[36px]"
             >
-              {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               {isExpanded ? "Less" : "Ingredients & Steps"}
             </button>
 
@@ -137,17 +148,17 @@ const Recipes = () => {
               <div className="mt-3 space-y-3 border-t border-border/30 pt-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-[11px] font-semibold text-foreground">Ingredients</p>
+                    <p className="text-xs font-semibold text-foreground">Ingredients</p>
                     <button
                       onClick={() => addIngredientsToCart(ingredients, mult)}
-                      className="flex items-center gap-1 text-[10px] font-semibold text-primary hover:text-primary/80 transition-colors"
+                      className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors min-h-[32px]"
                     >
-                      <ShoppingBag size={11} /> Add all to bag
+                      <ShoppingBag size={13} /> Add all to bag
                     </button>
                   </div>
-                  <ul className="space-y-0.5">
+                  <ul className="space-y-1">
                     {ingredients.map((ing, j) => (
-                      <li key={j} className="text-xs text-muted-foreground flex items-center justify-between">
+                      <li key={j} className="text-sm text-muted-foreground flex items-center justify-between min-h-[32px]">
                         <span>
                           {ing.amount && <span className="font-medium text-foreground">{ing.amount}</span>} {ing.name}
                         </span>
@@ -156,22 +167,21 @@ const Recipes = () => {
                             const parsed = parseAmount(ing.amount);
                             addItem(ing.name, parsed.quantity * mult, parsed.unit);
                           }}
-                          className="text-muted-foreground hover:text-primary p-0.5"
+                          className="text-muted-foreground hover:text-primary p-1.5"
                         >
-                          <Plus size={11} />
+                          <Plus size={13} />
                         </button>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                {/* Steps for custom recipes */}
                 {custom && custom.steps.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-semibold text-foreground mb-1">Steps</p>
-                    <ol className="space-y-1">
+                    <p className="text-xs font-semibold text-foreground mb-1">Steps</p>
+                    <ol className="space-y-1.5">
                       {custom.steps.map((step, j) => (
-                        <li key={j} className="text-xs text-muted-foreground flex gap-2">
+                        <li key={j} className="text-sm text-muted-foreground flex gap-2">
                           <span className="text-primary font-bold flex-shrink-0">{j + 1}.</span>
                           {step}
                         </li>
@@ -182,9 +192,9 @@ const Recipes = () => {
 
                 {custom && (
                   <button onClick={() => deleteRecipe(custom.id)}
-                    className="flex items-center gap-1.5 text-[11px] text-destructive font-medium mt-1"
+                    className="flex items-center gap-1.5 text-xs text-destructive font-medium mt-1 min-h-[36px]"
                   >
-                    <Trash2 size={12} /> Delete recipe
+                    <Trash2 size={14} /> Delete recipe
                   </button>
                 )}
               </div>
@@ -194,7 +204,7 @@ const Recipes = () => {
 
         <div className="flex gap-1.5 mt-3 flex-wrap">
           {r.tags.map((t: string) => (
-            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
+            <span key={t} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
           ))}
         </div>
       </div>
@@ -245,6 +255,7 @@ const Recipes = () => {
           {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><X size={14} /></button>}
         </div>
 
+        {/* Diet tier filter */}
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
           {(Object.keys(TIER_LABELS) as DietTier[]).map((tier) => (
             <button key={tier} onClick={() => setActiveTier(tier)}
@@ -253,19 +264,12 @@ const Recipes = () => {
           ))}
         </div>
 
+        {/* Combined filter: All / Snacks / Cravings */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-          {(Object.keys(CRAVING_LABELS) as (CravingType | "all")[]).map((craving) => (
-            <button key={craving} onClick={() => setActiveCraving(craving)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeCraving === craving ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
-            >{CRAVING_LABELS[craving]}</button>
-          ))}
-        </div>
-
-        <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-          {(Object.keys(MEAL_LABELS) as (MealType | "all")[]).map((meal) => (
-            <button key={meal} onClick={() => setActiveMeal(meal)}
-              className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${activeMeal === meal ? "bg-primary/15 text-primary border border-primary/30" : "bg-secondary/40 text-muted-foreground hover:text-foreground"}`}
-            >{MEAL_LABELS[meal]}{mealCounts[meal] ? ` (${mealCounts[meal]})` : ""}</button>
+          {Object.entries(FINAL_MENU).map(([key, label]) => (
+            <button key={key} onClick={() => setActiveFilter(key)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeFilter === key ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
+            >{label}</button>
           ))}
         </div>
 
