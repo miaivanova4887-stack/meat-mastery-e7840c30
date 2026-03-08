@@ -107,6 +107,7 @@ export function useCmsStore() {
     updateProps,
     deleteComponent,
     duplicateComponent,
+    loadComponents,
     undo,
     redo,
     canUndo: historyIndex > 0,
