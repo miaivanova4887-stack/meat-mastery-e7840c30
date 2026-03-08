@@ -1,4 +1,4 @@
-import { ArrowLeft, Send, Bot, User, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, Bot, User, Loader2, ThumbsUp, ThumbsDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -21,19 +21,21 @@ const RecipeCoach = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState<Record<number, "up" | "down">>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const assistantStartRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }), 50);
+  // Scroll to the START of the latest assistant response when streaming begins
+  const scrollToAssistantStart = useCallback(() => {
+    setTimeout(() => {
+      assistantStartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
   }, []);
-
-  useEffect(scrollToBottom, [messages, scrollToBottom]);
 
   const dietTier = (() => {
     const raw = localStorage.getItem("carnivore-onboarding-answers");
     if (!raw) return "strict";
-    // Could be stored elsewhere; default to strict
     return "strict";
   })();
 
@@ -47,6 +49,7 @@ const RecipeCoach = () => {
     setIsLoading(true);
 
     let assistantSoFar = "";
+    let scrolledToStart = false;
 
     try {
       const resp = await fetch(CHAT_URL, {
@@ -107,6 +110,11 @@ const RecipeCoach = () => {
                 }
                 return [...prev, { role: "assistant", content: assistantSoFar }];
               });
+              // Scroll to start of assistant response once
+              if (!scrolledToStart) {
+                scrolledToStart = true;
+                scrollToAssistantStart();
+              }
             }
           } catch {
             textBuffer = line + "\n" + textBuffer;
@@ -136,6 +144,13 @@ const RecipeCoach = () => {
       sendMessage(input);
     }
   };
+
+  const handleFeedback = (idx: number, type: "up" | "down") => {
+    setFeedback((prev) => ({ ...prev, [idx]: prev[idx] === type ? undefined! : type }));
+  };
+
+  // Find last assistant message index for scroll ref
+  const lastAssistantIdx = messages.reduce((acc, m, i) => (m.role === "assistant" ? i : acc), -1);
 
   return (
     <div className="flex flex-col h-[100dvh] bg-background">
@@ -182,35 +197,59 @@ const RecipeCoach = () => {
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            {msg.role === "assistant" && (
-              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Bot size={14} className="text-primary" />
-              </div>
-            )}
-            <div
-              className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-md"
-                  : "bg-card border border-border/40 text-foreground rounded-bl-md"
-              }`}
-            >
-              {msg.role === "assistant" ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5 [&>h3]:mt-3 [&>h3]:mb-1 [&>h3]:text-sm">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+        {messages.map((msg, i) => {
+          const isLastAssistant = i === lastAssistantIdx;
+          return (
+            <div key={i}>
+              {/* Scroll anchor for last assistant message */}
+              {msg.role === "assistant" && isLastAssistant && <div ref={assistantStartRef} />}
+              <div className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" && (
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Bot size={14} className="text-primary" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground rounded-br-md"
+                      : "bg-card border border-border/40 text-foreground rounded-bl-md"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5 [&>h3]:mt-3 [&>h3]:mb-1 [&>h3]:text-sm">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    msg.content
+                  )}
                 </div>
-              ) : (
-                msg.content
+                {msg.role === "user" && (
+                  <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <User size={14} className="text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              {/* Feedback buttons for assistant messages */}
+              {msg.role === "assistant" && !isLoading && (
+                <div className="flex gap-1 ml-9 mt-1">
+                  <button
+                    onClick={() => handleFeedback(i, "up")}
+                    className={`p-1.5 rounded-lg transition-all ${feedback[i] === "up" ? "bg-green-500/10 text-green-500" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+                  >
+                    <ThumbsUp size={13} />
+                  </button>
+                  <button
+                    onClick={() => handleFeedback(i, "down")}
+                    className={`p-1.5 rounded-lg transition-all ${feedback[i] === "down" ? "bg-red-500/10 text-red-500" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+                  >
+                    <ThumbsDown size={13} />
+                  </button>
+                </div>
               )}
             </div>
-            {msg.role === "user" && (
-              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-0.5">
-                <User size={14} className="text-muted-foreground" />
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex gap-2.5">

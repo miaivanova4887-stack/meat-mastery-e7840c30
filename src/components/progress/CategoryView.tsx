@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Plus, Crosshair, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProgressEntries, useProgressGoals, METRICS, type ProgressCategory } from "@/hooks/useProgress";
@@ -7,6 +7,7 @@ import AddEntryDrawer from "./AddEntryDrawer";
 import SetGoalDrawer from "./SetGoalDrawer";
 import { format } from "date-fns";
 import { useDeleteEntry } from "@/hooks/useProgress";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
 const RANGE_OPTIONS = [
   { label: "1 W", days: 7 },
@@ -20,12 +21,27 @@ interface Props {
   category: ProgressCategory;
 }
 
+const CM_TO_IN = 0.393701;
+
 const CategoryView = ({ category }: Props) => {
-  const metrics = METRICS[category];
+  const allMetrics = METRICS[category];
+  const profile = useUserProfile();
+  const sex = profile.body.sex;
+
+  // For body_measurements: show hips only for female/unspecified
+  const metrics = useMemo(() => {
+    if (category !== "body_measurements") return allMetrics;
+    return allMetrics.filter((m) => {
+      if (m.key === "hips" && sex === "male") return false;
+      return true;
+    });
+  }, [category, allMetrics, sex]);
+
   const [range, setRange] = useState(30);
   const [showAdd, setShowAdd] = useState(false);
   const [showGoal, setShowGoal] = useState(false);
   const [activeMetric, setActiveMetric] = useState(metrics[0]?.key || "");
+  const [useImperial, setUseImperial] = useState(false);
 
   const { data: entries = [], isLoading } = useProgressEntries(category, range);
   const { data: goals = [] } = useProgressGoals(category);
@@ -37,8 +53,26 @@ const CategoryView = ({ category }: Props) => {
   const metricEntries = entries.filter((e) => e.metric === activeMetric);
   const latestValue = metricEntries.length > 0 ? Number(metricEntries[metricEntries.length - 1].value) : null;
 
+  const isMeasurement = category === "body_measurements" && ["cm", "kg"].includes(currentMeta.unit);
+  const isCm = currentMeta.unit === "cm";
+  const isKg = currentMeta.unit === "kg";
+
+  const convertVal = (v: number) => {
+    if (!useImperial) return v;
+    if (isCm) return Math.round(v * CM_TO_IN * 10) / 10;
+    if (isKg) return Math.round(v * 2.20462 * 10) / 10;
+    return v;
+  };
+
+  const displayUnit = () => {
+    if (!useImperial) return currentMeta.unit;
+    if (isCm) return "in";
+    if (isKg) return "lb";
+    return currentMeta.unit;
+  };
+
   const avg = metricEntries.length > 0
-    ? Math.round((metricEntries.reduce((s, e) => s + Number(e.value), 0) / metricEntries.length) * 10) / 10
+    ? Math.round(convertVal(metricEntries.reduce((s, e) => s + Number(e.value), 0) / metricEntries.length) * 10) / 10
     : null;
 
   const goalPct = currentGoal && latestValue != null
@@ -64,21 +98,31 @@ const CategoryView = ({ category }: Props) => {
         ))}
       </div>
 
-      {/* Metric tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-        {metrics.map((m) => (
+      {/* Metric tabs + unit toggle */}
+      <div className="flex items-center gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide flex-1">
+          {metrics.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setActiveMetric(m.key)}
+              className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
+                activeMetric === m.key
+                  ? "bg-card border border-primary/30 text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {m.icon} {m.label}
+            </button>
+          ))}
+        </div>
+        {isMeasurement && (
           <button
-            key={m.key}
-            onClick={() => setActiveMetric(m.key)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
-              activeMetric === m.key
-                ? "bg-card border border-primary/30 text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+            onClick={() => setUseImperial((p) => !p)}
+            className="shrink-0 px-2.5 py-1.5 rounded-lg text-[10px] font-bold bg-secondary text-muted-foreground hover:text-foreground border border-border transition-all"
           >
-            {m.icon} {m.label}
+            {useImperial ? "in/lb" : "cm/kg"}
           </button>
-        ))}
+        )}
       </div>
 
       {/* Summary cards with gradient */}
@@ -90,7 +134,7 @@ const CategoryView = ({ category }: Props) => {
             <p className="text-3xl font-bold text-foreground mt-1.5">
               {avg ?? "—"}
             </p>
-            <span className="text-xs text-muted-foreground">{currentMeta.unit}</span>
+            <span className="text-xs text-muted-foreground">{displayUnit()}</span>
           </div>
         </div>
         <div className="relative overflow-hidden bg-card rounded-xl p-4 border border-border">
@@ -98,10 +142,10 @@ const CategoryView = ({ category }: Props) => {
           <div className="relative">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Goal</p>
             <p className="text-3xl font-bold text-foreground mt-1.5">
-              {currentGoal ? currentGoal.target_value : "—"}
+              {currentGoal ? (useImperial ? convertVal(currentGoal.target_value) : currentGoal.target_value) : "—"}
             </p>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{currentMeta.unit}</span>
+              <span className="text-xs text-muted-foreground">{displayUnit()}</span>
               {goalPct != null && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                   goalPct >= 100 ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"
@@ -137,7 +181,7 @@ const CategoryView = ({ category }: Props) => {
             {[...metricEntries].reverse().slice(0, 10).map((e) => (
               <div key={e.id} className="px-4 py-2.5 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-foreground">{Number(e.value)} {e.unit}</p>
+                  <p className="text-sm font-semibold text-foreground">{convertVal(Number(e.value))} {displayUnit()}</p>
                   <p className="text-[10px] text-muted-foreground">{format(new Date(e.recorded_at), "MMM dd, h:mm a")}</p>
                   {e.notes && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{e.notes}</p>}
                 </div>
