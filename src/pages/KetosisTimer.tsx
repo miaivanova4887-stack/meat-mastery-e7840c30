@@ -324,8 +324,8 @@ const KetosisTimer = () => {
                   </div>
                 </button>
                 {isExpanded && video && (
-                  <div className={`rounded-xl overflow-hidden border border-border ${isCurrent ? '' : 'opacity-70'}`}>
-                    <div className="relative">
+                  <div className={`space-y-2 ${isCurrent ? '' : 'opacity-70'}`}>
+                    <div className="rounded-xl overflow-hidden border border-border">
                       <video
                         src={video}
                         autoPlay
@@ -340,12 +340,12 @@ const KetosisTimer = () => {
                           }
                         }}
                       />
-                      {bodyDesc && (
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 pt-12">
-                          <p className="text-[11px] text-white/95 leading-relaxed font-medium">{bodyDesc}</p>
-                        </div>
-                      )}
                     </div>
+                    {bodyDesc && (
+                      <div className="ios-card p-3">
+                        <p className="text-[12px] text-muted-foreground leading-relaxed">{bodyDesc}</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
