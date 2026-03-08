@@ -131,6 +131,7 @@ const MealPlan = () => {
           mealsPerDay: profile.mealsPerDay,
           nutritionTargets,
           goal: profile.goal,
+          cuisines: profile.cuisines?.length ? profile.cuisines : undefined,
         },
       });
 
