@@ -9,6 +9,8 @@ interface Props {
   goal?: ProgressGoal;
   color?: string;
   rangeDays?: number;
+  /** If true, values in each bucket are summed (e.g. daily calories). Otherwise averaged. */
+  sumValues?: boolean;
 }
 
 type AggMode = "daily" | "weekly" | "monthly";
@@ -35,7 +37,7 @@ function bucketLabel(key: string, mode: AggMode): string {
   return format(d, "MMM dd");
 }
 
-const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))", rangeDays = 30 }: Props) => {
+const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))", rangeDays = 30, sumValues = false }: Props) => {
   const data = useMemo(() => {
     const filtered = entries.filter((e) => e.metric === metricKey);
     if (filtered.length === 0) return [];
@@ -51,11 +53,15 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
 
     return Array.from(buckets.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, values]) => ({
-        date: bucketLabel(key, mode),
-        value: Math.round(values.reduce((s, v) => s + v, 0) / values.length * 10) / 10,
-      }));
-  }, [entries, metricKey, rangeDays]);
+      .map(([key, values]) => {
+        const total = values.reduce((s, v) => s + v, 0);
+        const agg = sumValues ? total : total / values.length;
+        return {
+          date: bucketLabel(key, mode),
+          value: Math.round(agg * 10) / 10,
+        };
+      });
+  }, [entries, metricKey, rangeDays, sumValues]);
 
   if (data.length === 0) {
     return (
