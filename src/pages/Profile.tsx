@@ -34,6 +34,7 @@ const Profile = () => {
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
   const [tab, setTab] = useState<"recipes" | "likes" | "settings" | "notifications">("recipes");
   const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
+  const [webviewUrl, setWebviewUrl] = useState<string | null>(null);
 
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState(() => {
