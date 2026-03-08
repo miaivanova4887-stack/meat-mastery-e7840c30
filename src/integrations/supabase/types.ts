@@ -137,6 +137,75 @@ export type Database = {
         }
         Relationships: []
       }
+      progress_entries: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          metric: string
+          notes: string | null
+          recorded_at: string
+          unit: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          metric: string
+          notes?: string | null
+          recorded_at?: string
+          unit?: string
+          user_id: string
+          value: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          metric?: string
+          notes?: string | null
+          recorded_at?: string
+          unit?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      progress_goals: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          metric: string
+          target_value: number
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          metric: string
+          target_value: number
+          unit?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          metric?: string
+          target_value?: number
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           created_at: string
