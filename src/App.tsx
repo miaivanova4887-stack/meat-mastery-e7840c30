@@ -58,6 +58,7 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/community" element={<Community />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/cms" element={<CmsEditor />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
