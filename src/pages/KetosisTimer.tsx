@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ketosisPhase1Video from "@/assets/ketosis-phase-1.mp4";
 import ketosisPhase2Video from "@/assets/ketosis-phase-2.mp4";
+import ketosisPhase3Video from "@/assets/ketosis-phase-3.mp4";
 import ketosisPhase4Video from "@/assets/ketosis-phase-4.mp4";
 
-const PHASE_VIDEOS: Record<number, string | null> = {
+const PHASE_VIDEOS: Record<number, string> = {
   0: ketosisPhase1Video,
   1: ketosisPhase2Video,
-  2: null, // Phase 3 - generation pending
+  2: ketosisPhase3Video,
   3: ketosisPhase4Video,
 };
 import { useUserProfile } from "@/contexts/UserProfileContext";
