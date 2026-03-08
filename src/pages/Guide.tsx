@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Layers } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
@@ -15,16 +15,8 @@ const Guide = () => {
         <h1 className="text-lg font-display font-bold">Complete Guide</h1>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Header */}
-        <div className="bg-card border border-border rounded-lg p-5">
-          <h2 className="text-2xl font-display font-black text-foreground">Complete Guide</h2>
-          <p className="text-muted-foreground text-sm mt-1">A comprehensive guide to carnivore eating</p>
-          <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Clock size={12} /> 8 min read</span>
-            <span className="flex items-center gap-1"><Layers size={12} /> 7 sections</span>
-          </div>
-        </div>
+      <div className="p-4 space-y-3">
+        <p className="text-xs text-muted-foreground">A comprehensive guide to carnivore eating · 7 sections</p>
 
         <ContentSection type="overview" title="What is the Carnivore Diet?">
           The carnivore diet is an elimination diet consisting exclusively of animal products. It removes all plant foods, focusing on meat, fish, eggs, and sometimes dairy. By stripping away potential irritants, it lets your body heal and reveals which foods your system truly tolerates.
