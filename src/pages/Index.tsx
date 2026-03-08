@@ -11,11 +11,13 @@ import iconExercise from "@/assets/icon-exercise.png";
 import iconCravings from "@/assets/icon-cravings.png";
 import iconStories from "@/assets/icon-stories.png";
 import iconSustain from "@/assets/icon-sustain.png";
+import iconSustainFemale from "@/assets/icon-sustain-female.png";
 import iconMyths from "@/assets/icon-myths.png";
-import iconGuide from "@/assets/icon-guide.png";
+import iconGuide from "@/assets/icon-guide-modern.png";
 import iconGettingStarted from "@/assets/icon-getting-started.png";
 import iconBudget from "@/assets/icon-budget.png";
 import iconAthletic from "@/assets/icon-athletic.png";
+import iconAthleticFemale from "@/assets/icon-athletic-female.png";
 import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -34,7 +36,7 @@ import { Button } from "@/components/ui/button";
 // Replace with your actual Calendly link
 const CALENDLY_URL = "https://calendly.com";
 
-const allFeatures = [
+const getFeatures = (isFemale: boolean) => [
   { icon: iconBenefits, label: "Benefits", path: "/benefits", tags: [] as string[] },
   { icon: iconRecipes, label: "Recipes", path: "/recipes", tags: ["recipes"] },
   { icon: iconTimer, label: "Ketosis Timer", path: "/timer", tags: ["ketosis"] },
@@ -42,12 +44,12 @@ const allFeatures = [
   { icon: iconExercise, label: "Exercise", path: "/exercise", tags: ["exercise"] },
   { icon: iconCravings, label: "Cravings", path: "/cravings", tags: [] },
   // { icon: iconStories, label: "Success Stories", path: "/stories", tags: [] },
-  { icon: iconSustain, label: "Sustain Results", path: "/sustain", tags: [] },
+  { icon: isFemale ? iconSustainFemale : iconSustain, label: "Sustain Results", path: "/sustain", tags: [] },
   { icon: iconMyths, label: "Myths Busted", path: "/myths", tags: [] as string[] },
   { icon: iconGuide, label: "Complete Guide", path: "/guide", tags: [] as string[] },
   { icon: iconGettingStarted, label: "First 30 Days", path: "/getting-started", tags: [] as string[] },
   { icon: iconBudget, label: "Eat on a Budget", path: "/budget", tags: [] as string[] },
-  { icon: iconAthletic, label: "Athletic Fuel", path: "/athletic", tags: ["exercise"] },
+  { icon: isFemale ? iconAthleticFemale : iconAthletic, label: "Athletic Fuel", path: "/athletic", tags: ["exercise"] },
 ];
 
 const greetings: Record<Goal, string> = {
@@ -83,7 +85,7 @@ const Index = () => {
   const isFemale = profile.body.sex === "female";
   const heroImage = isFemale ? heroFemale : heroMale;
 
-  const sorted = [...allFeatures].sort((a, b) => {
+  const sorted = [...getFeatures(isFemale)].sort((a, b) => {
     const aMatch = a.tags.some((t) => profile.interests.includes(t as any));
     const bMatch = b.tags.some((t) => profile.interests.includes(t as any));
     if (aMatch && !bMatch) return -1;
