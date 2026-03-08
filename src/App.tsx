@@ -35,6 +35,7 @@ import CmsEditor from "./pages/CmsEditor";
 import CmsPageView from "./pages/CmsPageView";
 import ProgressPage from "./pages/Progress";
 import HealthSync from "./pages/HealthSync";
+import NewsFeed from "./pages/NewsFeed";
 
 const queryClient = new QueryClient();
 
