@@ -167,7 +167,7 @@ const CategoryView = ({ category }: Props) => {
         {isLoading ? (
           <div className="h-56 flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
         ) : (
-          <ProgressChart entries={entries} metricKey={activeMetric} goal={currentGoal} rangeDays={range} />
+          <ProgressChart entries={entries} metricKey={activeMetric} goal={currentGoal} rangeDays={range} sumValues={category === "diet_trends"} />
         )}
       </div>
 
