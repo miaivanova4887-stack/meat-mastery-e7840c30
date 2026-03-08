@@ -3,9 +3,9 @@ import type { CuisineType } from "@/data/recipes";
 
 export type Goal = "lose_weight" | "build_muscle" | "maintain" | "improve_health";
 export type Experience = "beginner" | "tried_briefly" | "months_in" | "veteran";
-export type Struggle = "sugar_cravings" | "low_energy" | "digestive" | "social_pressure";
+export type Struggle = "sugar_cravings" | "low_energy" | "digestive" | "social_pressure" | "recipe_ideas" | "discipline";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "very_active";
-export type Interest = "recipes" | "exercise" | "ketosis" | "mental_clarity";
+export type Interest = "recipes" | "exercise" | "ketosis" | "mental_clarity" | "progress_tracking" | "motivation";
 export type Sex = "male" | "female" | "unspecified";
 
 export interface BodyStats {
@@ -38,9 +38,9 @@ export interface UserProfile {
 
 const GOAL_MAP: Goal[] = ["lose_weight", "build_muscle", "maintain", "improve_health"];
 const EXP_MAP: Experience[] = ["beginner", "tried_briefly", "months_in", "veteran"];
-const STRUGGLE_MAP: Struggle[] = ["sugar_cravings", "low_energy", "digestive", "social_pressure"];
+const STRUGGLE_MAP: Struggle[] = ["sugar_cravings", "low_energy", "digestive", "social_pressure", "recipe_ideas", "discipline"];
 const ACTIVITY_MAP: ActivityLevel[] = ["sedentary", "light", "moderate", "very_active"];
-const INTEREST_MAP: Interest[] = ["recipes", "exercise", "ketosis", "mental_clarity"];
+const INTEREST_MAP: Interest[] = ["recipes", "exercise", "ketosis", "mental_clarity", "progress_tracking", "motivation"];
 const SEX_MAP: Sex[] = ["male", "female", "unspecified"];
 
 function parseNum(val: unknown): number | null {
