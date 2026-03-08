@@ -2,7 +2,6 @@ import { ArrowLeft, Flame, Play, Pause, RotateCcw, Info, Bell, BellOff, PlayCirc
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import ketosisPhase2Video from "@/assets/ketosis-phase-2.mp4";
-import { useState, useEffect, useRef, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
