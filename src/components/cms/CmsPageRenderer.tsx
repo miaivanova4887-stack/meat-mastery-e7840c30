@@ -57,6 +57,85 @@ function renderComponent(comp: PlacedComponent) {
           ))}
         </nav>
       );
+    case "progress_milestone": {
+      const colors: Record<string, string> = { emerald: "bg-emerald-500/10 text-emerald-600", amber: "bg-amber-500/10 text-amber-600", blue: "bg-blue-500/10 text-blue-600", primary: "bg-primary/10 text-primary" };
+      const c = colors[String(props.color || "emerald")] || colors.emerald;
+      return (
+        <div className="flex items-start gap-3 rounded-xl border border-border p-4" style={style}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${c}`}>{String(props.icon || "🏆")}</div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{String(props.title || "Milestone")}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{String(props.desc || "")}</p>
+          </div>
+        </div>
+      );
+    }
+    case "milestone_streak":
+      return (
+        <div className="flex items-center gap-3 rounded-xl border border-border p-4" style={style}>
+          <span className="text-3xl">🔥</span>
+          <div>
+            <div className="text-2xl font-bold text-foreground">{String(props.days || 7)}</div>
+            <div className="text-xs text-muted-foreground">{String(props.label || "Day Streak")}</div>
+          </div>
+        </div>
+      );
+    case "favorite_button":
+      return (
+        <button className="flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent" style={style}>
+          <span>{props.filled ? "❤️" : "🤍"}</span>
+          {String(props.label || "Favorite")}
+        </button>
+      );
+    case "share_card":
+      return (
+        <div className="rounded-xl border border-border p-4" style={style}>
+          <h3 className="text-sm font-semibold text-foreground">{String(props.title || "Invite")}</h3>
+          <p className="text-xs text-muted-foreground mt-1">{String(props.description || "")}</p>
+          <div className="flex gap-2 mt-3">
+            {["Share", "WhatsApp", "Email", "Copy Link"].map(b => (
+              <span key={b} className="px-3 py-1.5 rounded-xl bg-secondary text-xs font-medium text-muted-foreground">{b}</span>
+            ))}
+          </div>
+        </div>
+      );
+    case "feed_card": {
+      const feedColors: Record<string, string> = { blue: "bg-blue-500/10 text-blue-600", emerald: "bg-emerald-500/10 text-emerald-600", amber: "bg-amber-500/10 text-amber-600", primary: "bg-primary/10 text-primary" };
+      const fc = feedColors[String(props.color || "blue")] || feedColors.blue;
+      return (
+        <article className="rounded-xl border border-border p-4" style={style}>
+          <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${fc}`}>{String(props.category || "News")}</span>
+          <h3 className="text-sm font-semibold text-foreground mt-1.5">{String(props.title || "Article")}</h3>
+          <p className="text-xs text-muted-foreground mt-1">{String(props.summary || "")}</p>
+        </article>
+      );
+    }
+    case "stat_card":
+      return (
+        <div className="flex items-center gap-3 rounded-xl border border-border p-4" style={style}>
+          <span className="text-2xl">{String(props.icon || "📊")}</span>
+          <div>
+            <div className="text-xl font-bold text-foreground">{String(props.value || "0")}</div>
+            <div className="text-xs text-muted-foreground">{String(props.label || "Metric")} <span className="text-muted-foreground/60">{String(props.unit || "")}</span></div>
+          </div>
+        </div>
+      );
+    case "goal_progress": {
+      const cur = Number(props.current || 0);
+      const tar = Number(props.target || 100);
+      const pct = Math.min(100, Math.round((cur / tar) * 100));
+      return (
+        <div className="rounded-xl border border-border p-4" style={style}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-foreground">{String(props.label || "Goal")}</span>
+            <span className="text-xs text-muted-foreground">{cur}/{tar}{String(props.unit || "")}</span>
+          </div>
+          <div className="w-full h-2.5 rounded-full bg-secondary overflow-hidden">
+            <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      );
+    }
     default:
       return <div className="bg-muted rounded p-2 text-xs text-muted-foreground" style={style}>{comp.label}</div>;
   }
