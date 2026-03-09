@@ -1,0 +1,341 @@
+{
+  "nav": {
+    "home": "Home",
+    "recipes": "Recipes",
+    "plan": "Plan",
+    "progress": "Progress",
+    "profile": "Profile",
+    "signIn": "Sign In"
+  },
+  "home": {
+    "healthIsWealth": "Health is",
+    "healthIsWealth2": "Wealth.",
+    "recommendedForYou": "Recommended for you",
+    "updatePreferences": "Update your preferences",
+    "resetTitle": "Reset your preferences?",
+    "resetDesc": "This will restart the onboarding quiz. Your personalized content will update based on your new answers.",
+    "cancel": "Cancel",
+    "resetRedo": "Reset & Redo",
+    "motivationTitle": "Need extra motivation?",
+    "motivationDesc": "Talk to seasoned carnivores — book a free call.",
+    "features": {
+      "benefits": "Benefits",
+      "recipes": "Recipes",
+      "ketosisTimer": "Ketosis Timer",
+      "ingredients": "Ingredients",
+      "exercise": "Exercise",
+      "cravings": "Cravings",
+      "sustainResults": "Sustain Results",
+      "mythsBusted": "Myths Busted",
+      "completeGuide": "Complete Guide",
+      "first30Days": "First 30 Days",
+      "eatOnBudget": "Eat on a Budget",
+      "athleticFuel": "Athletic Fuel"
+    },
+    "greetings": {
+      "lose_weight": "Let's burn fat today",
+      "build_muscle": "Time to build strength",
+      "maintain": "Stay consistent, stay strong",
+      "improve_health": "Your healing journey continues"
+    },
+    "subtitles": {
+      "lose_weight": "High-protein, zero-carb fuel for maximum fat loss.",
+      "build_muscle": "Fuel your gains with nature's most anabolic diet.",
+      "maintain": "Steady nutrition for sustained performance.",
+      "improve_health": "Let food be your medicine — meat heals."
+    },
+    "tips": {
+      "sugar_cravings": "Craving sweets? Try bone broth or fatty cuts — they crush sugar cravings fast.",
+      "low_energy": "Low energy? Make sure you're eating enough fat — it's your new fuel source.",
+      "digestive": "Digestive adjustment is normal. Stick with fattier cuts and give your gut time.",
+      "social_pressure": "Facing pushback? Check out Success Stories from people who've been there."
+    }
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "welcomeBack": "Welcome Back",
+    "joinThePack": "Join the Pack",
+    "signInAccess": "Sign in to access your community",
+    "createProfile": "Create your carnivore profile",
+    "displayName": "Display name",
+    "email": "Email address",
+    "password": "Password",
+    "loading": "Loading…",
+    "dontHaveAccount": "Don't have an account?",
+    "signUp": "Sign Up",
+    "alreadyHaveAccount": "Already have an account?",
+    "fillAllFields": "Please fill in all fields",
+    "enterDisplayName": "Please enter a display name",
+    "passwordMin": "Password must be at least 6 characters",
+    "checkEmail": "Check your email to confirm your account!",
+    "welcomeBackToast": "Welcome back!"
+  },
+  "onboarding": {
+    "continue": "Continue",
+    "getStarted": "Get Started",
+    "selectAtLeastOne": "Select at least one option",
+    "skipForNow": "Skip for now",
+    "steps": {
+      "goal": {
+        "title": "What's your primary goal?",
+        "subtitle": "We'll tailor your carnivore journey to match",
+        "options": {
+          "lose_weight": "Lose weight",
+          "lose_weight_desc": "Shed fat and feel lighter",
+          "build_muscle": "Build muscle",
+          "build_muscle_desc": "Gain lean mass and strength",
+          "maintain": "Maintain weight",
+          "maintain_desc": "Stay where you are, feel better",
+          "improve_health": "Improve health",
+          "improve_health_desc": "Focus on healing and vitality"
+        }
+      },
+      "sex": {
+        "title": "What's your sex?",
+        "subtitle": "This helps us personalize nutrition recommendations",
+        "options": { "male": "Male", "female": "Female", "prefer_not": "Prefer not to say" }
+      },
+      "body": {
+        "title": "Tell us about yourself",
+        "subtitle": "Used to personalize calorie and macro suggestions",
+        "age": "Age",
+        "agePlaceholder": "e.g. 30",
+        "height": "Height",
+        "heightPlaceholder": "e.g. 175",
+        "weight": "Current weight",
+        "weightPlaceholder": "e.g. 80"
+      },
+      "target": {
+        "title": "What's your target?",
+        "subtitle": "A goal gives you direction — leave blank if unsure",
+        "goalWeight": "Goal weight",
+        "goalWeightPlaceholder": "e.g. 72",
+        "healthTarget": "Health target (optional)",
+        "healthTargetPlaceholder": "e.g. Lower blood pressure"
+      },
+      "experience": {
+        "title": "What's your experience level?",
+        "subtitle": "No wrong answers — we all start somewhere",
+        "options": {
+          "beginner": "Curious beginner",
+          "beginner_desc": "Just learning about carnivore",
+          "tried": "Tried it briefly",
+          "tried_desc": "Done a few days or weeks",
+          "months": "Several months in",
+          "months_desc": "Committed and seeing results",
+          "veteran": "Veteran carnivore",
+          "veteran_desc": "1+ years of meat-based eating"
+        }
+      },
+      "struggles": {
+        "title": "Any current struggles?",
+        "subtitle": "Select all that apply — we'll help with these",
+        "options": {
+          "sugar": "Sugar cravings",
+          "energy": "Low energy",
+          "digestive": "Digestive issues",
+          "social": "Social pressure",
+          "recipes": "New recipe ideas",
+          "recipes_desc": "Need exciting meal inspiration",
+          "discipline": "Discipline",
+          "discipline_desc": "Cooking, planning & staying consistent"
+        }
+      },
+      "activity": {
+        "title": "How active are you?",
+        "subtitle": "This helps us recommend the right exercise plan",
+        "options": {
+          "sedentary": "Sedentary",
+          "sedentary_desc": "Little to no exercise",
+          "light": "Lightly active",
+          "light_desc": "Walking, light movement",
+          "moderate": "Moderately active",
+          "moderate_desc": "3-4 workouts per week",
+          "very": "Very active",
+          "very_desc": "5+ intense sessions weekly"
+        }
+      },
+      "meals": {
+        "title": "How many meals do you eat per day?",
+        "subtitle": "We'll structure your meal plan around this",
+        "options": {
+          "omad": "1 meal (OMAD)",
+          "omad_desc": "One meal a day",
+          "two": "2 meals",
+          "two_desc": "e.g. Lunch + Dinner",
+          "three": "3 meals",
+          "three_desc": "Breakfast, Lunch, Dinner",
+          "four": "4 meals",
+          "four_desc": "3 meals + a snack"
+        }
+      },
+      "cuisines1": {
+        "title": "What cuisines inspire you?",
+        "subtitle": "We'll prioritise recipes from your favourite food cultures"
+      },
+      "cuisines2": {
+        "title": "Any more cuisines?",
+        "subtitle": "Select all that appeal to you"
+      },
+      "interests": {
+        "title": "What interests you most?",
+        "subtitle": "Select all you'd like to explore",
+        "options": {
+          "mealPlans": "Meal plans & recipes",
+          "exercise": "Exercise routines",
+          "ketosis": "Ketosis tracking",
+          "clarity": "Mental clarity tips",
+          "progress": "Progress tracking",
+          "progress_desc": "Monitor body & health metrics",
+          "motivation": "Motivation",
+          "motivation_desc": "Stay inspired and accountable"
+        }
+      }
+    }
+  },
+  "recipes": {
+    "title": "Carnivore Recipes",
+    "searchPlaceholder": "Search recipes, ingredients, tags…",
+    "fuelYourBody": "Fuel your body",
+    "readyToCook": "Ready to Cook",
+    "aiCoach": "AI Recipe Coach",
+    "aiCoachDesc": "Get personalised meal ideas based on your goals",
+    "servings": "Servings",
+    "less": "Less",
+    "ingredientsSteps": "Ingredients & Steps",
+    "ingredients": "Ingredients",
+    "addAllToBag": "Add all to bag",
+    "steps": "Steps",
+    "deleteRecipe": "Delete recipe",
+    "myRecipes": "My Recipes",
+    "allRecipes": "All Recipes",
+    "noRecipes": "No recipes found. Try adjusting your filters.",
+    "ingredientsAdded": "{{count}} ingredients added to shopping bag"
+  },
+  "mealPlan": {
+    "title": "Meal Plan",
+    "clearWeek": "Clear Week",
+    "planAhead": "Plan ahead",
+    "yourWeeklyFuel": "Your Weekly Fuel",
+    "aiPlanner": "AI Meal Planner",
+    "aiPlannerDesc": "Generate a single recipe, daily, or full week plan",
+    "weekCleared": "Week cleared"
+  },
+  "progress": {
+    "title": "My Progress",
+    "signInToTrack": "Sign in to track your progress",
+    "signInDesc": "Your health data is stored securely and syncs across devices.",
+    "syncDevices": "Sync Smart Devices",
+    "syncDesc": "Connect Apple Health or Google Health Connect.",
+    "setup": "Setup"
+  },
+  "profile": {
+    "title": "Profile",
+    "yourFeed": "Your Feed",
+    "myRecipes": "My Recipes",
+    "liked": "Liked",
+    "settings": "Settings",
+    "noSharedRecipes": "No shared recipes yet",
+    "shareFirst": "Share Your First Recipe",
+    "noLikedRecipes": "No liked recipes yet",
+    "browseCommunity": "Browse Community",
+    "signOut": "Sign Out",
+    "signedOut": "Signed out",
+    "updated": "Updated!",
+    "failedToSave": "Failed to save"
+  },
+  "benefits": {
+    "title": "Potential Benefits"
+  },
+  "timer": {
+    "title": "Ketosis Timer",
+    "start": "Start",
+    "pause": "Pause",
+    "reset": "Reset",
+    "target": "Target: {{hours}}h for full ketosis",
+    "youAreHere": "You are currently here"
+  },
+  "exercise": {
+    "title": "Exercise & Movement",
+    "quizTitle": "What Should I Do Today?",
+    "quizDesc": "Quick 7-question quiz to find your ideal workout",
+    "takeQuiz": "Take the Quiz",
+    "tryAgain": "Try Again",
+    "cancel": "Cancel",
+    "previousQuestion": "Previous question"
+  },
+  "cravings": {
+    "title": "Combat Cravings",
+    "intro": "Cravings are your body detoxing from sugar and carbs. Here's how to push through:"
+  },
+  "sustain": {
+    "title": "Sustain Results",
+    "intro": "Long-term success requires more than willpower. Build systems that make carnivore your default."
+  },
+  "myths": {
+    "title": "Myths Busted",
+    "count": "{{count}} common myths — debunked with science"
+  },
+  "guide": {
+    "title": "Complete Guide",
+    "subtitle": "A comprehensive guide to carnivore eating · 7 sections"
+  },
+  "gettingStarted": {
+    "title": "Your First 30 Days",
+    "subtitle": "A week-by-week roadmap for your carnivore journey · 5 sections"
+  },
+  "budget": {
+    "title": "Carnivore on a Budget",
+    "subtitle": "Smart strategies to eat well without breaking the bank · 6 sections"
+  },
+  "athletic": {
+    "title": "Athletic Performance",
+    "subtitle": "How carnivore fuels strength, endurance, and recovery · 7 sections"
+  },
+  "ingredients": {
+    "title": "Approved Ingredients"
+  },
+  "community": {
+    "title": "Community Recipes",
+    "latest": "Latest",
+    "popular": "Popular"
+  },
+  "shoppingBag": {
+    "title": "Shopping Bag",
+    "items": "{{count}} item",
+    "items_plural": "{{count}} items",
+    "empty": "Your bag is empty",
+    "emptyDesc": "Add ingredients from the Approved Ingredients list",
+    "browseIngredients": "Browse Ingredients",
+    "clearAll": "Clear All",
+    "units": "Units:"
+  },
+  "common": {
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "signIn": "Sign In"
+  },
+  "quotes": {
+    "lose_weight": {
+      "text": "Fat adaptation is the metabolic superpower that makes carnivore the ultimate weight loss tool.",
+      "author": "Dr. Ken Berry"
+    },
+    "build_muscle": {
+      "text": "Animal protein is the most bioavailable source of amino acids for muscle growth. Period.",
+      "author": "Dr. Shawn Baker"
+    },
+    "maintain": {
+      "text": "The carnivore diet is the elimination diet that helps you discover what your body truly needs.",
+      "author": "Dr. Shawn Baker"
+    },
+    "improve_health": {
+      "text": "When you remove the things that harm you and eat the things that heal you, the body knows what to do.",
+      "author": "Dr. Paul Saladino"
+    }
+  }
+}

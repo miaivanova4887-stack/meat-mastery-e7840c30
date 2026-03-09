@@ -2,9 +2,11 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import { useTranslation } from "react-i18next";
 
 const BudgetEating = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -12,11 +14,11 @@ const BudgetEating = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-display font-bold">Carnivore on a Budget</h1>
+        <h1 className="text-lg font-display font-bold">{t("budget.title")}</h1>
       </div>
 
       <div className="p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">Smart strategies to eat well without breaking the bank · 6 sections</p>
+        <p className="text-xs text-muted-foreground">{t("budget.subtitle")}</p>
 
         <ContentSection type="key_points" title="Affordable Cuts That Deliver" feedbackId="budget-cuts" feedbackQuestion="Will you try any of these cuts?" items={[
           "Ground beef: The ultimate budget staple — versatile and nutrient-dense",

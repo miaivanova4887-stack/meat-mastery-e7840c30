@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import MotivationCTA from "@/components/MotivationCTA";
 import ArticleFeedback from "@/components/ArticleFeedback";
+import { useTranslation } from "react-i18next";
 
 const Benefits = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
+  const { t } = useTranslation();
   const isFemale = profile.body.sex === "female";
   const isMale = profile.body.sex === "male";
 
@@ -33,7 +35,7 @@ const Benefits = () => {
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold">Potential Benefits</h1>
+        <h1 className="text-lg font-display font-bold">{t("benefits.title")}</h1>
       </div>
       <div className="p-4 space-y-3">
         {benefits.map(({ id, icon: Icon, title, desc, q }, i) => (

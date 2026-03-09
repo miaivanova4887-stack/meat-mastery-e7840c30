@@ -1,6 +1,7 @@
 import { ArrowLeft, Plus, ShoppingBag, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useTranslation } from "react-i18next";
 import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { Crown, Shield, Leaf } from "lucide-react";
 
@@ -49,11 +50,12 @@ const diets = [
 const Ingredients = () => {
   const navigate = useNavigate();
   const { addItem, removeItem, hasItem, count } = useShoppingBag();
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold">Approved Ingredients</h1>
+        <h1 className="text-lg font-display font-bold">{t("ingredients.title")}</h1>
         <button
           onClick={() => navigate("/shopping-bag")}
           className="ml-auto relative text-primary hover:text-primary/80 transition-colors"

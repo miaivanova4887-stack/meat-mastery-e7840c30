@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface Profile {
   display_name: string | null;
@@ -28,6 +29,7 @@ interface CommunityRecipe {
 const Profile = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
@@ -179,7 +181,7 @@ const Profile = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-display font-bold tracking-tight">Profile</h1>
+        <h1 className="text-lg font-display font-bold tracking-tight">{t("profile.title")}</h1>
       </div>
 
       {/* Profile header */}
@@ -215,10 +217,10 @@ const Profile = () => {
       {/* Tabs */}
       <div className="px-4 flex gap-2 mb-3">
         {([
-          { key: "feed", label: "Your Feed", icon: Newspaper },
-          { key: "recipes", label: "My Recipes", icon: ChefHat },
-          { key: "likes", label: "Liked", icon: Heart },
-          { key: "settings", label: "Settings", icon: Settings },
+          { key: "feed", label: t("profile.yourFeed"), icon: Newspaper },
+          { key: "recipes", label: t("profile.myRecipes"), icon: ChefHat },
+          { key: "likes", label: t("profile.liked"), icon: Heart },
+          { key: "settings", label: t("profile.settings"), icon: Settings },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
             key={key}

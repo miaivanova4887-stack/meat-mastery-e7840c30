@@ -16,6 +16,7 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal, ActivityLevel, Struggle } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
 import { subscribeToPush, sendPushToAll } from "@/lib/pushNotifications";
+import { useTranslation } from "react-i18next";
 
 const KETOSIS_TARGET_HOURS = 72;
 
@@ -126,6 +127,7 @@ function sendNotification(title: string, body: string) {
 const KetosisTimer = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
+  const { t } = useTranslation();
   const [isRunning, setIsRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [alertsEnabled, setAlertsEnabled] = useState(() => {
@@ -219,7 +221,7 @@ const KetosisTimer = () => {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold tracking-tight flex-1">Ketosis Timer</h1>
+        <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("timer.title")}</h1>
         <button onClick={toggleAlerts} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Toggle milestone alerts">
           {alertsEnabled ? <Bell size={18} strokeWidth={1.5} /> : <BellOff size={18} strokeWidth={1.5} />}
         </button>
@@ -256,10 +258,10 @@ const KetosisTimer = () => {
             className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm transition-all active:scale-[0.97]"
           >
             {isRunning ? <Pause size={18} /> : <Play size={18} />}
-            {isRunning ? "Pause" : "Start"}
+            {isRunning ? t("timer.pause") : t("timer.start")}
           </button>
           <button onClick={reset} className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-secondary text-secondary-foreground text-sm transition-all active:scale-[0.97]">
-            <RotateCcw size={16} /> Reset
+            <RotateCcw size={16} /> {t("timer.reset")}
           </button>
         </div>
 
@@ -273,7 +275,7 @@ const KetosisTimer = () => {
 
         {/* Phase milestones */}
         <div className="w-full mt-4 space-y-2">
-          <p className="text-xs text-muted-foreground text-center mb-3">Target: {KETOSIS_TARGET_HOURS}h for full ketosis</p>
+          <p className="text-xs text-muted-foreground text-center mb-3">{t("timer.target", { hours: KETOSIS_TARGET_HOURS })}</p>
           {phases.map((phase, i) => {
             const h = milestoneHours[i];
             const reached = hours >= h;
@@ -315,7 +317,7 @@ const KetosisTimer = () => {
                     {isCurrent && isRunning && (
                       <div className="flex items-center gap-1 mt-1">
                         <Flame size={11} className="text-primary" />
-                        <span className="text-[11px] text-primary font-medium">You are currently here</span>
+                        <span className="text-[11px] text-primary font-medium">{t("timer.youAreHere")}</span>
                       </div>
                     )}
                     {timeUntilText && (

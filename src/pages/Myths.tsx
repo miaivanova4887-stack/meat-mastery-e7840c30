@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import { useTranslation } from "react-i18next";
 
 const myths = [
   { title: "\"Red meat causes heart disease\"", content: "This claim is based on outdated epidemiological studies that conflated processed meats with fresh cuts. Modern meta-analyses show no significant link between unprocessed red meat and cardiovascular disease. Saturated fat from whole foods raises large, buoyant LDL — the harmless kind." },
@@ -16,6 +17,7 @@ const myths = [
 
 const Myths = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -23,11 +25,11 @@ const Myths = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-display font-bold">Myths Busted</h1>
+        <h1 className="text-lg font-display font-bold">{t("myths.title")}</h1>
       </div>
 
       <div className="p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">{myths.length} common myths — debunked with science</p>
+        <p className="text-xs text-muted-foreground">{t("myths.count", { count: myths.length })}</p>
 
         {myths.map((myth, i) => (
           <ContentSection

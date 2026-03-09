@@ -2,6 +2,7 @@ import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, Che
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
 import { recipes, TIER_LABELS, CRAVING_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
+import { useTranslation } from "react-i18next";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
@@ -44,6 +45,7 @@ for (const [k, v] of Object.entries(CRAVING_LABELS)) {
 const Recipes = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
+  const { t } = useTranslation();
   const defaultTier = tierFromProfile((profile as any).diet) ?? "strict";
   const { customRecipes, deleteRecipe } = useCustomRecipes();
   const { addItem } = useShoppingBag();
@@ -238,7 +240,7 @@ const Recipes = () => {
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold tracking-tight flex-1">Carnivore Recipes</h1>
+        <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("recipes.title")}</h1>
         <button onClick={() => navigate("/shopping-bag")} className="relative text-primary hover:text-primary/80 mr-2">
           <ShoppingBag size={18} />
         </button>
@@ -256,8 +258,8 @@ const Recipes = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         <div className="absolute bottom-3 left-4">
-          <p className="text-xs text-muted-foreground font-medium">Fuel your body</p>
-          <p className="text-lg font-display font-bold text-foreground">Ready to Cook</p>
+          <p className="text-xs text-muted-foreground font-medium">{t("recipes.fuelYourBody")}</p>
+          <p className="text-lg font-display font-bold text-foreground">{t("recipes.readyToCook")}</p>
         </div>
       </div>
 

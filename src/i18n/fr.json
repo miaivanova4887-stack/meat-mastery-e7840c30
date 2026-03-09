@@ -1,0 +1,341 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "recipes": "Recettes",
+    "plan": "Planifier",
+    "progress": "Progrès",
+    "profile": "Profil",
+    "signIn": "Connexion"
+  },
+  "home": {
+    "healthIsWealth": "La santé,",
+    "healthIsWealth2": "c'est la richesse.",
+    "recommendedForYou": "Recommandé pour vous",
+    "updatePreferences": "Modifier vos préférences",
+    "resetTitle": "Réinitialiser vos préférences ?",
+    "resetDesc": "Cela relancera le quiz d'intégration. Votre contenu personnalisé sera mis à jour en fonction de vos nouvelles réponses.",
+    "cancel": "Annuler",
+    "resetRedo": "Réinitialiser",
+    "motivationTitle": "Besoin de motivation ?",
+    "motivationDesc": "Échangez avec des carnivores expérimentés — réservez un appel gratuit.",
+    "features": {
+      "benefits": "Bienfaits",
+      "recipes": "Recettes",
+      "ketosisTimer": "Chrono cétose",
+      "ingredients": "Ingrédients",
+      "exercise": "Exercices",
+      "cravings": "Envies",
+      "sustainResults": "Maintenir ses résultats",
+      "mythsBusted": "Mythes démystifiés",
+      "completeGuide": "Guide complet",
+      "first30Days": "Les 30 premiers jours",
+      "eatOnBudget": "Manger petit budget",
+      "athleticFuel": "Performance sportive"
+    },
+    "greetings": {
+      "lose_weight": "Brûlons du gras aujourd'hui",
+      "build_muscle": "C'est l'heure de se renforcer",
+      "maintain": "Restez constant, restez fort",
+      "improve_health": "Votre parcours de guérison continue"
+    },
+    "subtitles": {
+      "lose_weight": "Alimentation hyperprotéinée, zéro glucide pour une perte de gras maximale.",
+      "build_muscle": "Alimentez vos gains avec le régime le plus anabolisant de la nature.",
+      "maintain": "Nutrition stable pour une performance soutenue.",
+      "improve_health": "Que la nourriture soit votre remède — la viande guérit."
+    },
+    "tips": {
+      "sugar_cravings": "Envie de sucre ? Essayez le bouillon d'os ou les morceaux gras — ils éliminent les envies de sucre rapidement.",
+      "low_energy": "Peu d'énergie ? Assurez-vous de manger suffisamment de gras — c'est votre nouvelle source d'énergie.",
+      "digestive": "L'adaptation digestive est normale. Privilégiez les morceaux gras et laissez du temps à votre système digestif.",
+      "social_pressure": "Vous subissez des pressions ? Consultez les témoignages de personnes qui sont passées par là."
+    }
+  },
+  "auth": {
+    "signIn": "Connexion",
+    "createAccount": "Créer un compte",
+    "welcomeBack": "Bon retour",
+    "joinThePack": "Rejoignez la meute",
+    "signInAccess": "Connectez-vous pour accéder à votre communauté",
+    "createProfile": "Créez votre profil carnivore",
+    "displayName": "Nom d'affichage",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "loading": "Chargement…",
+    "dontHaveAccount": "Pas encore de compte ?",
+    "signUp": "S'inscrire",
+    "alreadyHaveAccount": "Déjà un compte ?",
+    "fillAllFields": "Veuillez remplir tous les champs",
+    "enterDisplayName": "Veuillez entrer un nom d'affichage",
+    "passwordMin": "Le mot de passe doit contenir au moins 6 caractères",
+    "checkEmail": "Vérifiez votre e-mail pour confirmer votre compte !",
+    "welcomeBackToast": "Bon retour !"
+  },
+  "onboarding": {
+    "continue": "Continuer",
+    "getStarted": "C'est parti",
+    "selectAtLeastOne": "Sélectionnez au moins une option",
+    "skipForNow": "Passer pour le moment",
+    "steps": {
+      "goal": {
+        "title": "Quel est votre objectif principal ?",
+        "subtitle": "Nous adapterons votre parcours carnivore en conséquence",
+        "options": {
+          "lose_weight": "Perdre du poids",
+          "lose_weight_desc": "Perdre du gras et se sentir plus léger",
+          "build_muscle": "Construire du muscle",
+          "build_muscle_desc": "Gagner en masse et en force",
+          "maintain": "Maintenir son poids",
+          "maintain_desc": "Rester stable, se sentir mieux",
+          "improve_health": "Améliorer sa santé",
+          "improve_health_desc": "Se concentrer sur la guérison et la vitalité"
+        }
+      },
+      "sex": {
+        "title": "Quel est votre sexe ?",
+        "subtitle": "Cela nous aide à personnaliser les recommandations nutritionnelles",
+        "options": { "male": "Homme", "female": "Femme", "prefer_not": "Préfère ne pas dire" }
+      },
+      "body": {
+        "title": "Parlez-nous de vous",
+        "subtitle": "Utilisé pour personnaliser les suggestions de calories et de macros",
+        "age": "Âge",
+        "agePlaceholder": "ex. 30",
+        "height": "Taille",
+        "heightPlaceholder": "ex. 175",
+        "weight": "Poids actuel",
+        "weightPlaceholder": "ex. 80"
+      },
+      "target": {
+        "title": "Quel est votre objectif ?",
+        "subtitle": "Un objectif vous donne une direction — laissez vide si incertain",
+        "goalWeight": "Poids cible",
+        "goalWeightPlaceholder": "ex. 72",
+        "healthTarget": "Objectif santé (optionnel)",
+        "healthTargetPlaceholder": "ex. Réduire la tension artérielle"
+      },
+      "experience": {
+        "title": "Quel est votre niveau d'expérience ?",
+        "subtitle": "Pas de mauvaise réponse — on commence tous quelque part",
+        "options": {
+          "beginner": "Débutant curieux",
+          "beginner_desc": "Découvre le régime carnivore",
+          "tried": "Essayé brièvement",
+          "tried_desc": "Quelques jours ou semaines",
+          "months": "Plusieurs mois",
+          "months_desc": "Engagé et avec des résultats",
+          "veteran": "Carnivore vétéran",
+          "veteran_desc": "1+ an d'alimentation à base de viande"
+        }
+      },
+      "struggles": {
+        "title": "Des difficultés actuelles ?",
+        "subtitle": "Sélectionnez tout ce qui s'applique — nous vous aiderons",
+        "options": {
+          "sugar": "Envies de sucre",
+          "energy": "Manque d'énergie",
+          "digestive": "Problèmes digestifs",
+          "social": "Pression sociale",
+          "recipes": "Nouvelles idées de recettes",
+          "recipes_desc": "Besoin d'inspiration culinaire",
+          "discipline": "Discipline",
+          "discipline_desc": "Cuisine, planification et constance"
+        }
+      },
+      "activity": {
+        "title": "Êtes-vous actif ?",
+        "subtitle": "Cela nous aide à recommander le bon programme d'exercice",
+        "options": {
+          "sedentary": "Sédentaire",
+          "sedentary_desc": "Peu ou pas d'exercice",
+          "light": "Légèrement actif",
+          "light_desc": "Marche, mouvements légers",
+          "moderate": "Modérément actif",
+          "moderate_desc": "3-4 entraînements par semaine",
+          "very": "Très actif",
+          "very_desc": "5+ séances intenses par semaine"
+        }
+      },
+      "meals": {
+        "title": "Combien de repas par jour ?",
+        "subtitle": "Nous structurerons votre plan de repas en conséquence",
+        "options": {
+          "omad": "1 repas (OMAD)",
+          "omad_desc": "Un repas par jour",
+          "two": "2 repas",
+          "two_desc": "ex. Déjeuner + Dîner",
+          "three": "3 repas",
+          "three_desc": "Petit-déjeuner, Déjeuner, Dîner",
+          "four": "4 repas",
+          "four_desc": "3 repas + une collation"
+        }
+      },
+      "cuisines1": {
+        "title": "Quelles cuisines vous inspirent ?",
+        "subtitle": "Nous privilégierons les recettes de vos cultures culinaires préférées"
+      },
+      "cuisines2": {
+        "title": "D'autres cuisines ?",
+        "subtitle": "Sélectionnez tout ce qui vous plaît"
+      },
+      "interests": {
+        "title": "Qu'est-ce qui vous intéresse le plus ?",
+        "subtitle": "Sélectionnez tout ce que vous souhaitez explorer",
+        "options": {
+          "mealPlans": "Plans de repas et recettes",
+          "exercise": "Programmes d'exercices",
+          "ketosis": "Suivi de la cétose",
+          "clarity": "Conseils clarté mentale",
+          "progress": "Suivi des progrès",
+          "progress_desc": "Suivez vos métriques corporelles et de santé",
+          "motivation": "Motivation",
+          "motivation_desc": "Restez inspiré et responsable"
+        }
+      }
+    }
+  },
+  "recipes": {
+    "title": "Recettes carnivores",
+    "searchPlaceholder": "Rechercher recettes, ingrédients, tags…",
+    "fuelYourBody": "Nourrissez votre corps",
+    "readyToCook": "Prêt à cuisiner",
+    "aiCoach": "Coach IA recettes",
+    "aiCoachDesc": "Obtenez des idées de repas personnalisées selon vos objectifs",
+    "servings": "Portions",
+    "less": "Moins",
+    "ingredientsSteps": "Ingrédients et étapes",
+    "ingredients": "Ingrédients",
+    "addAllToBag": "Tout ajouter au panier",
+    "steps": "Étapes",
+    "deleteRecipe": "Supprimer la recette",
+    "myRecipes": "Mes recettes",
+    "allRecipes": "Toutes les recettes",
+    "noRecipes": "Aucune recette trouvée. Essayez d'ajuster vos filtres.",
+    "ingredientsAdded": "{{count}} ingrédients ajoutés au panier"
+  },
+  "mealPlan": {
+    "title": "Plan de repas",
+    "clearWeek": "Vider la semaine",
+    "planAhead": "Planifiez",
+    "yourWeeklyFuel": "Votre énergie hebdomadaire",
+    "aiPlanner": "Planificateur IA",
+    "aiPlannerDesc": "Générer une recette, un jour ou une semaine complète",
+    "weekCleared": "Semaine vidée"
+  },
+  "progress": {
+    "title": "Mes progrès",
+    "signInToTrack": "Connectez-vous pour suivre vos progrès",
+    "signInDesc": "Vos données de santé sont stockées en toute sécurité et synchronisées entre vos appareils.",
+    "syncDevices": "Synchroniser les appareils",
+    "syncDesc": "Connectez Apple Health ou Google Health Connect.",
+    "setup": "Configurer"
+  },
+  "profile": {
+    "title": "Profil",
+    "yourFeed": "Votre fil",
+    "myRecipes": "Mes recettes",
+    "liked": "Aimées",
+    "settings": "Paramètres",
+    "noSharedRecipes": "Aucune recette partagée",
+    "shareFirst": "Partagez votre première recette",
+    "noLikedRecipes": "Aucune recette aimée",
+    "browseCommunity": "Parcourir la communauté",
+    "signOut": "Se déconnecter",
+    "signedOut": "Déconnecté",
+    "updated": "Mis à jour !",
+    "failedToSave": "Échec de la sauvegarde"
+  },
+  "benefits": {
+    "title": "Bienfaits potentiels"
+  },
+  "timer": {
+    "title": "Chrono cétose",
+    "start": "Démarrer",
+    "pause": "Pause",
+    "reset": "Réinitialiser",
+    "target": "Objectif : {{hours}}h pour la cétose complète",
+    "youAreHere": "Vous êtes ici actuellement"
+  },
+  "exercise": {
+    "title": "Exercice et mouvement",
+    "quizTitle": "Que devrais-je faire aujourd'hui ?",
+    "quizDesc": "Quiz rapide en 7 questions pour trouver votre entraînement idéal",
+    "takeQuiz": "Faire le quiz",
+    "tryAgain": "Réessayer",
+    "cancel": "Annuler",
+    "previousQuestion": "Question précédente"
+  },
+  "cravings": {
+    "title": "Combattre les envies",
+    "intro": "Les envies sont le signe que votre corps se détoxifie du sucre et des glucides. Voici comment persévérer :"
+  },
+  "sustain": {
+    "title": "Maintenir ses résultats",
+    "intro": "Le succès à long terme demande plus que de la volonté. Construisez des systèmes qui font du carnivore votre mode par défaut."
+  },
+  "myths": {
+    "title": "Mythes démystifiés",
+    "count": "{{count}} mythes courants — démystifiés par la science"
+  },
+  "guide": {
+    "title": "Guide complet",
+    "subtitle": "Un guide complet de l'alimentation carnivore · 7 sections"
+  },
+  "gettingStarted": {
+    "title": "Vos 30 premiers jours",
+    "subtitle": "Une feuille de route semaine par semaine pour votre parcours carnivore · 5 sections"
+  },
+  "budget": {
+    "title": "Carnivore petit budget",
+    "subtitle": "Des stratégies intelligentes pour bien manger sans se ruiner · 6 sections"
+  },
+  "athletic": {
+    "title": "Performance sportive",
+    "subtitle": "Comment le carnivore alimente la force, l'endurance et la récupération · 7 sections"
+  },
+  "ingredients": {
+    "title": "Ingrédients approuvés"
+  },
+  "community": {
+    "title": "Recettes communautaires",
+    "latest": "Récentes",
+    "popular": "Populaires"
+  },
+  "shoppingBag": {
+    "title": "Panier d'achat",
+    "items": "{{count}} article",
+    "items_plural": "{{count}} articles",
+    "empty": "Votre panier est vide",
+    "emptyDesc": "Ajoutez des ingrédients depuis la liste des ingrédients approuvés",
+    "browseIngredients": "Parcourir les ingrédients",
+    "clearAll": "Tout supprimer",
+    "units": "Unités :"
+  },
+  "common": {
+    "back": "Retour",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "loading": "Chargement…",
+    "error": "Une erreur est survenue",
+    "signIn": "Connexion"
+  },
+  "quotes": {
+    "lose_weight": {
+      "text": "L'adaptation aux graisses est le super-pouvoir métabolique qui fait du carnivore l'outil ultime de perte de poids.",
+      "author": "Dr. Ken Berry"
+    },
+    "build_muscle": {
+      "text": "La protéine animale est la source d'acides aminés la plus biodisponible pour la croissance musculaire. Point.",
+      "author": "Dr. Shawn Baker"
+    },
+    "maintain": {
+      "text": "Le régime carnivore est le régime d'élimination qui vous aide à découvrir ce dont votre corps a vraiment besoin.",
+      "author": "Dr. Shawn Baker"
+    },
+    "improve_health": {
+      "text": "Quand vous éliminez ce qui vous nuit et mangez ce qui vous guérit, le corps sait quoi faire.",
+      "author": "Dr. Paul Saladino"
+    }
+  }
+}
