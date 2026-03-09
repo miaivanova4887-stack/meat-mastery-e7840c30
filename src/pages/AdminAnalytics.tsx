@@ -426,7 +426,7 @@ const AdminAnalytics = () => {
 
       <div className="px-4 pt-4 space-y-4">
         <Tabs defaultValue="overview">
-          <TabsList className="w-full grid grid-cols-4">
+          <TabsList className="w-full grid grid-cols-5">
             <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
             <TabsTrigger value="live" className="text-xs gap-1">
               <Radio size={12} className="text-emerald-500" /> Live
@@ -436,6 +436,9 @@ const AdminAnalytics = () => {
             </TabsTrigger>
             <TabsTrigger value="ltv" className="text-xs gap-1">
               <Crown size={12} /> LTV
+            </TabsTrigger>
+            <TabsTrigger value="retention" className="text-xs gap-1">
+              <RotateCcw size={12} /> Retention
             </TabsTrigger>
           </TabsList>
 
