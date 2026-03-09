@@ -1,9 +1,10 @@
-import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(142 76% 36%)", "hsl(45 93% 47%)", "hsl(221 83% 53%)"];
 
@@ -15,6 +16,14 @@ interface Stats {
   totalProgressEntries: number;
   totalCmsPages: number;
   publishedCmsPages: number;
+}
+
+interface LiveEvent {
+  id: string;
+  event_type: string;
+  page_path: string | null;
+  created_at: string;
+  user_id: string | null;
 }
 
 const AdminAnalytics = () => {
@@ -29,6 +38,12 @@ const AdminAnalytics = () => {
   const [cmsPageStats, setCmsPageStats] = useState<{ title: string; slug: string; views: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<7 | 14 | 30>(7);
+
+  // Real-time state
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+  const [activeUsers, setActiveUsers] = useState(0);
+  const [eventsPerMinute, setEventsPerMinute] = useState(0);
+  const recentSessionsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
