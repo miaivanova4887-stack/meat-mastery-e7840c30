@@ -26,7 +26,24 @@ interface LiveEvent {
   user_id: string | null;
 }
 
-const AdminAnalytics = () => {
+interface RevenueEvent {
+  id: string;
+  user_id: string;
+  event_type: string;
+  amount_cents: number;
+  currency: string;
+  product_name: string | null;
+  created_at: string;
+}
+
+interface LtvCohort {
+  cohort: string;
+  users: number;
+  day0: number;
+  day7: number;
+  day14: number;
+  day30: number;
+}
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
