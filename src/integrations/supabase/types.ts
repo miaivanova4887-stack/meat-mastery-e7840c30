@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_notifications: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          created_by: string
+          id: string
+          sent_feed: boolean
+          sent_push: boolean
+          target_preferences: Json
+          title: string
+        }
+        Insert: {
+          body?: string
+          category?: string
+          created_at?: string
+          created_by: string
+          id?: string
+          sent_feed?: boolean
+          sent_push?: boolean
+          target_preferences?: Json
+          title: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          sent_feed?: boolean
+          sent_push?: boolean
+          target_preferences?: Json
+          title?: string
+        }
+        Relationships: []
+      }
       cms_pages: {
         Row: {
           created_at: string
