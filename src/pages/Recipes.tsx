@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
 import { recipes, TIER_LABELS, CRAVING_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
@@ -8,6 +8,7 @@ import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
 import { MealImage } from "@/hooks/useMealImage";
 import { toast } from "sonner";
+import { useFavorites } from "@/hooks/useFavorites";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
 import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
@@ -49,6 +50,7 @@ const Recipes = () => {
   const defaultTier = tierFromProfile((profile as any).diet) ?? "strict";
   const { customRecipes, deleteRecipe } = useCustomRecipes();
   const { addItem } = useShoppingBag();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
   const [activeFilter, setActiveFilter] = useState<string>("all"); // "all" | "snack" | CravingType
@@ -139,7 +141,16 @@ const Recipes = () => {
               {r.serving && <span className="text-xs">· {r.serving}{mult > 1 ? ` × ${mult}` : ""}</span>}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFavorite(r.name); }}
+              className="p-1.5 -m-1.5 rounded-lg transition-all active:scale-90"
+            >
+              <Heart
+                size={18}
+                className={`transition-colors ${isFavorite(r.name) ? "fill-destructive text-destructive" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+              />
+            </button>
             <span className="text-xs font-semibold text-primary">{scaledProtein} P</span>
             <span className="text-xs font-medium text-muted-foreground">{scaledFat} F</span>
           </div>
