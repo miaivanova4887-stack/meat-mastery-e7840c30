@@ -217,10 +217,10 @@ const Profile = () => {
       {/* Tabs */}
       <div className="px-4 flex gap-2 mb-3">
         {([
-          { key: "feed", label: "Your Feed", icon: Newspaper },
-          { key: "recipes", label: "My Recipes", icon: ChefHat },
-          { key: "likes", label: "Liked", icon: Heart },
-          { key: "settings", label: "Settings", icon: Settings },
+          { key: "feed", label: t("profile.yourFeed"), icon: Newspaper },
+          { key: "recipes", label: t("profile.myRecipes"), icon: ChefHat },
+          { key: "likes", label: t("profile.liked"), icon: Heart },
+          { key: "settings", label: t("profile.settings"), icon: Settings },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
