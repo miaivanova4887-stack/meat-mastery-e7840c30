@@ -37,6 +37,7 @@ const Profile = () => {
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
   const [progressMilestones, setProgressMilestones] = useState<any[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<"feed" | "recipes" | "likes" | "settings">("feed");
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const favoriteRecipes = useMemo(() => recipes.filter(r => favorites.has(r.name)), [favorites]);
