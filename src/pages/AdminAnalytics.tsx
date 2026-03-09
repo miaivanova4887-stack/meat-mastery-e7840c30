@@ -150,6 +150,14 @@ const AdminAnalytics = () => {
   const [rawRevenueEvents, setRawRevenueEvents] = useState<RevenueEvent[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
+  // LTV date range
+  const [ltvDateFrom, setLtvDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [ltvDateTo, setLtvDateTo] = useState<Date>(new Date());
+
+  // Retention date range
+  const [retDateFrom, setRetDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [retDateTo, setRetDateTo] = useState<Date>(new Date());
+
   // Platform-segregated mock KPIs (will use real data when available)
   const platformKpis = {
     ios: {
@@ -166,7 +174,7 @@ const AdminAnalytics = () => {
     },
   };
 
-  // CSV export
+  // CSV export - Revenue
   const exportRevenueCsv = useCallback(() => {
     setIsExporting(true);
     try {
@@ -195,6 +203,34 @@ const AdminAnalytics = () => {
       setIsExporting(false);
     }
   }, [rawRevenueEvents, revDateFrom, revDateTo]);
+
+  // CSV export - LTV
+  const exportLtvCsv = useCallback(() => {
+    const headers = ["Cohort", "Users", "Day 0 ($)", "Day 7 ($)", "Day 14 ($)", "Day 30 ($)"];
+    const rows = ltvCohorts.map((c) => [c.cohort, c.users, c.day0, c.day7, c.day14, c.day30]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ltv_cohorts_${format(ltvDateFrom, "yyyy-MM-dd")}_to_${format(ltvDateTo, "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [ltvCohorts, ltvDateFrom, ltvDateTo]);
+
+  // CSV export - Retention
+  const exportRetentionCsv = useCallback(() => {
+    const headers = ["Cohort", "Users", "Day 1 (%)", "Day 7 (%)", "Day 30 (%)"];
+    const rows = retentionCohorts.map((c) => [c.cohort, c.users, c.day1, c.day7, c.day30]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `retention_cohorts_${format(retDateFrom, "yyyy-MM-dd")}_to_${format(retDateTo, "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [retentionCohorts, retDateFrom, retDateTo]);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -756,6 +792,37 @@ const AdminAnalytics = () => {
 
           {/* LTV Tab - AppsFlyer-style Cohort LTV */}
           <TabsContent value="ltv" className="space-y-4 mt-4">
+            {/* Date Range & Export */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">From</span>
+                <Input
+                  type="date"
+                  className="w-[130px] h-8 text-xs"
+                  value={format(ltvDateFrom, "yyyy-MM-dd")}
+                  onChange={(e) => {
+                    const d = parseLocalDate(e.target.value);
+                    if (d) setLtvDateFrom(d);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">To</span>
+                <Input
+                  type="date"
+                  className="w-[130px] h-8 text-xs"
+                  value={format(ltvDateTo, "yyyy-MM-dd")}
+                  onChange={(e) => {
+                    const d = parseLocalDate(e.target.value);
+                    if (d) setLtvDateTo(d);
+                  }}
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={exportLtvCsv} className="ml-auto">
+                <Download size={14} className="mr-1" /> Export CSV
+              </Button>
+            </div>
+
             {!hasRealRevenue && (
               <div className="ios-card p-3 flex items-start gap-2 border border-primary/20 bg-primary/5">
                 <Info size={14} className="text-primary mt-0.5 flex-shrink-0" />
@@ -858,6 +925,37 @@ const AdminAnalytics = () => {
 
           {/* Retention Tab - Day 1/7/30 Retention Curves */}
           <TabsContent value="retention" className="space-y-4 mt-4">
+            {/* Date Range & Export */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">From</span>
+                <Input
+                  type="date"
+                  className="w-[130px] h-8 text-xs"
+                  value={format(retDateFrom, "yyyy-MM-dd")}
+                  onChange={(e) => {
+                    const d = parseLocalDate(e.target.value);
+                    if (d) setRetDateFrom(d);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">To</span>
+                <Input
+                  type="date"
+                  className="w-[130px] h-8 text-xs"
+                  value={format(retDateTo, "yyyy-MM-dd")}
+                  onChange={(e) => {
+                    const d = parseLocalDate(e.target.value);
+                    if (d) setRetDateTo(d);
+                  }}
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={exportRetentionCsv} className="ml-auto">
+                <Download size={14} className="mr-1" /> Export CSV
+              </Button>
+            </div>
+
             <div className="ios-card p-3 flex items-start gap-2 border border-primary/20 bg-primary/5">
               <Info size={14} className="text-primary mt-0.5 flex-shrink-0" />
               <p className="text-[11px] text-muted-foreground">
