@@ -1,4 +1,4 @@
-import { Zap, ChevronRight, Sparkles } from "lucide-react";
+import { Zap, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const CALENDLY_URL = "https://calendly.com";
@@ -10,18 +10,18 @@ const MotivationCTA = () => {
       href={CALENDLY_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="block mx-4 mb-4 mt-6 relative overflow-hidden rounded-2xl p-[1px] bg-gradient-to-br from-primary/40 via-primary/20 to-primary/5 active:scale-[0.98] transition-all group"
+      className="block mx-4 mb-4 mt-6 relative overflow-hidden rounded-2xl border border-white/15 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-xl backdrop-saturate-150 shadow-[0_8px_32px_-8px_hsl(var(--primary)/0.15)] p-4 active:scale-[0.98] transition-all group hover:shadow-[0_8px_32px_-4px_hsl(var(--primary)/0.25)] hover:border-primary/20"
     >
-      <div className="relative overflow-hidden rounded-[15px] bg-card p-4 flex items-center gap-3.5">
-        <div className="absolute -top-6 -right-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
-        <div className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/50 flex items-center justify-center shrink-0 shadow-lg ring-1 ring-white/10">
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-primary/[0.02] pointer-events-none rounded-2xl" />
+      <div className="flex items-center gap-3.5">
+        <div className="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/50 flex items-center justify-center shrink-0 shadow-lg shadow-primary/20 ring-1 ring-white/20">
           <Zap size={24} className="text-primary-foreground drop-shadow-md" fill="currentColor" />
         </div>
         <div className="flex-1 relative z-10">
           <p className="text-sm font-bold text-foreground tracking-tight">{t("home.motivationTitle")}</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">{t("home.motivationDesc")}</p>
         </div>
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center group-hover:from-primary/25 group-hover:to-primary/10 transition-all shrink-0">
+        <div className="w-8 h-8 rounded-full bg-white/30 dark:bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/50 dark:group-hover:bg-white/15 transition-all shrink-0 ring-1 ring-white/20">
           <ChevronRight size={14} className="text-primary group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
