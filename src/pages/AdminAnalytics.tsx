@@ -86,6 +86,26 @@ function generateMockLtvCohorts(): LtvCohort[] {
   return cohorts;
 }
 
+function generateMockRetentionCohorts(): RetentionCohort[] {
+  const cohorts = [];
+  for (let i = 3; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 7 * 86400000);
+    const weekLabel = `${d.toISOString().slice(5, 10)}`;
+    const users = Math.floor(Math.random() * 40 + 10);
+    const day1 = +(Math.random() * 22 + 45).toFixed(1);
+    const day7 = +(day1 - (Math.random() * 18 + 10)).toFixed(1);
+    const day30 = +(day7 - (Math.random() * 16 + 8)).toFixed(1);
+    cohorts.push({
+      cohort: weekLabel,
+      users,
+      day1: Math.max(day1, 5),
+      day7: Math.max(day7, 3),
+      day30: Math.max(day30, 1),
+    });
+  }
+  return cohorts;
+}
+
 const AdminAnalytics = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -113,6 +133,7 @@ const AdminAnalytics = () => {
   const [avgLtv, setAvgLtv] = useState(0);
   const [payingUsers, setPayingUsers] = useState(0);
   const [hasRealRevenue, setHasRealRevenue] = useState(false);
+  const [retentionCohorts, setRetentionCohorts] = useState<RetentionCohort[]>([]);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
