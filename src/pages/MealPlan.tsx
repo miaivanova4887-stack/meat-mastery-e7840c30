@@ -9,6 +9,7 @@ import { useShoppingBag } from "@/contexts/ShoppingBagContext";
 import { supabase } from "@/integrations/supabase/client";
 import { MealImage } from "@/hooks/useMealImage";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useMealSync } from "@/hooks/useMealSync";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
@@ -40,6 +41,7 @@ function isToday(day: DayKey): boolean {
 
 const MealPlan = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals, toggleCompleted, isCompleted, dayCompletionCount } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
   const { addItem, hasItem } = useShoppingBag();
@@ -379,12 +381,12 @@ const MealPlan = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-display font-bold tracking-tight flex-1">Meal Plan</h1>
+        <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("mealPlan.title")}</h1>
         <button
-          onClick={() => { clearWeek(); toast("Week cleared"); }}
+          onClick={() => { clearWeek(); toast(t("mealPlan.weekCleared")); }}
           className="text-xs text-muted-foreground hover:text-destructive transition-colors"
         >
-          Clear Week
+          {t("mealPlan.clearWeek")}
         </button>
       </div>
 
@@ -397,8 +399,8 @@ const MealPlan = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         <div className="absolute bottom-3 left-4">
-          <p className="text-xs text-muted-foreground font-medium">Plan ahead</p>
-          <p className="text-lg font-display font-bold text-foreground">Your Weekly Fuel</p>
+          <p className="text-xs text-muted-foreground font-medium">{t("mealPlan.planAhead")}</p>
+          <p className="text-lg font-display font-bold text-foreground">{t("mealPlan.yourWeeklyFuel")}</p>
         </div>
       </div>
 
@@ -412,8 +414,8 @@ const MealPlan = () => {
             <Sparkles size={20} className="text-primary" />
           </div>
           <div className="text-left flex-1">
-            <p className="text-[13px] font-semibold text-foreground">AI Meal Planner</p>
-            <p className="text-[11px] text-muted-foreground">Generate a single recipe, daily, or full week plan</p>
+            <p className="text-[13px] font-semibold text-foreground">{t("mealPlan.aiPlanner")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("mealPlan.aiPlannerDesc")}</p>
           </div>
           <ArrowLeft size={14} className="text-muted-foreground rotate-180" />
         </button>
