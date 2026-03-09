@@ -574,7 +574,7 @@ const AdminAnalytics = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
+                  <CalendarComponent
                     mode="single"
                     selected={revDateFrom}
                     onSelect={(d) => d && setRevDateFrom(d)}
@@ -593,7 +593,7 @@ const AdminAnalytics = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
+                  <CalendarComponent
                     mode="single"
                     selected={revDateTo}
                     onSelect={(d) => d && setRevDateTo(d)}
