@@ -278,6 +278,69 @@ const AdminAnalytics = () => {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+        <Tabs defaultValue="overview">
+          <TabsList className="w-full">
+            <TabsTrigger value="overview" className="flex-1 text-xs">Overview</TabsTrigger>
+            <TabsTrigger value="live" className="flex-1 text-xs gap-1">
+              <Radio size={12} className="text-emerald-500" /> Live
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="live" className="space-y-4 mt-4">
+            {/* Live metrics */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="ios-card p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center relative">
+                  <Users size={18} className="text-emerald-600" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-foreground leading-none">{activeUsers}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Active Users</div>
+                  <div className="text-[10px] text-emerald-600 font-medium">last 5 min</div>
+                </div>
+              </div>
+              <div className="ios-card p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Zap size={18} className="text-primary" />
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-foreground leading-none">{eventsPerMinute}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Events/min</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Live event stream */}
+            <div className="ios-card p-4">
+              <h3 className="text-sm font-display font-bold text-foreground mb-3 flex items-center gap-2">
+                <Radio size={14} className="text-emerald-500 animate-pulse" /> Live Event Stream
+              </h3>
+              {liveEvents.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Waiting for events…</p>
+              ) : (
+                <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+                  {liveEvents.map((e, i) => {
+                    const time = new Date(e.created_at);
+                    const timeStr = time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                    const isPageView = e.event_type === "page_view";
+                    return (
+                      <div key={e.id || i} className="flex items-center gap-2 py-1.5 border-b border-border/20 last:border-0">
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30"}`} />
+                        <span className="text-[10px] text-muted-foreground font-mono w-16 flex-shrink-0">{timeStr}</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${isPageView ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                          {e.event_type}
+                        </span>
+                        <span className="text-xs text-foreground truncate flex-1">{e.page_path || "—"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="overview" className="space-y-4 mt-4">
         {/* Period selector */}
         <div className="flex gap-2">
           {([7, 14, 30] as const).map((p) => (
