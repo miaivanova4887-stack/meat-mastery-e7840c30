@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity } from "lucide-react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { recipes } from "@/data/recipes";
 import { Switch } from "@/components/ui/switch";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 
 interface Profile {
   display_name: string | null;
@@ -35,6 +36,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
+  const [progressMilestones, setProgressMilestones] = useState<any[]>([]);
   const [tab, setTab] = useState<"feed" | "recipes" | "likes" | "settings">("feed");
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const favoriteRecipes = useMemo(() => recipes.filter(r => favorites.has(r.name)), [favorites]);
@@ -127,10 +129,104 @@ const Profile = () => {
     if (data) setLikedRecipes(data);
   }, [user]);
 
+  const fetchProgressMilestones = useCallback(async () => {
+    if (!user) return;
+    // Get recent entries (last 30 days) and goals
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    const [{ data: entries }, { data: goals }] = await Promise.all([
+      supabase.from("progress_entries").select("*").eq("user_id", user.id).gte("recorded_at", since).order("recorded_at", { ascending: false }).limit(100),
+      supabase.from("progress_goals").select("*").eq("user_id", user.id),
+    ]);
+
+    const milestones: any[] = [];
+
+    if (entries && entries.length > 0) {
+      // Group entries by metric to detect streaks and records
+      const byMetric: Record<string, any[]> = {};
+      entries.forEach((e: any) => {
+        if (!byMetric[e.metric]) byMetric[e.metric] = [];
+        byMetric[e.metric].push(e);
+      });
+
+      // Check for goal achievements
+      if (goals && goals.length > 0) {
+        goals.forEach((goal: any) => {
+          const metricEntries = byMetric[goal.metric] || [];
+          const latest = metricEntries[0];
+          if (latest && latest.value >= goal.target_value) {
+            const metricInfo = Object.values(METRICS).flat().find(m => m.key === goal.metric);
+            milestones.push({
+              id: `goal-${goal.metric}`,
+              type: "goal_reached",
+              icon: "🎯",
+              title: `Goal Reached: ${metricInfo?.label || goal.metric}`,
+              desc: `You hit your target of ${goal.target_value}${goal.unit}! Current: ${latest.value}${latest.unit}`,
+              date: latest.recorded_at,
+              color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+            });
+          }
+        });
+      }
+
+      // Personal records (highest value for key metrics)
+      const prMetrics = ["weight", "calories", "protein"];
+      prMetrics.forEach((key) => {
+        const metricEntries = byMetric[key];
+        if (!metricEntries || metricEntries.length < 2) return;
+        const metricInfo = Object.values(METRICS).flat().find(m => m.key === key);
+        const latest = metricEntries[0];
+        const prev = metricEntries.slice(1);
+        const isHighest = key !== "weight"
+          ? !prev.some((e: any) => e.value >= latest.value)
+          : !prev.some((e: any) => e.value <= latest.value); // For weight, lower is a record
+        if (isHighest) {
+          milestones.push({
+            id: `pr-${key}`,
+            type: "personal_record",
+            icon: "🏆",
+            title: `New ${key === "weight" ? "Low" : "High"}: ${metricInfo?.label || key}`,
+            desc: `${latest.value}${latest.unit} — your best in the last 30 days!`,
+            date: latest.recorded_at,
+            color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+          });
+        }
+      });
+
+      // Logging streak — count unique days logged
+      const uniqueDays = new Set(entries.map((e: any) => e.recorded_at.slice(0, 10)));
+      if (uniqueDays.size >= 7) {
+        milestones.push({
+          id: "streak-7",
+          type: "streak",
+          icon: "🔥",
+          title: `${uniqueDays.size}-Day Logging Streak`,
+          desc: `You've tracked your progress on ${uniqueDays.size} days this month. Keep it up!`,
+          date: entries[0].recorded_at,
+          color: "bg-primary/10 text-primary",
+        });
+      }
+
+      // Total entries milestone
+      if (entries.length >= 10) {
+        milestones.push({
+          id: "entries-count",
+          type: "volume",
+          icon: "📊",
+          title: `${entries.length} Entries This Month`,
+          desc: "You're building a strong data foundation for your health journey.",
+          date: entries[0].recorded_at,
+          color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+        });
+      }
+    }
+
+    setProgressMilestones(milestones);
+  }, [user]);
+
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
-    Promise.all([fetchProfile(), fetchMyRecipes(), fetchLikedRecipes()]).finally(() => setLoading(false));
-  }, [user, navigate, fetchProfile, fetchMyRecipes, fetchLikedRecipes]);
+    Promise.all([fetchProfile(), fetchMyRecipes(), fetchLikedRecipes(), fetchProgressMilestones()]).finally(() => setLoading(false));
+  }, [user, navigate, fetchProfile, fetchMyRecipes, fetchLikedRecipes, fetchProgressMilestones]);
 
   const saveField = async (field: string) => {
     if (!user) return;
@@ -334,6 +430,31 @@ const Profile = () => {
               };
               return (
                 <div className="space-y-3">
+                  {/* Progress Milestones */}
+                  {progressMilestones.length > 0 && (
+                    <>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Progress Milestones</p>
+                      {progressMilestones.map((m) => (
+                        <div key={m.id} className="ios-card p-4 flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${m.color}`}>
+                            {m.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-foreground leading-snug">{m.title}</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{m.desc}</p>
+                            <span className="text-[10px] text-muted-foreground/60 mt-1 block">{formatDate(m.date)}</span>
+                          </div>
+                          <button
+                            onClick={() => navigate("/progress")}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      {filtered.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">News & Tips</p>}
+                    </>
+                  )}
                   {filtered.map((item) => {
                     const CatIcon = item.catIcon;
                     const isExpanded = expandedNewsId === item.id;
