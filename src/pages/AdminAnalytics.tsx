@@ -304,19 +304,24 @@ const AdminAnalytics = () => {
       setCmsPageStats(cmsPages.map((p: any) => ({ title: p.title, slug: p.slug, views: 0 })));
     }
 
-    // Fetch revenue data
+    // Fetch revenue data using date range filter
+    const revFrom = revDateFrom.toISOString();
+    const revTo = new Date(revDateTo.getTime() + 86400000 - 1).toISOString(); // end of day
     const { data: revenueData, count: revCount } = await (supabase as any)
       .from("revenue_events")
       .select("*", { count: "exact" })
-      .gte("created_at", since)
+      .gte("created_at", revFrom)
+      .lte("created_at", revTo)
       .order("created_at", { ascending: true });
 
     if (revenueData && revenueData.length > 0) {
       setHasRealRevenue(true);
       setRawRevenueEvents(revenueData);
       const byDay: Record<string, { revenue: number; refunds: number }> = {};
-      for (let i = period - 1; i >= 0; i--) {
-        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      const dayMs = 86400000;
+      const rangeDays = Math.ceil((revDateTo.getTime() - revDateFrom.getTime()) / dayMs) + 1;
+      for (let i = rangeDays - 1; i >= 0; i--) {
+        const d = new Date(revDateFrom.getTime() + (rangeDays - 1 - i) * dayMs).toISOString().slice(0, 10);
         byDay[d] = { revenue: 0, refunds: 0 };
       }
       let totRev = 0, totRef = 0;
@@ -363,7 +368,7 @@ const AdminAnalytics = () => {
     }
 
     setLoading(false);
-  }, [isAdmin, period]);
+  }, [isAdmin, period, revDateFrom, revDateTo]);
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
