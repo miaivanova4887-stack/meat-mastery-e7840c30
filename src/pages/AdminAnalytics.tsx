@@ -140,6 +140,10 @@ const AdminAnalytics = () => {
   const [hasRealRevenue, setHasRealRevenue] = useState(false);
   const [retentionCohorts, setRetentionCohorts] = useState<RetentionCohort[]>([]);
   const [platformFilter, setPlatformFilter] = useState<"all" | "ios" | "android">("all");
+  const [revDateFrom, setRevDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [revDateTo, setRevDateTo] = useState<Date>(new Date());
+  const [rawRevenueEvents, setRawRevenueEvents] = useState<RevenueEvent[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Platform-segregated mock KPIs (will use real data when available)
   const platformKpis = {
@@ -156,6 +160,36 @@ const AdminAnalytics = () => {
       arpu: payingUsers > 0 ? +((totalRevenue * 0.38) / Math.max(payingUsers - Math.round(payingUsers * 0.6), 1)).toFixed(2) : 0,
     },
   };
+
+  // CSV export
+  const exportRevenueCsv = useCallback(() => {
+    setIsExporting(true);
+    try {
+      const filtered = rawRevenueEvents.filter((e) => {
+        const d = new Date(e.created_at);
+        return d >= revDateFrom && d <= revDateTo;
+      });
+      const headers = ["Date", "Event Type", "Amount ($)", "Currency", "Product", "User ID"];
+      const rows = filtered.map((e) => [
+        format(new Date(e.created_at), "yyyy-MM-dd HH:mm"),
+        e.event_type,
+        (e.amount_cents / 100).toFixed(2),
+        e.currency,
+        e.product_name || "",
+        e.user_id,
+      ]);
+      const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `revenue_${format(revDateFrom, "yyyy-MM-dd")}_to_${format(revDateTo, "yyyy-MM-dd")}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [rawRevenueEvents, revDateFrom, revDateTo]);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
