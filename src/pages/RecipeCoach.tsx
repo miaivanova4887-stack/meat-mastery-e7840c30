@@ -1,4 +1,4 @@
-import { ArrowLeft, Send, Bot, User, Loader2, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Send, User, Loader2, ThumbsUp, ThumbsDown, ChefHat, UtensilsCrossed } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
