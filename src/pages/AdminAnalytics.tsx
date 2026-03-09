@@ -44,7 +44,41 @@ interface LtvCohort {
   day14: number;
   day30: number;
 }
-  const navigate = useNavigate();
+
+// Mock data generators for demo (before Stripe is connected)
+function generateMockRevenue(period: number): { date: string; revenue: number; refunds: number }[] {
+  const data = [];
+  for (let i = period - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    data.push({
+      date: d.toISOString().slice(5, 10),
+      revenue: Math.round(Math.random() * 500 + 100),
+      refunds: Math.round(Math.random() * 30),
+    });
+  }
+  return data;
+}
+
+function generateMockLtvCohorts(): LtvCohort[] {
+  const cohorts = [];
+  for (let i = 3; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 7 * 86400000);
+    const weekLabel = `${d.toISOString().slice(5, 10)}`;
+    const users = Math.floor(Math.random() * 40 + 10);
+    const day0 = +(Math.random() * 5 + 2).toFixed(2);
+    cohorts.push({
+      cohort: weekLabel,
+      users,
+      day0,
+      day7: +(day0 + Math.random() * 10 + 5).toFixed(2),
+      day14: +(day0 + Math.random() * 20 + 12).toFixed(2),
+      day30: +(day0 + Math.random() * 35 + 20).toFixed(2),
+    });
+  }
+  return cohorts;
+}
+
+const AdminAnalytics = () => {
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
