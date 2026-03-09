@@ -18,7 +18,7 @@ const BottomNav = () => {
 
   if (location.pathname === "/onboarding") return null;
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/80 ios-blur safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/30 bg-card/85 ios-blur safe-area-bottom shadow-lg">
       <div className="flex items-center justify-around py-1.5 px-1">
         {tabs.map(({ path, icon: Icon, label }) => {
           const active = location.pathname === path;
