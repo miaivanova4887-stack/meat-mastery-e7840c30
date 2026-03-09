@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from "react";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Loader2, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useAddEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 const PhotoRecognition = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [quantity, setQuantity] = useState(1);
   const fileRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
   const profile = useUserProfile();
@@ -42,21 +44,22 @@ const PhotoRecognition = () => {
   const logToProgress = useCallback(() => {
     if (!result) return;
     const now = new Date().toISOString();
-    const note = `[meal-sync] ${result.recipeName}`;
+    const note = `[meal-sync] ${result.recipeName} (${quantity}x)`;
 
     const entries = [
-      { category: "diet_trends", metric: "calories", value: parseFloat(result.cal) || 0, unit: "kcal", notes: note, recorded_at: now },
-      { category: "diet_trends", metric: "protein", value: parseFloat(result.protein) || 0, unit: "g", notes: note, recorded_at: now },
-      { category: "diet_trends", metric: "fat", value: parseFloat(result.fat) || 0, unit: "g", notes: note, recorded_at: now },
+      { category: "diet_trends", metric: "calories", value: (parseFloat(result.cal) || 0) * quantity, unit: "kcal", notes: note, recorded_at: now },
+      { category: "diet_trends", metric: "protein", value: (parseFloat(result.protein) || 0) * quantity, unit: "g", notes: note, recorded_at: now },
+      { category: "diet_trends", metric: "fat", value: (parseFloat(result.fat) || 0) * quantity, unit: "g", notes: note, recorded_at: now },
     ];
 
     Promise.all(entries.map((e) => addEntry.mutateAsync(e)))
       .then(() => {
         toast.success(`${result.recipeName} logged to progress`);
         setResult(null);
+        setQuantity(1);
       })
       .catch(() => toast.error("Failed to log nutrients"));
-  }, [result, addEntry]);
+  }, [result, addEntry, quantity]);
 
   return (
     <div className="space-y-3">
@@ -107,17 +110,52 @@ const PhotoRecognition = () => {
               </p>
             </div>
           </div>
+
+          {/* Quantity Adjuster */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Quantity</p>
+              <p className="text-sm font-bold text-foreground">{quantity}x</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setQuantity(Math.max(0.25, quantity - 0.25))}
+              >
+                <Minus size={14} />
+              </Button>
+              <Slider
+                value={[quantity]}
+                onValueChange={([v]) => setQuantity(v)}
+                min={0.25}
+                max={4}
+                step={0.25}
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setQuantity(Math.min(4, quantity + 0.25))}
+              >
+                <Plus size={14} />
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-muted rounded-lg p-2">
-              <p className="text-lg font-bold text-foreground">{result.cal}</p>
+              <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.cal) || 0) * quantity)}</p>
               <p className="text-[10px] text-muted-foreground">Calories</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
-              <p className="text-lg font-bold text-foreground">{result.protein}</p>
+              <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.protein) || 0) * quantity)}</p>
               <p className="text-[10px] text-muted-foreground">Protein</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
-              <p className="text-lg font-bold text-foreground">{result.fat}</p>
+              <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.fat) || 0) * quantity)}</p>
               <p className="text-[10px] text-muted-foreground">Fat</p>
             </div>
           </div>
@@ -125,7 +163,7 @@ const PhotoRecognition = () => {
             <Button onClick={logToProgress} className="flex-1" disabled={addEntry.isPending}>
               {addEntry.isPending ? "Logging…" : "✓ Log to Progress"}
             </Button>
-            <Button variant="outline" onClick={() => setResult(null)}>Dismiss</Button>
+            <Button variant="outline" onClick={() => { setResult(null); setQuantity(1); }}>Dismiss</Button>
           </div>
         </div>
       )}
