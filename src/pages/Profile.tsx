@@ -227,6 +227,9 @@ const Profile = () => {
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
     Promise.all([fetchProfile(), fetchMyRecipes(), fetchLikedRecipes(), fetchProgressMilestones()]).finally(() => setLoading(false));
+    // Check admin role
+    (supabase as any).from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
+      .then(({ data }: any) => { if (data) setIsAdmin(true); });
   }, [user, navigate, fetchProfile, fetchMyRecipes, fetchLikedRecipes, fetchProgressMilestones]);
 
   const saveField = async (field: string) => {
