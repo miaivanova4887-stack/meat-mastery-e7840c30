@@ -719,6 +719,68 @@ const Profile = () => {
               </div>
             </div>
 
+            {/* Invite a Friend */}
+            <div className="ios-card p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Users size={18} className="text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Invite a Friend</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Share the carnivore lifestyle with someone you care about</p>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {(() => {
+                  const shareUrl = window.location.origin;
+                  const shareText = "Join me on Vore — the ultimate carnivore diet companion! 🥩🔥";
+                  const shareButtons = [
+                    {
+                      label: "Share",
+                      icon: Share2,
+                      color: "bg-primary/10 text-primary",
+                      action: () => {
+                        if (navigator.share) {
+                          navigator.share({ title: "Vore — Carnivore Diet App", text: shareText, url: shareUrl }).catch(() => {});
+                        } else {
+                          navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                          toast.success("Link copied to clipboard!");
+                        }
+                      },
+                    },
+                    {
+                      label: "WhatsApp",
+                      icon: MessageCircle,
+                      color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                      action: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank"),
+                    },
+                    {
+                      label: "Email",
+                      icon: Mail,
+                      color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+                      action: () => window.open(`mailto:?subject=${encodeURIComponent("Check out Vore!")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`, "_blank"),
+                    },
+                    {
+                      label: "Copy Link",
+                      icon: Copy,
+                      color: "bg-secondary text-muted-foreground",
+                      action: () => { navigator.clipboard.writeText(shareUrl); toast.success("Link copied!"); },
+                    },
+                  ];
+                  return shareButtons.map(({ label, icon: Icon, color, action }) => (
+                    <button
+                      key={label}
+                      onClick={action}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 ${color}`}
+                    >
+                      <Icon size={14} />
+                      {label}
+                    </button>
+                  ));
+                })()}
+              </div>
+            </div>
+
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
