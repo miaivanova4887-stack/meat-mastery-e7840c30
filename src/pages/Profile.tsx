@@ -258,18 +258,54 @@ const Profile = () => {
 
         {/* Liked Recipes */}
         {tab === "likes" && (
-          likedRecipes.length === 0 ? (
+          (likedRecipes.length === 0 && favoriteRecipes.length === 0) ? (
             <div className="text-center py-12">
               <Heart size={32} className="mx-auto text-muted-foreground/40 mb-2" />
               <p className="text-sm text-muted-foreground">No liked recipes yet</p>
-              <button
-                onClick={() => navigate("/community")}
-                className="mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
-              >
-                Browse Community
-              </button>
+              <p className="text-xs text-muted-foreground mt-1">Tap the ♥ on any recipe to save it here</p>
+              <div className="flex gap-2 justify-center mt-4">
+                <button
+                  onClick={() => navigate("/recipes")}
+                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
+                >
+                  Browse Recipes
+                </button>
+                <button
+                  onClick={() => navigate("/community")}
+                  className="px-4 py-2 rounded-xl bg-secondary text-foreground text-xs font-semibold"
+                >
+                  Community
+                </button>
+              </div>
             </div>
-          ) : likedRecipes.map((r) => <RecipeCard key={r.id} r={r} />)
+          ) : (
+            <div className="space-y-3">
+              {/* Local favorites */}
+              {favoriteRecipes.length > 0 && (
+                <>
+                  {favoriteRecipes.map((r) => (
+                    <div key={r.name} className="ios-card p-3.5 flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate">{r.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-0.5"><Clock size={11} /> {r.time}</span>
+                          <span className="flex items-center gap-0.5"><Flame size={11} /> {r.cal} cal</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleFavorite(r.name)}
+                        className="p-1.5 rounded-lg active:scale-90 transition-all"
+                      >
+                        <Heart size={16} className="fill-destructive text-destructive" />
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
+              {/* Community liked recipes */}
+              {likedRecipes.map((r) => <RecipeCard key={r.id} r={r} />)}
+            </div>
+          )
         )}
 
         {/* Your Feed */}
