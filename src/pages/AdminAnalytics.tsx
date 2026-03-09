@@ -304,11 +304,14 @@ const AdminAnalytics = () => {
       setCmsPageStats(cmsPages.map((p: any) => ({ title: p.title, slug: p.slug, views: 0 })));
     }
 
-    // Fetch revenue data
+    // Fetch revenue data using date range filter
+    const revFrom = revDateFrom.toISOString();
+    const revTo = new Date(revDateTo.getTime() + 86400000 - 1).toISOString(); // end of day
     const { data: revenueData, count: revCount } = await (supabase as any)
       .from("revenue_events")
       .select("*", { count: "exact" })
-      .gte("created_at", since)
+      .gte("created_at", revFrom)
+      .lte("created_at", revTo)
       .order("created_at", { ascending: true });
 
     if (revenueData && revenueData.length > 0) {
