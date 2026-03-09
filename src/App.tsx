@@ -36,6 +36,7 @@ import CmsPageView from "./pages/CmsPageView";
 import ProgressPage from "./pages/Progress";
 import HealthSync from "./pages/HealthSync";
 import NewsFeed from "./pages/NewsFeed";
+import AdminNotifications from "./pages/AdminNotifications";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/cms" element={<CmsEditor />} />
               <Route path="/p/:slug" element={<CmsPageView />} />
               <Route path="/news" element={<NewsFeed />} />
+              <Route path="/admin/notifications" element={<AdminNotifications />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />

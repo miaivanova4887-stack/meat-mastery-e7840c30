@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell } from "lucide-react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { recipes } from "@/data/recipes";
 import { Switch } from "@/components/ui/switch";
@@ -37,6 +37,7 @@ const Profile = () => {
   const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
   const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
   const [progressMilestones, setProgressMilestones] = useState<any[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<"feed" | "recipes" | "likes" | "settings">("feed");
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const favoriteRecipes = useMemo(() => recipes.filter(r => favorites.has(r.name)), [favorites]);
@@ -226,6 +227,9 @@ const Profile = () => {
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
     Promise.all([fetchProfile(), fetchMyRecipes(), fetchLikedRecipes(), fetchProgressMilestones()]).finally(() => setLoading(false));
+    // Check admin role
+    (supabase as any).from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
+      .then(({ data }: any) => { if (data) setIsAdmin(true); });
   }, [user, navigate, fetchProfile, fetchMyRecipes, fetchLikedRecipes, fetchProgressMilestones]);
 
   const saveField = async (field: string) => {
@@ -718,6 +722,23 @@ const Profile = () => {
                 ))}
               </div>
             </div>
+
+            {/* Admin Panel */}
+            {isAdmin && (
+              <button
+                onClick={() => navigate("/admin/notifications")}
+                className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Bell size={18} className="text-amber-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Admin: Notifications</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Send push & feed notifications to users</p>
+                </div>
+                <ChevronRight size={14} className="text-muted-foreground" />
+              </button>
+            )}
 
             {/* Invite a Friend */}
             <div className="ios-card p-4 space-y-3">
