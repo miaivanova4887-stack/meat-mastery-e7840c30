@@ -723,6 +723,23 @@ const Profile = () => {
               </div>
             </div>
 
+            {/* Admin Panel */}
+            {isAdmin && (
+              <button
+                onClick={() => navigate("/admin/notifications")}
+                className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Bell size={18} className="text-amber-600" />
+                </div>
+                <div className="flex-1 text-left">
+                  <h3 className="font-display font-bold text-foreground text-[15px]">Admin: Notifications</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Send push & feed notifications to users</p>
+                </div>
+                <ChevronRight size={14} className="text-muted-foreground" />
+              </button>
+            )}
+
             {/* Invite a Friend */}
             <div className="ios-card p-4 space-y-3">
               <div className="flex items-center gap-3">
