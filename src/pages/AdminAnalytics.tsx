@@ -1,10 +1,15 @@
-import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone, CalendarIcon, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { format, subDays } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(142 76% 36%)", "hsl(45 93% 47%)", "hsl(221 83% 53%)"];
 
