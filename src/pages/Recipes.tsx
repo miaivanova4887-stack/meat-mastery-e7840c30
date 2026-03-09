@@ -56,6 +56,7 @@ const Recipes = () => {
   const [activeFilter, setActiveFilter] = useState<string>("all"); // "all" | "snack" | CravingType
   const [activeCuisine, setActiveCuisine] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
 
