@@ -564,7 +564,57 @@ const AdminAnalytics = () => {
               </div>
             )}
 
-            {/* Platform Filter */}
+            {/* Date Range Filter & CSV Export */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("text-xs gap-1.5 h-8", !revDateFrom && "text-muted-foreground")}>
+                    <CalendarIcon size={12} />
+                    {format(revDateFrom, "MMM d")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={revDateFrom}
+                    onSelect={(d) => d && setRevDateFrom(d)}
+                    disabled={(d) => d > revDateTo || d > new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">to</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("text-xs gap-1.5 h-8", !revDateTo && "text-muted-foreground")}>
+                    <CalendarIcon size={12} />
+                    {format(revDateTo, "MMM d")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={revDateTo}
+                    onSelect={(d) => d && setRevDateTo(d)}
+                    disabled={(d) => d < revDateFrom || d > new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5 h-8 ml-auto"
+                onClick={exportRevenueCsv}
+                disabled={isExporting}
+              >
+                <Download size={12} />
+                {isExporting ? "Exporting…" : "Export CSV"}
+              </Button>
+            </div>
+
             <div className="flex gap-2">
               {(["all", "ios", "android"] as const).map((p) => (
                 <button key={p} onClick={() => setPlatformFilter(p)}
