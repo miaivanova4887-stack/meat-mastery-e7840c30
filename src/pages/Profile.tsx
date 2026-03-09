@@ -430,6 +430,31 @@ const Profile = () => {
               };
               return (
                 <div className="space-y-3">
+                  {/* Progress Milestones */}
+                  {progressMilestones.length > 0 && (
+                    <>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Progress Milestones</p>
+                      {progressMilestones.map((m) => (
+                        <div key={m.id} className="ios-card p-4 flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${m.color}`}>
+                            {m.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-foreground leading-snug">{m.title}</h3>
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{m.desc}</p>
+                            <span className="text-[10px] text-muted-foreground/60 mt-1 block">{formatDate(m.date)}</span>
+                          </div>
+                          <button
+                            onClick={() => navigate("/progress")}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      {filtered.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">News & Tips</p>}
+                    </>
+                  )}
                   {filtered.map((item) => {
                     const CatIcon = item.catIcon;
                     const isExpanded = expandedNewsId === item.id;
