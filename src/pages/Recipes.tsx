@@ -56,6 +56,7 @@ const Recipes = () => {
   const [activeFilter, setActiveFilter] = useState<string>("all"); // "all" | "snack" | CravingType
   const [activeCuisine, setActiveCuisine] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
 
@@ -80,6 +81,8 @@ const Recipes = () => {
           const q = search.toLowerCase();
           return r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q)) || r.desc.toLowerCase().includes(q);
         }
+        // Favorites filter
+        if (showFavoritesOnly && !isFavorite(r.name)) return false;
         return true;
       });
 
@@ -98,7 +101,7 @@ const Recipes = () => {
       custom: filter(customRecipes) as CustomRecipe[],
       builtIn: filter(recipes),
     };
-  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines]);
+  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, isFavorite]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
@@ -305,8 +308,14 @@ const Recipes = () => {
           ))}
         </div>
 
-        {/* Combined filter: All / Snacks / Cravings */}
+        {/* Combined filter: Favorites / All / Snacks / Cravings */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+          <button onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 ${showFavoritesOnly ? "bg-destructive/15 text-destructive border border-destructive/30" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
+          >
+            <Heart size={11} className={showFavoritesOnly ? "fill-destructive" : ""} />
+            Favorites
+          </button>
           {Object.entries(FINAL_MENU).map(([key, label]) => (
             <button key={key} onClick={() => setActiveFilter(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeFilter === key ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
