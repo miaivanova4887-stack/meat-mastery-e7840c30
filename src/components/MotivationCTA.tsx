@@ -10,22 +10,22 @@ const MotivationCTA = () => {
       href={CALENDLY_URL}
       target="_blank"
       rel="noopener noreferrer"
-      className="block relative overflow-hidden bg-gradient-to-r from-primary/10 via-primary/5 to-accent/10 border border-primary/20 rounded-xl p-4 mx-4 mb-4 mt-6 transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98] group"
+      className="block mx-4 mb-4 mt-6 relative overflow-hidden rounded-2xl p-[1px] bg-gradient-to-br from-primary/40 via-primary/20 to-primary/5 active:scale-[0.98] transition-all group"
     >
-      <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
-      <div className="absolute top-2 right-3 opacity-10 group-hover:opacity-20 transition-opacity">
-        <Sparkles size={36} className="text-primary" />
-      </div>
-      <div className="flex items-center gap-3.5 relative z-10">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/60 flex items-center justify-center shrink-0 shadow-md ring-1 ring-primary/20">
-          <Zap size={22} className="text-primary-foreground drop-shadow-sm" fill="currentColor" />
+      <div className="relative overflow-hidden rounded-[15px] bg-card p-4 flex items-center gap-3.5">
+        <div className="absolute -top-6 -right-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
+        <div className="absolute top-3 right-4 opacity-[0.07] group-hover:opacity-15 transition-opacity">
+          <Sparkles size={44} className="text-primary" />
         </div>
-        <div className="flex-1">
+        <div className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/50 flex items-center justify-center shrink-0 shadow-lg ring-1 ring-white/10">
+          <Zap size={24} className="text-primary-foreground drop-shadow-md" fill="currentColor" />
+        </div>
+        <div className="flex-1 relative z-10">
           <p className="text-sm font-bold text-foreground tracking-tight">{t("home.motivationTitle")}</p>
-          <p className="text-[11px] text-muted-foreground">{t("home.motivationDesc")}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{t("home.motivationDesc")}</p>
         </div>
-        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-          <ChevronRight size={13} className="text-primary" />
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center group-hover:from-primary/25 group-hover:to-primary/10 transition-all shrink-0">
+          <ChevronRight size={14} className="text-primary group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
     </a>
