@@ -174,6 +174,17 @@
   }
 
   .ios-card {
-    @apply bg-card rounded-2xl border border-border/40;
+    @apply bg-card rounded-2xl border border-border/50;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* Light-mode specific refinements */
+  :root .ios-card {
+    box-shadow: 0 1px 3px -1px hsl(25 20% 20% / 0.06), 0 2px 8px -2px hsl(25 20% 20% / 0.08);
+  }
+  
+  :root .ios-blur {
+    backdrop-filter: saturate(200%) blur(24px);
+    -webkit-backdrop-filter: saturate(200%) blur(24px);
   }
 }

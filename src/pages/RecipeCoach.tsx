@@ -155,7 +155,7 @@ const RecipeCoach = () => {
   return (
     <div className="flex flex-col h-[100dvh] bg-background">
       {/* Header */}
-      <div className="flex-shrink-0 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3 z-40">
+      <div className="flex-shrink-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3 z-40">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>

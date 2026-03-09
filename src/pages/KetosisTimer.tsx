@@ -219,7 +219,7 @@ const KetosisTimer = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("timer.title")}</h1>
         <button onClick={toggleAlerts} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Toggle milestone alerts">

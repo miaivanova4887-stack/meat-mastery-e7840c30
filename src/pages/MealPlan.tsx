@@ -377,7 +377,7 @@ const MealPlan = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
@@ -731,7 +731,7 @@ const MealPlan = () => {
       {/* Recipe Picker Modal */}
       {pickingSlot && (
         <div className="fixed inset-0 z-50 bg-background/95 ios-blur flex flex-col">
-          <div className="sticky top-0 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
+          <div className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
             <button onClick={() => { setPickingSlot(null); setRecipeSearch(""); }} className="text-muted-foreground hover:text-foreground">
               <X size={20} />
             </button>
@@ -782,7 +782,7 @@ const MealPlan = () => {
       {/* AI Generator Modal */}
       {showAI && (
         <div className="fixed inset-0 z-50 bg-background/95 ios-blur flex flex-col">
-          <div className="sticky top-0 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
+          <div className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
             <button onClick={() => setShowAI(false)} className="text-muted-foreground hover:text-foreground">
               <X size={20} />
             </button>
@@ -880,7 +880,7 @@ const MealPlan = () => {
       {/* Quick Add Recipe Modal */}
       {showQuickAdd && (
         <div className="fixed inset-0 z-50 bg-background/95 ios-blur flex flex-col">
-          <div className="sticky top-0 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
+          <div className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
             <button onClick={() => setShowQuickAdd(false)} className="text-muted-foreground hover:text-foreground">
               <X size={20} />
             </button>
