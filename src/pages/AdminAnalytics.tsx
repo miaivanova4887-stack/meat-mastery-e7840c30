@@ -646,6 +646,7 @@ const AdminAnalytics = () => {
             </div>
           </TabsContent>
 
+          <TabsContent value="overview" className="space-y-4 mt-4">
         {/* Period selector */}
         <div className="flex gap-2">
           {([7, 14, 30] as const).map((p) => (
