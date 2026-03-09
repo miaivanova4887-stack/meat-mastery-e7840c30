@@ -725,19 +725,35 @@ const Profile = () => {
 
             {/* Admin Panel */}
             {isAdmin && (
-              <button
-                onClick={() => navigate("/admin/notifications")}
-                className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <Bell size={18} className="text-amber-600" />
-                </div>
-                <div className="flex-1 text-left">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Admin: Notifications</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Send push & feed notifications to users</p>
-                </div>
-                <ChevronRight size={14} className="text-muted-foreground" />
-              </button>
+              <div className="space-y-3">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Admin Tools</p>
+                <button
+                  onClick={() => navigate("/admin/analytics")}
+                  className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <BarChart3 size={18} className="text-primary" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-display font-bold text-foreground text-[15px]">Analytics Dashboard</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Users, engagement, CMS page views</p>
+                  </div>
+                  <ChevronRight size={14} className="text-muted-foreground" />
+                </button>
+                <button
+                  onClick={() => navigate("/admin/notifications")}
+                  className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Bell size={18} className="text-primary" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-display font-bold text-foreground text-[15px]">Notifications</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Send push & feed notifications to users</p>
+                  </div>
+                  <ChevronRight size={14} className="text-muted-foreground" />
+                </button>
+              </div>
             )}
 
             {/* Invite a Friend */}
