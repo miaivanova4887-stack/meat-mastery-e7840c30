@@ -3,6 +3,14 @@ import { useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+/** Detect platform from user agent */
+function detectPlatform(): "ios" | "android" | "web" {
+  const ua = navigator.userAgent || "";
+  if (/iPad|iPhone|iPod/.test(ua)) return "ios";
+  if (/Android/.test(ua)) return "android";
+  return "web";
+}
+
 // Generate a simple session ID that persists for the browser session
 function getSessionId() {
   let sid = sessionStorage.getItem("analytics-session-id");
@@ -19,12 +27,13 @@ export function useTrackEvent() {
   return useCallback(
     (eventType: string, eventData: Record<string, unknown> = {}, pagePath?: string) => {
       if (!user) return; // Only track authenticated users
+      const platform = detectPlatform();
       (supabase as any)
         .from("analytics_events")
         .insert({
           user_id: user.id,
           event_type: eventType,
-          event_data: eventData,
+          event_data: { ...eventData, platform },
           page_path: pagePath || window.location.pathname,
           session_id: getSessionId(),
         })
