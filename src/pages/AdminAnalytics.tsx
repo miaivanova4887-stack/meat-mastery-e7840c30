@@ -351,6 +351,7 @@ const AdminAnalytics = () => {
     } else {
       // Use mock data for demo
       setHasRealRevenue(false);
+      setRawRevenueEvents([]);
       const mockRev = generateMockRevenue(period);
       setDailyRevenue(mockRev);
       setTotalRevenue(mockRev.reduce((s, d) => s + d.revenue, 0));
