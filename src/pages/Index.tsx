@@ -182,9 +182,6 @@ const Index = () => {
         >
           <div className="relative overflow-hidden rounded-[15px] bg-card p-4 flex items-center gap-3.5">
             <div className="absolute -top-6 -right-6 w-32 h-32 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
-            <div className="absolute top-3 right-4 opacity-[0.07] group-hover:opacity-15 transition-opacity">
-              <Sparkles size={44} className="text-primary" />
-            </div>
             <div className="w-13 h-13 min-w-[52px] min-h-[52px] rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/50 flex items-center justify-center shrink-0 shadow-lg ring-1 ring-white/10">
               <Zap size={24} className="text-primary-foreground drop-shadow-md" fill="currentColor" />
             </div>
