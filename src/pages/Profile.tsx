@@ -206,7 +206,7 @@ const Profile = () => {
                 <strong className="text-foreground">{myRecipes.length}</strong> recipes
               </span>
               <span className="text-[11px] text-muted-foreground">
-                <strong className="text-foreground">{likedRecipes.length}</strong> likes
+                <strong className="text-foreground">{likedRecipes.length + favoriteRecipes.length}</strong> likes
               </span>
               {profile?.diet_tier && (
                 <span className="text-[11px] text-muted-foreground">
