@@ -680,6 +680,136 @@ const AdminAnalytics = () => {
             </div>
           </TabsContent>
 
+          {/* Retention Tab - Day 1/7/30 Retention Curves */}
+          <TabsContent value="retention" className="space-y-4 mt-4">
+            <div className="ios-card p-3 flex items-start gap-2 border border-primary/20 bg-primary/5">
+              <Info size={14} className="text-primary mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] text-muted-foreground">
+                Retention = % of users active on Day N after signup. Based on <span className="font-semibold text-foreground">analytics events</span>.
+              </p>
+            </div>
+
+            {/* Retention KPIs */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="ios-card p-4 text-center">
+                <div className="text-[11px] text-muted-foreground mb-1">Day 1</div>
+                <div className="text-xl font-bold text-foreground">
+                  {retentionCohorts.length > 0 ? (retentionCohorts.reduce((s, c) => s + c.day1, 0) / retentionCohorts.length).toFixed(1) : 0}%
+                </div>
+                <div className="text-[10px] text-primary">avg retention</div>
+              </div>
+              <div className="ios-card p-4 text-center">
+                <div className="text-[11px] text-muted-foreground mb-1">Day 7</div>
+                <div className="text-xl font-bold text-foreground">
+                  {retentionCohorts.length > 0 ? (retentionCohorts.reduce((s, c) => s + c.day7, 0) / retentionCohorts.length).toFixed(1) : 0}%
+                </div>
+                <div className="text-[10px] text-primary">avg retention</div>
+              </div>
+              <div className="ios-card p-4 text-center">
+                <div className="text-[11px] text-muted-foreground mb-1">Day 30</div>
+                <div className="text-xl font-bold text-foreground">
+                  {retentionCohorts.length > 0 ? (retentionCohorts.reduce((s, c) => s + c.day30, 0) / retentionCohorts.length).toFixed(1) : 0}%
+                </div>
+                <div className="text-[10px] text-primary">avg retention</div>
+              </div>
+            </div>
+
+            {/* Retention Cohort Table */}
+            <div className="ios-card p-4 overflow-x-auto">
+              <h3 className="text-sm font-display font-bold text-foreground mb-3 flex items-center gap-2">
+                <CalendarDays size={14} className="text-primary" /> Cohort Retention Table
+              </h3>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 pr-3 text-muted-foreground font-medium">Cohort</th>
+                    <th className="text-right py-2 px-2 text-muted-foreground font-medium">Users</th>
+                    <th className="text-right py-2 px-2 text-muted-foreground font-medium">Day 1</th>
+                    <th className="text-right py-2 px-2 text-muted-foreground font-medium">Day 7</th>
+                    <th className="text-right py-2 px-2 text-muted-foreground font-medium">Day 30</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {retentionCohorts.map((c) => (
+                    <tr key={c.cohort} className="border-b border-border/30 last:border-0">
+                      <td className="py-2 pr-3 font-semibold text-foreground">{c.cohort}</td>
+                      <td className="py-2 px-2 text-right text-muted-foreground">{c.users}</td>
+                      <td className="py-2 px-2 text-right">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-foreground" style={{ background: `hsl(142 76% 36% / ${Math.min(c.day1 / 100, 0.5)})` }}>
+                          {c.day1}%
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-foreground" style={{ background: `hsl(142 76% 36% / ${Math.min(c.day7 / 100, 0.5)})` }}>
+                          {c.day7}%
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right">
+                        <span className="inline-block px-1.5 py-0.5 rounded text-foreground font-bold" style={{ background: `hsl(142 76% 36% / ${Math.min(c.day30 / 100, 0.5)})` }}>
+                          {c.day30}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Retention Curve Chart */}
+            <div className="ios-card p-4">
+              <h3 className="text-sm font-display font-bold text-foreground mb-3 flex items-center gap-2">
+                <TrendingUp size={14} className="text-primary" /> Retention Curves
+              </h3>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={[
+                  { day: "Day 0", ...Object.fromEntries(retentionCohorts.map((c, i) => [`c${i}`, 100])) },
+                  { day: "Day 1", ...Object.fromEntries(retentionCohorts.map((c, i) => [`c${i}`, c.day1])) },
+                  { day: "Day 7", ...Object.fromEntries(retentionCohorts.map((c, i) => [`c${i}`, c.day7])) },
+                  { day: "Day 30", ...Object.fromEntries(retentionCohorts.map((c, i) => [`c${i}`, c.day30])) },
+                ]}>
+                  <defs>
+                    {COLORS.map((color, i) => (
+                      <linearGradient key={i} id={`retGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                        <stop offset="100%" stopColor={color} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" width={40} tickFormatter={(v) => `${v}%`} domain={[0, 100]} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                    formatter={(value: number) => [`${value.toFixed(1)}%`]}
+                  />
+                  {retentionCohorts.map((c, i) => (
+                    <Area key={i} type="monotone" dataKey={`c${i}`} stroke={COLORS[i % COLORS.length]} fill={`url(#retGrad${i % COLORS.length})`} strokeWidth={2} name={c.cohort} />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Insights */}
+            <div className="ios-card p-4">
+              <h3 className="text-sm font-display font-bold text-foreground mb-2 flex items-center gap-2">
+                <Activity size={14} className="text-primary" /> Quick Insights
+              </h3>
+              <ul className="text-xs text-muted-foreground space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  <span>
+                    <span className="font-semibold text-foreground">Day 1 → Day 7 drop</span>: ~{retentionCohorts.length > 0 ? ((retentionCohorts.reduce((s, c) => s + c.day1, 0) / retentionCohorts.length) - (retentionCohorts.reduce((s, c) => s + c.day7, 0) / retentionCohorts.length)).toFixed(1) : 0}% — Focus on onboarding and early engagement.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                  <span>
+                    <span className="font-semibold text-foreground">Day 7 → Day 30 drop</span>: ~{retentionCohorts.length > 0 ? ((retentionCohorts.reduce((s, c) => s + c.day7, 0) / retentionCohorts.length) - (retentionCohorts.reduce((s, c) => s + c.day30, 0) / retentionCohorts.length)).toFixed(1) : 0}% — Consider re-engagement campaigns.
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </TabsContent>
+
           <TabsContent value="overview" className="space-y-4 mt-4">
         {/* Period selector */}
         <div className="flex gap-2">
