@@ -524,43 +524,106 @@ const AdminAnalytics = () => {
               </div>
             )}
 
-            {/* Revenue KPIs */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="ios-card p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign size={14} className="text-primary" />
-                  <span className="text-[11px] text-muted-foreground">Total Revenue</span>
-                </div>
-                <div className="text-xl font-bold text-foreground">${totalRevenue.toFixed(2)}</div>
-                <div className="text-[10px] text-primary font-medium flex items-center gap-0.5">
-                  <ArrowUpRight size={10} /> last {period}d
-                </div>
-              </div>
-              <div className="ios-card p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <TrendingUp size={14} className="text-destructive" />
-                  <span className="text-[11px] text-muted-foreground">Refunds</span>
-                </div>
-                <div className="text-xl font-bold text-foreground">${totalRefunds.toFixed(2)}</div>
-                <div className="text-[10px] text-muted-foreground">{totalRevenue > 0 ? ((totalRefunds / totalRevenue) * 100).toFixed(1) : 0}% rate</div>
-              </div>
-              <div className="ios-card p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Users size={14} className="text-primary" />
-                  <span className="text-[11px] text-muted-foreground">Paying Users</span>
-                </div>
-                <div className="text-xl font-bold text-foreground">{payingUsers}</div>
-              </div>
-              <div className="ios-card p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <DollarSign size={14} className="text-primary" />
-                  <span className="text-[11px] text-muted-foreground">ARPU</span>
-                </div>
-                <div className="text-xl font-bold text-foreground">
-                  ${payingUsers > 0 ? (totalRevenue / payingUsers).toFixed(2) : "0.00"}
-                </div>
-              </div>
+            {/* Platform Filter */}
+            <div className="flex gap-2">
+              {(["all", "ios", "android"] as const).map((p) => (
+                <button key={p} onClick={() => setPlatformFilter(p)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${platformFilter === p ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}
+                >
+                  {p === "ios" && <Smartphone size={12} />}
+                  {p === "android" && <Smartphone size={12} />}
+                  {p === "all" ? "All Platforms" : p === "ios" ? "iOS" : "Android"}
+                </button>
+              ))}
             </div>
+
+            {/* Revenue KPIs - Platform Segregated */}
+            {platformFilter === "all" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="ios-card p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign size={14} className="text-primary" />
+                    <span className="text-[11px] text-muted-foreground">Total Revenue</span>
+                  </div>
+                  <div className="text-xl font-bold text-foreground">${totalRevenue.toFixed(2)}</div>
+                  <div className="text-[10px] text-primary font-medium flex items-center gap-0.5">
+                    <ArrowUpRight size={10} /> last {period}d
+                  </div>
+                </div>
+                <div className="ios-card p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <TrendingUp size={14} className="text-destructive" />
+                    <span className="text-[11px] text-muted-foreground">Refunds</span>
+                  </div>
+                  <div className="text-xl font-bold text-foreground">${totalRefunds.toFixed(2)}</div>
+                  <div className="text-[10px] text-muted-foreground">{totalRevenue > 0 ? ((totalRefunds / totalRevenue) * 100).toFixed(1) : 0}% rate</div>
+                </div>
+                <div className="ios-card p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Users size={14} className="text-primary" />
+                    <span className="text-[11px] text-muted-foreground">Paying Users</span>
+                  </div>
+                  <div className="text-xl font-bold text-foreground">{payingUsers}</div>
+                </div>
+                <div className="ios-card p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign size={14} className="text-primary" />
+                    <span className="text-[11px] text-muted-foreground">ARPU</span>
+                  </div>
+                  <div className="text-xl font-bold text-foreground">
+                    ${payingUsers > 0 ? (totalRevenue / payingUsers).toFixed(2) : "0.00"}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* iOS vs Android side-by-side */}
+                <div className="space-y-3">
+                  <div className="ios-card p-4 border-l-4" style={{ borderLeftColor: platformFilter === "ios" ? "hsl(221 83% 53%)" : "hsl(142 76% 36%)" }}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Smartphone size={16} className={platformFilter === "ios" ? "text-blue-500" : "text-emerald-500"} />
+                      <span className="text-sm font-display font-bold text-foreground">
+                        {platformFilter === "ios" ? "iOS" : "Android"} KPIs
+                      </span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">last {period}d</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">Revenue</div>
+                        <div className="text-lg font-bold text-foreground">${platformKpis[platformFilter].revenue.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">Refunds</div>
+                        <div className="text-lg font-bold text-foreground">${platformKpis[platformFilter].refunds.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">Paying Users</div>
+                        <div className="text-lg font-bold text-foreground">{platformKpis[platformFilter].payingUsers}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-muted-foreground">ARPU</div>
+                        <div className="text-lg font-bold text-foreground">${platformKpis[platformFilter].arpu.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Comparison bar */}
+                  <div className="ios-card p-4">
+                    <h4 className="text-xs font-display font-bold text-foreground mb-2">Revenue Share</h4>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-3 rounded-full overflow-hidden bg-secondary flex">
+                        <div className="h-full bg-blue-500 transition-all" style={{ width: `${totalRevenue > 0 ? (platformKpis.ios.revenue / totalRevenue * 100) : 62}%` }} />
+                        <div className="h-full bg-emerald-500 transition-all" style={{ width: `${totalRevenue > 0 ? (platformKpis.android.revenue / totalRevenue * 100) : 38}%` }} />
+                      </div>
+                    </div>
+                    <div className="flex justify-between mt-1.5">
+                      <span className="text-[10px] text-blue-500 font-semibold">iOS {totalRevenue > 0 ? (platformKpis.ios.revenue / totalRevenue * 100).toFixed(0) : 62}%</span>
+                      <span className="text-[10px] text-emerald-500 font-semibold">Android {totalRevenue > 0 ? (platformKpis.android.revenue / totalRevenue * 100).toFixed(0) : 38}%</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Daily Revenue Chart */}
             <div className="ios-card p-4">
