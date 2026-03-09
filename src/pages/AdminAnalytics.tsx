@@ -925,6 +925,37 @@ const AdminAnalytics = () => {
 
           {/* Retention Tab - Day 1/7/30 Retention Curves */}
           <TabsContent value="retention" className="space-y-4 mt-4">
+            {/* Date Range & Export */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">From</span>
+                <Input
+                  type="date"
+                  className="w-[130px] h-8 text-xs"
+                  value={format(retDateFrom, "yyyy-MM-dd")}
+                  onChange={(e) => {
+                    const d = parseLocalDate(e.target.value);
+                    if (d) setRetDateFrom(d);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">To</span>
+                <Input
+                  type="date"
+                  className="w-[130px] h-8 text-xs"
+                  value={format(retDateTo, "yyyy-MM-dd")}
+                  onChange={(e) => {
+                    const d = parseLocalDate(e.target.value);
+                    if (d) setRetDateTo(d);
+                  }}
+                />
+              </div>
+              <Button variant="outline" size="sm" onClick={exportRetentionCsv} className="ml-auto">
+                <Download size={14} className="mr-1" /> Export CSV
+              </Button>
+            </div>
+
             <div className="ios-card p-3 flex items-start gap-2 border border-primary/20 bg-primary/5">
               <Info size={14} className="text-primary mt-0.5 flex-shrink-0" />
               <p className="text-[11px] text-muted-foreground">
