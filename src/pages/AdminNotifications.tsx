@@ -41,8 +41,8 @@ const AdminNotifications = () => {
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
     (async () => {
-      const { data } = await supabase
-        .from("user_roles" as any)
+      const { data } = await (supabase as any)
+        .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
         .eq("role", "admin")
@@ -53,8 +53,8 @@ const AdminNotifications = () => {
 
   // Fetch notification history
   const fetchHistory = useCallback(async () => {
-    const { data } = await supabase
-      .from("admin_notifications" as any)
+    const { data } = await (supabase as any)
+      .from("admin_notifications")
       .select("id, title, body, category, sent_push, sent_feed, created_at")
       .order("created_at", { ascending: false })
       .limit(20);
