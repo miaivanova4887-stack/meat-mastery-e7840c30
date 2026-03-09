@@ -558,8 +558,8 @@ const AdminAnalytics = () => {
             </div>
           </TabsContent>
 
-          {/* Revenue Tab - AppsFlyer-style Activity Revenue */}
-          <TabsContent value="revenue" className="space-y-4 mt-4">
+           {/* Revenue Tab - AppsFlyer-style Activity Revenue */}
+           <TabsContent value="revenue" className="space-y-4 mt-4">
             {!hasRealRevenue && (
               <div className="ios-card p-3 flex items-start gap-2 border border-primary/20 bg-primary/5">
                 <Info size={14} className="text-primary mt-0.5 flex-shrink-0" />
