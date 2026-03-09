@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone, CalendarIcon, Download } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone, Calendar as CalendarIcon, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,7 +7,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, subDays } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -574,7 +574,7 @@ const AdminAnalytics = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
+                  <CalendarComponent
                     mode="single"
                     selected={revDateFrom}
                     onSelect={(d) => d && setRevDateFrom(d)}
@@ -593,7 +593,7 @@ const AdminAnalytics = () => {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
+                  <CalendarComponent
                     mode="single"
                     selected={revDateTo}
                     onSelect={(d) => d && setRevDateTo(d)}
