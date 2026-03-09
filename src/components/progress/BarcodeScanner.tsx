@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ScanBarcode, Loader2, X } from "lucide-react";
+import { ScanBarcode, Loader2, X, Plus, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
@@ -20,6 +21,7 @@ const BarcodeScanner = () => {
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ProductResult | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const addEntry = useAddEntry();
@@ -105,21 +107,22 @@ const BarcodeScanner = () => {
   const logToProgress = useCallback(() => {
     if (!result) return;
     const now = new Date().toISOString();
-    const note = `[barcode] ${result.name}${result.brand ? ` (${result.brand})` : ""}`;
+    const note = `[barcode] ${result.name}${result.brand ? ` (${result.brand})` : ""} (${quantity}x)`;
 
     const entries = [
-      { category: "diet_trends" as const, metric: "calories", value: result.cal, unit: "kcal", notes: note, recorded_at: now },
-      { category: "diet_trends" as const, metric: "protein", value: result.protein, unit: "g", notes: note, recorded_at: now },
-      { category: "diet_trends" as const, metric: "fat", value: result.fat, unit: "g", notes: note, recorded_at: now },
+      { category: "diet_trends" as const, metric: "calories", value: result.cal * quantity, unit: "kcal", notes: note, recorded_at: now },
+      { category: "diet_trends" as const, metric: "protein", value: result.protein * quantity, unit: "g", notes: note, recorded_at: now },
+      { category: "diet_trends" as const, metric: "fat", value: result.fat * quantity, unit: "g", notes: note, recorded_at: now },
     ];
 
     Promise.all(entries.map((e) => addEntry.mutateAsync(e)))
       .then(() => {
         toast.success(`${result.name} logged to progress`);
         setResult(null);
+        setQuantity(1);
       })
       .catch(() => toast.error("Failed to log nutrients"));
-  }, [result, addEntry]);
+  }, [result, addEntry, quantity]);
 
   return (
     <div className="space-y-3">
@@ -180,26 +183,60 @@ const BarcodeScanner = () => {
             </div>
           </div>
 
+          {/* Quantity Adjuster */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground">Quantity</p>
+              <p className="text-sm font-bold text-foreground">{quantity}x</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setQuantity(Math.max(0.25, quantity - 0.25))}
+              >
+                <Minus size={14} />
+              </Button>
+              <Slider
+                value={[quantity]}
+                onValueChange={([v]) => setQuantity(v)}
+                min={0.25}
+                max={4}
+                step={0.25}
+                className="flex-1"
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setQuantity(Math.min(4, quantity + 0.25))}
+              >
+                <Plus size={14} />
+              </Button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-muted rounded-lg p-2">
-              <p className="text-lg font-bold text-foreground">{result.cal}</p>
+              <p className="text-lg font-bold text-foreground">{Math.round(result.cal * quantity)}</p>
               <p className="text-[10px] text-muted-foreground">Cal</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
-              <p className="text-lg font-bold text-foreground">{result.protein}g</p>
+              <p className="text-lg font-bold text-foreground">{Math.round(result.protein * quantity)}g</p>
               <p className="text-[10px] text-muted-foreground">Protein</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
-              <p className="text-lg font-bold text-foreground">{result.fat}g</p>
+              <p className="text-lg font-bold text-foreground">{Math.round(result.fat * quantity)}g</p>
               <p className="text-[10px] text-muted-foreground">Fat</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
-              <p className="text-lg font-bold text-foreground">{result.carbs}g</p>
+              <p className="text-lg font-bold text-foreground">{Math.round(result.carbs * quantity)}g</p>
               <p className="text-[10px] text-muted-foreground">Carbs</p>
             </div>
           </div>
 
-          {result.carbs > 5 && (
+          {result.carbs * quantity > 5 && (
             <p className="text-[11px] text-destructive font-medium">
               ⚠️ High carbs — may not be carnivore-friendly
             </p>
@@ -209,7 +246,7 @@ const BarcodeScanner = () => {
             <Button onClick={logToProgress} className="flex-1" disabled={addEntry.isPending}>
               {addEntry.isPending ? "Logging…" : "✓ Log to Progress"}
             </Button>
-            <Button variant="outline" onClick={() => setResult(null)}>Dismiss</Button>
+            <Button variant="outline" onClick={() => { setResult(null); setQuantity(1); }}>Dismiss</Button>
           </div>
         </div>
       ) : null}
