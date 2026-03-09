@@ -79,6 +79,7 @@ function generateMockLtvCohorts(): LtvCohort[] {
 }
 
 const AdminAnalytics = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -95,6 +96,15 @@ const AdminAnalytics = () => {
   const [activeUsers, setActiveUsers] = useState(0);
   const [eventsPerMinute, setEventsPerMinute] = useState(0);
   const recentSessionsRef = useRef<Map<string, number>>(new Map());
+
+  // Revenue state
+  const [dailyRevenue, setDailyRevenue] = useState<{ date: string; revenue: number; refunds: number }[]>([]);
+  const [ltvCohorts, setLtvCohorts] = useState<LtvCohort[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalRefunds, setTotalRefunds] = useState(0);
+  const [avgLtv, setAvgLtv] = useState(0);
+  const [payingUsers, setPayingUsers] = useState(0);
+  const [hasRealRevenue, setHasRealRevenue] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
