@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Flame, Search, X, Bot, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback } from "react";
 import { recipes, TIER_LABELS, CRAVING_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
