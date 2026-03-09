@@ -313,7 +313,7 @@ const AdminAnalytics = () => {
 
     if (revenueData && revenueData.length > 0) {
       setHasRealRevenue(true);
-      // Aggregate daily revenue
+      setRawRevenueEvents(revenueData);
       const byDay: Record<string, { revenue: number; refunds: number }> = {};
       for (let i = period - 1; i >= 0; i--) {
         const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
