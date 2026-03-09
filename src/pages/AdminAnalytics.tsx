@@ -1,10 +1,15 @@
-import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone, CalendarIcon, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { format, subDays } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(142 76% 36%)", "hsl(45 93% 47%)", "hsl(221 83% 53%)"];
 
@@ -135,6 +140,10 @@ const AdminAnalytics = () => {
   const [hasRealRevenue, setHasRealRevenue] = useState(false);
   const [retentionCohorts, setRetentionCohorts] = useState<RetentionCohort[]>([]);
   const [platformFilter, setPlatformFilter] = useState<"all" | "ios" | "android">("all");
+  const [revDateFrom, setRevDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [revDateTo, setRevDateTo] = useState<Date>(new Date());
+  const [rawRevenueEvents, setRawRevenueEvents] = useState<RevenueEvent[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Platform-segregated mock KPIs (will use real data when available)
   const platformKpis = {
@@ -151,6 +160,36 @@ const AdminAnalytics = () => {
       arpu: payingUsers > 0 ? +((totalRevenue * 0.38) / Math.max(payingUsers - Math.round(payingUsers * 0.6), 1)).toFixed(2) : 0,
     },
   };
+
+  // CSV export
+  const exportRevenueCsv = useCallback(() => {
+    setIsExporting(true);
+    try {
+      const filtered = rawRevenueEvents.filter((e) => {
+        const d = new Date(e.created_at);
+        return d >= revDateFrom && d <= revDateTo;
+      });
+      const headers = ["Date", "Event Type", "Amount ($)", "Currency", "Product", "User ID"];
+      const rows = filtered.map((e) => [
+        format(new Date(e.created_at), "yyyy-MM-dd HH:mm"),
+        e.event_type,
+        (e.amount_cents / 100).toFixed(2),
+        e.currency,
+        e.product_name || "",
+        e.user_id,
+      ]);
+      const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `revenue_${format(revDateFrom, "yyyy-MM-dd")}_to_${format(revDateTo, "yyyy-MM-dd")}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [rawRevenueEvents, revDateFrom, revDateTo]);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -274,7 +313,7 @@ const AdminAnalytics = () => {
 
     if (revenueData && revenueData.length > 0) {
       setHasRealRevenue(true);
-      // Aggregate daily revenue
+      setRawRevenueEvents(revenueData);
       const byDay: Record<string, { revenue: number; refunds: number }> = {};
       for (let i = period - 1; i >= 0; i--) {
         const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
@@ -312,6 +351,7 @@ const AdminAnalytics = () => {
     } else {
       // Use mock data for demo
       setHasRealRevenue(false);
+      setRawRevenueEvents([]);
       const mockRev = generateMockRevenue(period);
       setDailyRevenue(mockRev);
       setTotalRevenue(mockRev.reduce((s, d) => s + d.revenue, 0));
@@ -524,7 +564,57 @@ const AdminAnalytics = () => {
               </div>
             )}
 
-            {/* Platform Filter */}
+            {/* Date Range Filter & CSV Export */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("text-xs gap-1.5 h-8", !revDateFrom && "text-muted-foreground")}>
+                    <CalendarIcon size={12} />
+                    {format(revDateFrom, "MMM d")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={revDateFrom}
+                    onSelect={(d) => d && setRevDateFrom(d)}
+                    disabled={(d) => d > revDateTo || d > new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <span className="text-xs text-muted-foreground">to</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className={cn("text-xs gap-1.5 h-8", !revDateTo && "text-muted-foreground")}>
+                    <CalendarIcon size={12} />
+                    {format(revDateTo, "MMM d")}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={revDateTo}
+                    onSelect={(d) => d && setRevDateTo(d)}
+                    disabled={(d) => d < revDateFrom || d > new Date()}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5 h-8 ml-auto"
+                onClick={exportRevenueCsv}
+                disabled={isExporting}
+              >
+                <Download size={12} />
+                {isExporting ? "Exporting…" : "Export CSV"}
+              </Button>
+            </div>
+
             <div className="flex gap-2">
               {(["all", "ios", "android"] as const).map((p) => (
                 <button key={p} onClick={() => setPlatformFilter(p)}
