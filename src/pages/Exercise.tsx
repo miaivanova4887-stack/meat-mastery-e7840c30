@@ -143,7 +143,6 @@ const Exercise = () => {
   const profile = useUserProfile();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [quizStep, setQuizStep] = useState(-1);
   const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
   const [transitioning, setTransitioning] = useState(false);
