@@ -325,6 +325,45 @@ export type Database = {
           },
         ]
       }
+      revenue_events: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          event_type: string
+          id: string
+          metadata: Json
+          product_name: string | null
+          stripe_customer_id: string | null
+          stripe_event_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          product_name?: string | null
+          stripe_customer_id?: string | null
+          stripe_event_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          product_name?: string | null
+          stripe_customer_id?: string | null
+          stripe_event_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
