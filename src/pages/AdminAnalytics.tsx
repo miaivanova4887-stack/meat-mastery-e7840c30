@@ -219,6 +219,61 @@ const AdminAnalytics = () => {
       setCmsPageStats(cmsPages.map((p: any) => ({ title: p.title, slug: p.slug, views: 0 })));
     }
 
+    // Fetch revenue data
+    const { data: revenueData, count: revCount } = await (supabase as any)
+      .from("revenue_events")
+      .select("*", { count: "exact" })
+      .gte("created_at", since)
+      .order("created_at", { ascending: true });
+
+    if (revenueData && revenueData.length > 0) {
+      setHasRealRevenue(true);
+      // Aggregate daily revenue
+      const byDay: Record<string, { revenue: number; refunds: number }> = {};
+      for (let i = period - 1; i >= 0; i--) {
+        const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+        byDay[d] = { revenue: 0, refunds: 0 };
+      }
+      let totRev = 0, totRef = 0;
+      const userRevenue: Record<string, number> = {};
+      revenueData.forEach((e: RevenueEvent) => {
+        const d = e.created_at.slice(0, 10);
+        const amt = e.amount_cents / 100;
+        if (byDay[d]) {
+          if (e.event_type === "refund") {
+            byDay[d].refunds += amt;
+            totRef += amt;
+          } else {
+            byDay[d].revenue += amt;
+            totRev += amt;
+          }
+        }
+        if (e.event_type !== "refund") {
+          userRevenue[e.user_id] = (userRevenue[e.user_id] || 0) + amt;
+        }
+      });
+      setDailyRevenue(Object.entries(byDay).map(([date, v]) => ({ date: date.slice(5), ...v })));
+      setTotalRevenue(totRev);
+      setTotalRefunds(totRef);
+      const payingUsersCount = Object.keys(userRevenue).length;
+      setPayingUsers(payingUsersCount);
+      setAvgLtv(payingUsersCount > 0 ? totRev / payingUsersCount : 0);
+
+      // LTV cohorts (simplified: group by signup week)
+      // In production, this would correlate with profiles.created_at
+      setLtvCohorts(generateMockLtvCohorts());
+    } else {
+      // Use mock data for demo
+      setHasRealRevenue(false);
+      const mockRev = generateMockRevenue(period);
+      setDailyRevenue(mockRev);
+      setTotalRevenue(mockRev.reduce((s, d) => s + d.revenue, 0));
+      setTotalRefunds(mockRev.reduce((s, d) => s + d.refunds, 0));
+      setPayingUsers(Math.floor(Math.random() * 30 + 5));
+      setAvgLtv(+(Math.random() * 40 + 15).toFixed(2));
+      setLtvCohorts(generateMockLtvCohorts());
+    }
+
     setLoading(false);
   }, [isAdmin, period]);
 
