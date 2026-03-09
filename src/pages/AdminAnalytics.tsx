@@ -163,6 +163,78 @@ const AdminAnalytics = () => {
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
+  // Real-time subscription for live events
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    // Fetch recent events for initial live feed
+    (async () => {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60000).toISOString();
+      const { data } = await (supabase as any)
+        .from("analytics_events")
+        .select("id, event_type, page_path, created_at, user_id, session_id")
+        .gte("created_at", fiveMinAgo)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (data) {
+        setLiveEvents(data);
+        // Count unique sessions in last 5 min
+        const sessions = new Map<string, number>();
+        data.forEach((e: any) => {
+          if (e.session_id) sessions.set(e.session_id, Date.now());
+        });
+        recentSessionsRef.current = sessions;
+        setActiveUsers(sessions.size);
+        // Events per minute
+        const oneMinAgo = Date.now() - 60000;
+        const recentCount = data.filter((e: any) => new Date(e.created_at).getTime() > oneMinAgo).length;
+        setEventsPerMinute(recentCount);
+      }
+    })();
+
+    const channel = supabase
+      .channel("live-analytics")
+      .on(
+        "postgres_changes" as any,
+        { event: "INSERT", schema: "public", table: "analytics_events" },
+        (payload: any) => {
+          const newEvent: LiveEvent = payload.new;
+          setLiveEvents((prev) => [newEvent, ...prev].slice(0, 50));
+
+          // Update active users
+          if (payload.new.session_id) {
+            recentSessionsRef.current.set(payload.new.session_id, Date.now());
+            setActiveUsers(recentSessionsRef.current.size);
+          }
+
+          // Update events per minute counter
+          setEventsPerMinute((prev) => prev + 1);
+        }
+      )
+      .subscribe();
+
+    // Decay active users every 30s (remove sessions older than 5 min)
+    const decayInterval = setInterval(() => {
+      const cutoff = Date.now() - 5 * 60000;
+      const sessions = recentSessionsRef.current;
+      for (const [sid, ts] of sessions) {
+        if (ts < cutoff) sessions.delete(sid);
+      }
+      setActiveUsers(sessions.size);
+    }, 30000);
+
+    // Reset events-per-minute every 60s
+    const epmInterval = setInterval(() => {
+      setEventsPerMinute(0);
+    }, 60000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(decayInterval);
+      clearInterval(epmInterval);
+    };
+  }, [isAdmin]);
+
   if (isAdmin === null) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 size={24} className="animate-spin text-muted-foreground" /></div>;
   }
