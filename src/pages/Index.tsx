@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { ChevronRight, RotateCcw, Phone } from "lucide-react";
+import { ChevronRight, RotateCcw, Zap, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import heroMale from "@/assets/hero-athletic.jpg";
 import heroFemale from "@/assets/hero-athletic-female.jpg";
@@ -178,16 +178,22 @@ const Index = () => {
           href={CALENDLY_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full ios-card p-4 flex items-center gap-3 active:scale-[0.98] transition-all block"
+          className="w-full relative overflow-hidden ios-card p-4 flex items-center gap-3.5 active:scale-[0.98] transition-all block group"
         >
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <Phone size={18} className="text-primary" />
+          <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
+          <div className="absolute top-2 right-3 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Sparkles size={36} className="text-primary" />
           </div>
-          <div className="text-left flex-1">
-            <p className="text-[13px] font-bold text-foreground">{t("home.motivationTitle")}</p>
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/60 flex items-center justify-center shrink-0 shadow-md ring-1 ring-primary/20">
+            <Zap size={22} className="text-primary-foreground drop-shadow-sm" fill="currentColor" />
+          </div>
+          <div className="text-left flex-1 relative z-10">
+            <p className="text-sm font-bold text-foreground tracking-tight">{t("home.motivationTitle")}</p>
             <p className="text-[11px] text-muted-foreground">{t("home.motivationDesc")}</p>
           </div>
-          <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+            <ChevronRight size={13} className="text-primary" />
+          </div>
         </a>
 
         {/* Update preferences */}
