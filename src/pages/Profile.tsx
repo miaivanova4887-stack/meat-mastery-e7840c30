@@ -129,10 +129,104 @@ const Profile = () => {
     if (data) setLikedRecipes(data);
   }, [user]);
 
+  const fetchProgressMilestones = useCallback(async () => {
+    if (!user) return;
+    // Get recent entries (last 30 days) and goals
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
+    const [{ data: entries }, { data: goals }] = await Promise.all([
+      supabase.from("progress_entries").select("*").eq("user_id", user.id).gte("recorded_at", since).order("recorded_at", { ascending: false }).limit(100),
+      supabase.from("progress_goals").select("*").eq("user_id", user.id),
+    ]);
+
+    const milestones: any[] = [];
+
+    if (entries && entries.length > 0) {
+      // Group entries by metric to detect streaks and records
+      const byMetric: Record<string, any[]> = {};
+      entries.forEach((e: any) => {
+        if (!byMetric[e.metric]) byMetric[e.metric] = [];
+        byMetric[e.metric].push(e);
+      });
+
+      // Check for goal achievements
+      if (goals && goals.length > 0) {
+        goals.forEach((goal: any) => {
+          const metricEntries = byMetric[goal.metric] || [];
+          const latest = metricEntries[0];
+          if (latest && latest.value >= goal.target_value) {
+            const metricInfo = Object.values(METRICS).flat().find(m => m.key === goal.metric);
+            milestones.push({
+              id: `goal-${goal.metric}`,
+              type: "goal_reached",
+              icon: "🎯",
+              title: `Goal Reached: ${metricInfo?.label || goal.metric}`,
+              desc: `You hit your target of ${goal.target_value}${goal.unit}! Current: ${latest.value}${latest.unit}`,
+              date: latest.recorded_at,
+              color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+            });
+          }
+        });
+      }
+
+      // Personal records (highest value for key metrics)
+      const prMetrics = ["weight", "calories", "protein"];
+      prMetrics.forEach((key) => {
+        const metricEntries = byMetric[key];
+        if (!metricEntries || metricEntries.length < 2) return;
+        const metricInfo = Object.values(METRICS).flat().find(m => m.key === key);
+        const latest = metricEntries[0];
+        const prev = metricEntries.slice(1);
+        const isHighest = key !== "weight"
+          ? !prev.some((e: any) => e.value >= latest.value)
+          : !prev.some((e: any) => e.value <= latest.value); // For weight, lower is a record
+        if (isHighest) {
+          milestones.push({
+            id: `pr-${key}`,
+            type: "personal_record",
+            icon: "🏆",
+            title: `New ${key === "weight" ? "Low" : "High"}: ${metricInfo?.label || key}`,
+            desc: `${latest.value}${latest.unit} — your best in the last 30 days!`,
+            date: latest.recorded_at,
+            color: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+          });
+        }
+      });
+
+      // Logging streak — count unique days logged
+      const uniqueDays = new Set(entries.map((e: any) => e.recorded_at.slice(0, 10)));
+      if (uniqueDays.size >= 7) {
+        milestones.push({
+          id: "streak-7",
+          type: "streak",
+          icon: "🔥",
+          title: `${uniqueDays.size}-Day Logging Streak`,
+          desc: `You've tracked your progress on ${uniqueDays.size} days this month. Keep it up!`,
+          date: entries[0].recorded_at,
+          color: "bg-primary/10 text-primary",
+        });
+      }
+
+      // Total entries milestone
+      if (entries.length >= 10) {
+        milestones.push({
+          id: "entries-count",
+          type: "volume",
+          icon: "📊",
+          title: `${entries.length} Entries This Month`,
+          desc: "You're building a strong data foundation for your health journey.",
+          date: entries[0].recorded_at,
+          color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+        });
+      }
+    }
+
+    setProgressMilestones(milestones);
+  }, [user]);
+
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
-    Promise.all([fetchProfile(), fetchMyRecipes(), fetchLikedRecipes()]).finally(() => setLoading(false));
-  }, [user, navigate, fetchProfile, fetchMyRecipes, fetchLikedRecipes]);
+    Promise.all([fetchProfile(), fetchMyRecipes(), fetchLikedRecipes(), fetchProgressMilestones()]).finally(() => setLoading(false));
+  }, [user, navigate, fetchProfile, fetchMyRecipes, fetchLikedRecipes, fetchProgressMilestones]);
 
   const saveField = async (field: string) => {
     if (!user) return;
