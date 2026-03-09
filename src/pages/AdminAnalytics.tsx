@@ -1,9 +1,10 @@
-import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(142 76% 36%)", "hsl(45 93% 47%)", "hsl(221 83% 53%)"];
 
@@ -15,6 +16,14 @@ interface Stats {
   totalProgressEntries: number;
   totalCmsPages: number;
   publishedCmsPages: number;
+}
+
+interface LiveEvent {
+  id: string;
+  event_type: string;
+  page_path: string | null;
+  created_at: string;
+  user_id: string | null;
 }
 
 const AdminAnalytics = () => {
@@ -29,6 +38,12 @@ const AdminAnalytics = () => {
   const [cmsPageStats, setCmsPageStats] = useState<{ title: string; slug: string; views: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<7 | 14 | 30>(7);
+
+  // Real-time state
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+  const [activeUsers, setActiveUsers] = useState(0);
+  const [eventsPerMinute, setEventsPerMinute] = useState(0);
+  const recentSessionsRef = useRef<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -148,6 +163,78 @@ const AdminAnalytics = () => {
 
   useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
+  // Real-time subscription for live events
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    // Fetch recent events for initial live feed
+    (async () => {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60000).toISOString();
+      const { data } = await (supabase as any)
+        .from("analytics_events")
+        .select("id, event_type, page_path, created_at, user_id, session_id")
+        .gte("created_at", fiveMinAgo)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (data) {
+        setLiveEvents(data);
+        // Count unique sessions in last 5 min
+        const sessions = new Map<string, number>();
+        data.forEach((e: any) => {
+          if (e.session_id) sessions.set(e.session_id, Date.now());
+        });
+        recentSessionsRef.current = sessions;
+        setActiveUsers(sessions.size);
+        // Events per minute
+        const oneMinAgo = Date.now() - 60000;
+        const recentCount = data.filter((e: any) => new Date(e.created_at).getTime() > oneMinAgo).length;
+        setEventsPerMinute(recentCount);
+      }
+    })();
+
+    const channel = supabase
+      .channel("live-analytics")
+      .on(
+        "postgres_changes" as any,
+        { event: "INSERT", schema: "public", table: "analytics_events" },
+        (payload: any) => {
+          const newEvent: LiveEvent = payload.new;
+          setLiveEvents((prev) => [newEvent, ...prev].slice(0, 50));
+
+          // Update active users
+          if (payload.new.session_id) {
+            recentSessionsRef.current.set(payload.new.session_id, Date.now());
+            setActiveUsers(recentSessionsRef.current.size);
+          }
+
+          // Update events per minute counter
+          setEventsPerMinute((prev) => prev + 1);
+        }
+      )
+      .subscribe();
+
+    // Decay active users every 30s (remove sessions older than 5 min)
+    const decayInterval = setInterval(() => {
+      const cutoff = Date.now() - 5 * 60000;
+      const sessions = recentSessionsRef.current;
+      for (const [sid, ts] of sessions) {
+        if (ts < cutoff) sessions.delete(sid);
+      }
+      setActiveUsers(sessions.size);
+    }, 30000);
+
+    // Reset events-per-minute every 60s
+    const epmInterval = setInterval(() => {
+      setEventsPerMinute(0);
+    }, 60000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(decayInterval);
+      clearInterval(epmInterval);
+    };
+  }, [isAdmin]);
+
   if (isAdmin === null) {
     return <div className="min-h-screen bg-background flex items-center justify-center"><Loader2 size={24} className="animate-spin text-muted-foreground" /></div>;
   }
@@ -191,6 +278,69 @@ const AdminAnalytics = () => {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+        <Tabs defaultValue="overview">
+          <TabsList className="w-full">
+            <TabsTrigger value="overview" className="flex-1 text-xs">Overview</TabsTrigger>
+            <TabsTrigger value="live" className="flex-1 text-xs gap-1">
+              <Radio size={12} className="text-emerald-500" /> Live
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="live" className="space-y-4 mt-4">
+            {/* Live metrics */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="ios-card p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center relative">
+                  <Users size={18} className="text-emerald-600" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-foreground leading-none">{activeUsers}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Active Users</div>
+                  <div className="text-[10px] text-emerald-600 font-medium">last 5 min</div>
+                </div>
+              </div>
+              <div className="ios-card p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Zap size={18} className="text-primary" />
+                </div>
+                <div>
+                  <div className="text-xl font-bold text-foreground leading-none">{eventsPerMinute}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Events/min</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Live event stream */}
+            <div className="ios-card p-4">
+              <h3 className="text-sm font-display font-bold text-foreground mb-3 flex items-center gap-2">
+                <Radio size={14} className="text-emerald-500 animate-pulse" /> Live Event Stream
+              </h3>
+              {liveEvents.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Waiting for events…</p>
+              ) : (
+                <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
+                  {liveEvents.map((e, i) => {
+                    const time = new Date(e.created_at);
+                    const timeStr = time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+                    const isPageView = e.event_type === "page_view";
+                    return (
+                      <div key={e.id || i} className="flex items-center gap-2 py-1.5 border-b border-border/20 last:border-0">
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${i === 0 ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30"}`} />
+                        <span className="text-[10px] text-muted-foreground font-mono w-16 flex-shrink-0">{timeStr}</span>
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${isPageView ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground"}`}>
+                          {e.event_type}
+                        </span>
+                        <span className="text-xs text-foreground truncate flex-1">{e.page_path || "—"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="overview" className="space-y-4 mt-4">
         {/* Period selector */}
         <div className="flex gap-2">
           {([7, 14, 30] as const).map((p) => (
@@ -335,6 +485,8 @@ const AdminAnalytics = () => {
             </div>
           </>
         )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
