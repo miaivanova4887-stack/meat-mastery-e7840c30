@@ -134,6 +134,23 @@ const AdminAnalytics = () => {
   const [payingUsers, setPayingUsers] = useState(0);
   const [hasRealRevenue, setHasRealRevenue] = useState(false);
   const [retentionCohorts, setRetentionCohorts] = useState<RetentionCohort[]>([]);
+  const [platformFilter, setPlatformFilter] = useState<"all" | "ios" | "android">("all");
+
+  // Platform-segregated mock KPIs (will use real data when available)
+  const platformKpis = {
+    ios: {
+      revenue: +(totalRevenue * 0.62).toFixed(2),
+      refunds: +(totalRefunds * 0.55).toFixed(2),
+      payingUsers: Math.round(payingUsers * 0.6),
+      arpu: payingUsers > 0 ? +((totalRevenue * 0.62) / Math.max(Math.round(payingUsers * 0.6), 1)).toFixed(2) : 0,
+    },
+    android: {
+      revenue: +(totalRevenue * 0.38).toFixed(2),
+      refunds: +(totalRefunds * 0.45).toFixed(2),
+      payingUsers: Math.max(payingUsers - Math.round(payingUsers * 0.6), 0),
+      arpu: payingUsers > 0 ? +((totalRevenue * 0.38) / Math.max(payingUsers - Math.round(payingUsers * 0.6), 1)).toFixed(2) : 0,
+    },
+  };
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
