@@ -485,6 +485,8 @@ const AdminAnalytics = () => {
             </div>
           </>
         )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
