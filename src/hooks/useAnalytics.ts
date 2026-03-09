@@ -27,12 +27,13 @@ export function useTrackEvent() {
   return useCallback(
     (eventType: string, eventData: Record<string, unknown> = {}, pagePath?: string) => {
       if (!user) return; // Only track authenticated users
+      const platform = detectPlatform();
       (supabase as any)
         .from("analytics_events")
         .insert({
           user_id: user.id,
           event_type: eventType,
-          event_data: eventData,
+          event_data: { ...eventData, platform },
           page_path: pagePath || window.location.pathname,
           session_id: getSessionId(),
         })
