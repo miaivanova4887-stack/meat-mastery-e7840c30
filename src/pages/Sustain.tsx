@@ -2,6 +2,7 @@ import { ArrowLeft, Target, RefreshCw, Users, BarChart3, Calendar, BookHeart, Ch
 import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 import ArticleFeedback from "@/components/ArticleFeedback";
+import { useTranslation } from "react-i18next";
 
 const tips = [
   { id: "goals", icon: Target, title: "Set Non-Scale Goals", desc: "Track energy, sleep quality, mental clarity, and strength gains — not just weight. These victories keep motivation alive long-term.", link: "/progress", q: "Do you track non-scale goals?" },
@@ -14,14 +15,15 @@ const tips = [
 
 const Sustain = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold">Sustain Results</h1>
+        <h1 className="text-lg font-display font-bold">{t("sustain.title")}</h1>
       </div>
       <div className="p-4">
-        <p className="text-xs text-muted-foreground mb-4">Long-term success requires more than willpower. Build systems that make carnivore your default.</p>
+        <p className="text-xs text-muted-foreground mb-4">{t("sustain.intro")}</p>
         <div className="space-y-3">
           {tips.map(({ id, icon: Icon, title, desc, link, q }, i) => (
               <div key={id} className={`bg-card border border-border rounded-lg p-4 animate-fade-in-up ${link ? "cursor-pointer hover:border-primary/40 active:scale-[0.98] transition-all" : ""}`} style={{ animationDelay: `${i * 0.05}s` }} onClick={link ? () => navigate(link) : undefined}>

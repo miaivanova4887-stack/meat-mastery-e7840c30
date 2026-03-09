@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ArrowLeft, Watch } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "react-i18next";
+import { useAuth } from "@/contexts/AuthContext";
 import { CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import CategoryView from "@/components/progress/CategoryView";
 import NutrientBreakdown from "@/components/progress/NutrientBreakdown";
@@ -22,16 +24,17 @@ const CATEGORIES = Object.keys(CATEGORY_META) as ProgressCategory[];
 const Progress = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [category, setCategory] = useState<ProgressCategory>("diet_trends");
 
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 pb-24">
-        <p className="text-foreground font-bold text-lg mb-2">Sign in to track your progress</p>
+        <p className="text-foreground font-bold text-lg mb-2">{t("progress.signInToTrack")}</p>
         <p className="text-muted-foreground text-sm mb-4 text-center">
-          Your health data is stored securely and syncs across devices.
+          {t("progress.signInDesc")}
         </p>
-        <Button onClick={() => navigate("/auth")}>Sign In</Button>
+        <Button onClick={() => navigate("/auth")}>{t("common.signIn")}</Button>
       </div>
     );
   }
@@ -46,7 +49,7 @@ const Progress = () => {
           <button onClick={() => navigate(-1)} className="text-foreground p-1">
             <ArrowLeft size={22} />
           </button>
-          <h1 className="text-base font-bold text-foreground">My Progress</h1>
+          <h1 className="text-base font-bold text-foreground">{t("progress.title")}</h1>
           <button
             onClick={() => navigate("/progress/sync")}
             className="text-muted-foreground p-1 hover:text-foreground transition-colors"
@@ -100,11 +103,11 @@ const Progress = () => {
             <Watch size={18} className="text-primary" />
           </div>
           <div className="flex-1 relative">
-            <p className="text-[13px] font-bold text-foreground">Sync Smart Devices</p>
-            <p className="text-[11px] text-muted-foreground">Connect Apple Health or Google Health Connect.</p>
+            <p className="text-[13px] font-bold text-foreground">{t("progress.syncDevices")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("progress.syncDesc")}</p>
           </div>
           <Button size="sm" variant="outline" className="shrink-0 text-xs relative" onClick={() => navigate("/progress/sync")}>
-            Setup
+            {t("progress.setup")}
           </Button>
         </div>
       </div>
