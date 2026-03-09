@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { ChevronRight, RotateCcw, Phone } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import heroMale from "@/assets/hero-athletic.jpg";
 import heroFemale from "@/assets/hero-athletic-female.jpg";
 import iconBenefits from "@/assets/icon-benefits.png";
@@ -9,7 +10,6 @@ import iconTimer from "@/assets/icon-timer.png";
 import iconIngredients from "@/assets/icon-ingredients.png";
 import iconExercise from "@/assets/icon-exercise.png";
 import iconCravings from "@/assets/icon-cravings.png";
-import iconStories from "@/assets/icon-stories.png";
 import iconSustain from "@/assets/icon-sustain.png";
 import iconSustainFemale from "@/assets/icon-sustain-female.png";
 import iconMyths from "@/assets/icon-myths.png";
@@ -19,6 +19,7 @@ import iconBudget from "@/assets/icon-budget.png";
 import iconAthletic from "@/assets/icon-athletic.png";
 import iconAthleticFemale from "@/assets/icon-athletic-female.png";
 import ThemeToggle from "@/components/ThemeToggle";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal } from "@/contexts/UserProfileContext";
@@ -33,50 +34,43 @@ import {
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 
-// Replace with your actual Calendly link
 const CALENDLY_URL = "https://calendly.com";
 
+const featureLabelKeys: Record<string, string> = {
+  "/benefits": "home.features.benefits",
+  "/recipes": "home.features.recipes",
+  "/timer": "home.features.ketosisTimer",
+  "/ingredients": "home.features.ingredients",
+  "/exercise": "home.features.exercise",
+  "/cravings": "home.features.cravings",
+  "/sustain": "home.features.sustainResults",
+  "/myths": "home.features.mythsBusted",
+  "/guide": "home.features.completeGuide",
+  "/getting-started": "home.features.first30Days",
+  "/budget": "home.features.eatOnBudget",
+  "/athletic": "home.features.athleticFuel",
+};
+
 const getFeatures = (isFemale: boolean) => [
-  { icon: iconBenefits, label: "Benefits", path: "/benefits", tags: [] as string[] },
-  { icon: iconRecipes, label: "Recipes", path: "/recipes", tags: ["recipes"] },
-  { icon: iconTimer, label: "Ketosis Timer", path: "/timer", tags: ["ketosis"] },
-  { icon: iconIngredients, label: "Ingredients", path: "/ingredients", tags: ["recipes"] },
-  { icon: iconExercise, label: "Exercise", path: "/exercise", tags: ["exercise"] },
-  { icon: iconCravings, label: "Cravings", path: "/cravings", tags: [] },
-  // { icon: iconStories, label: "Success Stories", path: "/stories", tags: [] },
-  { icon: isFemale ? iconSustainFemale : iconSustain, label: "Sustain Results", path: "/sustain", tags: [] },
-  { icon: iconMyths, label: "Myths Busted", path: "/myths", tags: [] as string[] },
-  { icon: iconGuide, label: "Complete Guide", path: "/guide", tags: [] as string[] },
-  { icon: iconGettingStarted, label: "First 30 Days", path: "/getting-started", tags: [] as string[] },
-  { icon: iconBudget, label: "Eat on a Budget", path: "/budget", tags: [] as string[] },
-  { icon: isFemale ? iconAthleticFemale : iconAthletic, label: "Athletic Fuel", path: "/athletic", tags: ["exercise"] },
+  { icon: iconBenefits, path: "/benefits", tags: [] as string[] },
+  { icon: iconRecipes, path: "/recipes", tags: ["recipes"] },
+  { icon: iconTimer, path: "/timer", tags: ["ketosis"] },
+  { icon: iconIngredients, path: "/ingredients", tags: ["recipes"] },
+  { icon: iconExercise, path: "/exercise", tags: ["exercise"] },
+  { icon: iconCravings, path: "/cravings", tags: [] },
+  { icon: isFemale ? iconSustainFemale : iconSustain, path: "/sustain", tags: [] },
+  { icon: iconMyths, path: "/myths", tags: [] as string[] },
+  { icon: iconGuide, path: "/guide", tags: [] as string[] },
+  { icon: iconGettingStarted, path: "/getting-started", tags: [] as string[] },
+  { icon: iconBudget, path: "/budget", tags: [] as string[] },
+  { icon: isFemale ? iconAthleticFemale : iconAthletic, path: "/athletic", tags: ["exercise"] },
 ];
-
-const greetings: Record<Goal, string> = {
-  lose_weight: "Let's burn fat today",
-  build_muscle: "Time to build strength",
-  maintain: "Stay consistent, stay strong",
-  improve_health: "Your healing journey continues",
-};
-
-const subtitles: Record<Goal, string> = {
-  lose_weight: "High-protein, zero-carb fuel for maximum fat loss.",
-  build_muscle: "Fuel your gains with nature's most anabolic diet.",
-  maintain: "Steady nutrition for sustained performance.",
-  improve_health: "Let food be your medicine — meat heals.",
-};
-
-const quotes: Record<Goal, { text: string; author: string }> = {
-  lose_weight: { text: "Fat adaptation is the metabolic superpower that makes carnivore the ultimate weight loss tool.", author: "Dr. Ken Berry" },
-  build_muscle: { text: "Animal protein is the most bioavailable source of amino acids for muscle growth. Period.", author: "Dr. Shawn Baker" },
-  maintain: { text: "The carnivore diet is the elimination diet that helps you discover what your body truly needs.", author: "Dr. Shawn Baker" },
-  improve_health: { text: "When you remove the things that harm you and eat the things that heal you, the body knows what to do.", author: "Dr. Paul Saladino" },
-};
 
 const Index = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
   const [showResetDrawer, setShowResetDrawer] = useState(false);
+  const { t } = useTranslation();
 
   if (!isOnboardingComplete()) {
     return <Navigate to="/onboarding" replace />;
@@ -86,25 +80,26 @@ const Index = () => {
   const heroImage = isFemale ? heroFemale : heroMale;
 
   const sorted = [...getFeatures(isFemale)].sort((a, b) => {
-    const aMatch = a.tags.some((t) => profile.interests.includes(t as any));
-    const bMatch = b.tags.some((t) => profile.interests.includes(t as any));
+    const aMatch = a.tags.some((tg) => profile.interests.includes(tg as any));
+    const bMatch = b.tags.some((tg) => profile.interests.includes(tg as any));
     if (aMatch && !bMatch) return -1;
     if (!aMatch && bMatch) return 1;
     return 0;
   });
 
-  const greeting = greetings[profile.goal];
-  const subtitle = subtitles[profile.goal];
-  const quote = quotes[profile.goal];
+  const greeting = t(`home.greetings.${profile.goal}`);
+  const subtitle = t(`home.subtitles.${profile.goal}`);
+  const quoteText = t(`quotes.${profile.goal}.text`);
+  const quoteAuthor = t(`quotes.${profile.goal}.author`);
 
   const tip = profile.struggles.includes("sugar_cravings")
-    ? "Craving sweets? Try bone broth or fatty cuts — they crush sugar cravings fast."
+    ? t("home.tips.sugar_cravings")
     : profile.struggles.includes("low_energy")
-    ? "Low energy? Make sure you're eating enough fat — it's your new fuel source."
+    ? t("home.tips.low_energy")
     : profile.struggles.includes("digestive")
-    ? "Digestive adjustment is normal. Stick with fattier cuts and give your gut time."
+    ? t("home.tips.digestive")
     : profile.struggles.includes("social_pressure")
-    ? "Facing pushback? Check out Success Stories from people who've been there."
+    ? t("home.tips.social_pressure")
     : null;
 
   return (
@@ -113,7 +108,8 @@ const Index = () => {
       <div className="relative h-[55vh] overflow-hidden">
         <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-black/30" />
-        <div className="absolute top-4 right-4 z-10">
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+          <LanguageSwitcher />
           <ThemeToggle />
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">
@@ -121,7 +117,7 @@ const Index = () => {
             {greeting}
           </p>
           <h1 className="text-4xl font-display font-black text-foreground leading-[1.05] tracking-tight">
-            Health is<br />Wealth.
+            {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
           </h1>
           <p className="text-muted-foreground mt-2 text-[13px] max-w-[280px] leading-relaxed">
             {subtitle}
@@ -131,7 +127,6 @@ const Index = () => {
 
       {/* Content */}
       <div className="px-4 space-y-4 -mt-2 relative z-10">
-        {/* Personalized tip */}
         {tip && (
           <div className="ios-card px-4 py-3 animate-fade-in flex items-start gap-2.5">
             <span className="text-primary text-base mt-0.5">💡</span>
@@ -141,8 +136,9 @@ const Index = () => {
 
         {/* Feature Grid */}
         <div className="grid grid-cols-2 gap-3">
-          {sorted.map(({ icon, label, path, tags }) => {
-            const highlighted = tags.some((t) => profile.interests.includes(t as any));
+          {sorted.map(({ icon, path, tags }) => {
+            const highlighted = tags.some((tg) => profile.interests.includes(tg as any));
+            const label = t(featureLabelKeys[path] || path);
             return (
               <button
                 key={path}
@@ -159,7 +155,7 @@ const Index = () => {
                   <div>
                     <span className="text-[13px] font-bold text-foreground block">{label}</span>
                     {highlighted && (
-                      <span className="text-[10px] text-primary mt-0.5 font-semibold block">Recommended for you</span>
+                      <span className="text-[10px] text-primary mt-0.5 font-semibold block">{t("home.recommendedForYou")}</span>
                     )}
                   </div>
                   <ChevronRight size={14} className="text-muted-foreground shrink-0" />
@@ -172,12 +168,12 @@ const Index = () => {
         {/* Quote */}
         <div className="ios-card p-5">
           <p className="text-[13px] italic text-foreground/60 leading-relaxed">
-            "{quote.text}"
+            "{quoteText}"
           </p>
-          <span className="text-[11px] text-muted-foreground mt-2 block font-medium">— {quote.author}</span>
+          <span className="text-[11px] text-muted-foreground mt-2 block font-medium">— {quoteAuthor}</span>
         </div>
 
-        {/* Motivation CTA — Calendly */}
+        {/* Motivation CTA */}
         <a
           href={CALENDLY_URL}
           target="_blank"
@@ -188,8 +184,8 @@ const Index = () => {
             <Phone size={18} className="text-primary" />
           </div>
           <div className="text-left flex-1">
-            <p className="text-[13px] font-bold text-foreground">Need extra motivation?</p>
-            <p className="text-[11px] text-muted-foreground">Talk to seasoned carnivores — book a free call.</p>
+            <p className="text-[13px] font-bold text-foreground">{t("home.motivationTitle")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("home.motivationDesc")}</p>
           </div>
           <ChevronRight size={16} className="text-muted-foreground shrink-0" />
         </a>
@@ -200,22 +196,20 @@ const Index = () => {
           className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
         >
           <RotateCcw size={13} />
-          Update your preferences
+          {t("home.updatePreferences")}
         </button>
       </div>
 
-      {/* Slide-up Drawer for preferences reset */}
+      {/* Drawer */}
       <Drawer open={showResetDrawer} onOpenChange={setShowResetDrawer}>
         <DrawerContent>
           <DrawerHeader className="text-left">
-            <DrawerTitle>Reset your preferences?</DrawerTitle>
-            <DrawerDescription>
-              This will restart the onboarding quiz. Your personalized content will update based on your new answers.
-            </DrawerDescription>
+            <DrawerTitle>{t("home.resetTitle")}</DrawerTitle>
+            <DrawerDescription>{t("home.resetDesc")}</DrawerDescription>
           </DrawerHeader>
           <DrawerFooter className="flex-row gap-3">
             <DrawerClose asChild>
-              <Button variant="outline" className="flex-1">Cancel</Button>
+              <Button variant="outline" className="flex-1">{t("home.cancel")}</Button>
             </DrawerClose>
             <Button
               className="flex-1"
@@ -226,7 +220,7 @@ const Index = () => {
                 navigate("/onboarding");
               }}
             >
-              Reset & Redo
+              {t("home.resetRedo")}
             </Button>
           </DrawerFooter>
         </DrawerContent>

@@ -1,18 +1,20 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Flame, BookOpen, Timer, CalendarDays, User, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-
-const tabs = [
-  { path: "/", icon: Flame, label: "Home" },
-  { path: "/recipes", icon: BookOpen, label: "Recipes" },
-  { path: "/meal-plan", icon: CalendarDays, label: "Plan" },
-  { path: "/progress", icon: TrendingUp, label: "Progress" },
-];
+import { useTranslation } from "react-i18next";
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { t } = useTranslation();
+
+  const tabs = [
+    { path: "/", icon: Flame, label: t("nav.home") },
+    { path: "/recipes", icon: BookOpen, label: t("nav.recipes") },
+    { path: "/meal-plan", icon: CalendarDays, label: t("nav.plan") },
+    { path: "/progress", icon: TrendingUp, label: t("nav.progress") },
+  ];
 
   if (location.pathname === "/onboarding") return null;
   return (
@@ -40,7 +42,7 @@ const BottomNav = () => {
           }`}
         >
           <User size={22} strokeWidth={["/auth", "/profile"].includes(location.pathname) ? 2.2 : 1.6} />
-          <span className="text-[10px] font-medium">{user ? "Profile" : "Sign In"}</span>
+          <span className="text-[10px] font-medium">{user ? t("nav.profile") : t("nav.signIn")}</span>
         </button>
       </div>
     </nav>

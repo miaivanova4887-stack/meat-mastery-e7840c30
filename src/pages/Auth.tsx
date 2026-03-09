@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { signIn, signUp } = useAuth();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,15 +19,15 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error(t("auth.fillAllFields"));
       return;
     }
     if (mode === "signup" && !displayName.trim()) {
-      toast.error("Please enter a display name");
+      toast.error(t("auth.enterDisplayName"));
       return;
     }
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(t("auth.passwordMin"));
       return;
     }
 
@@ -39,9 +41,9 @@ const Auth = () => {
     if (result.error) {
       toast.error(result.error);
     } else if (mode === "signup") {
-      toast.success("Check your email to confirm your account!");
+      toast.success(t("auth.checkEmail"));
     } else {
-      toast.success("Welcome back!");
+      toast.success(t("auth.welcomeBackToast"));
       navigate("/");
     }
   };
@@ -51,13 +53,12 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <div className="sticky top-0 z-40 bg-card/80 ios-blur border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-display font-bold tracking-tight">
-          {mode === "login" ? "Sign In" : "Create Account"}
+          {mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
         </h1>
       </div>
 
@@ -66,71 +67,47 @@ const Auth = () => {
           <span className="text-3xl">🥩</span>
         </div>
         <h2 className="font-display font-bold text-xl text-foreground mb-1">
-          {mode === "login" ? "Welcome Back" : "Join the Pack"}
+          {mode === "login" ? t("auth.welcomeBack") : t("auth.joinThePack")}
         </h2>
         <p className="text-sm text-muted-foreground mb-8">
-          {mode === "login" ? "Sign in to access your community" : "Create your carnivore profile"}
+          {mode === "login" ? t("auth.signInAccess") : t("auth.createProfile")}
         </p>
 
         <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-3">
           {mode === "signup" && (
             <div className="relative">
               <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Display name"
-                maxLength={50}
-                className={inputClass}
-              />
+              <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+                placeholder={t("auth.displayName")} maxLength={50} className={inputClass} />
             </div>
           )}
           <div className="relative">
             <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
-              className={inputClass}
-            />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("auth.email")} className={inputClass} />
           </div>
           <div className="relative">
             <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className={`${inputClass} pr-10`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
-            >
+            <input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("auth.password")} className={`${inputClass} pr-10`} />
+            <button type="button" onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground">
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-50"
-          >
-            {loading ? "Loading…" : mode === "login" ? "Sign In" : "Create Account"}
+          <button type="submit" disabled={loading}
+            className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-50">
+            {loading ? t("auth.loading") : mode === "login" ? t("auth.signIn") : t("auth.createAccount")}
           </button>
         </form>
 
-        <button
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="mt-6 text-sm text-muted-foreground"
-        >
+        <button onClick={() => setMode(mode === "login" ? "signup" : "login")}
+          className="mt-6 text-sm text-muted-foreground">
           {mode === "login" ? (
-            <>Don't have an account? <span className="text-primary font-semibold">Sign Up</span></>
+            <>{t("auth.dontHaveAccount")} <span className="text-primary font-semibold">{t("auth.signUp")}</span></>
           ) : (
-            <>Already have an account? <span className="text-primary font-semibold">Sign In</span></>
+            <>{t("auth.alreadyHaveAccount")} <span className="text-primary font-semibold">{t("auth.signIn")}</span></>
           )}
         </button>
       </div>
