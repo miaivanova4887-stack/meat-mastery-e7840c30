@@ -291,6 +291,7 @@ const AdminAnalytics = () => {
       // LTV cohorts (simplified: group by signup week)
       // In production, this would correlate with profiles.created_at
       setLtvCohorts(generateMockLtvCohorts());
+      setRetentionCohorts(generateMockRetentionCohorts());
     } else {
       // Use mock data for demo
       setHasRealRevenue(false);
@@ -301,6 +302,7 @@ const AdminAnalytics = () => {
       setPayingUsers(Math.floor(Math.random() * 30 + 5));
       setAvgLtv(+(Math.random() * 40 + 15).toFixed(2));
       setLtvCohorts(generateMockLtvCohorts());
+      setRetentionCohorts(generateMockRetentionCohorts());
     }
 
     setLoading(false);
