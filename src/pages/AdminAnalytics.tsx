@@ -174,7 +174,7 @@ const AdminAnalytics = () => {
     },
   };
 
-  // CSV export
+  // CSV export - Revenue
   const exportRevenueCsv = useCallback(() => {
     setIsExporting(true);
     try {
@@ -203,6 +203,34 @@ const AdminAnalytics = () => {
       setIsExporting(false);
     }
   }, [rawRevenueEvents, revDateFrom, revDateTo]);
+
+  // CSV export - LTV
+  const exportLtvCsv = useCallback(() => {
+    const headers = ["Cohort", "Users", "Day 0 ($)", "Day 7 ($)", "Day 14 ($)", "Day 30 ($)"];
+    const rows = ltvCohorts.map((c) => [c.cohort, c.users, c.day0, c.day7, c.day14, c.day30]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ltv_cohorts_${format(ltvDateFrom, "yyyy-MM-dd")}_to_${format(ltvDateTo, "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [ltvCohorts, ltvDateFrom, ltvDateTo]);
+
+  // CSV export - Retention
+  const exportRetentionCsv = useCallback(() => {
+    const headers = ["Cohort", "Users", "Day 1 (%)", "Day 7 (%)", "Day 30 (%)"];
+    const rows = retentionCohorts.map((c) => [c.cohort, c.users, c.day1, c.day7, c.day30]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `retention_cohorts_${format(retDateFrom, "yyyy-MM-dd")}_to_${format(retDateTo, "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [retentionCohorts, retDateFrom, retDateTo]);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
