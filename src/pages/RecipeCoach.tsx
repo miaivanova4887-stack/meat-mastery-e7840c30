@@ -160,8 +160,8 @@ const RecipeCoach = () => {
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm">
-            <ChefHat size={15} className="text-primary-foreground" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary via-primary to-primary/60 flex items-center justify-center shadow-md ring-1 ring-primary/20">
+            <ChefHat size={16} className="text-primary-foreground drop-shadow-sm" />
           </div>
           <div>
             <h1 className="text-sm font-display font-bold tracking-tight">Recipe Coach</h1>
