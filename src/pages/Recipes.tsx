@@ -141,7 +141,16 @@ const Recipes = () => {
               {r.serving && <span className="text-xs">· {r.serving}{mult > 1 ? ` × ${mult}` : ""}</span>}
             </div>
           </div>
-          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleFavorite(r.name); }}
+              className="p-1.5 -m-1.5 rounded-lg transition-all active:scale-90"
+            >
+              <Heart
+                size={18}
+                className={`transition-colors ${isFavorite(r.name) ? "fill-destructive text-destructive" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+              />
+            </button>
             <span className="text-xs font-semibold text-primary">{scaledProtein} P</span>
             <span className="text-xs font-medium text-muted-foreground">{scaledFat} F</span>
           </div>
