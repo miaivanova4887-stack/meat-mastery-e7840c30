@@ -12,12 +12,30 @@ const LanguageSwitcher = () => {
   return (
     <button
       onClick={toggle}
-      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-secondary/80 text-xs font-semibold text-foreground transition-all active:scale-95"
+      className="relative flex items-center w-[52px] h-7 rounded-full bg-black/30 backdrop-blur-md border border-white/10 transition-all active:scale-95"
       aria-label="Toggle language"
     >
-      <span className={current === "en" ? "opacity-100" : "opacity-40"}>EN</span>
-      <span className="text-muted-foreground">/</span>
-      <span className={current === "fr" ? "opacity-100" : "opacity-40"}>FR</span>
+      {/* Sliding indicator */}
+      <span
+        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white/90 shadow-sm transition-transform duration-200 ease-out ${
+          current === "fr" ? "translate-x-[24px]" : "translate-x-0.5"
+        }`}
+      />
+      {/* Labels */}
+      <span
+        className={`relative z-10 flex-1 text-center text-[10px] font-bold tracking-wide transition-colors duration-200 ${
+          current === "en" ? "text-black" : "text-white/60"
+        }`}
+      >
+        EN
+      </span>
+      <span
+        className={`relative z-10 flex-1 text-center text-[10px] font-bold tracking-wide transition-colors duration-200 ${
+          current === "fr" ? "text-black" : "text-white/60"
+        }`}
+      >
+        FR
+      </span>
     </button>
   );
 };
