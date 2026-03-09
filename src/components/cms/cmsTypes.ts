@@ -4,7 +4,8 @@ export type ComponentCategory =
   | "data" 
   | "form" 
   | "navigation" 
-  | "media";
+  | "media"
+  | "interactive";
 
 export interface CmsComponentDefinition {
   type: string;
@@ -63,6 +64,15 @@ export const COMPONENT_LIBRARY: CmsComponentDefinition[] = [
   // Media
   { type: "carousel", label: "Carousel", category: "media", icon: "GalleryHorizontal", defaultProps: {}, defaultWidth: 400, defaultHeight: 250 },
   { type: "video", label: "Video", category: "media", icon: "Play", defaultProps: { src: "" }, defaultWidth: 400, defaultHeight: 250 },
+
+  // Interactive — App Feature Widgets
+  { type: "progress_milestone", label: "Progress Milestone", category: "interactive", icon: "Trophy", defaultProps: { icon: "🏆", title: "Goal Reached: Weight", desc: "You hit your target of 80kg!", color: "emerald" }, defaultWidth: 350, defaultHeight: 90 },
+  { type: "milestone_streak", label: "Streak Counter", category: "interactive", icon: "Flame", defaultProps: { days: 7, label: "Day Logging Streak" }, defaultWidth: 200, defaultHeight: 80 },
+  { type: "favorite_button", label: "Favorite Button", category: "interactive", icon: "Heart", defaultProps: { label: "Add to Favorites", filled: false }, defaultWidth: 180, defaultHeight: 44 },
+  { type: "share_card", label: "Invite / Share", category: "interactive", icon: "Share2", defaultProps: { title: "Invite a Friend", description: "Share the carnivore lifestyle" }, defaultWidth: 350, defaultHeight: 140 },
+  { type: "feed_card", label: "Feed Article", category: "interactive", icon: "Newspaper", defaultProps: { category: "Science", title: "Article Title", summary: "Article summary text goes here…", color: "blue" }, defaultWidth: 350, defaultHeight: 120 },
+  { type: "stat_card", label: "Stat Card", category: "interactive", icon: "TrendingUp", defaultProps: { icon: "🔥", label: "Calories", value: "2,400", unit: "kcal" }, defaultWidth: 160, defaultHeight: 90 },
+  { type: "goal_progress", label: "Goal Progress", category: "interactive", icon: "Target", defaultProps: { label: "Daily Protein", current: 120, target: 180, unit: "g" }, defaultWidth: 280, defaultHeight: 80 },
 ];
 
 export const CATEGORY_LABELS: Record<ComponentCategory, string> = {
@@ -72,4 +82,5 @@ export const CATEGORY_LABELS: Record<ComponentCategory, string> = {
   form: "Form",
   navigation: "Navigation",
   media: "Media",
+  interactive: "Interactive Widgets",
 };
