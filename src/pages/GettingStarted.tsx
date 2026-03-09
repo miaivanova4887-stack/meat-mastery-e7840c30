@@ -2,9 +2,11 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import { useTranslation } from "react-i18next";
 
 const GettingStarted = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -12,11 +14,11 @@ const GettingStarted = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-display font-bold">Your First 30 Days</h1>
+        <h1 className="text-lg font-display font-bold">{t("gettingStarted.title")}</h1>
       </div>
 
       <div className="p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">A week-by-week roadmap for your carnivore journey · 5 sections</p>
+        <p className="text-xs text-muted-foreground">{t("gettingStarted.subtitle")}</p>
 
         <ContentSection type="key_points" title="Week 1: The Clean Slate" feedbackId="started-w1" feedbackQuestion="Are you ready to start?" items={[
           "Empty your pantry of all non-animal foods",

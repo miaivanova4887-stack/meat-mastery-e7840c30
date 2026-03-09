@@ -2,9 +2,11 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import { useTranslation } from "react-i18next";
 
 const AthleticPerformance = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -12,11 +14,11 @@ const AthleticPerformance = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-display font-bold">Athletic Performance</h1>
+        <h1 className="text-lg font-display font-bold">{t("athletic.title")}</h1>
       </div>
 
       <div className="p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">How carnivore fuels strength, endurance, and recovery · 7 sections</p>
+        <p className="text-xs text-muted-foreground">{t("athletic.subtitle")}</p>
 
         <ContentSection type="key_points" title="The Adaptation Phase" feedbackId="athletic-adapt" feedbackQuestion="Are you in the adaptation phase?" items={[
           "Allow 2–6 weeks for full fat adaptation",

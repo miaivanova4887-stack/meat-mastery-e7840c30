@@ -2,9 +2,11 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import { useTranslation } from "react-i18next";
 
 const Guide = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -12,11 +14,11 @@ const Guide = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-display font-bold">Complete Guide</h1>
+        <h1 className="text-lg font-display font-bold">{t("guide.title")}</h1>
       </div>
 
       <div className="p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">A comprehensive guide to carnivore eating · 7 sections</p>
+        <p className="text-xs text-muted-foreground">{t("guide.subtitle")}</p>
 
         <ContentSection type="overview" title="What is the Carnivore Diet?" feedbackId="guide-what" feedbackQuestion="Was this a good introduction?">
           The carnivore diet is an elimination diet consisting exclusively of animal products. It removes all plant foods, focusing on meat, fish, eggs, and sometimes dairy. By stripping away potential irritants, it lets your body heal and reveals which foods your system truly tolerates.

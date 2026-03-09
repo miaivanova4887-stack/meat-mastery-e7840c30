@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ArrowLeft, Dumbbell, Heart, Zap, Wind, Sparkles, Sun, Moon, Flame, TreePine, ChevronRight, Activity, Music, Waves, Brain, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { ActivityLevel, Goal } from "@/contexts/UserProfileContext";
@@ -141,6 +143,8 @@ function getQuizResult(answers: number[]): QuizResult {
 const Exercise = () => {
   const profile = useUserProfile();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [quizStep, setQuizStep] = useState(-1);
   const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
   const [transitioning, setTransitioning] = useState(false);
@@ -174,7 +178,7 @@ const Exercise = () => {
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
-        <h1 className="text-lg font-display font-bold">Exercise & Movement</h1>
+        <h1 className="text-lg font-display font-bold">{t("exercise.title")}</h1>
       </div>
 
       <div className="p-4 space-y-6">
