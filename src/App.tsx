@@ -37,8 +37,15 @@ import ProgressPage from "./pages/Progress";
 import HealthSync from "./pages/HealthSync";
 import NewsFeed from "./pages/NewsFeed";
 import AdminNotifications from "./pages/AdminNotifications";
+import AdminAnalytics from "./pages/AdminAnalytics";
+import { usePageViewTracker } from "./hooks/useAnalytics";
 
 const queryClient = new QueryClient();
+
+function PageViewTracker() {
+  usePageViewTracker();
+  return null;
+}
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
@@ -50,6 +57,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <PageViewTracker />
             <Routes>
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/" element={<Index />} />
@@ -79,6 +87,7 @@ const App = () => (
               <Route path="/p/:slug" element={<CmsPageView />} />
               <Route path="/news" element={<NewsFeed />} />
               <Route path="/admin/notifications" element={<AdminNotifications />} />
+              <Route path="/admin/analytics" element={<AdminAnalytics />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             <BottomNav />
