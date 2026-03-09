@@ -71,7 +71,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "google/gemini-3.1-flash-image-preview",
         messages: [{ role: "user", content: prompt }],
         modalities: ["image", "text"],
       }),
@@ -99,9 +99,17 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    console.log("AI response structure:", JSON.stringify(data).slice(0, 500));
+    
+    // Try multiple possible response structures
+    const imageData = 
+      data.choices?.[0]?.message?.images?.[0]?.image_url?.url ||
+      data.choices?.[0]?.message?.content?.[0]?.image_url?.url ||
+      (typeof data.choices?.[0]?.message?.content === "string" && data.choices[0].message.content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/)?.[0]) ||
+      null;
 
     if (!imageData) {
+      console.error("No image in response. Keys:", JSON.stringify(Object.keys(data)));
       return new Response(JSON.stringify({ error: "No image generated" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
