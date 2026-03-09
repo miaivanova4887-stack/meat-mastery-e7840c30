@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone, Calendar as CalendarIcon, Download } from "lucide-react";
+import { ArrowLeft, BarChart3, Users, Eye, Heart, TrendingUp, FileText, Loader2, Shield, Activity, Radio, Zap, DollarSign, Crown, CalendarDays, ArrowUpRight, Info, RotateCcw, Smartphone, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,9 +7,7 @@ import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, subDays } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(142 76% 36%)", "hsl(45 93% 47%)", "hsl(221 83% 53%)"];
 
@@ -570,54 +568,50 @@ const AdminAnalytics = () => {
             )}
 
             {/* Date Range Filter & CSV Export */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("text-xs gap-1.5 h-8", !revDateFrom && "text-muted-foreground")}>
-                    <CalendarIcon size={12} />
-                    {format(revDateFrom, "MMM d")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={revDateFrom}
-                    onSelect={(d) => d && setRevDateFrom(d)}
-                    disabled={(d) => d > revDateTo || d > new Date()}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
+            <div className="ios-card p-3">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] text-muted-foreground">From</span>
+                  <Input
+                    type="date"
+                    value={format(revDateFrom, "yyyy-MM-dd")}
+                    max={format(revDateTo, "yyyy-MM-dd")}
+                    onChange={(e) => {
+                      const d = parseLocalDate(e.target.value);
+                      if (!d) return;
+                      setRevDateFrom(d);
+                      if (d > revDateTo) setRevDateTo(d);
+                    }}
+                    className="h-8 text-xs"
                   />
-                </PopoverContent>
-              </Popover>
-              <span className="text-xs text-muted-foreground">to</span>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("text-xs gap-1.5 h-8", !revDateTo && "text-muted-foreground")}>
-                    <CalendarIcon size={12} />
-                    {format(revDateTo, "MMM d")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={revDateTo}
-                    onSelect={(d) => d && setRevDateTo(d)}
-                    disabled={(d) => d < revDateFrom || d > new Date()}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-[11px] text-muted-foreground">To</span>
+                  <Input
+                    type="date"
+                    value={format(revDateTo, "yyyy-MM-dd")}
+                    min={format(revDateFrom, "yyyy-MM-dd")}
+                    max={format(new Date(), "yyyy-MM-dd")}
+                    onChange={(e) => {
+                      const d = parseLocalDate(e.target.value);
+                      if (!d) return;
+                      setRevDateTo(d);
+                      if (d < revDateFrom) setRevDateFrom(d);
+                    }}
+                    className="h-8 text-xs"
                   />
-                </PopoverContent>
-              </Popover>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs gap-1.5 h-8 ml-auto"
-                onClick={exportRevenueCsv}
-                disabled={isExporting}
-              >
-                <Download size={12} />
-                {isExporting ? "Exporting…" : "Export CSV"}
-              </Button>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs gap-1.5 h-8 ml-auto"
+                  onClick={exportRevenueCsv}
+                  disabled={isExporting}
+                >
+                  <Download size={12} />
+                  {isExporting ? "Exporting…" : "Export CSV"}
+                </Button>
+              </div>
             </div>
 
             <div className="flex gap-2">
