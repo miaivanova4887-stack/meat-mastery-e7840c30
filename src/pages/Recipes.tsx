@@ -50,6 +50,7 @@ const Recipes = () => {
   const defaultTier = tierFromProfile((profile as any).diet) ?? "strict";
   const { customRecipes, deleteRecipe } = useCustomRecipes();
   const { addItem } = useShoppingBag();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
   const [activeFilter, setActiveFilter] = useState<string>("all"); // "all" | "snack" | CravingType
