@@ -1,4 +1,4 @@
-import { ArrowLeft, Send, Bot, User, Loader2, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Send, User, Loader2, ThumbsUp, ThumbsDown, ChefHat, UtensilsCrossed } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -160,8 +160,8 @@ const RecipeCoach = () => {
           <ArrowLeft size={20} />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <Bot size={16} className="text-primary" />
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-sm">
+            <ChefHat size={15} className="text-primary-foreground" />
           </div>
           <div>
             <h1 className="text-sm font-display font-bold tracking-tight">Recipe Coach</h1>
@@ -174,8 +174,8 @@ const RecipeCoach = () => {
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-6 pb-8">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Bot size={28} className="text-primary" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
+              <UtensilsCrossed size={28} className="text-primary-foreground" />
             </div>
             <div className="text-center">
               <h2 className="font-display font-bold text-foreground text-lg">Your Carnivore Coach</h2>
@@ -205,8 +205,8 @@ const RecipeCoach = () => {
               {msg.role === "assistant" && isLastAssistant && <div ref={assistantStartRef} />}
               <div className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 {msg.role === "assistant" && (
-                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Bot size={14} className="text-primary" />
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                    <ChefHat size={13} className="text-primary-foreground" />
                   </div>
                 )}
                 <div
@@ -253,8 +253,8 @@ const RecipeCoach = () => {
 
         {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="flex gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Bot size={14} className="text-primary" />
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <ChefHat size={13} className="text-primary-foreground" />
             </div>
             <div className="bg-card border border-border/40 rounded-2xl rounded-bl-md px-3.5 py-2.5">
               <Loader2 size={16} className="animate-spin text-muted-foreground" />
