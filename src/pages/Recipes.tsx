@@ -265,7 +265,7 @@ const Recipes = () => {
 
       <div className="px-4 pt-4 space-y-3">
         <button onClick={() => navigate("/recipe-coach")} className="w-full ios-card p-3.5 flex items-center gap-3 hover:bg-secondary/60 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0"><Bot size={20} className="text-primary" /></div>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center flex-shrink-0 shadow-sm"><ChefHat size={18} className="text-primary-foreground" /></div>
           <div className="text-left flex-1">
             <p className="text-[13px] font-semibold text-foreground">AI Recipe Coach</p>
             <p className="text-[11px] text-muted-foreground">Get personalised meal ideas based on your goals</p>
