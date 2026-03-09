@@ -141,6 +141,96 @@ function renderPreview(comp: PlacedComponent) {
           ))}
         </div>
       );
+    case "accordion":
+      return (
+        <div className="border border-border rounded-lg h-full overflow-hidden">
+          {(Array.isArray(props.items) ? props.items : []).map((item, i) => (
+            <div key={i} className="border-b border-border last:border-0 px-3 py-2 text-xs text-foreground flex items-center justify-between">
+              {String(item)} <span className="text-muted-foreground">▾</span>
+            </div>
+          ))}
+        </div>
+      );
+    case "progress_milestone": {
+      const colors: Record<string, string> = { emerald: "bg-emerald-500/10 text-emerald-600", amber: "bg-amber-500/10 text-amber-600", blue: "bg-blue-500/10 text-blue-600", primary: "bg-primary/10 text-primary" };
+      const c = colors[String(props.color || "emerald")] || colors.emerald;
+      return (
+        <div className="flex items-start gap-2.5 p-3 h-full">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${c}`}>{String(props.icon || "🏆")}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-foreground truncate">{String(props.title || "Milestone")}</div>
+            <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{String(props.desc || "Description")}</div>
+          </div>
+        </div>
+      );
+    }
+    case "milestone_streak":
+      return (
+        <div className="flex items-center gap-2.5 p-3 h-full">
+          <div className="text-2xl">🔥</div>
+          <div>
+            <div className="text-lg font-bold text-foreground">{String(props.days || 7)}</div>
+            <div className="text-[10px] text-muted-foreground">{String(props.label || "Day Streak")}</div>
+          </div>
+        </div>
+      );
+    case "favorite_button":
+      return (
+        <div className="flex items-center justify-center gap-2 h-full px-3">
+          <span className={props.filled ? "text-destructive" : "text-muted-foreground"}>{props.filled ? "❤️" : "🤍"}</span>
+          <span className="text-xs font-medium text-foreground">{String(props.label || "Favorite")}</span>
+        </div>
+      );
+    case "share_card":
+      return (
+        <div className="p-3 h-full flex flex-col gap-2">
+          <div className="text-xs font-semibold text-foreground">{String(props.title || "Invite")}</div>
+          <div className="text-[10px] text-muted-foreground">{String(props.description || "Share with friends")}</div>
+          <div className="flex gap-1.5 mt-auto">
+            {["Share", "WhatsApp", "Email", "Copy"].map(b => (
+              <div key={b} className="px-2 py-1 rounded-lg bg-secondary text-[9px] font-medium text-muted-foreground">{b}</div>
+            ))}
+          </div>
+        </div>
+      );
+    case "feed_card": {
+      const feedColors: Record<string, string> = { blue: "bg-blue-500/10 text-blue-600", emerald: "bg-emerald-500/10 text-emerald-600", amber: "bg-amber-500/10 text-amber-600", primary: "bg-primary/10 text-primary" };
+      const fc = feedColors[String(props.color || "blue")] || feedColors.blue;
+      return (
+        <div className="p-3 h-full space-y-1.5">
+          <span className={`inline-block px-1.5 py-0.5 rounded-full text-[9px] font-medium ${fc}`}>{String(props.category || "News")}</span>
+          <div className="text-xs font-semibold text-foreground leading-snug truncate">{String(props.title || "Article")}</div>
+          <div className="text-[10px] text-muted-foreground line-clamp-2">{String(props.summary || "Summary")}</div>
+        </div>
+      );
+    }
+    case "stat_card":
+      return (
+        <div className="p-3 h-full flex items-center gap-2.5">
+          <span className="text-xl">{String(props.icon || "📊")}</span>
+          <div>
+            <div className="text-lg font-bold text-foreground leading-none">{String(props.value || "0")}</div>
+            <div className="text-[10px] text-muted-foreground">{String(props.label || "Metric")} <span className="text-muted-foreground/60">{String(props.unit || "")}</span></div>
+          </div>
+        </div>
+      );
+    case "goal_progress": {
+      const cur = Number(props.current || 0);
+      const tar = Number(props.target || 100);
+      const pct = Math.min(100, Math.round((cur / tar) * 100));
+      return (
+        <div className="p-3 h-full space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">{String(props.label || "Goal")}</span>
+            <span className="text-[10px] text-muted-foreground">{cur}/{tar}{String(props.unit || "")}</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-secondary overflow-hidden">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="text-[9px] text-muted-foreground">{pct}% complete</div>
+        </div>
+      );
+    }
     default:
       return <div className="flex items-center justify-center h-full text-xs text-muted-foreground">{comp.label}</div>;
   }
