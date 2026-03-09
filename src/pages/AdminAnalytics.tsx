@@ -150,6 +150,14 @@ const AdminAnalytics = () => {
   const [rawRevenueEvents, setRawRevenueEvents] = useState<RevenueEvent[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
+  // LTV date range
+  const [ltvDateFrom, setLtvDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [ltvDateTo, setLtvDateTo] = useState<Date>(new Date());
+
+  // Retention date range
+  const [retDateFrom, setRetDateFrom] = useState<Date>(subDays(new Date(), 30));
+  const [retDateTo, setRetDateTo] = useState<Date>(new Date());
+
   // Platform-segregated mock KPIs (will use real data when available)
   const platformKpis = {
     ios: {
