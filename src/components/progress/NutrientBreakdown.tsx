@@ -7,9 +7,11 @@ const NutrientBreakdown = () => {
 
   const today = useMemo(() => {
     const todayStr = format(new Date(), "yyyy-MM-dd");
-    const todayEntries = entries.filter((e) =>
-      e.recorded_at.startsWith(todayStr)
-    );
+    const todayEntries = entries.filter((e) => {
+      // Convert UTC recorded_at to local date for accurate comparison
+      const localDate = format(new Date(e.recorded_at), "yyyy-MM-dd");
+      return localDate === todayStr;
+    });
 
     const cal = todayEntries.filter((e) => e.metric === "calories").reduce((s, e) => s + Number(e.value), 0);
     const protein = todayEntries.filter((e) => e.metric === "protein").reduce((s, e) => s + Number(e.value), 0);
