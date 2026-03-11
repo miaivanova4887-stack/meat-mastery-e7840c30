@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Health } from '@capgo/capacitor-health';
+import { HealthConnect } from 'capacitor-health-connect';
 
 export interface HealthData {
   steps: number;
@@ -23,14 +23,26 @@ export const useHealthConnect = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await Health.requestAuthorization({
-        read: ['steps', 'heartRate', 'weight'],
+      const status = await HealthConnect.checkAvailability();
+      if (status.availability !== 'Available') {
+        setError(`Health Connect not available: ${status.availability}`);
+        return;
+      }
+
+      await HealthConnect.requestHealthPermissions({
+        read: [
+          { recordType: 'Steps' },
+          { recordType: 'HeartRate' },
+          { recordType: 'Weight' },
+          { recordType: 'SleepSession' },
+        ],
         write: [],
       });
+
       setIsConnected(true);
       await fetchHealthData();
     } catch (err: any) {
-      setError(`Error: ${err?.message || JSON.stringify(err) || 'Permission denied'}`);
+      setError(`Error: ${err?.message || 'Permission denied'}`);
     } finally {
       setIsLoading(false);
     }
@@ -45,51 +57,10 @@ export const useHealthConnect = () => {
       let steps = 0;
       let heartRate = 0;
       let weight = 0;
+      let sleep = 0;
 
       try {
-        const stepsResult = await Health.readSamples({
-          dataType: 'steps',
-          startDate: startOfDay.toISOString(),
-          endDate: now.toISOString(),
-          limit: 50,
-        });
-        steps = stepsResult?.samples?.reduce(
-          (sum: number, s: any) => sum + (s.value || 0), 0) || 0;
-      } catch (e) { console.log('steps error', e); }
-
-      try {
-        const hrResult = await Health.readSamples({
-          dataType: 'heartRate',
-          startDate: startOfDay.toISOString(),
-          endDate: now.toISOString(),
-          limit: 1,
-        });
-        heartRate = hrResult?.samples?.[0]?.value || 0;
-      } catch (e) { console.log('heartRate error', e); }
-
-      try {
-        const weightResult = await Health.readSamples({
-          dataType: 'weight',
-          startDate: startOfDay.toISOString(),
-          endDate: now.toISOString(),
-          limit: 1,
-        });
-        weight = weightResult?.samples?.[0]?.value || 0;
-      } catch (e) { console.log('weight error', e); }
-
-      setHealthData({ steps, heartRate, weight, sleep: 0 });
-      
-    } catch (err) {
-      console.error('Error fetching health data:', err);
-    }
-  };
-
-  return {
-    healthData,
-    isConnected,
-    isLoading,
-    error,
-    requestPermissions,
-    fetchHealthData,
-  };
-};
+        const s = await HealthConnect.readRecords({
+          type: 'Steps',
+          timeRangeFilter: {
+            type: 'between
