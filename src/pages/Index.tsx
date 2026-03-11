@@ -104,7 +104,7 @@ const Index = () => {
     : null;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-32">
       {/* Hero */}
       <div className="relative h-[55vh] overflow-hidden">
         <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover" />
