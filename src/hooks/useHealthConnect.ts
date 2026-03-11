@@ -29,7 +29,7 @@ export const useHealthConnect = () => {
         return;
       }
       await Health.requestAuthorization({
-        read: ['steps', 'heartRate', 'weight', 'sleepAnalysis'],
+        read: ['steps', 'heartRate', 'weight', 'sleep'],
         write: [],
       });
       setIsConnected(true);
@@ -70,7 +70,7 @@ export const useHealthConnect = () => {
       });
 
       const sleepResult = await Health.readSamples({
-        dataType: 'sleepAnalysis',
+        dataType: 'sleep',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
         limit: 1,
