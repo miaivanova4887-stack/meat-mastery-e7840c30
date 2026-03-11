@@ -1,3 +1,4 @@
+import { HealthDashboard } from '@/components/HealthDashboard';
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { ChevronRight, RotateCcw, Zap, Sparkles } from "lucide-react";
@@ -172,7 +173,8 @@ const Index = () => {
           </p>
           <span className="text-[11px] text-muted-foreground mt-2 block font-medium">— {quoteAuthor}</span>
         </div>
-
+        {/* Health Data */}
+        <HealthDashboard />
         {/* Motivation CTA */}
         <a
           href={CALENDLY_URL}
