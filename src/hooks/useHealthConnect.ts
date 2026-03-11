@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CapacitorHealthkit } from '@capgo/capacitor-health';
+import { Health } from '@capgo/capacitor-health';
 
 export interface HealthData {
   steps: number;
