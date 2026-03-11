@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Health } from '@capgo/capacitor-health';
 
 export interface HealthData {
@@ -22,7 +22,7 @@ export const useHealthConnect = () => {
   const requestPermissions = async () => {
     setIsLoading(true);
     try {
-      await CapacitorHealthkit.requestAuthorization({
+      await Health.requestAuthorization({
         all: [],
         read: ['steps', 'heartRate', 'weight', 'sleepAnalysis'],
         write: [],
@@ -43,28 +43,28 @@ export const useHealthConnect = () => {
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
 
-      const stepsResult = await CapacitorHealthkit.queryHKitSampleType({
+      const stepsResult = await Health.queryHKitSampleType({
         sampleName: 'steps',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
         limit: 0,
       });
 
-      const hrResult = await CapacitorHealthkit.queryHKitSampleType({
+      const hrResult = await Health.queryHKitSampleType({
         sampleName: 'heartRate',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
         limit: 1,
       });
 
-      const weightResult = await CapacitorHealthkit.queryHKitSampleType({
+      const weightResult = await Health.queryHKitSampleType({
         sampleName: 'weight',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
         limit: 1,
       });
 
-      const sleepResult = await CapacitorHealthkit.queryHKitSampleType({
+      const sleepResult = await Health.queryHKitSampleType({
         sampleName: 'sleepAnalysis',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
