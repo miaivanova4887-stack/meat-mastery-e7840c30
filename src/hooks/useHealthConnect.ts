@@ -21,16 +21,21 @@ export const useHealthConnect = () => {
 
   const requestPermissions = async () => {
     setIsLoading(true);
+    setError(null);
     try {
+      const availability = await Health.isAvailable();
+      if (!availability.available) {
+        setError(`Health Connect not available: ${availability.reason}`);
+        return;
+      }
       await Health.requestAuthorization({
-        all: [],
         read: ['steps', 'heartRate', 'weight', 'sleepAnalysis'],
         write: [],
       });
       setIsConnected(true);
       await fetchHealthData();
-    } catch (err) {
-      setError('Health Connect permission denied or not available.');
+    } catch (err: any) {
+      setError(`Error: ${err.message || 'Permission denied'}`);
       console.error(err);
     } finally {
       setIsLoading(false);
@@ -43,40 +48,40 @@ export const useHealthConnect = () => {
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
 
-      const stepsResult = await Health.queryHKitSampleType({
-        sampleName: 'steps',
+      const stepsResult = await Health.readSamples({
+        dataType: 'steps',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
-        limit: 0,
+        limit: 50,
       });
 
-      const hrResult = await Health.queryHKitSampleType({
-        sampleName: 'heartRate',
-        startDate: startOfDay.toISOString(),
-        endDate: now.toISOString(),
-        limit: 1,
-      });
-
-      const weightResult = await Health.queryHKitSampleType({
-        sampleName: 'weight',
+      const hrResult = await Health.readSamples({
+        dataType: 'heartRate',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
         limit: 1,
       });
 
-      const sleepResult = await Health.queryHKitSampleType({
-        sampleName: 'sleepAnalysis',
+      const weightResult = await Health.readSamples({
+        dataType: 'weight',
+        startDate: startOfDay.toISOString(),
+        endDate: now.toISOString(),
+        limit: 1,
+      });
+
+      const sleepResult = await Health.readSamples({
+        dataType: 'sleepAnalysis',
         startDate: startOfDay.toISOString(),
         endDate: now.toISOString(),
         limit: 1,
       });
 
       setHealthData({
-        steps: stepsResult?.resultData?.reduce(
-          (sum: number, s: any) => sum + (s.quantity || 0), 0) || 0,
-        heartRate: hrResult?.resultData?.[0]?.quantity || 0,
-        weight: weightResult?.resultData?.[0]?.quantity || 0,
-        sleep: sleepResult?.resultData?.[0]?.quantity || 0,
+        steps: stepsResult?.samples?.reduce(
+          (sum: number, s: any) => sum + (s.value || 0), 0) || 0,
+        heartRate: hrResult?.samples?.[0]?.value || 0,
+        weight: weightResult?.samples?.[0]?.value || 0,
+        sleep: sleepResult?.samples?.[0]?.value || 0,
       });
     } catch (err) {
       console.error('Error fetching health data:', err);
