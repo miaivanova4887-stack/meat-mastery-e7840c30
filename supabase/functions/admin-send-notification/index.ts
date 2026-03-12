@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// @ts-ignore: Deno npm specifier
 import webPush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
