@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { HealthConnect } from 'capacitor-health-connect';
+import { useState, useCallback } from "react";
+import HealthConnect from "@/plugins/HealthConnectPlugin";
+import type { HealthConnectRecord } from "@/plugins/HealthConnectPlugin";
+import { Capacitor } from "@capacitor/core";
 
 export interface HealthData {
   steps: number;
@@ -19,48 +21,97 @@ export const useHealthConnect = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const requestPermissions = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const status = await HealthConnect.checkAvailability();
-      if (status.availability !== 'Available') {
-        setError(`Health Connect not available: ${status.availability}`);
-        return;
-      }
-
-      await HealthConnect.requestHealthPermissions({
-        read: [
-          { recordType: 'Steps' },
-          { recordType: 'HeartRate' },
-          { recordType: 'Weight' },
-          { recordType: 'SleepSession' },
-        ],
-        write: [],
-      });
-
-      setIsConnected(true);
-      await fetchHealthData();
-    } catch (err: any) {
-      setError(`Error: ${err?.message || 'Permission denied'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchHealthData = async () => {
+  const fetchHealthData = useCallback(async () => {
     try {
       const now = new Date();
       const startOfDay = new Date();
       startOfDay.setHours(0, 0, 0, 0);
 
+      const timeRange = {
+        startTime: startOfDay.toISOString(),
+        endTime: now.toISOString(),
+      };
+
       let steps = 0;
       let heartRate = 0;
       let weight = 0;
-      let sleep = 0;
 
       try {
-        const s = await HealthConnect.readRecords({
-          type: 'Steps',
-          timeRangeFilter: {
-            type: 'between
+        const stepsResult = await HealthConnect.readSteps(timeRange);
+        steps = stepsResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + r.value, 0);
+      } catch (e) {
+        console.warn("Failed to read steps:", e);
+      }
+
+      try {
+        const hrResult = await HealthConnect.readHeartRate(timeRange);
+        if (hrResult.records.length > 0) {
+          heartRate = hrResult.records[hrResult.records.length - 1].value;
+        }
+      } catch (e) {
+        console.warn("Failed to read heart rate:", e);
+      }
+
+      try {
+        const weightResult = await HealthConnect.readWeight(timeRange);
+        if (weightResult.records.length > 0) {
+          weight = weightResult.records[weightResult.records.length - 1].value;
+        }
+      } catch (e) {
+        console.warn("Failed to read weight:", e);
+      }
+
+      setHealthData({ steps, heartRate, weight, sleep: 0 });
+    } catch (err: any) {
+      console.error("fetchHealthData error:", err);
+      setError(`Failed to fetch: ${err?.message || "Unknown error"}`);
+    }
+  }, []);
+
+  const requestPermissions = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    if (!Capacitor.isNativePlatform()) {
+      setError("Health Connect is only available on Android devices.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const { status } = await HealthConnect.checkAvailability();
+      if (status !== "available") {
+        setError(
+          status === "not_installed"
+            ? "Health Connect app is not installed. Please install it from the Play Store."
+            : "Health Connect is not available on this device."
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const { granted } = await HealthConnect.requestPermissions();
+      if (!granted) {
+        setError("Health Connect permissions were denied.");
+        setIsLoading(false);
+        return;
+      }
+
+      setIsConnected(true);
+      await fetchHealthData();
+    } catch (err: any) {
+      setError(`Connection error: ${err?.message || "Unknown error"}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchHealthData]);
+
+  return {
+    healthData,
+    isConnected,
+    isLoading,
+    error,
+    requestPermissions,
+    fetchHealthData,
+  };
+};
