@@ -1,5 +1,8 @@
 package app.lovable.plugins.healthconnect
 
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
 import androidx.health.connect.client.HealthConnectClient
@@ -37,44 +40,62 @@ class HealthConnectPlugin : Plugin() {
 
     override fun load() {
         super.load()
-
-        // Register the permission launcher on the main thread during plugin load
-        permissionLauncher = activity.registerForActivityResult(
-            PermissionController.createRequestPermissionResultContract()
-        ) { granted ->
-            val call = pendingPermissionCall ?: return@registerForActivityResult
-            pendingPermissionCall = null
-
-            val allGranted = granted.containsAll(requiredPermissions)
-            val result = JSObject()
-            result.put("granted", allGranted)
-            call.resolve(result)
+        try {
+            // Register permission launcher on the ComponentActivity (required by AndroidX)
+            val componentActivity = activity as? androidx.activity.ComponentActivity
+            if (componentActivity != null) {
+                permissionLauncher = componentActivity.registerForActivityResult(
+                    PermissionController.createRequestPermissionResultContract()
+                ) { granted ->
+                    val call = pendingPermissionCall ?: return@registerForActivityResult
+                    pendingPermissionCall = null
+                    val result = JSObject()
+                    result.put("granted", granted.containsAll(requiredPermissions))
+                    call.resolve(result)
+                }
+            } else {
+                Log.w(TAG, "Activity is not a ComponentActivity — permission launcher unavailable")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register permission launcher", e)
         }
     }
 
     @PluginMethod
     fun checkAvailability(call: PluginCall) {
-        val status = when (HealthConnectClient.getSdkStatus(context)) {
-            HealthConnectClient.SDK_AVAILABLE -> "available"
-            HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "not_installed"
-            else -> "unavailable"
-        }
-
-        if (status == "available") {
-            try {
-                healthConnectClient = HealthConnectClient.getOrCreate(context)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to create HealthConnectClient", e)
-                val result = JSObject()
-                result.put("status", "unavailable")
-                call.resolve(result)
-                return
+        try {
+            val status = if (Build.VERSION.SDK_INT >= 34) {
+                // Android 14+: Health Connect is a platform module, always available
+                "available"
+            } else {
+                when (HealthConnectClient.getSdkStatus(context)) {
+                    HealthConnectClient.SDK_AVAILABLE -> "available"
+                    HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> "not_installed"
+                    else -> "unavailable"
+                }
             }
-        }
 
-        val result = JSObject()
-        result.put("status", status)
-        call.resolve(result)
+            if (status == "available") {
+                try {
+                    healthConnectClient = HealthConnectClient.getOrCreate(context)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to create HealthConnectClient", e)
+                    val result = JSObject()
+                    result.put("status", "unavailable")
+                    call.resolve(result)
+                    return
+                }
+            }
+
+            val result = JSObject()
+            result.put("status", status)
+            call.resolve(result)
+        } catch (e: Exception) {
+            Log.e(TAG, "checkAvailability failed", e)
+            val result = JSObject()
+            result.put("status", "unavailable")
+            call.resolve(result)
+        }
     }
 
     @PluginMethod
@@ -95,13 +116,32 @@ class HealthConnectPlugin : Plugin() {
                     return@launch
                 }
 
-                // Launch the permission request
-                pendingPermissionCall = call
-                permissionLauncher?.launch(requiredPermissions)
-                    ?: run {
-                        pendingPermissionCall = null
-                        call.reject("Permission launcher not ready")
+                val launcher = permissionLauncher
+                if (launcher != null) {
+                    pendingPermissionCall = call
+                    launcher.launch(requiredPermissions)
+                } else {
+                    // Fallback: open Health Connect settings directly
+                    Log.w(TAG, "Permission launcher unavailable, opening Health Connect settings")
+                    try {
+                        val settingsIntent = if (Build.VERSION.SDK_INT >= 34) {
+                            Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS").apply {
+                                putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
+                            }
+                        } else {
+                            Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
+                        }
+                        settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(settingsIntent)
+
+                        val result = JSObject()
+                        result.put("granted", false)
+                        result.put("openedSettings", true)
+                        call.resolve(result)
+                    } catch (e: Exception) {
+                        call.reject("Cannot open Health Connect permissions: ${e.message}")
                     }
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Permission request failed", e)
                 call.reject("Permission request failed: ${e.message}")
@@ -115,14 +155,11 @@ class HealthConnectPlugin : Plugin() {
             call.reject("HealthConnect not initialized")
             return
         }
-
         val startTime = call.getString("startTime") ?: run {
-            call.reject("startTime is required")
-            return
+            call.reject("startTime is required"); return
         }
         val endTime = call.getString("endTime") ?: run {
-            call.reject("endTime is required")
-            return
+            call.reject("endTime is required"); return
         }
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -130,8 +167,7 @@ class HealthConnectPlugin : Plugin() {
                 val request = ReadRecordsRequest(
                     recordType = StepsRecord::class,
                     timeRangeFilter = TimeRangeFilter.between(
-                        Instant.parse(startTime),
-                        Instant.parse(endTime)
+                        Instant.parse(startTime), Instant.parse(endTime)
                     )
                 )
                 val response = client.readRecords(request)
@@ -156,17 +192,13 @@ class HealthConnectPlugin : Plugin() {
     @PluginMethod
     fun readHeartRate(call: PluginCall) {
         val client = healthConnectClient ?: run {
-            call.reject("HealthConnect not initialized")
-            return
+            call.reject("HealthConnect not initialized"); return
         }
-
         val startTime = call.getString("startTime") ?: run {
-            call.reject("startTime is required")
-            return
+            call.reject("startTime is required"); return
         }
         val endTime = call.getString("endTime") ?: run {
-            call.reject("endTime is required")
-            return
+            call.reject("endTime is required"); return
         }
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -174,8 +206,7 @@ class HealthConnectPlugin : Plugin() {
                 val request = ReadRecordsRequest(
                     recordType = HeartRateRecord::class,
                     timeRangeFilter = TimeRangeFilter.between(
-                        Instant.parse(startTime),
-                        Instant.parse(endTime)
+                        Instant.parse(startTime), Instant.parse(endTime)
                     )
                 )
                 val response = client.readRecords(request)
@@ -202,17 +233,13 @@ class HealthConnectPlugin : Plugin() {
     @PluginMethod
     fun readWeight(call: PluginCall) {
         val client = healthConnectClient ?: run {
-            call.reject("HealthConnect not initialized")
-            return
+            call.reject("HealthConnect not initialized"); return
         }
-
         val startTime = call.getString("startTime") ?: run {
-            call.reject("startTime is required")
-            return
+            call.reject("startTime is required"); return
         }
         val endTime = call.getString("endTime") ?: run {
-            call.reject("endTime is required")
-            return
+            call.reject("endTime is required"); return
         }
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -220,8 +247,7 @@ class HealthConnectPlugin : Plugin() {
                 val request = ReadRecordsRequest(
                     recordType = WeightRecord::class,
                     timeRangeFilter = TimeRangeFilter.between(
-                        Instant.parse(startTime),
-                        Instant.parse(endTime)
+                        Instant.parse(startTime), Instant.parse(endTime)
                     )
                 )
                 val response = client.readRecords(request)
