@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
 import { useTranslation } from "react-i18next";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const myths = [
   { title: "\"Red meat causes heart disease\"", content: "This claim is based on outdated epidemiological studies that conflated processed meats with fresh cuts. Modern meta-analyses show no significant link between unprocessed red meat and cardiovascular disease. Saturated fat from whole foods raises large, buoyant LDL — the harmless kind." },
