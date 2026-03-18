@@ -16,6 +16,7 @@ export interface Recipe {
   fat: string;
   serving: string;
   desc: string;
+  steps?: string[];
   tags: string[];
   tier: DietTier[];
   meal: MealType;

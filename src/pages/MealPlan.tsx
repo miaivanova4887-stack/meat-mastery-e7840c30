@@ -452,10 +452,10 @@ const MealPlan = () => {
         </div>
 
         {/* Day Summary with targets */}
-        <div className="ios-card p-3">
-          <div className="flex items-center justify-between mb-1">
+        <div className="ios-card p-3.5">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-foreground">{activeDay}</span>
+              <span className="text-sm font-bold text-foreground">{activeDay}</span>
               <div className="flex bg-secondary rounded-lg overflow-hidden">
                 {[1, 2, 3, 4].map((n) => (
                   <button
@@ -474,18 +474,41 @@ const MealPlan = () => {
               </div>
               <span className="text-[10px] text-muted-foreground">meals</span>
             </div>
-            {totals.count > 0 && (
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1 text-muted-foreground"><Flame size={11} /> {totals.cal}/{nutritionTargets.calories}</span>
-                <span className="font-semibold text-primary">{totals.protein}g/{nutritionTargets.protein}g P</span>
-                <span className="text-muted-foreground">{totals.fat}g/{nutritionTargets.fat}g F</span>
-              </div>
-            )}
           </div>
           {totals.count > 0 && (
-            <div className="flex gap-1.5 mt-1.5">
-              <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (totals.cal / nutritionTargets.calories) * 100)}%` }} />
+            <div className="space-y-2">
+              {/* Calories */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 w-16 shrink-0">
+                  <Flame size={12} className="text-muted-foreground" />
+                  <span className="text-[11px] text-muted-foreground">Cal</span>
+                </div>
+                <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-full rounded-full bg-primary/70 transition-all" style={{ width: `${Math.min(100, (totals.cal / nutritionTargets.calories) * 100)}%` }} />
+                </div>
+                <span className="text-[11px] font-medium text-foreground w-20 text-right">{totals.cal}/{nutritionTargets.calories}</span>
+              </div>
+              {/* Protein */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 w-16 shrink-0">
+                  <span className="text-[11px] font-bold text-primary">P</span>
+                  <span className="text-[11px] text-muted-foreground">Protein</span>
+                </div>
+                <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, (totals.protein / nutritionTargets.protein) * 100)}%` }} />
+                </div>
+                <span className="text-[11px] font-semibold text-primary w-20 text-right">{totals.protein}g/{nutritionTargets.protein}g</span>
+              </div>
+              {/* Fat */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 w-16 shrink-0">
+                  <span className="text-[11px] font-bold text-muted-foreground">F</span>
+                  <span className="text-[11px] text-muted-foreground">Fat</span>
+                </div>
+                <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                  <div className="h-full rounded-full bg-muted-foreground/40 transition-all" style={{ width: `${Math.min(100, (totals.fat / nutritionTargets.fat) * 100)}%` }} />
+                </div>
+                <span className="text-[11px] font-medium text-muted-foreground w-20 text-right">{totals.fat}g/{nutritionTargets.fat}g</span>
               </div>
             </div>
           )}
