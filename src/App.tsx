@@ -94,6 +94,7 @@ const App = () => (
             </Routes>
             <BottomNav />
           </BrowserRouter>
+        </HealthConnectProvider>
         </UserProfileProvider>
         </ShoppingBagProvider>
         </AuthProvider>

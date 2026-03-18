@@ -1,7 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { useHealthConnect } from '@/hooks/useHealthConnect';
-import { Activity, Heart, Weight, Footprints, RefreshCw } from 'lucide-react';
+import { Footprints, Heart, Weight, RefreshCw } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
+import { useHealthConnectContext } from '@/contexts/HealthConnectContext';
 
 export const HealthDashboard = () => {
   const {
@@ -11,19 +10,7 @@ export const HealthDashboard = () => {
     error,
     requestPermissions,
     fetchHealthData,
-  } = useHealthConnect();
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Auto-refresh every 5 minutes when connected
-  useEffect(() => {
-    if (isConnected) {
-      fetchHealthData();
-      intervalRef.current = setInterval(fetchHealthData, 5 * 60 * 1000);
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isConnected, fetchHealthData]);
+  } = useHealthConnectContext();
 
   // Don't show on non-native or if not connected and not on Android
   if (!Capacitor.isNativePlatform() && !isConnected) return null;
