@@ -1,9 +1,5 @@
 {
   "appId": "app.lovable.8cc4469115e240ab844ff90c5fa95cc6",
   "appName": "carnivore-coach-pro",
-  "webDir": "dist",
-  "server": {
-    "url": "https://8cc44691-15e2-40ab-844f-f90c5fa95cc6.lovableproject.com?forceHideBadge=true",
-    "cleartext": true
-  }
+  "webDir": "dist"
 }
