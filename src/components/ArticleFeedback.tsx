@@ -74,6 +74,31 @@ const personalizedResponses: Record<string, { yes: string; no: string }> = {
     yes: "That identity shift is everything. You're not 'on a diet' — this is how you eat. The sustainability follows naturally.",
     no: "Reframe it: instead of 'I can't eat that,' try 'I don't eat that.' Small language shifts change your identity over time.",
   },
+  // Athletic Performance
+  "athletic-adapt": {
+    yes: "Hang tight — once fat-adapted, your endurance will surpass your carb-fueled baseline. Most athletes see the shift around week 4.",
+    no: "The adaptation dip is temporary. Focus on electrolytes (5g sodium/day) and don't cut calories during this phase — your body needs fuel to rewire.",
+  },
+  "athletic-pre": {
+    yes: "Excellent! Timing your main meal 2-3 hours pre-training is the sweet spot. Eggs and ground beef digest fastest for most athletes.",
+    no: "Experiment this week: try a 6oz ground beef meal 2.5 hours before training. Note your energy — most athletes find a clear winner within 3 sessions.",
+  },
+  "athletic-post": {
+    yes: "Your recovery game is dialed in. Ribeye + generous salt within 2 hours post-training is the gold standard for hormone and muscle recovery.",
+    no: "Start with this simple protocol: 8oz ribeye, 2 eggs, heavy salt within 90 minutes of training. You'll notice faster recovery within a week.",
+  },
+  "athletic-endurance": {
+    yes: "Fat adaptation is a superpower for endurance — no more bonking, no more gels. Your body has 40,000+ calories of fat fuel available at all times.",
+    no: "Even if you're not into endurance now, fat adaptation improves steady-state energy for any sport. Try a fasted 30-min walk to start building that metabolic flexibility.",
+  },
+  "athletic-strength": {
+    yes: "Creatine from red meat + 0.8-1.2g protein per lb bodyweight is the carnivore strength formula. Most lifters see PRs within 6 weeks of full adaptation.",
+    no: "Focus on hitting 1g protein per lb bodyweight daily from beef and eggs. Track for 2 weeks — the strength gains will speak for themselves.",
+  },
+  "athletic-benefits": {
+    yes: "Reduced inflammation and faster recovery are the most reported benefits. Many athletes drop an entire rest day from their schedule on carnivore.",
+    no: "Give it 4-6 weeks of strict carnivore. Joint pain reduction and better sleep are usually the first noticeable improvements, even before strength gains.",
+  },
 };
 
 // Default responses for articles without specific personalization

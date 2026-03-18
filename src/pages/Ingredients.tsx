@@ -53,7 +53,9 @@ const Ingredients = () => {
   const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-display font-bold">{t("ingredients.title")}</h1>
         <button
