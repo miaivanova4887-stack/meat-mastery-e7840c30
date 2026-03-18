@@ -8,6 +8,7 @@ import { useScrollToTop } from "@/hooks/useScrollToTop";
 const BudgetEating = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useScrollToTop();
 
   return (
     <div className="min-h-screen bg-background pb-24">

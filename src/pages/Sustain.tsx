@@ -17,6 +17,7 @@ const tips = [
 const Sustain = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useScrollToTop();
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">

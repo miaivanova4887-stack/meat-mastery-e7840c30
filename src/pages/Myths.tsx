@@ -19,6 +19,7 @@ const myths = [
 const Myths = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useScrollToTop();
 
   return (
     <div className="min-h-screen bg-background pb-24">
