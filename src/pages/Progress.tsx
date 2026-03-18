@@ -43,7 +43,9 @@ const Progress = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-border/40">
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-border/40"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => navigate(-1)} className="text-foreground p-1">
             <ArrowLeft size={22} />

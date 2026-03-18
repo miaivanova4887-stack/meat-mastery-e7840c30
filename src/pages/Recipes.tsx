@@ -267,7 +267,9 @@ const Recipes = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("recipes.title")}</h1>
         <button onClick={() => navigate("/shopping-bag")} className="relative text-primary hover:text-primary/80 mr-2">
