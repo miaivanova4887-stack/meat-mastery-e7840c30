@@ -63,7 +63,7 @@ const BudgetEating = () => {
           "Freeze individual portions for zero-waste weeks",
         ]} />
 
-        <ContentSection type="data" title="Cost Comparison" feedbackId="budget-cost" feedbackQuestion="Is this within your budget?" dataRows={[
+        <ContentSection type="data" title="Weekly Budget Plan" feedbackId="budget-cost" feedbackQuestion="Is this within your budget?" dataRows={[
           { label: "Ground beef (5 lbs)", value: "~$25/week" },
           { label: "Eggs (3 dozen)", value: "~$9/week" },
           { label: "Butter (2 lbs)", value: "~$8/week" },
