@@ -55,9 +55,9 @@
  *        }
  *    }
  * 
- * 6. Set compileSdk and targetSdk to at least 35 in android/app/build.gradle:
+ * 6. Set compileSdk to at least 36 in android/app/build.gradle:
  *    android {
- *        compileSdk 35
+ *        compileSdk 36
  *        defaultConfig {
  *            targetSdkVersion 35
  *        }
