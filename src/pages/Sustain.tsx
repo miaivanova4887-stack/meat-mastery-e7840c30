@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 import ArticleFeedback from "@/components/ArticleFeedback";
 import { useTranslation } from "react-i18next";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const tips = [
   { id: "goals", icon: Target, title: "Set Non-Scale Goals", desc: "Track energy, sleep quality, mental clarity, and strength gains — not just weight. These victories keep motivation alive long-term.", link: "/progress", q: "Do you track non-scale goals?" },
