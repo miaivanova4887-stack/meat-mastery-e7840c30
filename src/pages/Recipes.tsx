@@ -172,6 +172,21 @@ const Recipes = () => {
 
         <p className="text-sm text-secondary-foreground/70 mt-3 leading-relaxed">{r.desc}</p>
 
+        {/* Structured cooking steps for built-in recipes (parsed from desc) */}
+        {!isCustom && r.desc && (
+          <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
+            <p className="text-xs font-semibold text-foreground mb-1">🔥 Cooking Steps</p>
+            <ol className="space-y-1.5">
+              {(r.steps && r.steps.length > 0 ? r.steps : r.desc.split(/\.\s+/).filter(s => s.trim().length > 3).map(s => s.trim().replace(/\.$/, '') + '.')).map((step, j) => (
+                <li key={j} className="text-sm text-muted-foreground flex gap-2">
+                  <span className="text-primary font-bold flex-shrink-0">{j + 1}.</span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+
         {/* Expand toggle for ingredients */}
         {ingredients.length > 0 && (
           <>
@@ -179,7 +194,7 @@ const Recipes = () => {
               className="flex items-center gap-1 mt-3 text-xs text-primary font-medium min-h-[36px]"
             >
               {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {isExpanded ? "Less" : "Ingredients & Steps"}
+              {isExpanded ? "Hide Ingredients" : "Show Ingredients"}
             </button>
 
             {isExpanded && (

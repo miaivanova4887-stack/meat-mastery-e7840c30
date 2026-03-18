@@ -1,18 +1,78 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
 import { useTranslation } from "react-i18next";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
+
+const CURRENCIES: Record<string, { symbol: string; rate: number; label: string }> = {
+  USD: { symbol: "$", rate: 1, label: "🇺🇸 USD" },
+  EUR: { symbol: "€", rate: 0.92, label: "🇪🇺 EUR" },
+  GBP: { symbol: "£", rate: 0.79, label: "🇬🇧 GBP" },
+  CAD: { symbol: "CA$", rate: 1.36, label: "🇨🇦 CAD" },
+  AUD: { symbol: "A$", rate: 1.53, label: "🇦🇺 AUD" },
+  ZAR: { symbol: "R", rate: 18.1, label: "🇿🇦 ZAR" },
+  INR: { symbol: "₹", rate: 83.0, label: "🇮🇳 INR" },
+  BRL: { symbol: "R$", rate: 4.97, label: "🇧🇷 BRL" },
+};
+
+interface BudgetItem {
+  name: string;
+  weeklyUSD: number;
+  variable?: boolean;
+  amount: string;
+}
+
+const BASE_ITEMS: BudgetItem[] = [
+  { name: "Ground beef (80/20)", weeklyUSD: 25, variable: true, amount: "5 lbs" },
+  { name: "Eggs", weeklyUSD: 9, variable: true, amount: "3 dozen" },
+  { name: "Butter", weeklyUSD: 8, variable: true, amount: "2 lbs" },
+  { name: "Chicken thighs", weeklyUSD: 10, variable: true, amount: "4 lbs" },
+  { name: "Beef liver", weeklyUSD: 5, variable: true, amount: "2 lbs" },
+  { name: "Salt & tallow", weeklyUSD: 5, variable: false, amount: "staples" },
+  { name: "Bone broth ingredients", weeklyUSD: 3, variable: false, amount: "bones" },
+];
 
 const BudgetEating = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   useScrollToTop();
 
+  const [currency, setCurrency] = useState(() => {
+    try {
+      const stored = localStorage.getItem("carnivore-budget-currency");
+      return stored || "USD";
+    } catch { return "USD"; }
+  });
+  const [weeks, setWeeks] = useState(1);
+  const [items, setItems] = useState<BudgetItem[]>(BASE_ITEMS);
+
+  const curr = CURRENCIES[currency] || CURRENCIES.USD;
+
+  const convert = (usd: number) => Math.round(usd * curr.rate);
+  const format = (usd: number) => `${curr.symbol}${convert(usd)}`;
+
+  const totalWeekly = useMemo(() => items.reduce((sum, i) => sum + i.weeklyUSD, 0), [items]);
+
+  const handleCurrencyChange = (c: string) => {
+    setCurrency(c);
+    localStorage.setItem("carnivore-budget-currency", c);
+  };
+
+  const toggleItem = (idx: number) => {
+    setItems(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const addItem = () => {
+    setItems(prev => [...prev, { name: "Custom item", weeklyUSD: 10, variable: true, amount: "" }]);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
         </button>
@@ -63,12 +123,86 @@ const BudgetEating = () => {
           "Freeze individual portions for zero-waste weeks",
         ]} />
 
-        <ContentSection type="data" title="Weekly Budget Plan" feedbackId="budget-cost" feedbackQuestion="Is this within your budget?" dataRows={[
-          { label: "Ground beef (5 lbs)", value: "~$25/week" },
-          { label: "Eggs (3 dozen)", value: "~$9/week" },
-          { label: "Butter (2 lbs)", value: "~$8/week" },
-          { label: "Estimated weekly total", value: "~$42–60" },
-        ]} />
+        {/* Weekly Budget Plan with controls */}
+        <div className="bg-card border border-border rounded-lg overflow-hidden">
+          <div className="p-4 border-b border-border">
+            <h3 className="font-semibold text-foreground text-sm mb-3">📊 Weekly Budget Plan</h3>
+
+            {/* Currency selector */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[11px] text-muted-foreground">Currency:</span>
+              <div className="flex gap-1 flex-wrap">
+                {Object.entries(CURRENCIES).map(([code, { label }]) => (
+                  <button
+                    key={code}
+                    onClick={() => handleCurrencyChange(code)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all ${
+                      currency === code ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Weeks selector */}
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-[11px] text-muted-foreground">Plan for:</span>
+              <div className="flex gap-1">
+                {[1, 2, 4, 6, 8].map((w) => (
+                  <button
+                    key={w}
+                    onClick={() => setWeeks(w)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                      weeks === w ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {w}w
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="divide-y divide-border">
+            {items.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between px-4 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs text-foreground">{item.name}</span>
+                  {item.amount && <span className="text-[10px] text-muted-foreground ml-1">({item.amount})</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-foreground">{format(item.weeklyUSD * weeks)}</span>
+                  {item.variable && (
+                    <button onClick={() => toggleItem(idx)} className="text-muted-foreground hover:text-destructive p-0.5">
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            <button onClick={addItem} className="w-full px-4 py-2.5 text-xs text-primary font-medium text-left hover:bg-accent/30 transition-colors">
+              + Add custom item
+            </button>
+          </div>
+
+          {/* Total */}
+          <div className="px-4 py-3 bg-primary/5 border-t border-border">
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-bold text-foreground">
+                {weeks > 1 ? `${weeks}-Week Total` : "Estimated Weekly Total"}
+              </span>
+              <span className="text-sm font-bold text-primary">{format(totalWeekly * weeks)}</span>
+            </div>
+            {weeks > 1 && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {format(totalWeekly)}/week average
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <MotivationCTA />
