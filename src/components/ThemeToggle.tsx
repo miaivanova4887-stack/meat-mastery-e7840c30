@@ -1,38 +1,62 @@
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useState, useRef, useEffect } from "react";
 
 const ThemeToggle = () => {
   const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const options = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ] as const;
 
   return (
-    <button
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="relative flex items-center w-[52px] h-7 rounded-full bg-black/30 backdrop-blur-md border border-white/10 transition-all active:scale-95"
-      aria-label="Toggle theme"
-    >
-      {/* Sliding indicator */}
-      <span
-        className={`absolute top-0.5 h-6 w-6 rounded-full bg-white/90 shadow-sm transition-transform duration-200 ease-out ${
-          isDark ? "translate-x-[24px]" : "translate-x-0.5"
-        }`}
-      />
-      {/* Icons */}
-      <span
-        className={`relative z-10 flex-1 flex items-center justify-center transition-colors duration-200 ${
-          !isDark ? "text-black" : "text-white/60"
-        }`}
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-center w-8 h-8 rounded-full bg-card/60 backdrop-blur-md border border-border/40 text-muted-foreground hover:text-foreground transition-colors active:scale-95"
+        aria-label="Toggle theme"
       >
-        <Sun size={12} strokeWidth={2.5} />
-      </span>
-      <span
-        className={`relative z-10 flex-1 flex items-center justify-center transition-colors duration-200 ${
-          isDark ? "text-black" : "text-white/60"
-        }`}
-      >
-        <Moon size={12} strokeWidth={2.5} />
-      </span>
-    </button>
+        {theme === "light" ? (
+          <Sun size={16} strokeWidth={2} />
+        ) : (
+          <Moon size={16} strokeWidth={2} />
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-10 z-50 min-w-[140px] rounded-xl border border-border/60 bg-card/95 backdrop-blur-xl shadow-xl overflow-hidden animate-fade-in-up">
+          {options.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              onClick={() => {
+                setTheme(value);
+                setOpen(false);
+              }}
+              className={`flex items-center gap-3 w-full px-4 py-2.5 text-sm transition-colors ${
+                theme === value
+                  ? "text-foreground bg-accent/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+              }`}
+            >
+              <Icon size={16} strokeWidth={2} />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
