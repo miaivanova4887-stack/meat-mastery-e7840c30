@@ -819,6 +819,20 @@ const Profile = () => {
               </div>
             </div>
 
+            {/* Language */}
+            <div className="ios-card p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Globe size={18} className="text-muted-foreground" />
+                  <div>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">Language</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Switch app language</p>
+                  </div>
+                </div>
+                <LanguageSwitcher />
+              </div>
+            </div>
+
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
