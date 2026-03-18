@@ -39,6 +39,7 @@ import NewsFeed from "./pages/NewsFeed";
 import AdminNotifications from "./pages/AdminNotifications";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import { usePageViewTracker } from "./hooks/useAnalytics";
+import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ const App = () => (
         <AuthProvider>
         <ShoppingBagProvider>
         <UserProfileProvider>
+        <HealthConnectProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
