@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
 import { useTranslation } from "react-i18next";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const BudgetEating = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useScrollToTop();
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -61,7 +63,7 @@ const BudgetEating = () => {
           "Freeze individual portions for zero-waste weeks",
         ]} />
 
-        <ContentSection type="data" title="Cost Comparison" feedbackId="budget-cost" feedbackQuestion="Is this within your budget?" dataRows={[
+        <ContentSection type="data" title="Weekly Budget Plan" feedbackId="budget-cost" feedbackQuestion="Is this within your budget?" dataRows={[
           { label: "Ground beef (5 lbs)", value: "~$25/week" },
           { label: "Eggs (3 dozen)", value: "~$9/week" },
           { label: "Butter (2 lbs)", value: "~$8/week" },

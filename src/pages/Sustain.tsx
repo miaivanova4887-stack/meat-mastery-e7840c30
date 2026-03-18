@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 import ArticleFeedback from "@/components/ArticleFeedback";
 import { useTranslation } from "react-i18next";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const tips = [
   { id: "goals", icon: Target, title: "Set Non-Scale Goals", desc: "Track energy, sleep quality, mental clarity, and strength gains — not just weight. These victories keep motivation alive long-term.", link: "/progress", q: "Do you track non-scale goals?" },
@@ -16,6 +17,7 @@ const tips = [
 const Sustain = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useScrollToTop();
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 py-3 flex items-center gap-3">

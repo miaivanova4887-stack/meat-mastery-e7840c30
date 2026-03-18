@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useHealthConnect } from "@/hooks/useHealthConnect";
 import { Capacitor } from "@capacitor/core";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const syncCategories = [
   { metric: "Steps", mapped: "Exercise / Diet Trends" },
@@ -17,10 +18,14 @@ const HealthSync = () => {
   const navigate = useNavigate();
   const { healthData, isConnected, isLoading, error, requestPermissions } = useHealthConnect();
   const isNative = Capacitor.isNativePlatform();
+  const isAndroid = Capacitor.getPlatform() === "android";
+  useScrollToTop();
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-border/40">
+      <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-border/40"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
         <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} className="text-foreground p-1">
             <ArrowLeft size={22} />
@@ -40,7 +45,6 @@ const HealthSync = () => {
           </p>
         </div>
 
-        {/* Error banner */}
         {error && (
           <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex items-start gap-2">
             <AlertCircle size={18} className="text-destructive mt-0.5 shrink-0" />
@@ -49,7 +53,7 @@ const HealthSync = () => {
         )}
 
         {/* Health Connect card */}
-        <div className="bg-card rounded-xl p-4 border border-border">
+        <div className="ios-card p-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-green-500 bg-green-500/10">
               <Activity size={20} />
@@ -61,30 +65,19 @@ const HealthSync = () => {
               </div>
               <p className="text-[11px] text-muted-foreground">
                 {isConnected
-                  ? "Connected — syncing steps, heart rate & weight"
+                  ? "Connected — auto-refreshing every 5 min"
                   : "Sync steps, heart rate, weight from Android Health Connect."}
               </p>
             </div>
           </div>
 
           {!isConnected ? (
-            <Button
-              onClick={requestPermissions}
-              className="w-full"
-              size="sm"
-              disabled={isLoading}
-            >
+            <Button onClick={requestPermissions} className="w-full" size="sm" disabled={isLoading}>
               {isLoading ? (
-                <>
-                  <Loader2 size={14} className="mr-2 animate-spin" />
-                  Connecting…
-                </>
-              ) : (
-                "Connect"
-              )}
+                <><Loader2 size={14} className="mr-2 animate-spin" />Connecting…</>
+              ) : "Connect"}
             </Button>
           ) : (
-            /* Live data cards */
             <div className="grid grid-cols-3 gap-2 mt-2">
               <div className="bg-muted rounded-lg p-3 text-center">
                 <Footprints size={16} className="mx-auto text-primary mb-1" />
@@ -107,21 +100,23 @@ const HealthSync = () => {
           )}
         </div>
 
-        {/* Apple Health card (informational only) */}
-        <div className="bg-card rounded-xl p-4 border border-border opacity-60">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-red-500 bg-red-500/10">
-              <Heart size={20} />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-foreground">Apple Health</p>
-              <p className="text-[11px] text-muted-foreground">Coming soon — requires iOS build with HealthKit.</p>
+        {/* Apple Health — only show on iOS */}
+        {(!isNative || !isAndroid) && Capacitor.getPlatform() === "ios" && (
+          <div className="ios-card p-4 opacity-60">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-red-500 bg-red-500/10">
+                <Heart size={20} />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-foreground">Apple Health</p>
+                <p className="text-[11px] text-muted-foreground">Coming soon — requires iOS build with HealthKit.</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Sync mapping */}
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
+        <div className="ios-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border">
             <p className="text-xs font-bold text-foreground uppercase tracking-wider">What syncs where</p>
           </div>

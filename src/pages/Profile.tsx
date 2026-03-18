@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3 } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe } from "lucide-react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { recipes } from "@/data/recipes";
 import { Switch } from "@/components/ui/switch";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 
 interface Profile {
@@ -815,6 +816,20 @@ const Profile = () => {
                     </button>
                   ));
                 })()}
+              </div>
+            </div>
+
+            {/* Language */}
+            <div className="ios-card p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Globe size={18} className="text-muted-foreground" />
+                  <div>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">Language</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Switch app language</p>
+                  </div>
+                </div>
+                <LanguageSwitcher />
               </div>
             </div>
 

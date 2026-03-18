@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
 import { useTranslation } from "react-i18next";
+import { useScrollToTop } from "@/hooks/useScrollToTop";
 
 const GettingStarted = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  useScrollToTop();
 
   return (
     <div className="min-h-screen bg-background pb-24">

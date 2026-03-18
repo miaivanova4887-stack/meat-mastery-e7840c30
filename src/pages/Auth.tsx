@@ -39,7 +39,15 @@ const Auth = () => {
     setLoading(false);
 
     if (result.error) {
-      toast.error(result.error);
+      // Provide specific error messages
+      const errMsg = result.error.toLowerCase();
+      if (errMsg.includes("invalid login credentials") || errMsg.includes("invalid_credentials")) {
+        toast.error("Incorrect email or password. Please try again.");
+      } else if (errMsg.includes("email not confirmed")) {
+        toast.error("Please check your email and confirm your account before signing in.");
+      } else {
+        toast.error(result.error);
+      }
     } else if (mode === "signup") {
       toast.success(t("auth.checkEmail"));
     } else {

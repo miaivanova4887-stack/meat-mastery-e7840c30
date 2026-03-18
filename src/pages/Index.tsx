@@ -20,7 +20,6 @@ import iconBudget from "@/assets/icon-budget.png";
 import iconAthletic from "@/assets/icon-athletic.png";
 import iconAthleticFemale from "@/assets/icon-athletic-female.png";
 import ThemeToggle from "@/components/ThemeToggle";
-import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal } from "@/contexts/UserProfileContext";
@@ -109,8 +108,9 @@ const Index = () => {
       <div className="relative h-[55vh] overflow-hidden">
         <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-black/30" />
-        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
-          <LanguageSwitcher />
+        <div className="absolute top-0 right-0 z-10 flex items-center gap-2"
+          style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingRight: "16px" }}
+        >
           <ThemeToggle />
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">

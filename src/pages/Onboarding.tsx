@@ -17,6 +17,8 @@ interface OptionStep {
   icon: typeof Target;
   options: StepOption[];
   multiSelect?: boolean;
+  allowSkip?: boolean;
+  allowCustom?: boolean;
 }
 
 interface InputStep {
@@ -92,6 +94,7 @@ const steps: OnboardingStep[] = [
     subtitle: "Select all that apply — we'll help with these",
     icon: Shield,
     multiSelect: true,
+    allowSkip: true,
     options: [
       { label: "Sugar cravings", emoji: "🍬" },
       { label: "Low energy", emoji: "😴" },
@@ -128,22 +131,25 @@ const steps: OnboardingStep[] = [
   {
     type: "options",
     title: "What cuisines inspire you?",
-    subtitle: "We'll prioritise recipes from your favourite food cultures",
+    subtitle: "Select any that appeal — or skip to the next page",
     icon: Target,
     multiSelect: true,
+    allowSkip: true,
     options: [
+      { label: "American", emoji: "🇺🇸", desc: "BBQ, burgers, smoked brisket" },
+      { label: "European", emoji: "🇪🇺", desc: "Steak frites, roasts, charcuterie" },
       { label: "Indian", emoji: "🇮🇳", desc: "Tandoori, keema, spiced meats" },
-      { label: "Thai", emoji: "🇹🇭", desc: "Lemongrass, grilled meats" },
-      { label: "Chinese", emoji: "🇨🇳", desc: "Five-spice, stir-fry, Peking" },
       { label: "Mexican", emoji: "🇲🇽", desc: "Carne asada, carnitas, chorizo" },
     ],
   },
   {
     type: "options",
     title: "Any more cuisines?",
-    subtitle: "Select all that appeal to you",
+    subtitle: "Select any that appeal — or skip ahead",
     icon: Target,
     multiSelect: true,
+    allowSkip: true,
+    allowCustom: true,
     options: [
       { label: "Korean", emoji: "🇰🇷", desc: "Bulgogi, galbi, samgyeopsal" },
       { label: "Japanese", emoji: "🇯🇵", desc: "Wagyu, sashimi, yakitori" },
@@ -157,20 +163,17 @@ const steps: OnboardingStep[] = [
     subtitle: "Select all you'd like to explore",
     icon: Brain,
     multiSelect: true,
+    allowSkip: true,
     options: [
+      { label: "Motivation", emoji: "🔥", desc: "Stay inspired and accountable" },
+      { label: "Progress tracking", emoji: "📊", desc: "Monitor body & health metrics" },
       { label: "Meal plans & recipes", emoji: "📖" },
       { label: "Exercise routines", emoji: "🏋️" },
       { label: "Ketosis tracking", emoji: "⏱️" },
-      { label: "Mental clarity tips", emoji: "🧠" },
-      { label: "Progress tracking", emoji: "📊", desc: "Monitor body & health metrics" },
-      { label: "Motivation", emoji: "🔥", desc: "Stay inspired and accountable" },
+      { label: "Mental clarity tips", emoji: "🧠", desc: "Focus, brain fog, cognition" },
     ],
   },
 ];
-
-// Map step indices to the legacy answer array positions
-// Option steps: goal(0), sex(1), experience(4), struggles(5), activity(6), mealsPerDay(7), interests(8)
-const OPTION_ANSWER_KEYS = [0, 4, 5, 6, 7, 8]; // indices of option-type steps
 
 const STORAGE_KEY = "carnivore-onboarding-complete";
 
@@ -180,6 +183,7 @@ const Onboarding = () => {
   const [answers, setAnswers] = useState<Record<number, number | number[]>>({});
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
   const [multiSelected, setMultiSelected] = useState<number[]>([]);
+  const [customCuisine, setCustomCuisine] = useState("");
   const [transitioning, setTransitioning] = useState(false);
 
   const current = steps[step];
@@ -208,23 +212,21 @@ const Onboarding = () => {
       if (step < totalSteps - 1) {
         setStep(step + 1);
         setMultiSelected([]);
+        setCustomCuisine("");
       } else {
-        // Build the legacy answer array: [goal, experience, struggles, activity, interests]
         const legacyAnswers = [
-          newAnswers[0] ?? 0,       // goal
-          newAnswers[4] ?? 0,       // experience
-          newAnswers[5] ?? [],      // struggles
-          newAnswers[6] ?? 0,       // activity
-          newAnswers[10] ?? [],     // interests (now at step 10)
+          newAnswers[0] ?? 0,
+          newAnswers[4] ?? 0,
+          newAnswers[5] ?? [],
+          newAnswers[6] ?? 0,
+          newAnswers[10] ?? [],
         ];
         localStorage.setItem(STORAGE_KEY, "true");
         localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
 
-        // Save meals per day (step 7: 0=1meal, 1=2meals, 2=3meals, 3=4meals)
         const mealsPerDayVal = [1, 2, 3, 4][(newAnswers[7] as number) ?? 2] ?? 3;
         localStorage.setItem("carnivore-meals-per-day", String(mealsPerDayVal));
 
-        // Save body stats separately
         const bodyData = {
           sex: newAnswers[1] ?? 0,
           age: inputValues.age || "",
@@ -235,12 +237,16 @@ const Onboarding = () => {
         };
         localStorage.setItem("carnivore-onboarding-body", JSON.stringify(bodyData));
 
-        // Save cuisine preferences (steps 8 and 9)
-        const CUISINE_MAP_1 = ["indian", "thai", "chinese", "mexican"];
+        const CUISINE_MAP_1 = ["american", "european", "indian", "mexican"];
         const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
         const selectedCuisines: string[] = [];
         ((newAnswers[8] as number[]) || []).forEach(i => { if (CUISINE_MAP_1[i]) selectedCuisines.push(CUISINE_MAP_1[i]); });
         ((newAnswers[9] as number[]) || []).forEach(i => { if (CUISINE_MAP_2[i]) selectedCuisines.push(CUISINE_MAP_2[i]); });
+        // Save custom cuisines
+        const storedCustom = localStorage.getItem("carnivore-custom-cuisines");
+        if (storedCustom) {
+          try { selectedCuisines.push(...JSON.parse(storedCustom)); } catch {}
+        }
         localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
 
         window.dispatchEvent(new Event("profile-update"));
@@ -259,6 +265,7 @@ const Onboarding = () => {
       setAnswers(newAnswers);
       setStep(step - 1);
       setMultiSelected([]);
+      setCustomCuisine("");
       setTransitioning(false);
     }, 250);
   };
@@ -269,9 +276,21 @@ const Onboarding = () => {
 
   const isInputStepValid = () => {
     if (current.type !== "input") return true;
-    // At least one field should have a value (except fully optional steps like target)
-    if (step === 3) return true; // target step is optional
+    if (step === 3) return true;
     return current.fields.some((f) => (inputValues[f.key] || "").trim() !== "");
+  };
+
+  const canSkip = current.type === "options" && current.multiSelect && (current as OptionStep).allowSkip;
+  const showCustomInput = current.type === "options" && (current as OptionStep).allowCustom;
+
+  const handleAddCustomCuisine = () => {
+    if (!customCuisine.trim()) return;
+    const existing = JSON.parse(localStorage.getItem("carnivore-custom-cuisines") || "[]");
+    existing.push(customCuisine.trim().toLowerCase());
+    localStorage.setItem("carnivore-custom-cuisines", JSON.stringify(existing));
+    setCustomCuisine("");
+    // Show confirmation
+    import("sonner").then(({ toast }) => toast.success(`"${customCuisine.trim()}" added!`));
   };
 
   const Icon = current.icon;
@@ -279,7 +298,9 @@ const Onboarding = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top bar */}
-      <div className="px-4 pt-4 pb-2 flex items-center gap-3">
+      <div className="px-4 pt-4 pb-2 flex items-center gap-3"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 16px) + 8px)" }}
+      >
         {step > 0 ? (
           <button onClick={goBack} className="text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft size={20} />
@@ -292,9 +313,9 @@ const Onboarding = () => {
       </div>
 
       {/* Content */}
-      <div className={`flex-1 flex flex-col px-6 pt-8 pb-6 transition-all duration-300 ease-out ${transitioning ? "opacity-0 translate-y-3 scale-[0.98]" : "opacity-100 translate-y-0 scale-100"}`}>
+      <div className={`flex-1 flex flex-col px-6 pt-6 pb-4 transition-all duration-300 ease-out ${transitioning ? "opacity-0 translate-y-3 scale-[0.98]" : "opacity-100 translate-y-0 scale-100"}`}>
         {/* Icon + Title */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Icon size={24} strokeWidth={1.8} className="text-primary" />
           </div>
@@ -303,19 +324,18 @@ const Onboarding = () => {
         </div>
 
         {/* Options or Inputs */}
-        <div className="space-y-3 flex-1">
+        <div className="space-y-2.5 flex-1 overflow-y-auto">
           {current.type === "options" && current.options.map((opt, i) => {
             const selected = current.multiSelect ? multiSelected.includes(i) : false;
             return (
               <button
                 key={`${step}-${i}`}
                 onClick={() => handleSelect(i)}
-                className={`w-full flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200 text-left active:scale-[0.97] ${
+                className={`w-full flex items-center gap-4 p-3.5 rounded-2xl border transition-all duration-200 text-left active:scale-[0.97] ${
                   selected
                     ? "bg-primary/8 border-primary/40 shadow-sm"
                     : "bg-card border-border/50 shadow-xs"
                 }`}
-                style={{ animationDelay: `${i * 0.06}s` }}
               >
                 <span className="text-2xl flex-shrink-0">{opt.emoji}</span>
                 <div className="flex-1 min-w-0">
@@ -350,14 +370,37 @@ const Onboarding = () => {
               </div>
             </div>
           ))}
+
+          {/* Custom cuisine input */}
+          {showCustomInput && (
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                placeholder="Add your own cuisine…"
+                value={customCuisine}
+                onChange={(e) => setCustomCuisine(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddCustomCuisine()}
+                className="flex-1 h-10 rounded-xl border border-border/50 bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                maxLength={40}
+              />
+              <button
+                onClick={handleAddCustomCuisine}
+                disabled={!customCuisine.trim()}
+                className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40"
+              >
+                Add
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Continue button for multi-select & input steps */}
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
-          <div className="pt-6">
+          <div className="pt-4">
             <Button
               className="w-full gap-2 h-12 text-base font-semibold rounded-2xl"
               disabled={
+                !canSkip &&
                 (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
                 (current.type === "input" && !isInputStepValid())
               }
@@ -369,18 +412,17 @@ const Onboarding = () => {
                 }
               }}
             >
-              {isLastStep ? "Get Started" : "Continue"}
+              {isLastStep ? "Get Started" : multiSelected.length === 0 && canSkip ? "Skip" : "Continue"}
               <ChevronRight size={18} />
             </Button>
-            {current.type === "options" && current.multiSelect && multiSelected.length === 0 && (
-              <p className="text-[11px] text-muted-foreground text-center mt-2">Select at least one option</p>
-            )}
           </div>
         )}
       </div>
 
       {/* Skip option */}
-      <div className="px-6 pb-8 text-center">
+      <div className="px-6 pb-6 text-center"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 24px) + 8px)" }}
+      >
         <button
           onClick={() => {
             localStorage.setItem(STORAGE_KEY, "true");
