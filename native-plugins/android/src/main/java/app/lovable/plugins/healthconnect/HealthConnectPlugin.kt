@@ -99,7 +99,7 @@ class HealthConnectPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun requestPermissions(call: PluginCall) {
+    override fun requestPermissions(call: PluginCall) {
         val client = healthConnectClient
         if (client == null) {
             call.reject("HealthConnect not initialized. Call checkAvailability first.")
