@@ -55,10 +55,11 @@ const Progress = () => {
           <h1 className="text-base font-bold text-foreground">{t("progress.title")}</h1>
           <button
             onClick={() => navigate("/progress/sync")}
-            className="text-muted-foreground p-1 hover:text-foreground transition-colors"
-            title="Sync with health devices"
+            className={`p-1 transition-colors ${isHealthConnected ? "text-green-500" : "text-muted-foreground hover:text-foreground"}`}
+            title={isHealthConnected ? "Health Connect synced" : "Sync with health devices"}
           >
             <Watch size={20} />
+            {isHealthConnected && <CheckCircle2 size={10} className="absolute -bottom-0.5 -right-0.5 text-green-500" />}
           </button>
         </div>
       </div>
