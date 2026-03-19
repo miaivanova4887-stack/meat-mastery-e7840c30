@@ -41,7 +41,7 @@ const Progress = () => {
   const meta = CATEGORY_META[category];
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       {/* Header */}
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-border/40"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
