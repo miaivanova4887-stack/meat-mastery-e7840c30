@@ -30,7 +30,10 @@ const HealthSync = () => {
           <button onClick={() => navigate(-1)} className="text-foreground p-1">
             <ArrowLeft size={22} />
           </button>
-          <h1 className="text-base font-bold text-foreground">Health Sync</h1>
+          <h1 className="text-base font-bold text-foreground">
+            {isConnected ? "Connected Devices" : "Health Sync"}
+          </h1>
+          {isConnected && <CheckCircle2 size={16} className="text-green-500 ml-auto" />}
         </div>
       </div>
 
