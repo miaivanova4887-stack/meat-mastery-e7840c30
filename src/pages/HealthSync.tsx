@@ -39,12 +39,16 @@ const HealthSync = () => {
 
       <div className="px-4 pt-4 space-y-4">
         <div className="text-center py-4">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-            <Smartphone size={28} className="text-primary" />
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${isConnected ? "bg-green-500/10" : "bg-primary/10"}`}>
+            {isConnected ? <CheckCircle2 size={28} className="text-green-500" /> : <Smartphone size={28} className="text-primary" />}
           </div>
-          <h2 className="text-lg font-bold text-foreground">Connect Smart Devices</h2>
+          <h2 className="text-lg font-bold text-foreground">
+            {isConnected ? "Health Connect Active" : "Connect Smart Devices"}
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Automatically sync your health data from wearables and health apps.
+            {isConnected
+              ? "Your health data is syncing automatically every 5 minutes."
+              : "Automatically sync your health data from wearables and health apps."}
           </p>
         </div>
 
