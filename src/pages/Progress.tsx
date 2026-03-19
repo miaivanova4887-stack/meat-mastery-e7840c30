@@ -26,6 +26,7 @@ const Progress = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [category, setCategory] = useState<ProgressCategory>("diet_trends");
+  const { healthData, isConnected: isHealthConnected } = useHealthConnect();
 
   if (!user) {
     return (
