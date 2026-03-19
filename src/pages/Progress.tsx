@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ArrowLeft, Watch } from "lucide-react";
+import { ArrowLeft, Watch, Footprints, Heart, Activity, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 import { CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
+import { useHealthConnect } from "@/hooks/useHealthConnect";
 import CategoryView from "@/components/progress/CategoryView";
 import NutrientBreakdown from "@/components/progress/NutrientBreakdown";
 import PhotoRecognition from "@/components/progress/PhotoRecognition";
