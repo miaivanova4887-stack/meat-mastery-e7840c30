@@ -21,9 +21,16 @@ function getAggMode(days: number): AggMode {
   return "monthly";
 }
 
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function bucketKey(date: Date, mode: AggMode): string {
-  if (mode === "daily") return format(date, "yyyy-MM-dd");
-  if (mode === "weekly") return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  if (mode === "daily") return toLocalDateStr(date);
+  if (mode === "weekly") return toLocalDateStr(startOfWeek(date, { weekStartsOn: 1 }));
   return format(startOfMonth(date), "yyyy-MM");
 }
 
