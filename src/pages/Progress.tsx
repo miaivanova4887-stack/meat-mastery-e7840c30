@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Watch, Footprints, Heart, Activity, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Watch, Footprints, Heart, Activity, CheckCircle2, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
