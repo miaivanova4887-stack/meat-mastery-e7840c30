@@ -37,6 +37,7 @@ class HealthConnectPlugin : Plugin() {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(WeightRecord::class),
+        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
     )
 
     override fun load() {

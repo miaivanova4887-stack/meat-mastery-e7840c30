@@ -22,6 +22,7 @@ export interface HealthConnectPlugin {
   readSteps(options: { startTime: string; endTime: string }): Promise<HealthConnectResult>;
   readHeartRate(options: { startTime: string; endTime: string }): Promise<HealthConnectResult>;
   readWeight(options: { startTime: string; endTime: string }): Promise<HealthConnectResult>;
+  readActiveCalories(options: { startTime: string; endTime: string }): Promise<HealthConnectResult>;
 }
 
 // Web fallback for development in browser
@@ -41,6 +42,9 @@ const HealthConnectWeb: HealthConnectPlugin = {
     return { records: [] };
   },
   async readWeight() {
+    return { records: [] };
+  },
+  async readActiveCalories() {
     return { records: [] };
   },
 };
