@@ -34,13 +34,14 @@ function bucketKey(date: Date, mode: AggMode): string {
   return format(startOfMonth(date), "yyyy-MM");
 }
 
+function parseDateKey(key: string): Date {
+  const parts = key.split("-").map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2] || 1);
+}
+
 function bucketLabel(key: string, mode: AggMode): string {
-  if (mode === "monthly") {
-    const [y, m] = key.split("-");
-    return format(new Date(Number(y), Number(m) - 1), "MMM yy");
-  }
-  const d = new Date(key + "T00:00:00");
-  if (mode === "weekly") return format(d, "MMM dd");
+  const d = parseDateKey(key);
+  if (mode === "monthly") return format(d, "MMM yy");
   return format(d, "MMM dd");
 }
 

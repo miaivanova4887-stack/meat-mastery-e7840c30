@@ -71,9 +71,19 @@ const CategoryView = ({ category }: Props) => {
     return currentMeta.unit;
   };
 
-  const avg = metricEntries.length > 0
-    ? Math.round(convertVal(metricEntries.reduce((s, e) => s + Number(e.value), 0) / metricEntries.length) * 10) / 10
-    : null;
+  // Compute daily average: sum per local day, then average across days
+  const avg = useMemo(() => {
+    if (metricEntries.length === 0) return null;
+    const dailyMap = new Map<string, number>();
+    for (const e of metricEntries) {
+      const d = new Date(e.recorded_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      dailyMap.set(key, (dailyMap.get(key) || 0) + Number(e.value));
+    }
+    const dailyTotals = Array.from(dailyMap.values());
+    const rawAvg = dailyTotals.reduce((s, v) => s + v, 0) / dailyTotals.length;
+    return Math.round(convertVal(rawAvg) * 10) / 10;
+  }, [metricEntries, useImperial]);
 
   const goalPct = currentGoal && latestValue != null
     ? Math.round((latestValue / currentGoal.target_value) * 100)
