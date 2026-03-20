@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 const VoiceRecognition = () => {
   const [listening, setListening] = useState(false);
@@ -16,14 +17,13 @@ const VoiceRecognition = () => {
 
   const openMicrophoneSettings = useCallback(async () => {
     try {
-      const openSettings = (CapacitorApp as any)?.openSettings;
-      if (typeof openSettings === "function") {
-        await openSettings();
-      } else {
-        throw new Error("openSettings_not_supported");
+      if (!Capacitor.isNativePlatform()) {
+        throw new Error("not_native_platform");
       }
-    } catch {
-      toast.error("Please enable microphone in Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+      await CapacitorApp.openSettings();
+    } catch (error) {
+      console.error("Failed to open app settings for microphone:", error);
+      toast.error("Couldn’t open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
     }
   }, []);
 
@@ -50,7 +50,7 @@ const VoiceRecognition = () => {
     recognition.onerror = (event: any) => {
       console.error("Speech error:", event.error);
       if (event.error === "not-allowed") {
-        toast.error("Microphone permission is blocked. Opening app settings…", { duration: 3500 });
+        toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
         void openMicrophoneSettings();
       } else if (event.error !== "no-speech") {
         toast.error("Microphone error: " + event.error);
@@ -66,8 +66,8 @@ const VoiceRecognition = () => {
       setListening(true);
       setTranscript("");
       setParsedResult(null);
-    } catch (err: any) {
-      toast.error("Microphone permission is blocked. Opening app settings…", { duration: 3500 });
+    } catch {
+      toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
       void openMicrophoneSettings();
     }
   }, [openMicrophoneSettings]);
