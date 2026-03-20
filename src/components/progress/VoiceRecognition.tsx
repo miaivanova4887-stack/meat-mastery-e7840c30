@@ -16,7 +16,12 @@ const VoiceRecognition = () => {
 
   const openMicrophoneSettings = useCallback(async () => {
     try {
-      await CapacitorApp.openSettings();
+      const openSettings = (CapacitorApp as any)?.openSettings;
+      if (typeof openSettings === "function") {
+        await openSettings();
+      } else {
+        throw new Error("openSettings_not_supported");
+      }
     } catch {
       toast.error("Please enable microphone in Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
     }
