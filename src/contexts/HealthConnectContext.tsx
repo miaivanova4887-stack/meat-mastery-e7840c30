@@ -130,9 +130,8 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         if (status === "available") {
           const { granted } = await HealthConnect.requestPermissions();
           if (granted) {
+            setIsConnected(true);
             await fetchHealthData();
-          } else {
-            setIsConnected(false);
           }
         }
       } catch {
