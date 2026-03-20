@@ -30,7 +30,7 @@ export const useHealthConnectContext = () => {
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
-    steps: 0, heartRate: 0, weight: 0, sleep: 0,
+    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
