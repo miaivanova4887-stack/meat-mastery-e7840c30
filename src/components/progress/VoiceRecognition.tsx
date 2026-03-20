@@ -1,30 +1,29 @@
-import { useState, useRef, useCallback } from "react";
+import { useCallback, useState } from "react";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { openAppSettings } from "@/lib/openAppSettings";
+import { useVoiceCapture } from "@/hooks/useVoiceCapture";
+
+interface ParsedEntry {
+  category: string;
+  metric: string;
+  value: number;
+  unit: string;
+  notes?: string;
+}
+
+interface ParsedVoiceResult {
+  summary: string;
+  entries: ParsedEntry[];
+}
 
 const VoiceRecognition = () => {
-  const [listening, setListening] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [parsedResult, setParsedResult] = useState<any>(null);
-  const recognitionRef = useRef<any>(null);
+  const [parsedResult, setParsedResult] = useState<ParsedVoiceResult | null>(null);
   const addEntry = useAddEntry();
-
-  const isPermissionBlocked = useCallback((value: unknown) => {
-    const msg = String(value || "").toLowerCase();
-    return (
-      msg.includes("not-allowed") ||
-      msg.includes("service-not-allowed") ||
-      msg.includes("notallowederror") ||
-      msg.includes("permission") ||
-      msg.includes("denied") ||
-      msg.includes("audio-capture")
-    );
-  }, []);
 
   const openMicrophoneSettings = useCallback(async () => {
     const opened = await openAppSettings();
@@ -35,61 +34,32 @@ const VoiceRecognition = () => {
     }
   }, []);
 
-  const startListening = useCallback(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Speech recognition not supported on this device. Please try on a newer browser.");
-      return;
-    }
+  const {
+    listening,
+    transcript,
+    startListening,
+    stopListening,
+    resetTranscript,
+  } = useVoiceCapture({
+    language: "en-US",
+    onPermissionBlocked: () => {
+      toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
+      void openMicrophoneSettings();
+    },
+    onError: (message) => toast.error(message),
+  });
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = "en-US";
-
-    recognition.onresult = (event: any) => {
-      let finalTranscript = "";
-      for (let i = 0; i < event.results.length; i++) {
-        finalTranscript += event.results[i][0].transcript;
-      }
-      setTranscript(finalTranscript);
-    };
-
-    recognition.onerror = (event: any) => {
-      console.error("Speech error:", event.error);
-      if (isPermissionBlocked(event?.error)) {
-        toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
-        void openMicrophoneSettings();
-      } else if (event.error !== "no-speech") {
-        toast.error("Microphone error: " + event.error);
-      }
-      setListening(false);
-    };
-
-    recognition.onend = () => setListening(false);
-
-    recognitionRef.current = recognition;
-    try {
-      recognition.start();
-      setListening(true);
-      setTranscript("");
-      setParsedResult(null);
-    } catch (error) {
-      if (isPermissionBlocked(error)) {
-        toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
-        void openMicrophoneSettings();
-      } else {
-        toast.error("Microphone failed to start. Please try again.");
-      }
-    }
-  }, [isPermissionBlocked, openMicrophoneSettings]);
+  const handleStartListening = useCallback(async () => {
+    setParsedResult(null);
+    resetTranscript();
+    await startListening();
+  }, [resetTranscript, startListening]);
 
   const stopAndProcess = useCallback(async () => {
-    recognitionRef.current?.stop();
-    setListening(false);
+    await stopListening();
 
     if (!transcript.trim()) {
-      toast.error("No speech detected");
+      toast.error("I couldn’t recognize speech. Please speak clearly and try again.");
       return;
     }
 
@@ -102,20 +72,20 @@ const VoiceRecognition = () => {
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
 
-      setParsedResult(data);
+      setParsedResult(data as ParsedVoiceResult);
     } catch (e: any) {
       toast.error(e?.message || "Failed to parse speech");
     } finally {
       setProcessing(false);
     }
-  }, [transcript]);
+  }, [stopListening, transcript]);
 
   const logEntries = useCallback(async () => {
     if (!parsedResult?.entries?.length) return;
     const now = new Date().toISOString();
     try {
       await Promise.all(
-        parsedResult.entries.map((e: any) =>
+        parsedResult.entries.map((e) =>
           addEntry.mutateAsync({
             category: e.category,
             metric: e.metric,
@@ -128,17 +98,17 @@ const VoiceRecognition = () => {
       );
       toast.success("All entries logged!");
       setParsedResult(null);
-      setTranscript("");
+      resetTranscript();
     } catch {
       toast.error("Failed to log entries");
     }
-  }, [parsedResult, addEntry, transcript]);
+  }, [parsedResult, addEntry, transcript, resetTranscript]);
 
   return (
     <div className="space-y-3">
       {!parsedResult ? (
         <button
-          onClick={listening ? stopAndProcess : startListening}
+          onClick={listening ? () => void stopAndProcess() : () => void handleStartListening()}
           disabled={processing}
           className="w-full relative overflow-hidden rounded-xl border border-dashed border-primary/30 bg-card p-5 flex flex-col items-center gap-2 hover:border-primary/60 transition-colors"
         >
@@ -176,7 +146,7 @@ const VoiceRecognition = () => {
         <div className="bg-card rounded-xl border border-border p-4 space-y-3">
           <p className="text-sm font-bold text-foreground">{parsedResult.summary}</p>
           <div className="space-y-1.5">
-            {parsedResult.entries.map((e: any, i: number) => (
+            {parsedResult.entries.map((e, i) => (
               <div key={i} className="flex items-center justify-between bg-muted rounded-lg px-3 py-2">
                 <span className="text-xs text-muted-foreground capitalize">
                   {e.metric.replace(/_/g, " ")}
@@ -191,7 +161,7 @@ const VoiceRecognition = () => {
             <Button onClick={logEntries} className="flex-1" disabled={addEntry.isPending}>
               {addEntry.isPending ? "Logging…" : "✓ Log All"}
             </Button>
-            <Button variant="outline" onClick={() => { setParsedResult(null); setTranscript(""); }}>
+            <Button variant="outline" onClick={() => { setParsedResult(null); resetTranscript(); }}>
               Dismiss
             </Button>
           </div>
