@@ -20,7 +20,11 @@ const VoiceRecognition = () => {
       if (!Capacitor.isNativePlatform()) {
         throw new Error("not_native_platform");
       }
-      await CapacitorApp.openSettings();
+      const openSettings = (CapacitorApp as any)?.openSettings;
+      if (typeof openSettings !== "function") {
+        throw new Error("open_settings_unavailable");
+      }
+      await openSettings.call(CapacitorApp);
     } catch (error) {
       console.error("Failed to open app settings for microphone:", error);
       toast.error("Couldn’t open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
