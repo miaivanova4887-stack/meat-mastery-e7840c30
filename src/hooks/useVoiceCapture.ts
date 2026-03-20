@@ -42,6 +42,19 @@ const permissionGranted = (value: any) => {
   return false;
 };
 
+const extractFirstMatch = (payload: any): string => {
+  const candidates = Array.isArray(payload?.matches)
+    ? payload.matches
+    : Array.isArray(payload?.value)
+      ? payload.value
+      : Array.isArray(payload)
+        ? payload
+        : [];
+
+  const first = candidates.find((item: unknown) => typeof item === "string" && item.trim().length > 0);
+  return typeof first === "string" ? first.trim() : "";
+};
+
 export const useVoiceCapture = ({
   language = "en-US",
   onPermissionBlocked,
@@ -51,6 +64,8 @@ export const useVoiceCapture = ({
   const [transcript, setTranscript] = useState("");
   const webRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const nativeListenersRef = useRef<ListenerHandle[]>([]);
+  const nativeStartPromiseRef = useRef<Promise<any> | null>(null);
+  const transcriptRef = useRef("");
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -60,6 +75,13 @@ export const useVoiceCapture = ({
     await Promise.allSettled(handles.map((h) => h.remove()));
   }, []);
 
+  const setTranscriptSafe = useCallback((value: string) => {
+    transcriptRef.current = value;
+    setTranscript(value);
+  }, []);
+
+  const getTranscript = useCallback(() => transcriptRef.current, []);
+
   const stopListening = useCallback(async () => {
     if (isNative) {
       try {
@@ -67,6 +89,15 @@ export const useVoiceCapture = ({
       } catch {
         // ignore native stop errors
       }
+
+      const pendingStart = nativeStartPromiseRef.current;
+      if (pendingStart) {
+        await Promise.race([
+          pendingStart.catch(() => undefined),
+          new Promise((resolve) => setTimeout(resolve, 600)),
+        ]);
+      }
+
       await cleanupNativeListeners();
     } else {
       webRecognitionRef.current?.stop();
@@ -92,17 +123,13 @@ export const useVoiceCapture = ({
     }
 
     await cleanupNativeListeners();
-    setTranscript("");
+    setTranscriptSafe("");
 
     const partialResultsHandle = await SpeechRecognition.addListener("partialResults", (data: any) => {
-      const firstMatch = Array.isArray(data?.matches)
-        ? data.matches[0]
-        : Array.isArray(data?.value)
-          ? data.value[0]
-          : "";
+      const firstMatch = extractFirstMatch(data);
 
       if (firstMatch) {
-        setTranscript(firstMatch);
+        setTranscriptSafe(firstMatch);
       }
     });
 
@@ -114,17 +141,50 @@ export const useVoiceCapture = ({
 
     nativeListenersRef.current = [partialResultsHandle, listeningStateHandle];
 
-    await SpeechRecognition.start({
-      language,
-      maxResults: 1,
-      partialResults: true,
-      popup: false,
-      prompt: "Speak now",
-    });
-
     setListening(true);
+
+    try {
+      const startPromise = SpeechRecognition.start({
+        language,
+        maxResults: 5,
+        partialResults: true,
+        popup: false,
+        prompt: "Speak now",
+      });
+
+      nativeStartPromiseRef.current = startPromise;
+
+      void startPromise
+        .then((result: any) => {
+          const finalMatch = extractFirstMatch(result);
+          if (finalMatch) {
+            setTranscriptSafe(finalMatch);
+          }
+        })
+        .catch((error: any) => {
+          if (messageIncludesPermissionBlock(error)) {
+            onPermissionBlocked?.();
+          } else {
+            onError?.("Microphone couldn't detect speech. Please try again.");
+          }
+        })
+        .finally(() => {
+          nativeStartPromiseRef.current = null;
+          setListening(false);
+        });
+    } catch (error) {
+      if (messageIncludesPermissionBlock(error)) {
+        onPermissionBlocked?.();
+      } else {
+        onError?.("Microphone failed to start. Please try again.");
+      }
+      setListening(false);
+      await cleanupNativeListeners();
+      return false;
+    }
+
     return true;
-  }, [cleanupNativeListeners, language, onError, onPermissionBlocked]);
+  }, [cleanupNativeListeners, language, onError, onPermissionBlocked, setTranscriptSafe]);
 
   const startWebListening = useCallback(async () => {
     const SpeechRecognitionApi =
@@ -145,7 +205,7 @@ export const useVoiceCapture = ({
         .map((result: any) => result?.[0]?.transcript || "")
         .join(" ")
         .trim();
-      setTranscript(combined);
+      setTranscriptSafe(combined);
     };
 
     recognition.onerror = (event: any) => {
@@ -160,7 +220,7 @@ export const useVoiceCapture = ({
     recognition.onend = () => setListening(false);
 
     webRecognitionRef.current = recognition;
-    setTranscript("");
+    setTranscriptSafe("");
 
     try {
       recognition.start();
@@ -175,7 +235,7 @@ export const useVoiceCapture = ({
       setListening(false);
       return false;
     }
-  }, [language, onError, onPermissionBlocked]);
+  }, [language, onError, onPermissionBlocked, setTranscriptSafe]);
 
   const startListening = useCallback(async () => {
     try {
@@ -191,8 +251,8 @@ export const useVoiceCapture = ({
   }, [isNative, onError, onPermissionBlocked, startNativeListening, startWebListening]);
 
   const resetTranscript = useCallback(() => {
-    setTranscript("");
-  }, []);
+    setTranscriptSafe("");
+  }, [setTranscriptSafe]);
 
   useEffect(() => {
     return () => {
@@ -207,5 +267,6 @@ export const useVoiceCapture = ({
     startListening,
     stopListening,
     resetTranscript,
+    getTranscript,
   };
 };
