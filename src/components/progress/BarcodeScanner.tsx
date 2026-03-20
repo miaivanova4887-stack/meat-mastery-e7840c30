@@ -5,6 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
+import { App as CapacitorApp } from "@capacitor/app";
 
 interface ProductResult {
   name: string;
@@ -25,6 +26,19 @@ const BarcodeScanner = () => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const addEntry = useAddEntry();
+
+  const openCameraSettings = useCallback(async () => {
+    try {
+      const openSettings = (CapacitorApp as any)?.openSettings;
+      if (typeof openSettings === "function") {
+        await openSettings();
+      } else {
+        throw new Error("openSettings_not_supported");
+      }
+    } catch {
+      toast.error("Please enable camera in Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+    }
+  }, []);
 
   const stopScanner = useCallback(async () => {
     try {
@@ -101,13 +115,14 @@ const BarcodeScanner = () => {
     } catch (err: any) {
       const msg = String(err?.message || err || "").toLowerCase();
       if (msg.includes("permission") || msg.includes("denied") || msg.includes("not allowed")) {
-        toast.error("Camera permission required. Please enable camera access in your device Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+        toast.error("Camera permission is blocked. Opening app settings…", { duration: 3500 });
+        void openCameraSettings();
       } else {
         toast.error("Camera not available. Please check your device settings.");
       }
       setScanning(false);
     }
-  }, [stopScanner, lookupBarcode]);
+  }, [stopScanner, lookupBarcode, openCameraSettings]);
 
   const logToProgress = useCallback(() => {
     if (!result) return;

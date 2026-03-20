@@ -130,7 +130,7 @@ const Progress = () => {
               <div className="bg-muted rounded-lg p-3 text-center">
                 <Flame size={16} className="mx-auto text-orange-500 mb-1" />
                 <p className="text-lg font-bold text-foreground">
-                  {healthData.activeCalories ? Math.round(healthData.activeCalories) : "—"}
+                  {Math.round(healthData.activeCalories || 0)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">kcal</p>
               </div>

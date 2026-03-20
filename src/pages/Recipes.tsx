@@ -68,6 +68,7 @@ const Recipes = () => {
     if (tagParam) {
       setActiveTag(tagParam);
       setSearch(""); // clear text search when filtering by tag
+      window.scrollTo({ top: 0, behavior: "auto" });
     }
   }, [searchParams]);
 
@@ -75,6 +76,8 @@ const Recipes = () => {
     const userCuisines = profile.cuisines || [];
     const filter = (list: typeof recipes) => {
       const matches = list.filter((r) => {
+        const recipeTags = Array.isArray(r.tags) ? r.tags : [];
+
         // Diet tier filter
         if (!r.tier.includes(activeTier)) return false;
         // Upper menu filter
@@ -89,12 +92,12 @@ const Recipes = () => {
         }
         // Tag filter
         if (activeTag) {
-          if (!r.tags.some(t => t.toLowerCase() === activeTag.toLowerCase())) return false;
+          if (!recipeTags.some((t) => t.toLowerCase() === activeTag.toLowerCase())) return false;
         }
         // Search
         if (search) {
           const q = search.toLowerCase();
-          return r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q)) || r.desc.toLowerCase().includes(q);
+          return r.name.toLowerCase().includes(q) || recipeTags.some((t) => t.toLowerCase().includes(q)) || r.desc.toLowerCase().includes(q);
         }
         // Favorites filter
         if (showFavoritesOnly && !isFavorite(r.name)) return false;
@@ -125,13 +128,13 @@ const Recipes = () => {
       const parsed = parseAmount(ing.amount);
       addItem(ing.name, parsed.quantity * mult, parsed.unit);
     });
-    toast.success(`${ingredients.length} ingredients added to shopping bag`, {
-      action: { label: "Open Bag", onClick: () => navigate("/shopping-bag") },
-      style: { marginTop: "env(safe-area-inset-top, 12px)" },
+    toast.success(`${ingredients.length} ingredients added to shopping list`, {
+      action: { label: "Open list", onClick: () => navigate("/shopping-bag") },
     });
   }, [addItem, navigate]);
 
   const handleTagClick = (tag: string) => {
+    window.scrollTo({ top: 0, behavior: "auto" });
     if (activeTag === tag) {
       setActiveTag(null);
       navigate("/recipes", { replace: true });
@@ -147,17 +150,22 @@ const Recipes = () => {
     const isExpanded = expanded === cardKey;
     const mult = multipliers[cardKey] || 1;
     const setMult = (m: number) => setMultipliers((prev) => ({ ...prev, [cardKey]: m }));
+    const recipeTags: string[] = Array.isArray(r.tags) ? r.tags : [];
 
     const scaledCal = scaleNumeric(r.cal, mult);
     const scaledProtein = scaleNumeric(r.protein, mult);
     const scaledFat = scaleNumeric(r.fat, mult);
 
-    const ingredients: Ingredient[] = custom?.ingredients || r.ingredients || [];
+    const ingredients: Ingredient[] = Array.isArray(custom?.ingredients)
+      ? custom.ingredients
+      : Array.isArray(r.ingredients)
+        ? r.ingredients
+        : [];
 
     return (
       <div key={r.name + i} className="ios-card overflow-hidden animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
         {/* Full-width hero image */}
-        <MealImage recipeName={r.name} tags={r.tags} className="w-full h-40" />
+        <MealImage recipeName={r.name} tags={recipeTags} className="w-full h-40" />
 
         <div className="p-5 pt-3">
         <div className="flex items-start justify-between gap-3">
@@ -234,7 +242,7 @@ const Recipes = () => {
                       onClick={() => addIngredientsToCart(ingredients, mult)}
                       className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors min-h-[32px]"
                     >
-                      <ShoppingBag size={13} /> Add all to bag
+                      <ShoppingBag size={13} /> Add to the shopping list
                     </button>
                   </div>
                   <ul className="space-y-1">
@@ -247,15 +255,14 @@ const Recipes = () => {
                             {ing.amount && <span className="font-medium text-foreground">{ing.amount}</span>} {ing.name}
                           </span>
                           {inBag ? (
-                            <span className="text-[10px] text-green-500 font-medium px-1.5">In bag</span>
+                            <span className="text-[10px] text-green-500 font-medium px-1.5">In list</span>
                           ) : (
                             <button
                               onClick={() => {
                                 const parsed = parseAmount(ing.amount);
                                 addItem(ing.name, parsed.quantity * mult, parsed.unit);
                                 toast.success(`${ing.name} added`, {
-                                  action: { label: "Open Bag", onClick: () => navigate("/shopping-bag") },
-                                  style: { marginTop: "env(safe-area-inset-top, 12px)" },
+                                  action: { label: "Open list", onClick: () => navigate("/shopping-bag") },
                                 });
                               }}
                               className="text-muted-foreground hover:text-primary p-1.5"
@@ -296,7 +303,7 @@ const Recipes = () => {
         )}
 
         <div className="flex gap-1.5 mt-3 flex-wrap">
-          {r.tags.map((tg: string) => (
+          {recipeTags.map((tg: string) => (
             <button
               key={tg}
               onClick={() => handleTagClick(tg)}

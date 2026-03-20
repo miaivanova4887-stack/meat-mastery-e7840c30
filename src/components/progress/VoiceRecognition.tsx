@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
+import { App as CapacitorApp } from "@capacitor/app";
 
 const VoiceRecognition = () => {
   const [listening, setListening] = useState(false);
@@ -12,6 +13,19 @@ const VoiceRecognition = () => {
   const [parsedResult, setParsedResult] = useState<any>(null);
   const recognitionRef = useRef<any>(null);
   const addEntry = useAddEntry();
+
+  const openMicrophoneSettings = useCallback(async () => {
+    try {
+      const openSettings = (CapacitorApp as any)?.openSettings;
+      if (typeof openSettings === "function") {
+        await openSettings();
+      } else {
+        throw new Error("openSettings_not_supported");
+      }
+    } catch {
+      toast.error("Please enable microphone in Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+    }
+  }, []);
 
   const startListening = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -36,7 +50,8 @@ const VoiceRecognition = () => {
     recognition.onerror = (event: any) => {
       console.error("Speech error:", event.error);
       if (event.error === "not-allowed") {
-        toast.error("Microphone permission required. Please enable microphone access in your device Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+        toast.error("Microphone permission is blocked. Opening app settings…", { duration: 3500 });
+        void openMicrophoneSettings();
       } else if (event.error !== "no-speech") {
         toast.error("Microphone error: " + event.error);
       }
@@ -52,9 +67,10 @@ const VoiceRecognition = () => {
       setTranscript("");
       setParsedResult(null);
     } catch (err: any) {
-      toast.error("Microphone permission required. Please enable microphone access in your device Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+      toast.error("Microphone permission is blocked. Opening app settings…", { duration: 3500 });
+      void openMicrophoneSettings();
     }
-  }, []);
+  }, [openMicrophoneSettings]);
 
   const stopAndProcess = useCallback(async () => {
     recognitionRef.current?.stop();

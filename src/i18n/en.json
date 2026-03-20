@@ -205,13 +205,13 @@
     "less": "Less",
     "ingredientsSteps": "Ingredients & Steps",
     "ingredients": "Ingredients",
-    "addAllToBag": "Add all to bag",
+    "addAllToBag": "Add to the shopping list",
     "steps": "Steps",
     "deleteRecipe": "Delete recipe",
     "myRecipes": "My Recipes",
     "allRecipes": "All Recipes",
     "noRecipes": "No recipes found. Try adjusting your filters.",
-    "ingredientsAdded": "{{count}} ingredients added to shopping bag"
+    "ingredientsAdded": "{{count}} ingredients added to shopping list"
   },
   "mealPlan": {
     "title": "Meal Plan",
@@ -302,10 +302,10 @@
     "popular": "Popular"
   },
   "shoppingBag": {
-    "title": "Shopping Bag",
+    "title": "Shopping list",
     "items": "{{count}} item",
     "items_plural": "{{count}} items",
-    "empty": "Your bag is empty",
+    "empty": "Your shopping list is empty",
     "emptyDesc": "Add ingredients from the Approved Ingredients list",
     "browseIngredients": "Browse Ingredients",
     "clearAll": "Clear All",

@@ -5,6 +5,13 @@ import { supabase } from "@/integrations/supabase/client";
 const imageCache = new Map<string, string>();
 const pendingRequests = new Map<string, Promise<string | null>>();
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const requestKeyFor = (recipeName: string, tags?: string[]) => {
+  const tagsKey = (tags || []).map((t) => t.toLowerCase()).sort().join("|");
+  return `${recipeName}::${tagsKey}`;
+};
+
 // Throttled queue: max 2 concurrent requests, 1s delay between batches
 const requestQueue: Array<() => void> = [];
 let activeRequests = 0;
@@ -37,28 +44,40 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 function fetchImage(recipeName: string, tags?: string[]): Promise<string | null> {
-  let request = pendingRequests.get(recipeName);
+  const requestKey = requestKeyFor(recipeName, tags);
+  let request = pendingRequests.get(requestKey);
   if (request) return request;
 
   request = enqueue(async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        "generate-meal-image",
-        { body: { recipeName, tags } }
-      );
-      if (error || data?.error) return null;
-      return data?.imageUrl || null;
-    } catch {
-      return null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "generate-meal-image",
+          { body: { recipeName, tags } }
+        );
+
+        if (!error && !data?.error && data?.imageUrl) {
+          return data.imageUrl as string;
+        }
+      } catch {
+        // retry below
+      }
+
+      if (attempt < 2) {
+        await sleep(450 * (attempt + 1));
+      }
     }
+
+    return null;
   });
 
-  pendingRequests.set(recipeName, request);
-  request.finally(() => pendingRequests.delete(recipeName));
+  pendingRequests.set(requestKey, request);
+  request.finally(() => pendingRequests.delete(requestKey));
   return request;
 }
 
 export function useMealImage(recipeName: string, tags?: string[], enabled = true) {
+  const tagsKey = (tags || []).join("|");
   const [imageUrl, setImageUrl] = useState<string | null>(
     imageCache.get(recipeName) || null
   );
@@ -69,6 +88,8 @@ export function useMealImage(recipeName: string, tags?: string[], enabled = true
       setLoading(false);
       return;
     }
+
+    setImageUrl(imageCache.get(recipeName) || null);
 
     if (imageCache.has(recipeName)) {
       setImageUrl(imageCache.get(recipeName)!);
@@ -84,7 +105,7 @@ export function useMealImage(recipeName: string, tags?: string[], enabled = true
       }
       setLoading(false);
     });
-  }, [recipeName, enabled]);
+  }, [recipeName, tagsKey, enabled]);
 
   return { imageUrl, loading };
 }

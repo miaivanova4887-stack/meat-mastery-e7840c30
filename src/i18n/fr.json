@@ -205,13 +205,13 @@
     "less": "Moins",
     "ingredientsSteps": "Ingrédients et étapes",
     "ingredients": "Ingrédients",
-    "addAllToBag": "Tout ajouter au panier",
+    "addAllToBag": "Ajouter à la liste de courses",
     "steps": "Étapes",
     "deleteRecipe": "Supprimer la recette",
     "myRecipes": "Mes recettes",
     "allRecipes": "Toutes les recettes",
     "noRecipes": "Aucune recette trouvée. Essayez d'ajuster vos filtres.",
-    "ingredientsAdded": "{{count}} ingrédients ajoutés au panier"
+    "ingredientsAdded": "{{count}} ingrédients ajoutés à la liste de courses"
   },
   "mealPlan": {
     "title": "Plan de repas",
@@ -302,10 +302,10 @@
     "popular": "Populaires"
   },
   "shoppingBag": {
-    "title": "Panier d'achat",
+    "title": "Liste de courses",
     "items": "{{count}} article",
     "items_plural": "{{count}} articles",
-    "empty": "Votre panier est vide",
+    "empty": "Votre liste de courses est vide",
     "emptyDesc": "Ajoutez des ingrédients depuis la liste des ingrédients approuvés",
     "browseIngredients": "Parcourir les ingrédients",
     "clearAll": "Tout supprimer",
