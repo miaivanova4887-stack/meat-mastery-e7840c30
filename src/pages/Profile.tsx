@@ -92,6 +92,25 @@ const Profile = () => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({ display_name: "", bio: "", diet_tier: "" });
 
+  const toLocalDayKey = useCallback((value: string) => {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }, []);
+
+  const getLocalDayDiff = useCallback((value: string) => {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const targetStart = new Date(d);
+    targetStart.setHours(0, 0, 0, 0);
+    return Math.floor((todayStart.getTime() - targetStart.getTime()) / 86400000);
+  }, []);
+
   const fetchProfile = useCallback(async () => {
     if (!user) return;
     const { data } = await (supabase as any).from("profiles").select("*").eq("id", user.id).single();
@@ -140,12 +159,19 @@ const Profile = () => {
       supabase.from("progress_goals").select("*").eq("user_id", user.id),
     ]);
 
+    const nowTs = Date.now();
+    const validEntries = (entries || []).filter((e: any) => {
+      const ts = new Date(e.recorded_at).getTime();
+      const note = (e.notes || "").trim().toLowerCase();
+      return Number.isFinite(ts) && ts <= nowTs && note !== "sample";
+    });
+
     const milestones: any[] = [];
 
-    if (entries && entries.length > 0) {
+    if (validEntries.length > 0) {
       // Group entries by metric to detect streaks and records
       const byMetric: Record<string, any[]> = {};
-      entries.forEach((e: any) => {
+      validEntries.forEach((e: any) => {
         if (!byMetric[e.metric]) byMetric[e.metric] = [];
         byMetric[e.metric].push(e);
       });
@@ -195,7 +221,7 @@ const Profile = () => {
       });
 
       // Logging streak — count unique days logged
-      const uniqueDays = new Set(entries.map((e: any) => e.recorded_at.slice(0, 10)));
+      const uniqueDays = new Set(validEntries.map((e: any) => toLocalDayKey(e.recorded_at)).filter(Boolean));
       if (uniqueDays.size >= 7) {
         milestones.push({
           id: "streak-7",
@@ -203,27 +229,27 @@ const Profile = () => {
           icon: "🔥",
           title: `${uniqueDays.size}-Day Logging Streak`,
           desc: `You've tracked your progress on ${uniqueDays.size} days this month. Keep it up!`,
-          date: entries[0].recorded_at,
+          date: validEntries[0].recorded_at,
           color: "bg-primary/10 text-primary",
         });
       }
 
       // Total entries milestone
-      if (entries.length >= 10) {
+      if (validEntries.length >= 10) {
         milestones.push({
           id: "entries-count",
           type: "volume",
           icon: "📊",
-          title: `${entries.length} Entries This Month`,
+          title: `${validEntries.length} Entries This Month`,
           desc: "You're building a strong data foundation for your health journey.",
-          date: entries[0].recorded_at,
+          date: validEntries[0].recorded_at,
           color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
         });
       }
     }
 
     setProgressMilestones(milestones);
-  }, [user]);
+  }, [user, toLocalDayKey]);
 
   useEffect(() => {
     if (!user) { navigate("/auth"); return; }
@@ -427,10 +453,11 @@ const Profile = () => {
                 </div>
               );
               const formatDate = (ds: string) => {
-                const diff = Math.floor((Date.now() - new Date(ds).getTime()) / 86400000);
+                const diff = getLocalDayDiff(ds);
+                if (diff === null) return "";
                 if (diff === 0) return "Today";
                 if (diff === 1) return "Yesterday";
-                if (diff < 7) return `${diff}d ago`;
+                if (diff > 1 && diff < 7) return `${diff}d ago`;
                 return new Date(ds).toLocaleDateString("en-US", { month: "short", day: "numeric" });
               };
               return (
