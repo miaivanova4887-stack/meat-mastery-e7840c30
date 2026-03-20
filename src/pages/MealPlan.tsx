@@ -392,7 +392,7 @@ const MealPlan = () => {
       {/* Hero meal image */}
       <div className="relative w-full h-40 overflow-hidden">
         <img
-          src={(profile as any).gender === "female" ? heroMealFemale : heroMealMale}
+          src={heroPlan}
           alt="Meal planning"
           className="w-full h-full object-cover"
         />
