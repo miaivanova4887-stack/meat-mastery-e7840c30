@@ -16,7 +16,7 @@ const VoiceRecognition = () => {
   const startListening = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      toast.error("Speech recognition not supported in this browser");
+      toast.error("Speech recognition not supported on this device. Please try on a newer browser.");
       return;
     }
 
@@ -35,7 +35,9 @@ const VoiceRecognition = () => {
 
     recognition.onerror = (event: any) => {
       console.error("Speech error:", event.error);
-      if (event.error !== "no-speech") {
+      if (event.error === "not-allowed") {
+        toast.error("Microphone permission required. Please enable microphone access in your device Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+      } else if (event.error !== "no-speech") {
         toast.error("Microphone error: " + event.error);
       }
       setListening(false);
@@ -44,10 +46,14 @@ const VoiceRecognition = () => {
     recognition.onend = () => setListening(false);
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setListening(true);
-    setTranscript("");
-    setParsedResult(null);
+    try {
+      recognition.start();
+      setListening(true);
+      setTranscript("");
+      setParsedResult(null);
+    } catch (err: any) {
+      toast.error("Microphone permission required. Please enable microphone access in your device Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+    }
   }, []);
 
   const stopAndProcess = useCallback(async () => {

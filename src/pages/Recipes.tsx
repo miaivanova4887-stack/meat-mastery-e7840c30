@@ -1,6 +1,6 @@
-import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { useState, useMemo, useCallback } from "react";
+import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart, Check } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { recipes, TIER_LABELS, CRAVING_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
 import { useTranslation } from "react-i18next";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -45,11 +45,12 @@ for (const [k, v] of Object.entries(CRAVING_LABELS)) {
 
 const Recipes = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const profile = useUserProfile();
   const { t } = useTranslation();
   const defaultTier = tierFromProfile((profile as any).diet) ?? "strict";
   const { customRecipes, deleteRecipe } = useCustomRecipes();
-  const { addItem } = useShoppingBag();
+  const { addItem, hasItem, count: bagCount } = useShoppingBag();
   const { toggleFavorite, isFavorite } = useFavorites();
 
   const [activeTier, setActiveTier] = useState<DietTier>(defaultTier);
@@ -59,6 +60,16 @@ const Recipes = () => {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  // Read tag from URL search params
+  useEffect(() => {
+    const tagParam = searchParams.get("tag");
+    if (tagParam) {
+      setActiveTag(tagParam);
+      setSearch(""); // clear text search when filtering by tag
+    }
+  }, [searchParams]);
 
   const filtered = useMemo(() => {
     const userCuisines = profile.cuisines || [];
@@ -75,6 +86,10 @@ const Recipes = () => {
         // Cuisine filter
         if (activeCuisine !== "all") {
           if (!(r.cuisine || []).includes(activeCuisine as CuisineType)) return false;
+        }
+        // Tag filter
+        if (activeTag) {
+          if (!r.tags.some(t => t.toLowerCase() === activeTag.toLowerCase())) return false;
         }
         // Search
         if (search) {
@@ -101,7 +116,7 @@ const Recipes = () => {
       custom: filter(customRecipes) as CustomRecipe[],
       builtIn: filter(recipes),
     };
-  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, isFavorite]);
+  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, isFavorite, activeTag]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
@@ -110,8 +125,21 @@ const Recipes = () => {
       const parsed = parseAmount(ing.amount);
       addItem(ing.name, parsed.quantity * mult, parsed.unit);
     });
-    toast.success(`${ingredients.length} ingredients added to shopping bag`);
-  }, [addItem]);
+    toast.success(`${ingredients.length} ingredients added to shopping bag`, {
+      action: { label: "Open Bag", onClick: () => navigate("/shopping-bag") },
+      style: { marginTop: "env(safe-area-inset-top, 12px)" },
+    });
+  }, [addItem, navigate]);
+
+  const handleTagClick = (tag: string) => {
+    if (activeTag === tag) {
+      setActiveTag(null);
+      navigate("/recipes", { replace: true });
+    } else {
+      setActiveTag(tag);
+      navigate(`/recipes?tag=${encodeURIComponent(tag)}`, { replace: true });
+    }
+  };
 
   const RecipeCard = ({ r, i, isCustom = false }: { r: any; i: number; isCustom?: boolean }) => {
     const custom = isCustom ? (r as CustomRecipe) : null;
@@ -177,7 +205,7 @@ const Recipes = () => {
           <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
             <p className="text-xs font-semibold text-foreground mb-1">🔥 Cooking Steps</p>
             <ol className="space-y-1.5">
-              {(r.steps && r.steps.length > 0 ? r.steps : r.desc.split(/\.\s+/).filter(s => s.trim().length > 3).map(s => s.trim().replace(/\.$/, '') + '.')).map((step, j) => (
+              {(r.steps && r.steps.length > 0 ? r.steps : r.desc.split(/\.\s+/).filter((s: string) => s.trim().length > 3).map((s: string) => s.trim().replace(/\.$/, '') + '.')).map((step: string, j: number) => (
                 <li key={j} className="text-sm text-muted-foreground flex gap-2">
                   <span className="text-primary font-bold flex-shrink-0">{j + 1}.</span>
                   {step}
@@ -210,22 +238,34 @@ const Recipes = () => {
                     </button>
                   </div>
                   <ul className="space-y-1">
-                    {ingredients.map((ing, j) => (
-                      <li key={j} className="text-sm text-muted-foreground flex items-center justify-between min-h-[32px]">
-                        <span>
-                          {ing.amount && <span className="font-medium text-foreground">{ing.amount}</span>} {ing.name}
-                        </span>
-                        <button
-                          onClick={() => {
-                            const parsed = parseAmount(ing.amount);
-                            addItem(ing.name, parsed.quantity * mult, parsed.unit);
-                          }}
-                          className="text-muted-foreground hover:text-primary p-1.5"
-                        >
-                          <Plus size={13} />
-                        </button>
-                      </li>
-                    ))}
+                    {ingredients.map((ing, j) => {
+                      const inBag = hasItem(ing.name);
+                      return (
+                        <li key={j} className="text-sm text-muted-foreground flex items-center justify-between min-h-[32px]">
+                          <span className="flex items-center gap-1.5">
+                            {inBag && <Check size={13} className="text-green-500 flex-shrink-0" />}
+                            {ing.amount && <span className="font-medium text-foreground">{ing.amount}</span>} {ing.name}
+                          </span>
+                          {inBag ? (
+                            <span className="text-[10px] text-green-500 font-medium px-1.5">In bag</span>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                const parsed = parseAmount(ing.amount);
+                                addItem(ing.name, parsed.quantity * mult, parsed.unit);
+                                toast.success(`${ing.name} added`, {
+                                  action: { label: "Open Bag", onClick: () => navigate("/shopping-bag") },
+                                  style: { marginTop: "env(safe-area-inset-top, 12px)" },
+                                });
+                              }}
+                              className="text-muted-foreground hover:text-primary p-1.5"
+                            >
+                              <Plus size={13} />
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
 
@@ -256,8 +296,18 @@ const Recipes = () => {
         )}
 
         <div className="flex gap-1.5 mt-3 flex-wrap">
-          {r.tags.map((t: string) => (
-            <span key={t} className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary font-medium">{t}</span>
+          {r.tags.map((tg: string) => (
+            <button
+              key={tg}
+              onClick={() => handleTagClick(tg)}
+              className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-all active:scale-95 ${
+                activeTag === tg
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              }`}
+            >
+              {tg}
+            </button>
           ))}
         </div>
         </div>
@@ -274,6 +324,11 @@ const Recipes = () => {
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("recipes.title")}</h1>
         <button onClick={() => navigate("/shopping-bag")} className="relative text-primary hover:text-primary/80 mr-2">
           <ShoppingBag size={18} />
+          {bagCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+              {bagCount > 9 ? "9+" : bagCount}
+            </span>
+          )}
         </button>
         <button onClick={() => navigate("/create-recipe")} className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
           <Plus size={16} />
@@ -311,10 +366,23 @@ const Recipes = () => {
 
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search recipes, ingredients, tags…" value={search} onChange={(e) => setSearch(e.target.value)}
+          <input type="text" placeholder="Search recipes, ingredients, tags…" value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value) setActiveTag(null); }}
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30" />
           {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><X size={14} /></button>}
         </div>
+
+        {/* Active tag filter indicator */}
+        {activeTag && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Tag:</span>
+            <button
+              onClick={() => { setActiveTag(null); navigate("/recipes", { replace: true }); }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium"
+            >
+              {activeTag} <X size={12} />
+            </button>
+          </div>
+        )}
 
         {/* Diet tier filter */}
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
