@@ -49,21 +49,39 @@ function fetchImage(recipeName: string, tags?: string[]): Promise<string | null>
   if (request) return request;
 
   request = enqueue(async () => {
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const { data, error } = await supabase.functions.invoke(
           "generate-meal-image",
           { body: { recipeName, tags } }
         );
 
-        if (!error && !data?.error && data?.imageUrl) {
+        if (error) {
+          console.warn(`[MealImage] Edge fn error for "${recipeName}":`, error);
+          // Don't retry on auth/credits errors
+          if (error.message?.includes("402") || error.message?.includes("401")) break;
+          continue;
+        }
+
+        if (data?.error) {
+          console.warn(`[MealImage] API error for "${recipeName}":`, data.error);
+          // Don't retry on credits exhausted or rate limit
+          if (data.error.includes("credits") || data.error.includes("402")) break;
+          if (data.error.includes("429")) {
+            await sleep(2000);
+            continue;
+          }
+          continue;
+        }
+
+        if (data?.imageUrl) {
           return data.imageUrl as string;
         }
       } catch {
         // retry below
       }
 
-      if (attempt < 2) {
+      if (attempt < 1) {
         await sleep(450 * (attempt + 1));
       }
     }
