@@ -91,7 +91,9 @@ export function useProgressEntries(category: ProgressCategory, days = 30) {
         .gte("recorded_at", since)
         .order("recorded_at", { ascending: true });
       if (error) throw error;
-      return data as ProgressEntry[];
+      return (data as ProgressEntry[]).filter(
+        (entry) => (entry.notes || "").trim().toLowerCase() !== "sample"
+      );
     },
     enabled: !!user,
   });
