@@ -1,4 +1,4 @@
-import { Footprints, Heart, Weight, RefreshCw } from 'lucide-react';
+import { Footprints, Heart, Weight, RefreshCw, Flame } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useHealthConnectContext } from '@/contexts/HealthConnectContext';
 
@@ -33,7 +33,7 @@ export const HealthDashboard = () => {
       {!isConnected ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">
-            Connect to Health Connect to track steps, heart rate & weight.
+            Connect to Health Connect to track steps, heart rate, weight & calories burned.
           </p>
           <button
             onClick={requestPermissions}
@@ -45,7 +45,7 @@ export const HealthDashboard = () => {
           {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           <div className="bg-muted rounded-xl p-3 text-center">
             <Footprints size={16} className="mx-auto text-primary mb-1" />
             <p className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</p>
@@ -62,6 +62,13 @@ export const HealthDashboard = () => {
               {healthData.weight ? healthData.weight.toFixed(1) : "—"}
             </p>
             <p className="text-[10px] text-muted-foreground">kg</p>
+          </div>
+          <div className="bg-muted rounded-xl p-3 text-center">
+            <Flame size={16} className="mx-auto text-orange-500 mb-1" />
+            <p className="text-lg font-bold text-foreground">
+              {healthData.activeCalories ? Math.round(healthData.activeCalories) : "—"}
+            </p>
+            <p className="text-[10px] text-muted-foreground">kcal</p>
           </div>
         </div>
       )}
