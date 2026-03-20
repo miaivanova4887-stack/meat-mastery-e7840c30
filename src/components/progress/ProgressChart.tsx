@@ -16,9 +16,13 @@ interface Props {
 type AggMode = "daily" | "weekly" | "monthly";
 
 function getAggMode(days: number): AggMode {
-  if (days <= 7) return "daily";
-  if (days <= 30) return "weekly";
+  if (days <= 31) return "daily";
+  if (days <= 180) return "weekly";
   return "monthly";
+}
+
+function normalizeToLocalMidnight(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function toLocalDateStr(date: Date): string {
@@ -34,6 +38,18 @@ function bucketKey(date: Date, mode: AggMode): string {
   return format(startOfMonth(date), "yyyy-MM");
 }
 
+function bucketStart(date: Date, mode: AggMode): Date {
+  if (mode === "daily") return normalizeToLocalMidnight(date);
+  if (mode === "weekly") return normalizeToLocalMidnight(startOfWeek(date, { weekStartsOn: 1 }));
+  return normalizeToLocalMidnight(startOfMonth(date));
+}
+
+function addBucketStep(date: Date, mode: AggMode): Date {
+  if (mode === "daily") return addDays(date, 1);
+  if (mode === "weekly") return addWeeks(date, 1);
+  return addMonths(date, 1);
+}
+
 function parseDateKey(key: string): Date {
   const parts = key.split("-").map(Number);
   return new Date(parts[0], parts[1] - 1, parts[2] || 1);
@@ -45,26 +61,25 @@ function bucketLabel(key: string, mode: AggMode): string {
   return format(d, "MMM dd");
 }
 
-/** Generate all bucket keys from rangeStart to today so the chart always extends to the current date */
-function generateAllBucketKeys(rangeDays: number, mode: AggMode, hasData: boolean): string[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // normalize to local midnight
+/** Generate bucket keys from first real data point (or a short fallback window) through current bucket. */
+function generateAllBucketKeys(rangeDays: number, mode: AggMode, firstDataDate?: Date): string[] {
+  const today = normalizeToLocalMidnight(new Date());
+  const fallbackStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - Math.min(rangeDays, 7));
+  const start = bucketStart(firstDataDate ?? fallbackStart, mode);
+  const end = bucketStart(today, mode);
 
-  // If no data exists, only show buckets from today minus a small window
-  const effectiveDays = hasData ? rangeDays : Math.min(rangeDays, 7);
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - effectiveDays);
   const keys: string[] = [];
   let cursor = new Date(start);
 
-  while (cursor <= today) {
+  while (cursor <= end) {
     keys.push(bucketKey(cursor, mode));
-    if (mode === "daily") cursor = addDays(cursor, 1);
-    else if (mode === "weekly") cursor = addWeeks(cursor, 1);
-    else cursor = addMonths(cursor, 1);
+    cursor = addBucketStep(cursor, mode);
   }
-  // Ensure today's bucket is included
+
+  // Ensure today's bucket is included for accurate "current date" axis rendering
   const todayKey = bucketKey(today, mode);
   if (!keys.includes(todayKey)) keys.push(todayKey);
+
   return [...new Set(keys)].sort();
 }
 
@@ -91,9 +106,12 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
       buckets.get(key)!.push(Number(e.value));
     }
 
-    // Generate all keys — only extend full range if there's actual data
-    const hasData = filtered.length > 0;
-    const allKeys = generateAllBucketKeys(rangeDays, mode, hasData);
+    const firstDataDate = filtered.length
+      ? new Date(Math.min(...filtered.map((entry) => new Date(entry.recorded_at).getTime())))
+      : undefined;
+
+    // Generate keys from first real datapoint (or short fallback window) to avoid fabricated empty history.
+    const allKeys = generateAllBucketKeys(rangeDays, mode, firstDataDate);
 
     return allKeys.map((key) => {
       const values = buckets.get(key);
