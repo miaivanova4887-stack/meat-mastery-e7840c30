@@ -12,8 +12,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useMealSync } from "@/hooks/useMealSync";
-import heroMealMale from "@/assets/hero-meal-male.jpg";
-import heroMealFemale from "@/assets/hero-meal-female.jpg";
+import heroPlan from "@/assets/hero-plan.jpg";
 
 type AIMode = "single" | "daily" | "weekly";
 
