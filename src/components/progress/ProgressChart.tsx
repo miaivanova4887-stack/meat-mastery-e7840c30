@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
-import { format, startOfWeek, startOfMonth } from "date-fns";
+import { format, startOfWeek, startOfMonth, addDays, addWeeks, addMonths } from "date-fns";
 import type { ProgressEntry, ProgressGoal } from "@/hooks/useProgress";
 
 interface Props {
@@ -45,30 +45,53 @@ function bucketLabel(key: string, mode: AggMode): string {
   return format(d, "MMM dd");
 }
 
+/** Generate all bucket keys from rangeStart to today so the chart always extends to the current date */
+function generateAllBucketKeys(rangeDays: number, mode: AggMode): string[] {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - rangeDays);
+  const keys: string[] = [];
+  let cursor = new Date(start);
+
+  while (cursor <= today) {
+    keys.push(bucketKey(cursor, mode));
+    if (mode === "daily") cursor = addDays(cursor, 1);
+    else if (mode === "weekly") cursor = addWeeks(cursor, 1);
+    else cursor = addMonths(cursor, 1);
+  }
+  // Ensure today's bucket is included
+  const todayKey = bucketKey(today, mode);
+  if (!keys.includes(todayKey)) keys.push(todayKey);
+  return [...new Set(keys)].sort();
+}
+
 const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))", rangeDays = 30, sumValues = false }: Props) => {
   const data = useMemo(() => {
     const filtered = entries.filter((e) => e.metric === metricKey);
-    if (filtered.length === 0) return [];
-
     const mode = getAggMode(rangeDays);
-    const buckets = new Map<string, number[]>();
 
+    // Build buckets from data
+    const buckets = new Map<string, number[]>();
     for (const e of filtered) {
       const key = bucketKey(new Date(e.recorded_at), mode);
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key)!.push(Number(e.value));
     }
 
-    return Array.from(buckets.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([key, values]) => {
+    // Generate all keys so the chart always extends to today
+    const allKeys = generateAllBucketKeys(rangeDays, mode);
+
+    return allKeys.map((key) => {
+      const values = buckets.get(key);
+      let value: number | null = null;
+      if (values && values.length > 0) {
         const total = values.reduce((s, v) => s + v, 0);
-        const agg = sumValues ? total : total / values.length;
-        return {
-          date: bucketLabel(key, mode),
-          value: Math.round(agg * 10) / 10,
-        };
-      });
+        value = Math.round((sumValues ? total : total / values.length) * 10) / 10;
+      }
+      return {
+        date: bucketLabel(key, mode),
+        value,
+      };
+    });
   }, [entries, metricKey, rangeDays, sumValues]);
 
   if (data.length === 0) {

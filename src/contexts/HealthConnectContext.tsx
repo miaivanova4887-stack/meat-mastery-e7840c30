@@ -8,6 +8,7 @@ export interface HealthData {
   heartRate: number;
   weight: number;
   sleep: number;
+  activeCalories: number;
 }
 
 interface HealthConnectContextType {
@@ -29,7 +30,7 @@ export const useHealthConnectContext = () => {
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
-    steps: 0, heartRate: 0, weight: 0, sleep: 0,
+    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -43,7 +44,7 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
       startOfDay.setHours(0, 0, 0, 0);
       const timeRange = { startTime: startOfDay.toISOString(), endTime: now.toISOString() };
 
-      let steps = 0, heartRate = 0, weight = 0;
+      let steps = 0, heartRate = 0, weight = 0, activeCalories = 0;
 
       try {
         const stepsResult = await HealthConnect.readSteps(timeRange);
@@ -60,7 +61,12 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         if (weightResult.records.length > 0) weight = weightResult.records[weightResult.records.length - 1].value;
       } catch (e) { console.warn("Failed to read weight:", e); }
 
-      setHealthData({ steps, heartRate, weight, sleep: 0 });
+      try {
+        const calResult = await HealthConnect.readActiveCalories(timeRange);
+        activeCalories = calResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + r.value, 0);
+      } catch (e) { console.warn("Failed to read active calories:", e); }
+
+      setHealthData({ steps, heartRate, weight, sleep: 0, activeCalories });
     } catch (err: any) {
       console.error("fetchHealthData error:", err);
       setError(`Failed to fetch: ${err?.message || "Unknown error"}`);

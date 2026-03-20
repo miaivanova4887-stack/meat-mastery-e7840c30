@@ -8,6 +8,7 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
@@ -36,6 +37,7 @@ class HealthConnectPlugin : Plugin() {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(WeightRecord::class),
+        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
     )
 
     override fun load() {
@@ -265,7 +267,44 @@ class HealthConnectPlugin : Plugin() {
             } catch (e: Exception) {
                 Log.e(TAG, "readWeight failed", e)
                 call.reject("Failed to read weight: ${e.message}")
+    @PluginMethod
+    fun readActiveCalories(call: PluginCall) {
+        val client = healthConnectClient ?: run {
+            call.reject("HealthConnect not initialized"); return
+        }
+        val startTime = call.getString("startTime") ?: run {
+            call.reject("startTime is required"); return
+        }
+        val endTime = call.getString("endTime") ?: run {
+            call.reject("endTime is required"); return
+        }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val request = ReadRecordsRequest(
+                    recordType = ActiveCaloriesBurnedRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(
+                        Instant.parse(startTime), Instant.parse(endTime)
+                    )
+                )
+                val response = client.readRecords(request)
+                val records = JSArray()
+                for (record in response.records) {
+                    val obj = JSObject()
+                    obj.put("value", record.energy.inKilocalories)
+                    obj.put("unit", "kcal")
+                    obj.put("timestamp", record.endTime.toString())
+                    records.put(obj)
+                }
+                val result = JSObject()
+                result.put("records", records)
+                call.resolve(result)
+            } catch (e: Exception) {
+                Log.e(TAG, "readActiveCalories failed", e)
+                call.reject("Failed to read active calories: ${e.message}")
             }
         }
+    }
+}
     }
 }
