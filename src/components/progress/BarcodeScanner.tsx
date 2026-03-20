@@ -5,8 +5,7 @@ import { Slider } from "@/components/ui/slider";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
-import { App as CapacitorApp } from "@capacitor/app";
-import { Capacitor } from "@capacitor/core";
+import { openAppSettings } from "@/lib/openAppSettings";
 
 interface ProductResult {
   name: string;
@@ -29,19 +28,20 @@ const BarcodeScanner = () => {
   const permissionHandledRef = useRef(false);
   const addEntry = useAddEntry();
 
+  const isPermissionDeniedMessage = useCallback((value: unknown) => {
+    const msg = String(value || "").toLowerCase();
+    return (
+      msg.includes("permission") ||
+      msg.includes("denied") ||
+      msg.includes("notallowederror") ||
+      msg.includes("not allowed") ||
+      msg.includes("service-not-allowed") ||
+      msg.includes("audio-capture")
+    );
+  }, []);
+
   const openCameraSettings = useCallback(async (): Promise<boolean> => {
-    try {
-      if (!Capacitor.isNativePlatform()) return false;
-      const openSettings = (CapacitorApp as any)?.openSettings;
-      if (typeof openSettings !== "function") {
-        throw new Error("openSettings_not_supported");
-      }
-      await openSettings.call(CapacitorApp);
-      return true;
-    } catch (error) {
-      console.error("Failed to open app settings for camera:", error);
-      return false;
-    }
+    return openAppSettings();
   }, []);
 
   const handleCameraBlocked = useCallback(async () => {
@@ -66,20 +66,14 @@ const BarcodeScanner = () => {
       stream.getTracks().forEach((track) => track.stop());
       return true;
     } catch (error: any) {
-      const msg = String(error?.message || error || "").toLowerCase();
-      if (
-        msg.includes("permission") ||
-        msg.includes("denied") ||
-        msg.includes("notallowederror") ||
-        msg.includes("not allowed")
-      ) {
+      if (isPermissionDeniedMessage(error?.message || error)) {
         await handleCameraBlocked();
       } else {
         toast.error("Camera not available. Please check your device settings.");
       }
       return false;
     }
-  }, [handleCameraBlocked]);
+  }, [handleCameraBlocked, isPermissionDeniedMessage]);
 
   const stopScanner = useCallback(async () => {
     try {
@@ -159,33 +153,21 @@ const BarcodeScanner = () => {
           lookupBarcode(decodedText);
         },
         async (scanError) => {
-          const msg = String(scanError || "").toLowerCase();
-          if (
-            msg.includes("permission") ||
-            msg.includes("denied") ||
-            msg.includes("notallowederror") ||
-            msg.includes("not allowed")
-          ) {
+          if (isPermissionDeniedMessage(scanError)) {
             await stopScanner();
             await handleCameraBlocked();
           }
         }
       );
     } catch (err: any) {
-      const msg = String(err?.message || err || "").toLowerCase();
-      if (
-        msg.includes("permission") ||
-        msg.includes("denied") ||
-        msg.includes("notallowederror") ||
-        msg.includes("not allowed")
-      ) {
+      if (isPermissionDeniedMessage(err?.message || err)) {
         await handleCameraBlocked();
       } else {
         toast.error("Camera not available. Please check your device settings.");
       }
       setScanning(false);
     }
-  }, [ensureCameraPermission, stopScanner, lookupBarcode, handleCameraBlocked]);
+  }, [ensureCameraPermission, stopScanner, lookupBarcode, handleCameraBlocked, isPermissionDeniedMessage]);
 
   const logToProgress = useCallback(() => {
     if (!result) return;

@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
-import { App as CapacitorApp } from "@capacitor/app";
-import { Capacitor } from "@capacitor/core";
+import { openAppSettings } from "@/lib/openAppSettings";
 
 const VoiceRecognition = () => {
   const [listening, setListening] = useState(false);
@@ -15,19 +14,24 @@ const VoiceRecognition = () => {
   const recognitionRef = useRef<any>(null);
   const addEntry = useAddEntry();
 
+  const isPermissionBlocked = useCallback((value: unknown) => {
+    const msg = String(value || "").toLowerCase();
+    return (
+      msg.includes("not-allowed") ||
+      msg.includes("service-not-allowed") ||
+      msg.includes("notallowederror") ||
+      msg.includes("permission") ||
+      msg.includes("denied") ||
+      msg.includes("audio-capture")
+    );
+  }, []);
+
   const openMicrophoneSettings = useCallback(async () => {
-    try {
-      if (!Capacitor.isNativePlatform()) {
-        throw new Error("not_native_platform");
-      }
-      const openSettings = (CapacitorApp as any)?.openSettings;
-      if (typeof openSettings !== "function") {
-        throw new Error("open_settings_unavailable");
-      }
-      await openSettings.call(CapacitorApp);
-    } catch (error) {
-      console.error("Failed to open app settings for microphone:", error);
-      toast.error("Couldn’t open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+    const opened = await openAppSettings();
+    if (!opened) {
+      toast.error("Couldn’t open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", {
+        duration: 6000,
+      });
     }
   }, []);
 
@@ -53,7 +57,7 @@ const VoiceRecognition = () => {
 
     recognition.onerror = (event: any) => {
       console.error("Speech error:", event.error);
-      if (event.error === "not-allowed") {
+      if (isPermissionBlocked(event?.error)) {
         toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
         void openMicrophoneSettings();
       } else if (event.error !== "no-speech") {
@@ -70,11 +74,15 @@ const VoiceRecognition = () => {
       setListening(true);
       setTranscript("");
       setParsedResult(null);
-    } catch {
-      toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
-      void openMicrophoneSettings();
+    } catch (error) {
+      if (isPermissionBlocked(error)) {
+        toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
+        void openMicrophoneSettings();
+      } else {
+        toast.error("Microphone failed to start. Please try again.");
+      }
     }
-  }, [openMicrophoneSettings]);
+  }, [isPermissionBlocked, openMicrophoneSettings]);
 
   const stopAndProcess = useCallback(async () => {
     recognitionRef.current?.stop();
