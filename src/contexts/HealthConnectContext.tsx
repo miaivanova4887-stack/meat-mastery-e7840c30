@@ -28,14 +28,23 @@ export const useHealthConnectContext = () => {
   return ctx;
 };
 
+const HC_CONNECTED_KEY = "carnivore-hc-connected";
+
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
     steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0,
   });
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(() => {
+    try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Persist connection state
+  useEffect(() => {
+    try { localStorage.setItem(HC_CONNECTED_KEY, String(isConnected)); } catch {}
+  }, [isConnected]);
 
   const fetchHealthData = useCallback(async () => {
     try {
@@ -111,10 +120,43 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [fetchHealthData]);
 
+  // Auto-reconnect on app resume when previously connected
+  useEffect(() => {
+    if (!isConnected || !Capacitor.isNativePlatform()) return;
+
+    const tryReconnect = async () => {
+      try {
+        const { status } = await HealthConnect.checkAvailability();
+        if (status === "available") {
+          const { granted } = await HealthConnect.requestPermissions();
+          if (granted) {
+            await fetchHealthData();
+          } else {
+            setIsConnected(false);
+          }
+        }
+      } catch {
+        // silently fail — will retry on next resume
+      }
+    };
+
+    // Fetch immediately on mount
+    tryReconnect();
+
+    // Listen for app resume (Capacitor App plugin)
+    let removeListener: (() => void) | null = null;
+    import("@capacitor/app").then(({ App }) => {
+      App.addListener("resume", tryReconnect).then((handle) => {
+        removeListener = () => handle.remove();
+      });
+    }).catch(() => {});
+
+    return () => { removeListener?.(); };
+  }, [isConnected, fetchHealthData]);
+
   // Auto-refresh every 5 minutes when connected
   useEffect(() => {
     if (isConnected) {
-      fetchHealthData();
       intervalRef.current = setInterval(fetchHealthData, 5 * 60 * 1000);
     }
     return () => {

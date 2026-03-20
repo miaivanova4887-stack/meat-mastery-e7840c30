@@ -46,9 +46,13 @@ function bucketLabel(key: string, mode: AggMode): string {
 }
 
 /** Generate all bucket keys from rangeStart to today so the chart always extends to the current date */
-function generateAllBucketKeys(rangeDays: number, mode: AggMode): string[] {
+function generateAllBucketKeys(rangeDays: number, mode: AggMode, hasData: boolean): string[] {
   const today = new Date();
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - rangeDays);
+  today.setHours(0, 0, 0, 0); // normalize to local midnight
+
+  // If no data exists, only show buckets from today minus a small window
+  const effectiveDays = hasData ? rangeDays : Math.min(rangeDays, 7);
+  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate() - effectiveDays);
   const keys: string[] = [];
   let cursor = new Date(start);
 
@@ -66,7 +70,17 @@ function generateAllBucketKeys(rangeDays: number, mode: AggMode): string[] {
 
 const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))", rangeDays = 30, sumValues = false }: Props) => {
   const data = useMemo(() => {
-    const filtered = entries.filter((e) => e.metric === metricKey);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - rangeDays);
+
+    // Only include entries within the range
+    const filtered = entries.filter((e) => {
+      if (e.metric !== metricKey) return false;
+      const entryDate = new Date(e.recorded_at);
+      return entryDate >= rangeStart && entryDate <= new Date();
+    });
+
     const mode = getAggMode(rangeDays);
 
     // Build buckets from data
@@ -77,8 +91,9 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
       buckets.get(key)!.push(Number(e.value));
     }
 
-    // Generate all keys so the chart always extends to today
-    const allKeys = generateAllBucketKeys(rangeDays, mode);
+    // Generate all keys — only extend full range if there's actual data
+    const hasData = filtered.length > 0;
+    const allKeys = generateAllBucketKeys(rangeDays, mode, hasData);
 
     return allKeys.map((key) => {
       const values = buckets.get(key);

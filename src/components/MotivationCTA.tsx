@@ -1,16 +1,27 @@
 import { Zap, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { useUserProfile } from "@/contexts/UserProfileContext";
 
-const CALENDLY_URL = "https://calendly.com";
+const MOTIVATION_ROUTES: Record<string, { path: string }> = {
+  lose_weight: { path: "/benefits" },
+  build_muscle: { path: "/athletic" },
+  improve_health: { path: "/guide" },
+  increase_energy: { path: "/cravings" },
+  mental_clarity: { path: "/benefits" },
+};
 
 const MotivationCTA = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const profile = useUserProfile();
+
+  const route = MOTIVATION_ROUTES[profile.goal] || { path: "/guide" };
+
   return (
-    <a
-      href={CALENDLY_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block mx-4 mb-4 mt-6 relative overflow-hidden rounded-2xl border border-white/15 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-xl backdrop-saturate-150 shadow-[0_8px_32px_-8px_hsl(var(--primary)/0.15)] p-4 active:scale-[0.98] transition-all group hover:shadow-[0_8px_32px_-4px_hsl(var(--primary)/0.25)] hover:border-primary/20"
+    <button
+      onClick={() => navigate(route.path)}
+      className="block w-full text-left relative overflow-hidden rounded-2xl border border-white/15 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-xl backdrop-saturate-150 shadow-[0_8px_32px_-8px_hsl(var(--primary)/0.15)] p-4 active:scale-[0.98] transition-all group hover:shadow-[0_8px_32px_-4px_hsl(var(--primary)/0.25)] hover:border-primary/20"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-primary/[0.02] pointer-events-none rounded-2xl" />
       <div className="flex items-center gap-3.5">
@@ -25,7 +36,7 @@ const MotivationCTA = () => {
           <ChevronRight size={14} className="text-primary group-hover:translate-x-0.5 transition-transform" />
         </div>
       </div>
-    </a>
+    </button>
   );
 };
 

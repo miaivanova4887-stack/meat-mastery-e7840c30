@@ -99,7 +99,12 @@ const BarcodeScanner = () => {
         () => {} // ignore scan failures
       );
     } catch (err: any) {
-      toast.error("Camera access denied or not available");
+      const msg = String(err?.message || err || "").toLowerCase();
+      if (msg.includes("permission") || msg.includes("denied") || msg.includes("not allowed")) {
+        toast.error("Camera permission required. Please enable camera access in your device Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+      } else {
+        toast.error("Camera not available. Please check your device settings.");
+      }
       setScanning(false);
     }
   }, [stopScanner, lookupBarcode]);
