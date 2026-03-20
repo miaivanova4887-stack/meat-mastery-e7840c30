@@ -42,11 +42,17 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import { usePageViewTracker } from "./hooks/useAnalytics";
 import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 import { App as CapApp } from "@capacitor/app";
+import { useScrollToTop } from "./hooks/useScrollToTop";
 
 const queryClient = new QueryClient();
 
 function PageViewTracker() {
   usePageViewTracker();
+  return null;
+}
+
+function ScrollToTopHandler() {
+  useScrollToTop();
   return null;
 }
 
@@ -83,6 +89,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <PageViewTracker />
+            <ScrollToTopHandler />
             <BackButtonHandler />
             <Routes>
               <Route path="/onboarding" element={<Onboarding />} />
