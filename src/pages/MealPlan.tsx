@@ -367,8 +367,8 @@ const MealPlan = () => {
         added++;
       }
     }
-    if (added > 0) toast.success(`${added} items added to shopping bag`);
-    else toast("All items already in bag");
+    if (added > 0) toast.success(`${added} items added to shopping list`);
+    else toast("All items already in shopping list");
   };
 
   const inputClass = "w-full bg-secondary rounded-lg px-3 py-2 text-sm text-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30";
