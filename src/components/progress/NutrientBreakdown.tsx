@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useProgressEntries } from "@/hooks/useProgress";
-import { format } from "date-fns";
+
 
 const NutrientBreakdown = () => {
   const { data: entries = [] } = useProgressEntries("diet_trends", 1);

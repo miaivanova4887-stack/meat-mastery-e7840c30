@@ -48,14 +48,13 @@ const CategoryView = ({ category }: Props) => {
   const deleteEntry = useDeleteEntry();
 
   const currentMeta = metrics.find((m) => m.key === activeMetric) || metrics[0];
-  if (!currentMeta) return null;
-  const currentGoal = goals.find((g) => g.metric === activeMetric);
-  const metricEntries = entries.filter((e) => e.metric === activeMetric);
+  const currentGoal = currentMeta ? goals.find((g) => g.metric === activeMetric) : undefined;
+  const metricEntries = currentMeta ? entries.filter((e) => e.metric === activeMetric) : [];
   const latestValue = metricEntries.length > 0 ? Number(metricEntries[metricEntries.length - 1].value) : null;
 
-  const isMeasurement = category === "body_measurements" && ["cm", "kg"].includes(currentMeta.unit);
-  const isCm = currentMeta.unit === "cm";
-  const isKg = currentMeta.unit === "kg";
+  const isMeasurement = currentMeta && category === "body_measurements" && ["cm", "kg"].includes(currentMeta.unit);
+  const isCm = currentMeta?.unit === "cm";
+  const isKg = currentMeta?.unit === "kg";
 
   const convertVal = (v: number) => {
     if (!useImperial) return v;
@@ -65,7 +64,7 @@ const CategoryView = ({ category }: Props) => {
   };
 
   const displayUnit = () => {
-    if (!useImperial) return currentMeta.unit;
+    if (!currentMeta || !useImperial) return currentMeta?.unit || "";
     if (isCm) return "in";
     if (isKg) return "lb";
     return currentMeta.unit;
@@ -88,6 +87,8 @@ const CategoryView = ({ category }: Props) => {
   const goalPct = currentGoal && latestValue != null
     ? Math.round((latestValue / currentGoal.target_value) * 100)
     : null;
+
+  if (!currentMeta) return null;
 
   return (
     <div className="space-y-4">
