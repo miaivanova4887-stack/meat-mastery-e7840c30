@@ -8,6 +8,7 @@ export interface HealthData {
   heartRate: number;
   weight: number;
   sleep: number;
+  activeCalories: number;
 }
 
 interface HealthConnectContextType {
