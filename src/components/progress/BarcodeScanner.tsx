@@ -6,6 +6,7 @@ import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
 import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 
 interface ProductResult {
   name: string;
@@ -25,20 +26,60 @@ const BarcodeScanner = () => {
   const [quantity, setQuantity] = useState(1);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const permissionHandledRef = useRef(false);
   const addEntry = useAddEntry();
 
-  const openCameraSettings = useCallback(async () => {
+  const openCameraSettings = useCallback(async (): Promise<boolean> => {
     try {
+      if (!Capacitor.isNativePlatform()) return false;
       const openSettings = (CapacitorApp as any)?.openSettings;
       if (typeof openSettings !== "function") {
         throw new Error("openSettings_not_supported");
       }
       await openSettings.call(CapacitorApp);
+      return true;
     } catch (error) {
       console.error("Failed to open app settings for camera:", error);
-      toast.error("Please enable camera in Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
+      return false;
     }
   }, []);
+
+  const handleCameraBlocked = useCallback(async () => {
+    if (permissionHandledRef.current) return;
+    permissionHandledRef.current = true;
+    const opened = await openCameraSettings();
+    toast.error(
+      opened
+        ? "Camera permission is blocked. Enable it in app settings, then return."
+        : "Please enable camera in Settings → Apps → Carnivore Coach → Permissions.",
+      { duration: 6000 }
+    );
+  }, [openCameraSettings]);
+
+  const ensureCameraPermission = useCallback(async (): Promise<boolean> => {
+    if (!navigator.mediaDevices?.getUserMedia) return true;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+      });
+      stream.getTracks().forEach((track) => track.stop());
+      return true;
+    } catch (error: any) {
+      const msg = String(error?.message || error || "").toLowerCase();
+      if (
+        msg.includes("permission") ||
+        msg.includes("denied") ||
+        msg.includes("notallowederror") ||
+        msg.includes("not allowed")
+      ) {
+        await handleCameraBlocked();
+      } else {
+        toast.error("Camera not available. Please check your device settings.");
+      }
+      return false;
+    }
+  }, [handleCameraBlocked]);
 
   const stopScanner = useCallback(async () => {
     try {
@@ -93,6 +134,13 @@ const BarcodeScanner = () => {
   }, []);
 
   const startScanner = useCallback(async () => {
+    permissionHandledRef.current = false;
+    const hasPermission = await ensureCameraPermission();
+    if (!hasPermission) {
+      setScanning(false);
+      return;
+    }
+
     setScanning(true);
     setResult(null);
 
@@ -110,19 +158,34 @@ const BarcodeScanner = () => {
           await stopScanner();
           lookupBarcode(decodedText);
         },
-        () => {} // ignore scan failures
+        async (scanError) => {
+          const msg = String(scanError || "").toLowerCase();
+          if (
+            msg.includes("permission") ||
+            msg.includes("denied") ||
+            msg.includes("notallowederror") ||
+            msg.includes("not allowed")
+          ) {
+            await stopScanner();
+            await handleCameraBlocked();
+          }
+        }
       );
     } catch (err: any) {
       const msg = String(err?.message || err || "").toLowerCase();
-      if (msg.includes("permission") || msg.includes("denied") || msg.includes("not allowed")) {
-        toast.error("Camera permission is blocked. Opening app settings…", { duration: 3500 });
-        void openCameraSettings();
+      if (
+        msg.includes("permission") ||
+        msg.includes("denied") ||
+        msg.includes("notallowederror") ||
+        msg.includes("not allowed")
+      ) {
+        await handleCameraBlocked();
       } else {
         toast.error("Camera not available. Please check your device settings.");
       }
       setScanning(false);
     }
-  }, [stopScanner, lookupBarcode, openCameraSettings]);
+  }, [ensureCameraPermission, stopScanner, lookupBarcode, handleCameraBlocked]);
 
   const logToProgress = useCallback(() => {
     if (!result) return;
