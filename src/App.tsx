@@ -83,6 +83,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <PageViewTracker />
+            <BackButtonHandler />
             <Routes>
               <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/" element={<Index />} />
