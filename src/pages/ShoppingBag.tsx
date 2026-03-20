@@ -16,7 +16,7 @@ const ShoppingBag = () => {
           <ArrowLeft size={20} />
         </button>
         <BagIcon size={20} className="text-primary" />
-        <h1 className="text-lg font-display font-bold">Shopping Bag</h1>
+        <h1 className="text-lg font-display font-bold">Shopping list</h1>
         <span className="ml-auto text-xs text-muted-foreground">{count} item{count !== 1 ? "s" : ""}</span>
       </div>
 
@@ -41,7 +41,7 @@ const ShoppingBag = () => {
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
           <BagIcon size={48} className="text-muted-foreground/30 mb-4" />
-          <p className="text-muted-foreground font-display font-bold text-lg mb-1">Your bag is empty</p>
+          <p className="text-muted-foreground font-display font-bold text-lg mb-1">Your shopping list is empty</p>
           <p className="text-sm text-muted-foreground/70 mb-6">Add ingredients from the Approved Ingredients list</p>
           <Button variant="outline" onClick={() => navigate("/ingredients")}>
             Browse Ingredients
@@ -100,7 +100,7 @@ const ShoppingBag = () => {
           <div className="pt-4">
             <Button variant="destructive" className="w-full gap-2" onClick={clearBag}>
               <Trash2 size={16} />
-              Clear Bag
+              Clear Shopping List
             </Button>
           </div>
         </div>
