@@ -70,6 +70,7 @@ export const useVoiceCapture = ({
   const webRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const nativeListenersRef = useRef<ListenerHandle[]>([]);
   const nativeStartPromiseRef = useRef<Promise<any> | null>(null);
+  const nativeStoppedWaitRef = useRef<{ promise: Promise<void>; resolve: () => void } | null>(null);
   const transcriptRef = useRef("");
 
   const isNative = Capacitor.isNativePlatform();
@@ -95,6 +96,11 @@ export const useVoiceCapture = ({
         // ignore native stop errors
       }
 
+      const nativeStoppedWait = nativeStoppedWaitRef.current?.promise;
+      if (nativeStoppedWait) {
+        await Promise.race([nativeStoppedWait, new Promise((resolve) => setTimeout(resolve, 1200))]);
+      }
+
       const pendingStart = nativeStartPromiseRef.current;
       if (pendingStart) {
         await Promise.race([
@@ -104,6 +110,7 @@ export const useVoiceCapture = ({
       }
 
       await cleanupNativeListeners();
+      nativeStoppedWaitRef.current = null;
     } else {
       webRecognitionRef.current?.stop();
     }
@@ -129,13 +136,28 @@ export const useVoiceCapture = ({
 
     await cleanupNativeListeners();
     setTranscriptSafe("");
+
+    let resolveStopped = () => {};
+    const stoppedPromise = new Promise<void>((resolve) => {
+      resolveStopped = resolve;
+    });
+    nativeStoppedWaitRef.current = { promise: stoppedPromise, resolve: resolveStopped };
+
     const listeningStateHandle = await SpeechRecognition.addListener("listeningState", ({ status }: any) => {
       if (status === "stopped") {
+        nativeStoppedWaitRef.current?.resolve();
         setListening(false);
       }
     });
 
-    nativeListenersRef.current = [listeningStateHandle];
+    const partialResultsHandle = await SpeechRecognition.addListener("partialResults", (payload: any) => {
+      const partialMatch = extractFirstMatch(payload);
+      if (partialMatch) {
+        setTranscriptSafe(partialMatch);
+      }
+    });
+
+    nativeListenersRef.current = [listeningStateHandle, partialResultsHandle];
 
     setListening(true);
 
@@ -144,7 +166,7 @@ export const useVoiceCapture = ({
         SpeechRecognition.start({
           ...(languageOverride ? { language: languageOverride } : {}),
           maxResults: 5,
-          partialResults: false,
+          partialResults: true,
           popup: false,
           prompt: "Speak now",
         });
@@ -181,7 +203,6 @@ export const useVoiceCapture = ({
         })
         .finally(() => {
           nativeStartPromiseRef.current = null;
-          setListening(false);
         });
     } catch (error) {
       if (messageIncludesPermissionBlock(error)) {
