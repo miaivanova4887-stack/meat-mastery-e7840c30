@@ -1,15 +1,16 @@
 import { useMemo } from "react";
 import { useProgressEntries } from "@/hooks/useProgress";
-import { format } from "date-fns";
+
 
 const NutrientBreakdown = () => {
   const { data: entries = [] } = useProgressEntries("diet_trends", 1);
 
   const today = useMemo(() => {
-    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const todayEntries = entries.filter((e) => {
-      // Convert UTC recorded_at to local date for accurate comparison
-      const localDate = format(new Date(e.recorded_at), "yyyy-MM-dd");
+      const d = new Date(e.recorded_at);
+      const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       return localDate === todayStr;
     });
 

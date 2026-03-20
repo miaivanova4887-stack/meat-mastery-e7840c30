@@ -48,14 +48,13 @@ const CategoryView = ({ category }: Props) => {
   const deleteEntry = useDeleteEntry();
 
   const currentMeta = metrics.find((m) => m.key === activeMetric) || metrics[0];
-  if (!currentMeta) return null;
-  const currentGoal = goals.find((g) => g.metric === activeMetric);
-  const metricEntries = entries.filter((e) => e.metric === activeMetric);
+  const currentGoal = currentMeta ? goals.find((g) => g.metric === activeMetric) : undefined;
+  const metricEntries = currentMeta ? entries.filter((e) => e.metric === activeMetric) : [];
   const latestValue = metricEntries.length > 0 ? Number(metricEntries[metricEntries.length - 1].value) : null;
 
-  const isMeasurement = category === "body_measurements" && ["cm", "kg"].includes(currentMeta.unit);
-  const isCm = currentMeta.unit === "cm";
-  const isKg = currentMeta.unit === "kg";
+  const isMeasurement = currentMeta && category === "body_measurements" && ["cm", "kg"].includes(currentMeta.unit);
+  const isCm = currentMeta?.unit === "cm";
+  const isKg = currentMeta?.unit === "kg";
 
   const convertVal = (v: number) => {
     if (!useImperial) return v;
@@ -65,19 +64,31 @@ const CategoryView = ({ category }: Props) => {
   };
 
   const displayUnit = () => {
-    if (!useImperial) return currentMeta.unit;
+    if (!currentMeta || !useImperial) return currentMeta?.unit || "";
     if (isCm) return "in";
     if (isKg) return "lb";
     return currentMeta.unit;
   };
 
-  const avg = metricEntries.length > 0
-    ? Math.round(convertVal(metricEntries.reduce((s, e) => s + Number(e.value), 0) / metricEntries.length) * 10) / 10
-    : null;
+  // Compute daily average: sum per local day, then average across days
+  const avg = useMemo(() => {
+    if (metricEntries.length === 0) return null;
+    const dailyMap = new Map<string, number>();
+    for (const e of metricEntries) {
+      const d = new Date(e.recorded_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      dailyMap.set(key, (dailyMap.get(key) || 0) + Number(e.value));
+    }
+    const dailyTotals = Array.from(dailyMap.values());
+    const rawAvg = dailyTotals.reduce((s, v) => s + v, 0) / dailyTotals.length;
+    return Math.round(convertVal(rawAvg) * 10) / 10;
+  }, [metricEntries, useImperial]);
 
   const goalPct = currentGoal && latestValue != null
     ? Math.round((latestValue / currentGoal.target_value) * 100)
     : null;
+
+  if (!currentMeta) return null;
 
   return (
     <div className="space-y-4">

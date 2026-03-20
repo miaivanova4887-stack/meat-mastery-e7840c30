@@ -74,7 +74,10 @@ export const CATEGORY_META: Record<ProgressCategory, { label: string; icon: stri
 
 export function useProgressEntries(category: ProgressCategory, days = 30) {
   const { user } = useAuth();
-  const since = new Date(Date.now() - days * 86400000).toISOString();
+  // Use local midnight to avoid UTC date-shift issues
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+  const since = start.toISOString();
 
   return useQuery({
     queryKey: ["progress-entries", category, days, user?.id],

@@ -21,19 +21,27 @@ function getAggMode(days: number): AggMode {
   return "monthly";
 }
 
+function toLocalDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function bucketKey(date: Date, mode: AggMode): string {
-  if (mode === "daily") return format(date, "yyyy-MM-dd");
-  if (mode === "weekly") return format(startOfWeek(date, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  if (mode === "daily") return toLocalDateStr(date);
+  if (mode === "weekly") return toLocalDateStr(startOfWeek(date, { weekStartsOn: 1 }));
   return format(startOfMonth(date), "yyyy-MM");
 }
 
+function parseDateKey(key: string): Date {
+  const parts = key.split("-").map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2] || 1);
+}
+
 function bucketLabel(key: string, mode: AggMode): string {
-  if (mode === "monthly") {
-    const [y, m] = key.split("-");
-    return format(new Date(Number(y), Number(m) - 1), "MMM yy");
-  }
-  const d = new Date(key + "T00:00:00");
-  if (mode === "weekly") return format(d, "MMM dd");
+  const d = parseDateKey(key);
+  if (mode === "monthly") return format(d, "MMM yy");
   return format(d, "MMM dd");
 }
 
