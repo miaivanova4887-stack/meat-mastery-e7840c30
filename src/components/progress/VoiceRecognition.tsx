@@ -42,7 +42,6 @@ const VoiceRecognition = () => {
     resetTranscript,
     getTranscript,
   } = useVoiceCapture({
-    language: "en-US",
     onPermissionBlocked: () => {
       toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
       void openMicrophoneSettings();

@@ -23,6 +23,11 @@ interface UseVoiceCaptureOptions {
   onError?: (message: string) => void;
 }
 
+const isNoSpeechError = (value: unknown) => {
+  const msg = String(value || "").toLowerCase();
+  return msg.includes("no match") || msg.includes("no-speech") || msg.includes("speech timeout");
+};
+
 const messageIncludesPermissionBlock = (value: unknown) => {
   const msg = String(value || "").toLowerCase();
   return (
@@ -56,7 +61,7 @@ const extractFirstMatch = (payload: any): string => {
 };
 
 export const useVoiceCapture = ({
-  language = "en-US",
+  language = typeof navigator !== "undefined" ? navigator.language || "en-US" : "en-US",
   onPermissionBlocked,
   onError,
 }: UseVoiceCaptureOptions = {}) => {
@@ -65,8 +70,6 @@ export const useVoiceCapture = ({
   const webRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const nativeListenersRef = useRef<ListenerHandle[]>([]);
   const nativeStartPromiseRef = useRef<Promise<any> | null>(null);
-  const nativeResultPromiseRef = useRef<Promise<void> | null>(null);
-  const nativeResultResolveRef = useRef<(() => void) | null>(null);
   const transcriptRef = useRef("");
 
   const isNative = Capacitor.isNativePlatform();
@@ -84,17 +87,6 @@ export const useVoiceCapture = ({
 
   const getTranscript = useCallback(() => transcriptRef.current, []);
 
-  const beginNativeResultWait = useCallback(() => {
-    nativeResultPromiseRef.current = new Promise<void>((resolve) => {
-      nativeResultResolveRef.current = resolve;
-    });
-  }, []);
-
-  const finishNativeResultWait = useCallback(() => {
-    nativeResultResolveRef.current?.();
-    nativeResultResolveRef.current = null;
-  }, []);
-
   const stopListening = useCallback(async () => {
     if (isNative) {
       try {
@@ -103,11 +95,11 @@ export const useVoiceCapture = ({
         // ignore native stop errors
       }
 
-      const pendingResult = nativeResultPromiseRef.current;
-      if (pendingResult) {
+      const pendingStart = nativeStartPromiseRef.current;
+      if (pendingStart) {
         await Promise.race([
-          pendingResult,
-          new Promise((resolve) => setTimeout(resolve, 2500)),
+          pendingStart.catch(() => undefined),
+          new Promise((resolve) => setTimeout(resolve, 5000)),
         ]);
       }
 
@@ -137,35 +129,37 @@ export const useVoiceCapture = ({
 
     await cleanupNativeListeners();
     setTranscriptSafe("");
-    beginNativeResultWait();
-
-    const partialResultsHandle = await SpeechRecognition.addListener("partialResults", (data: any) => {
-      const firstMatch = extractFirstMatch(data);
-
-      if (firstMatch) {
-        setTranscriptSafe(firstMatch);
-      }
-    });
-
     const listeningStateHandle = await SpeechRecognition.addListener("listeningState", ({ status }: any) => {
       if (status === "stopped") {
         setListening(false);
-        setTimeout(() => finishNativeResultWait(), 120);
       }
     });
 
-    nativeListenersRef.current = [partialResultsHandle, listeningStateHandle];
+    nativeListenersRef.current = [listeningStateHandle];
 
     setListening(true);
 
     try {
-      const startPromise = SpeechRecognition.start({
-        language,
-        maxResults: 5,
-        partialResults: true,
-        popup: false,
-        prompt: "Speak now",
-      });
+      const createStartPromise = (languageOverride?: string) =>
+        SpeechRecognition.start({
+          ...(languageOverride ? { language: languageOverride } : {}),
+          maxResults: 5,
+          partialResults: false,
+          popup: false,
+          prompt: "Speak now",
+        });
+
+      const startPromise = (async () => {
+        try {
+          return await createStartPromise(language);
+        } catch (error) {
+          const message = String(error || "").toLowerCase();
+          if (message.includes("language")) {
+            return await createStartPromise();
+          }
+          throw error;
+        }
+      })();
 
       nativeStartPromiseRef.current = startPromise;
 
@@ -179,6 +173,8 @@ export const useVoiceCapture = ({
         .catch((error: any) => {
           if (messageIncludesPermissionBlock(error)) {
             onPermissionBlocked?.();
+          } else if (isNoSpeechError(error)) {
+            onError?.("I couldn’t recognize speech. Please speak clearly and try again.");
           } else {
             onError?.("Microphone couldn't detect speech. Please try again.");
           }
@@ -186,25 +182,23 @@ export const useVoiceCapture = ({
         .finally(() => {
           nativeStartPromiseRef.current = null;
           setListening(false);
-          finishNativeResultWait();
         });
     } catch (error) {
       if (messageIncludesPermissionBlock(error)) {
         onPermissionBlocked?.();
+      } else if (isNoSpeechError(error)) {
+        onError?.("I couldn’t recognize speech. Please speak clearly and try again.");
       } else {
         onError?.("Microphone failed to start. Please try again.");
       }
       setListening(false);
-      finishNativeResultWait();
       await cleanupNativeListeners();
       return false;
     }
 
     return true;
   }, [
-    beginNativeResultWait,
     cleanupNativeListeners,
-    finishNativeResultWait,
     language,
     onError,
     onPermissionBlocked,
