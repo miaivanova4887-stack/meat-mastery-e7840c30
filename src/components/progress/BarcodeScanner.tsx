@@ -30,12 +30,12 @@ const BarcodeScanner = () => {
   const openCameraSettings = useCallback(async () => {
     try {
       const openSettings = (CapacitorApp as any)?.openSettings;
-      if (typeof openSettings === "function") {
-        await openSettings();
-      } else {
+      if (typeof openSettings !== "function") {
         throw new Error("openSettings_not_supported");
       }
-    } catch {
+      await openSettings.call(CapacitorApp);
+    } catch (error) {
+      console.error("Failed to open app settings for camera:", error);
       toast.error("Please enable camera in Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
     }
   }, []);
