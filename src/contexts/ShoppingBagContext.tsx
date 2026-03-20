@@ -117,7 +117,7 @@ export const ShoppingBagProvider: React.FC<{ children: React.ReactNode }> = ({ c
             : i
         );
       }
-      toast.success(`${name} added to bag`);
+      toast.success(`${name} added to shopping list`);
       return [...prev, { name, quantity, unit }];
     });
   }, []);
@@ -128,7 +128,7 @@ export const ShoppingBagProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const clearBag = useCallback(() => {
     setItems([]);
-    toast("Bag cleared");
+    toast("Shopping list cleared");
   }, []);
 
   const hasItem = useCallback((name: string) => items.some(i => i.name.toLowerCase() === name.toLowerCase()), [items]);
