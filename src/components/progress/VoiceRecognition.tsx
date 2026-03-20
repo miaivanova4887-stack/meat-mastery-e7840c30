@@ -40,6 +40,7 @@ const VoiceRecognition = () => {
     startListening,
     stopListening,
     resetTranscript,
+    getTranscript,
   } = useVoiceCapture({
     language: "en-US",
     onPermissionBlocked: () => {
@@ -58,7 +59,9 @@ const VoiceRecognition = () => {
   const stopAndProcess = useCallback(async () => {
     await stopListening();
 
-    if (!transcript.trim()) {
+    const capturedTranscript = getTranscript().trim();
+
+    if (!capturedTranscript) {
       toast.error("I couldn’t recognize speech. Please speak clearly and try again.");
       return;
     }
@@ -66,7 +69,7 @@ const VoiceRecognition = () => {
     setProcessing(true);
     try {
       const { data, error } = await supabase.functions.invoke("voice-log", {
-        body: { transcript: transcript.trim() },
+        body: { transcript: capturedTranscript },
       });
 
       if (error) throw error;
@@ -78,7 +81,7 @@ const VoiceRecognition = () => {
     } finally {
       setProcessing(false);
     }
-  }, [stopListening, transcript]);
+  }, [getTranscript, stopListening]);
 
   const logEntries = useCallback(async () => {
     if (!parsedResult?.entries?.length) return;
@@ -91,7 +94,7 @@ const VoiceRecognition = () => {
             metric: e.metric,
             value: e.value,
             unit: e.unit,
-            notes: e.notes || `[voice] ${transcript.slice(0, 80)}`,
+            notes: e.notes || `[voice] ${getTranscript().slice(0, 80)}`,
             recorded_at: now,
           })
         )
@@ -102,7 +105,7 @@ const VoiceRecognition = () => {
     } catch {
       toast.error("Failed to log entries");
     }
-  }, [parsedResult, addEntry, transcript, resetTranscript]);
+  }, [parsedResult, addEntry, getTranscript, resetTranscript]);
 
   return (
     <div className="space-y-3">
