@@ -109,7 +109,7 @@ const Progress = () => {
               <p className="text-[13px] font-bold text-foreground">Health Connect Synced</p>
               <span className="text-[10px] text-muted-foreground ml-auto">Auto-refreshing</span>
             </div>
-            <div className="relative grid grid-cols-3 gap-2">
+            <div className="relative grid grid-cols-4 gap-2">
               <div className="bg-muted rounded-lg p-3 text-center">
                 <Footprints size={16} className="mx-auto text-primary mb-1" />
                 <p className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</p>
@@ -126,6 +126,13 @@ const Progress = () => {
                   {healthData.weight ? `${healthData.weight.toFixed(1)}` : "—"}
                 </p>
                 <p className="text-[10px] text-muted-foreground">kg</p>
+              </div>
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <Flame size={16} className="mx-auto text-orange-500 mb-1" />
+                <p className="text-lg font-bold text-foreground">
+                  {healthData.activeCalories ? Math.round(healthData.activeCalories) : "—"}
+                </p>
+                <p className="text-[10px] text-muted-foreground">kcal</p>
               </div>
             </div>
           </div>
