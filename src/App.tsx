@@ -1,8 +1,9 @@
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ShoppingBagProvider } from "./contexts/ShoppingBagContext";
 import { UserProfileProvider } from "./contexts/UserProfileContext";
@@ -40,11 +41,33 @@ import AdminNotifications from "./pages/AdminNotifications";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import { usePageViewTracker } from "./hooks/useAnalytics";
 import { HealthConnectProvider } from "./contexts/HealthConnectContext";
+import { App as CapApp } from "@capacitor/app";
 
 const queryClient = new QueryClient();
 
 function PageViewTracker() {
   usePageViewTracker();
+  return null;
+}
+
+/** Handles Android hardware back button for in-app navigation */
+function BackButtonHandler() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const listener = CapApp.addListener("backButton", ({ canGoBack }) => {
+      if (location.pathname === "/" || location.pathname === "/onboarding") {
+        CapApp.exitApp();
+      } else if (canGoBack) {
+        navigate(-1);
+      } else {
+        navigate("/");
+      }
+    });
+    return () => { listener.then(h => h.remove()); };
+  }, [navigate, location.pathname]);
+
   return null;
 }
 
