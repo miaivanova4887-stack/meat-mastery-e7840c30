@@ -313,6 +313,7 @@ class HealthConnectPlugin : Plugin() {
                 if (granted.contains(totalPermission)) {
                     var resolvedTotalKcal: Double? = null
                     var resolvedSource = ""
+                    var discoveredOriginsList = listOf<String>()
 
                     try {
                         val totalRecordsResponse = client.readRecords(
@@ -322,14 +323,14 @@ class HealthConnectPlugin : Plugin() {
                             )
                         )
 
-                        val discoveredOrigins = totalRecordsResponse.records
+                        discoveredOriginsList = totalRecordsResponse.records
                             .map { it.metadata.dataOrigin.packageName }
                             .filter { it.isNotBlank() }
                             .distinct()
 
-                        val preferredOrigin = discoveredOrigins.firstOrNull {
+                        val preferredOrigin = discoveredOriginsList.firstOrNull {
                             it.contains("shealth", ignoreCase = true)
-                        } ?: discoveredOrigins.sorted().firstOrNull()
+                        } ?: discoveredOriginsList.sorted().firstOrNull()
 
                         if (preferredOrigin != null) {
                             val scopedAggregate = client.aggregate(
@@ -361,19 +362,19 @@ class HealthConnectPlugin : Plugin() {
 
                         Log.d(
                             tag,
-                            "Total calories origin resolution: discovered=${discoveredOrigins.joinToString()} selected=$resolvedSource value=${resolvedTotalKcal ?: 0.0}"
+                            "Total calories origin resolution: discovered=${discoveredOriginsList.joinToString()} selected=$resolvedSource value=${resolvedTotalKcal ?: 0.0}"
                         )
                     } catch (e: Exception) {
                         Log.w(tag, "Total calories origin resolution failed", e)
                     }
 
-                if (resolvedTotalKcal != null && resolvedTotalKcal > 0.0) {
+                    if (resolvedTotalKcal != null && resolvedTotalKcal > 0.0) {
                         val obj = JSObject()
                         obj.put("value", resolvedTotalKcal)
                         obj.put("unit", "kcal")
                         obj.put("timestamp", endTime.toString())
                         obj.put("debugSource", resolvedSource)
-                        obj.put("debugOrigins", discoveredOrigins.joinToString(", "))
+                        obj.put("debugOrigins", discoveredOriginsList.joinToString(", "))
                         records.put(obj)
                         Log.d(tag, "Total calories (single deterministic source=$resolvedSource): $resolvedTotalKcal kcal")
                     }
