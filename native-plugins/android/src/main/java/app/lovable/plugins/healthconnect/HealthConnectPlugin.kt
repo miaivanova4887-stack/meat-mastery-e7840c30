@@ -12,6 +12,7 @@ import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import com.getcapacitor.JSArray
@@ -37,11 +38,11 @@ class HealthConnectPlugin : Plugin() {
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(WeightRecord::class),
-        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
     )
 
     private val optionalPermissions = setOf(
-        HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
     )
 
     private val requestedPermissions = requiredPermissions + optionalPermissions
@@ -306,29 +307,58 @@ class HealthConnectPlugin : Plugin() {
             try {
                 val records = JSArray()
                 var caloriesReadError: Exception? = null
+                val totalPermission = HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class)
+                val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
+                val granted = client.permissionController.getGrantedPermissions()
+
+                fun putRecord(valueKcal: Double, timestamp: String) {
+                    val obj = JSObject()
+                    obj.put("value", valueKcal)
+                    obj.put("unit", "kcal")
+                    obj.put("timestamp", timestamp)
+                    records.put(obj)
+                }
 
                 // Read TOTAL calories first (includes BMR + active — matches Samsung Health "Total burnt calories")
-                try {
-                    val totalRequest = ReadRecordsRequest(
-                        recordType = TotalCaloriesBurnedRecord::class,
-                        timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                    )
-                    val totalResponse = client.readRecords(totalRequest)
+                if (granted.contains(totalPermission)) {
+                    try {
+                        val totalAggregate = client.aggregate(
+                            AggregateRequest(
+                                metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                            )
+                        )
 
-                    for (record in totalResponse.records) {
-                        val obj = JSObject()
-                        obj.put("value", record.energy.inKilocalories)
-                        obj.put("unit", "kcal")
-                        obj.put("timestamp", record.endTime.toString())
-                        records.put(obj)
+                        val total = totalAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]
+                        if (total != null && total.inKilocalories > 0.0) {
+                            putRecord(total.inKilocalories, endTime.toString())
+                        }
+                    } catch (e: Exception) {
+                        caloriesReadError = e
+                        Log.w(tag, "Total calories aggregate read failed", e)
                     }
-                } catch (e: Exception) {
-                    caloriesReadError = e
-                    Log.w(tag, "Total calories read failed", e)
+
+                    // Some providers surface better interval data through readRecords, keep as fallback.
+                    if (records.length() == 0) {
+                        try {
+                            val totalRequest = ReadRecordsRequest(
+                                recordType = TotalCaloriesBurnedRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                            )
+                            val totalResponse = client.readRecords(totalRequest)
+
+                            for (record in totalResponse.records) {
+                                putRecord(record.energy.inKilocalories, record.endTime.toString())
+                            }
+                        } catch (e: Exception) {
+                            if (caloriesReadError == null) caloriesReadError = e
+                            Log.w(tag, "Total calories record read failed", e)
+                        }
+                    }
                 }
 
                 // Fallback to active-only calories if total returned nothing
-                if (records.length() == 0) {
+                if (records.length() == 0 && granted.contains(activePermission)) {
                     try {
                         val activeRequest = ReadRecordsRequest(
                             recordType = ActiveCaloriesBurnedRecord::class,
@@ -337,11 +367,7 @@ class HealthConnectPlugin : Plugin() {
                         val activeResponse = client.readRecords(activeRequest)
 
                         for (record in activeResponse.records) {
-                            val obj = JSObject()
-                            obj.put("value", record.energy.inKilocalories)
-                            obj.put("unit", "kcal")
-                            obj.put("timestamp", record.endTime.toString())
-                            records.put(obj)
+                            putRecord(record.energy.inKilocalories, record.endTime.toString())
                         }
                     } catch (e: Exception) {
                         if (caloriesReadError == null) caloriesReadError = e
