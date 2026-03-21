@@ -119,6 +119,8 @@ export const useVoiceCapture = ({
   }, [cleanupNativeListeners, isNative]);
 
   const startNativeListening = useCallback(async () => {
+    const usePopup = Capacitor.getPlatform() === "android";
+
     const available = await SpeechRecognition.available();
     if (!available?.available) {
       onError?.("Voice recognition is not available on this device.");
@@ -150,14 +152,19 @@ export const useVoiceCapture = ({
       }
     });
 
-    const partialResultsHandle = await SpeechRecognition.addListener("partialResults", (payload: any) => {
-      const partialMatch = extractFirstMatch(payload);
-      if (partialMatch) {
-        setTranscriptSafe(partialMatch);
-      }
-    });
+    const listenerHandles: ListenerHandle[] = [listeningStateHandle];
 
-    nativeListenersRef.current = [listeningStateHandle, partialResultsHandle];
+    if (!usePopup) {
+      const partialResultsHandle = await SpeechRecognition.addListener("partialResults", (payload: any) => {
+        const partialMatch = extractFirstMatch(payload);
+        if (partialMatch) {
+          setTranscriptSafe(partialMatch);
+        }
+      });
+      listenerHandles.push(partialResultsHandle);
+    }
+
+    nativeListenersRef.current = listenerHandles;
 
     setListening(true);
 
@@ -166,8 +173,8 @@ export const useVoiceCapture = ({
         SpeechRecognition.start({
           ...(languageOverride ? { language: languageOverride } : {}),
           maxResults: 5,
-          partialResults: true,
-          popup: false,
+          partialResults: !usePopup,
+          popup: usePopup,
           prompt: "Speak now",
         });
 
