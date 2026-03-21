@@ -311,90 +311,69 @@ class HealthConnectPlugin : Plugin() {
                 val totalPermission = HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class)
 
                 if (granted.contains(totalPermission)) {
-                    // Prefer one trusted origin only (never sum across all origins) to avoid double counting.
-                    val preferredOrigins = listOf(
-                        "com.sec.android.app.shealth"
-                    )
-
                     var resolvedTotalKcal: Double? = null
                     var resolvedSource = ""
-                    val originTotals = linkedMapOf<String, Double>()
 
-                    for (packageName in preferredOrigins) {
-                        try {
+                    try {
+                        val totalRecordsResponse = client.readRecords(
+                            ReadRecordsRequest(
+                                recordType = TotalCaloriesBurnedRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                            )
+                        )
+
+                        val discoveredOrigins = totalRecordsResponse.records
+                            .map { it.metadata.dataOrigin.packageName }
+                            .filter { it.isNotBlank() }
+                            .distinct()
+
+                        val preferredOrigin = discoveredOrigins.firstOrNull {
+                            it.contains("shealth", ignoreCase = true)
+                        } ?: discoveredOrigins.sorted().firstOrNull()
+
+                        if (preferredOrigin != null) {
                             val scopedAggregate = client.aggregate(
                                 AggregateRequest(
                                     metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
                                     timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                    dataOriginFilter = setOf(DataOrigin(packageName))
+                                    dataOriginFilter = setOf(DataOrigin(preferredOrigin))
                                 )
                             )
 
                             val scopedTotal = scopedAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
                             if (scopedTotal != null && scopedTotal > 0.0) {
-                                originTotals[packageName] = scopedTotal
                                 resolvedTotalKcal = scopedTotal
-                                resolvedSource = packageName
-                                break
+                                resolvedSource = preferredOrigin
                             }
-                        } catch (e: Exception) {
-                            Log.w(tag, "Scoped total calories aggregate failed for $packageName", e)
-                        }
-                    }
-
-                    if (resolvedTotalKcal == null) {
-                        try {
-                            val totalRecordsResponse = client.readRecords(
-                                ReadRecordsRequest(
-                                    recordType = TotalCaloriesBurnedRecord::class,
+                        } else {
+                            val globalAggregate = client.aggregate(
+                                AggregateRequest(
+                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
                                     timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                                 )
                             )
-
-                            val discoveredOrigins = totalRecordsResponse.records
-                                .map { it.metadata.dataOrigin.packageName }
-                                .filter { it.isNotBlank() }
-                                .distinct()
-
-                            for (packageName in discoveredOrigins) {
-                                try {
-                                    val scopedAggregate = client.aggregate(
-                                        AggregateRequest(
-                                            metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                                            timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                            dataOriginFilter = setOf(DataOrigin(packageName))
-                                        )
-                                    )
-
-                                    val scopedTotal = scopedAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
-                                    if (scopedTotal != null && scopedTotal > 0.0) {
-                                        originTotals[packageName] = scopedTotal
-                                    }
-                                } catch (e: Exception) {
-                                    Log.w(tag, "Origin aggregate failed for $packageName", e)
-                                }
+                            val globalTotal = globalAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
+                            if (globalTotal != null && globalTotal > 0.0) {
+                                resolvedTotalKcal = globalTotal
+                                resolvedSource = "global"
                             }
-
-                            val bestOrigin = originTotals.maxByOrNull { it.value }
-                            if (bestOrigin != null) {
-                                resolvedTotalKcal = bestOrigin.value
-                                resolvedSource = bestOrigin.key
-                            }
-                        } catch (e: Exception) {
-                            Log.w(tag, "Failed to resolve total calories by origin", e)
                         }
+
+                        Log.d(
+                            tag,
+                            "Total calories origin resolution: discovered=${discoveredOrigins.joinToString()} selected=$resolvedSource value=${resolvedTotalKcal ?: 0.0}"
+                        )
+                    } catch (e: Exception) {
+                        Log.w(tag, "Total calories origin resolution failed", e)
                     }
 
-                    if (resolvedTotalKcal != null) {
+                    if (resolvedTotalKcal != null && resolvedTotalKcal > 0.0) {
                         val obj = JSObject()
                         obj.put("value", resolvedTotalKcal)
                         obj.put("unit", "kcal")
                         obj.put("timestamp", endTime.toString())
                         records.put(obj)
-                        if (originTotals.isNotEmpty()) {
-                            Log.d(tag, "Total calories by origin: ${originTotals.entries.joinToString { "${it.key}=${it.value}" }}")
-                        }
-                        Log.d(tag, "Total calories (single-origin, source=$resolvedSource): $resolvedTotalKcal kcal")
+                        Log.d(tag, "Total calories (single deterministic source=$resolvedSource): $resolvedTotalKcal kcal")
                     }
                 }
 
