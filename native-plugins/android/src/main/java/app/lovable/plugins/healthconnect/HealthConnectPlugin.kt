@@ -53,13 +53,26 @@ class HealthConnectPlugin : Plugin() {
             if (componentActivity != null) {
                 permissionLauncher = componentActivity.registerForActivityResult(
                     PermissionController.createRequestPermissionResultContract()
-                ) { granted ->
+                ) { _ ->
                     val call = pendingPermissionCall ?: return@registerForActivityResult
                     pendingPermissionCall = null
 
-                    val result = JSObject()
-                    result.put("granted", granted.containsAll(requiredPermissions))
-                    call.resolve(result)
+                    CoroutineScope(Dispatchers.Main).launch {
+                        try {
+                            val client = healthConnectClient ?: HealthConnectClient.getOrCreate(context).also {
+                                healthConnectClient = it
+                            }
+                            val latestGranted = client.permissionController.getGrantedPermissions()
+
+                            val result = JSObject()
+                            result.put("granted", latestGranted.containsAll(requiredPermissions))
+                            result.put("grantedCount", latestGranted.size)
+                            call.resolve(result)
+                        } catch (e: Exception) {
+                            Log.e(tag, "Failed to verify permissions after request", e)
+                            call.reject("Permission verification failed: ${e.message}")
+                        }
+                    }
                 }
             } else {
                 Log.w(tag, "Activity is not a ComponentActivity — permission launcher unavailable")
@@ -137,6 +150,7 @@ class HealthConnectPlugin : Plugin() {
                 if (granted.containsAll(requiredPermissions)) {
                     val result = JSObject()
                     result.put("granted", true)
+                    result.put("grantedCount", granted.size)
                     call.resolve(result)
                     return@launch
                 }
