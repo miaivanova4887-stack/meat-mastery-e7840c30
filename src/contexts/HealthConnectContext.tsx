@@ -16,6 +16,12 @@ export interface HealthData {
   };
 }
 
+const defaultCalorieDebug: NonNullable<HealthData["calorieDebug"]> = {
+  source: "pending",
+  origins: "pending",
+  rawValue: 0,
+};
+
 interface HealthConnectContextType {
   healthData: HealthData;
   isConnected: boolean;
@@ -37,7 +43,7 @@ const HC_CONNECTED_KEY = "carnivore-hc-connected";
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
-    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0,
+    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0, calorieDebug: defaultCalorieDebug,
   });
   const [isConnected, setIsConnected] = useState(() => {
     try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
@@ -75,17 +81,28 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         if (weightResult.records.length > 0) weight = weightResult.records[weightResult.records.length - 1].value;
       } catch (e) { console.warn("Failed to read weight:", e); }
 
-      let calorieDebug: HealthData['calorieDebug'] = undefined;
+      let calorieDebug: HealthData['calorieDebug'] = {
+        source: "no_data",
+        origins: "none",
+        rawValue: 0,
+      };
       try {
         const calResult = await HealthConnect.readActiveCalories(timeRange);
         activeCalories = calResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + r.value, 0);
         // Capture debug info from first record if available
         if (calResult.records.length > 0) {
           const firstRec = calResult.records[0] as any;
+          const hasNativeDebug = typeof firstRec.debugSource === 'string' && firstRec.debugSource.length > 0;
           calorieDebug = {
-            source: firstRec.debugSource || 'unknown',
-            origins: firstRec.debugOrigins || 'unknown',
-            rawValue: firstRec.value || 0,
+            source: hasNativeDebug ? firstRec.debugSource : 'fallback_active_records',
+            origins: hasNativeDebug ? (firstRec.debugOrigins || 'unknown') : 'native_debug_missing',
+            rawValue: hasNativeDebug ? (firstRec.value || 0) : activeCalories,
+          };
+        } else {
+          calorieDebug = {
+            source: 'empty_records',
+            origins: 'none',
+            rawValue: 0,
           };
         }
       } catch (e) { console.warn("Failed to read active calories:", e); }
