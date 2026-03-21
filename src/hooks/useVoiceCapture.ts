@@ -81,6 +81,7 @@ export const useVoiceCapture = ({
   const transcriptRef = useRef("");
   const isStoppingRef = useRef(false);
   const sessionIdRef = useRef(0);
+  const lastStopAtRef = useRef(0);
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -127,8 +128,10 @@ export const useVoiceCapture = ({
       nativeStoppedWaitRef.current = null;
       nativeStartPromiseRef.current = null;
       isStoppingRef.current = false;
+      lastStopAtRef.current = Date.now();
     } else {
       webRecognitionRef.current?.stop();
+      lastStopAtRef.current = Date.now();
     }
   }, [cleanupNativeListeners, isNative]);
 
@@ -138,8 +141,13 @@ export const useVoiceCapture = ({
       return false;
     }
 
-    const usePopup = false;
-    const usePartialResults = true;
+    const elapsedSinceStop = Date.now() - lastStopAtRef.current;
+    if (elapsedSinceStop < 450) {
+      await new Promise((resolve) => setTimeout(resolve, 450 - elapsedSinceStop));
+    }
+
+    const usePopup = true;
+    const usePartialResults = false;
 
     const available = await SpeechRecognition.available();
     if (!available?.available) {
@@ -264,6 +272,7 @@ export const useVoiceCapture = ({
   }, [
     cleanupNativeListeners,
     language,
+    lastStopAtRef,
     onError,
     onPermissionBlocked,
     setTranscriptSafe,
