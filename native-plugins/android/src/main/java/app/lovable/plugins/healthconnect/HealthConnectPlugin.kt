@@ -1,7 +1,6 @@
 package app.lovable.plugins.healthconnect
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.activity.result.ActivityResultLauncher
@@ -11,6 +10,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
@@ -28,7 +28,7 @@ import java.time.Instant
 @CapacitorPlugin(name = "HealthConnect")
 class HealthConnectPlugin : Plugin() {
 
-    private val TAG = "HealthConnectPlugin"
+    private val tag = "HealthConnectPlugin"
     private var healthConnectClient: HealthConnectClient? = null
     private var permissionLauncher: ActivityResultLauncher<Set<String>>? = null
     private var pendingPermissionCall: PluginCall? = null
@@ -38,12 +38,12 @@ class HealthConnectPlugin : Plugin() {
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(WeightRecord::class),
         HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
+        HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
     )
 
     override fun load() {
         super.load()
         try {
-            // Register permission launcher on the ComponentActivity (required by AndroidX)
             val componentActivity = activity as? androidx.activity.ComponentActivity
             if (componentActivity != null) {
                 permissionLauncher = componentActivity.registerForActivityResult(
@@ -51,15 +51,34 @@ class HealthConnectPlugin : Plugin() {
                 ) { granted ->
                     val call = pendingPermissionCall ?: return@registerForActivityResult
                     pendingPermissionCall = null
+
                     val result = JSObject()
                     result.put("granted", granted.containsAll(requiredPermissions))
                     call.resolve(result)
                 }
             } else {
-                Log.w(TAG, "Activity is not a ComponentActivity — permission launcher unavailable")
+                Log.w(tag, "Activity is not a ComponentActivity — permission launcher unavailable")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to register permission launcher", e)
+            Log.e(tag, "Failed to register permission launcher", e)
+        }
+    }
+
+    private fun parseTimeRange(call: PluginCall): Pair<Instant, Instant>? {
+        val startTime = call.getString("startTime") ?: run {
+            call.reject("startTime is required")
+            return null
+        }
+        val endTime = call.getString("endTime") ?: run {
+            call.reject("endTime is required")
+            return null
+        }
+
+        return try {
+            Instant.parse(startTime) to Instant.parse(endTime)
+        } catch (e: Exception) {
+            call.reject("Invalid time range format: ${e.message}")
+            null
         }
     }
 
@@ -67,7 +86,6 @@ class HealthConnectPlugin : Plugin() {
     fun checkAvailability(call: PluginCall) {
         try {
             val status = if (Build.VERSION.SDK_INT >= 34) {
-                // Android 14+: Health Connect is a platform module, always available
                 "available"
             } else {
                 when (HealthConnectClient.getSdkStatus(context)) {
@@ -81,7 +99,7 @@ class HealthConnectPlugin : Plugin() {
                 try {
                     healthConnectClient = HealthConnectClient.getOrCreate(context)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to create HealthConnectClient", e)
+                    Log.e(tag, "Failed to create HealthConnectClient", e)
                     val result = JSObject()
                     result.put("status", "unavailable")
                     call.resolve(result)
@@ -93,7 +111,7 @@ class HealthConnectPlugin : Plugin() {
             result.put("status", status)
             call.resolve(result)
         } catch (e: Exception) {
-            Log.e(TAG, "checkAvailability failed", e)
+            Log.e(tag, "checkAvailability failed", e)
             val result = JSObject()
             result.put("status", "unavailable")
             call.resolve(result)
@@ -123,8 +141,7 @@ class HealthConnectPlugin : Plugin() {
                     pendingPermissionCall = call
                     launcher.launch(requiredPermissions)
                 } else {
-                    // Fallback: open Health Connect settings directly
-                    Log.w(TAG, "Permission launcher unavailable, opening Health Connect settings")
+                    Log.w(tag, "Permission launcher unavailable, opening Health Connect settings")
                     try {
                         val settingsIntent = if (Build.VERSION.SDK_INT >= 34) {
                             Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS").apply {
@@ -145,7 +162,7 @@ class HealthConnectPlugin : Plugin() {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Permission request failed", e)
+                Log.e(tag, "Permission request failed", e)
                 call.reject("Permission request failed: ${e.message}")
             }
         }
@@ -157,21 +174,15 @@ class HealthConnectPlugin : Plugin() {
             call.reject("HealthConnect not initialized")
             return
         }
-        val startTime = call.getString("startTime") ?: run {
-            call.reject("startTime is required"); return
-        }
-        val endTime = call.getString("endTime") ?: run {
-            call.reject("endTime is required"); return
-        }
+        val (startTime, endTime) = parseTimeRange(call) ?: return
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = ReadRecordsRequest(
                     recordType = StepsRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(
-                        Instant.parse(startTime), Instant.parse(endTime)
-                    )
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                 )
+
                 val response = client.readRecords(request)
                 val records = JSArray()
                 for (record in response.records) {
@@ -181,11 +192,12 @@ class HealthConnectPlugin : Plugin() {
                     obj.put("timestamp", record.endTime.toString())
                     records.put(obj)
                 }
+
                 val result = JSObject()
                 result.put("records", records)
                 call.resolve(result)
             } catch (e: Exception) {
-                Log.e(TAG, "readSteps failed", e)
+                Log.e(tag, "readSteps failed", e)
                 call.reject("Failed to read steps: ${e.message}")
             }
         }
@@ -194,23 +206,18 @@ class HealthConnectPlugin : Plugin() {
     @PluginMethod
     fun readHeartRate(call: PluginCall) {
         val client = healthConnectClient ?: run {
-            call.reject("HealthConnect not initialized"); return
+            call.reject("HealthConnect not initialized")
+            return
         }
-        val startTime = call.getString("startTime") ?: run {
-            call.reject("startTime is required"); return
-        }
-        val endTime = call.getString("endTime") ?: run {
-            call.reject("endTime is required"); return
-        }
+        val (startTime, endTime) = parseTimeRange(call) ?: return
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = ReadRecordsRequest(
                     recordType = HeartRateRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(
-                        Instant.parse(startTime), Instant.parse(endTime)
-                    )
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                 )
+
                 val response = client.readRecords(request)
                 val records = JSArray()
                 for (record in response.records) {
@@ -222,11 +229,12 @@ class HealthConnectPlugin : Plugin() {
                         records.put(obj)
                     }
                 }
+
                 val result = JSObject()
                 result.put("records", records)
                 call.resolve(result)
             } catch (e: Exception) {
-                Log.e(TAG, "readHeartRate failed", e)
+                Log.e(tag, "readHeartRate failed", e)
                 call.reject("Failed to read heart rate: ${e.message}")
             }
         }
@@ -235,23 +243,18 @@ class HealthConnectPlugin : Plugin() {
     @PluginMethod
     fun readWeight(call: PluginCall) {
         val client = healthConnectClient ?: run {
-            call.reject("HealthConnect not initialized"); return
+            call.reject("HealthConnect not initialized")
+            return
         }
-        val startTime = call.getString("startTime") ?: run {
-            call.reject("startTime is required"); return
-        }
-        val endTime = call.getString("endTime") ?: run {
-            call.reject("endTime is required"); return
-        }
+        val (startTime, endTime) = parseTimeRange(call) ?: return
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = ReadRecordsRequest(
                     recordType = WeightRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(
-                        Instant.parse(startTime), Instant.parse(endTime)
-                    )
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                 )
+
                 val response = client.readRecords(request)
                 val records = JSArray()
                 for (record in response.records) {
@@ -261,50 +264,66 @@ class HealthConnectPlugin : Plugin() {
                     obj.put("timestamp", record.time.toString())
                     records.put(obj)
                 }
+
                 val result = JSObject()
                 result.put("records", records)
                 call.resolve(result)
             } catch (e: Exception) {
-                Log.e(TAG, "readWeight failed", e)
+                Log.e(tag, "readWeight failed", e)
                 call.reject("Failed to read weight: ${e.message}")
+            }
+        }
+    }
+
     @PluginMethod
     fun readActiveCalories(call: PluginCall) {
         val client = healthConnectClient ?: run {
-            call.reject("HealthConnect not initialized"); return
+            call.reject("HealthConnect not initialized")
+            return
         }
-        val startTime = call.getString("startTime") ?: run {
-            call.reject("startTime is required"); return
-        }
-        val endTime = call.getString("endTime") ?: run {
-            call.reject("endTime is required"); return
-        }
+        val (startTime, endTime) = parseTimeRange(call) ?: return
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val request = ReadRecordsRequest(
-                    recordType = ActiveCaloriesBurnedRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(
-                        Instant.parse(startTime), Instant.parse(endTime)
-                    )
-                )
-                val response = client.readRecords(request)
                 val records = JSArray()
-                for (record in response.records) {
+
+                val activeRequest = ReadRecordsRequest(
+                    recordType = ActiveCaloriesBurnedRecord::class,
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                )
+                val activeResponse = client.readRecords(activeRequest)
+
+                for (record in activeResponse.records) {
                     val obj = JSObject()
                     obj.put("value", record.energy.inKilocalories)
                     obj.put("unit", "kcal")
                     obj.put("timestamp", record.endTime.toString())
                     records.put(obj)
                 }
+
+                if (records.length() == 0) {
+                    val totalRequest = ReadRecordsRequest(
+                        recordType = TotalCaloriesBurnedRecord::class,
+                        timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                    )
+                    val totalResponse = client.readRecords(totalRequest)
+
+                    for (record in totalResponse.records) {
+                        val obj = JSObject()
+                        obj.put("value", record.energy.inKilocalories)
+                        obj.put("unit", "kcal")
+                        obj.put("timestamp", record.endTime.toString())
+                        records.put(obj)
+                    }
+                }
+
                 val result = JSObject()
                 result.put("records", records)
                 call.resolve(result)
             } catch (e: Exception) {
-                Log.e(TAG, "readActiveCalories failed", e)
-                call.reject("Failed to read active calories: ${e.message}")
+                Log.e(tag, "readActiveCalories failed", e)
+                call.reject("Failed to read calories: ${e.message}")
             }
         }
-    }
-}
     }
 }

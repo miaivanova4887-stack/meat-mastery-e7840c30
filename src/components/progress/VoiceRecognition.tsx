@@ -22,8 +22,10 @@ interface ParsedVoiceResult {
 
 const VoiceRecognition = () => {
   const [processing, setProcessing] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
   const [parsedResult, setParsedResult] = useState<ParsedVoiceResult | null>(null);
   const autoProcessPendingRef = useRef(false);
+  const stopInProgressRef = useRef(false);
   const addEntry = useAddEntry();
 
   const openMicrophoneSettings = useCallback(async () => {
@@ -52,22 +54,36 @@ const VoiceRecognition = () => {
 
   const handleStartListening = useCallback(async () => {
     setParsedResult(null);
+    setIsStopping(false);
     resetTranscript();
     const started = await startListening();
     autoProcessPendingRef.current = Boolean(started);
   }, [resetTranscript, startListening]);
 
   const stopAndProcess = useCallback(async () => {
-    autoProcessPendingRef.current = false;
-    await stopListening();
+    if (stopInProgressRef.current || processing) return;
 
-    const capturedTranscript = getTranscript().trim();
+    stopInProgressRef.current = true;
+    setIsStopping(true);
+    autoProcessPendingRef.current = false;
+    const transcriptBeforeStop = getTranscript().trim();
+
+    if (listening) {
+      await stopListening();
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const capturedTranscript = (getTranscript().trim() || transcriptBeforeStop).trim();
 
     if (!capturedTranscript) {
       toast.error("I couldn’t recognize speech. Please speak clearly and try again.");
+      setIsStopping(false);
+      stopInProgressRef.current = false;
       return;
     }
 
+    setIsStopping(false);
     setProcessing(true);
     try {
       const { data, error } = await supabase.functions.invoke("voice-log", {
@@ -82,23 +98,21 @@ const VoiceRecognition = () => {
       toast.error(e?.message || "Failed to parse speech");
     } finally {
       setProcessing(false);
+      setIsStopping(false);
+      stopInProgressRef.current = false;
     }
-  }, [getTranscript, stopListening]);
+  }, [getTranscript, listening, processing, stopListening]);
 
   useEffect(() => {
     if (listening || !autoProcessPendingRef.current) return;
 
     const timer = window.setTimeout(() => {
       if (!autoProcessPendingRef.current) return;
-      autoProcessPendingRef.current = false;
-
-      if (getTranscript().trim()) {
-        void stopAndProcess();
-      }
-    }, 900);
+      void stopAndProcess();
+    }, 450);
 
     return () => window.clearTimeout(timer);
-  }, [getTranscript, listening, stopAndProcess]);
+  }, [listening, stopAndProcess]);
 
   const logEntries = useCallback(async () => {
     if (!parsedResult?.entries?.length) return;
@@ -129,15 +143,17 @@ const VoiceRecognition = () => {
       {!parsedResult ? (
         <button
           onClick={listening ? () => void stopAndProcess() : () => void handleStartListening()}
-          disabled={processing}
+          disabled={processing || isStopping}
           className="w-full relative overflow-hidden rounded-xl border border-dashed border-primary/30 bg-card p-5 flex flex-col items-center gap-2 hover:border-primary/60 transition-colors"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--gold))] opacity-[0.04]" />
           <div className="relative flex flex-col items-center gap-2">
-            {processing ? (
+            {processing || isStopping ? (
               <>
                 <Loader2 size={28} className="text-primary animate-spin" />
-                <p className="text-sm font-medium text-foreground">Parsing speech…</p>
+                <p className="text-sm font-medium text-foreground">
+                  {isStopping && !processing ? "Stopping microphone…" : "Parsing speech…"}
+                </p>
               </>
             ) : listening ? (
               <>
