@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Mic, MicOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,7 @@ interface ParsedVoiceResult {
 const VoiceRecognition = () => {
   const [processing, setProcessing] = useState(false);
   const [parsedResult, setParsedResult] = useState<ParsedVoiceResult | null>(null);
+  const autoProcessPendingRef = useRef(false);
   const addEntry = useAddEntry();
 
   const openMicrophoneSettings = useCallback(async () => {
@@ -52,10 +53,12 @@ const VoiceRecognition = () => {
   const handleStartListening = useCallback(async () => {
     setParsedResult(null);
     resetTranscript();
-    await startListening();
+    const started = await startListening();
+    autoProcessPendingRef.current = Boolean(started);
   }, [resetTranscript, startListening]);
 
   const stopAndProcess = useCallback(async () => {
+    autoProcessPendingRef.current = false;
     await stopListening();
 
     const capturedTranscript = getTranscript().trim();
@@ -81,6 +84,21 @@ const VoiceRecognition = () => {
       setProcessing(false);
     }
   }, [getTranscript, stopListening]);
+
+  useEffect(() => {
+    if (listening || !autoProcessPendingRef.current) return;
+
+    const timer = window.setTimeout(() => {
+      if (!autoProcessPendingRef.current) return;
+      autoProcessPendingRef.current = false;
+
+      if (getTranscript().trim()) {
+        void stopAndProcess();
+      }
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [getTranscript, listening, stopAndProcess]);
 
   const logEntries = useCallback(async () => {
     if (!parsedResult?.entries?.length) return;
