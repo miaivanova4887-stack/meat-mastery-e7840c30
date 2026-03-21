@@ -367,11 +367,13 @@ class HealthConnectPlugin : Plugin() {
                         Log.w(tag, "Total calories origin resolution failed", e)
                     }
 
-                    if (resolvedTotalKcal != null && resolvedTotalKcal > 0.0) {
+                if (resolvedTotalKcal != null && resolvedTotalKcal > 0.0) {
                         val obj = JSObject()
                         obj.put("value", resolvedTotalKcal)
                         obj.put("unit", "kcal")
                         obj.put("timestamp", endTime.toString())
+                        obj.put("debugSource", resolvedSource)
+                        obj.put("debugOrigins", discoveredOrigins.joinToString(", "))
                         records.put(obj)
                         Log.d(tag, "Total calories (single deterministic source=$resolvedSource): $resolvedTotalKcal kcal")
                     }
