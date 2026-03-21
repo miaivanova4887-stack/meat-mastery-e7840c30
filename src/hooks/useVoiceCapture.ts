@@ -23,6 +23,13 @@ interface UseVoiceCaptureOptions {
   onError?: (message: string) => void;
 }
 
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T | undefined> => {
+  return await Promise.race([
+    promise,
+    new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), timeoutMs)),
+  ]);
+};
+
 const isNoSpeechError = (value: unknown) => {
   const msg = String(value || "").toLowerCase();
   return msg.includes("no match") || msg.includes("no-speech") || msg.includes("speech timeout");
@@ -72,6 +79,8 @@ export const useVoiceCapture = ({
   const nativeStartPromiseRef = useRef<Promise<any> | null>(null);
   const nativeStoppedWaitRef = useRef<{ promise: Promise<void>; resolve: () => void } | null>(null);
   const transcriptRef = useRef("");
+  const isStoppingRef = useRef(false);
+  const sessionIdRef = useRef(0);
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -89,38 +98,48 @@ export const useVoiceCapture = ({
   const getTranscript = useCallback(() => transcriptRef.current, []);
 
   const stopListening = useCallback(async () => {
+    setListening(false);
+
     if (isNative) {
+      if (isStoppingRef.current) return;
+
+      isStoppingRef.current = true;
+      sessionIdRef.current += 1;
+
       try {
-        await SpeechRecognition.stop();
+        await withTimeout(SpeechRecognition.stop(), 1200);
       } catch {
         // ignore native stop errors
       }
 
       const nativeStoppedWait = nativeStoppedWaitRef.current?.promise;
       if (nativeStoppedWait) {
-        await Promise.race([nativeStoppedWait, new Promise((resolve) => setTimeout(resolve, 1200))]);
+        await withTimeout(nativeStoppedWait, 1200);
       }
 
       const pendingStart = nativeStartPromiseRef.current;
       if (pendingStart) {
-        await Promise.race([
-          pendingStart.catch(() => undefined),
-          new Promise((resolve) => setTimeout(resolve, 5000)),
-        ]);
+        await withTimeout(pendingStart.catch(() => undefined), 1800);
       }
 
       await cleanupNativeListeners();
+      nativeStoppedWaitRef.current?.resolve();
       nativeStoppedWaitRef.current = null;
+      nativeStartPromiseRef.current = null;
+      isStoppingRef.current = false;
     } else {
       webRecognitionRef.current?.stop();
     }
-
-    setListening(false);
   }, [cleanupNativeListeners, isNative]);
 
   const startNativeListening = useCallback(async () => {
+    if (isStoppingRef.current || nativeStartPromiseRef.current) {
+      onError?.("Voice recognition is still finishing. Please try again.");
+      return false;
+    }
+
     const usePopup = false;
-    const usePartialResults = false;
+    const usePartialResults = true;
 
     const available = await SpeechRecognition.available();
     if (!available?.available) {
@@ -138,7 +157,11 @@ export const useVoiceCapture = ({
     }
 
     await cleanupNativeListeners();
+    nativeStoppedWaitRef.current?.resolve();
+    nativeStoppedWaitRef.current = null;
     setTranscriptSafe("");
+
+    const sessionId = ++sessionIdRef.current;
 
     let resolveStopped = () => {};
     const stoppedPromise = new Promise<void>((resolve) => {
@@ -147,6 +170,12 @@ export const useVoiceCapture = ({
     nativeStoppedWaitRef.current = { promise: stoppedPromise, resolve: resolveStopped };
 
     const listeningStateHandle = await SpeechRecognition.addListener("listeningState", ({ status }: any) => {
+      if (sessionId !== sessionIdRef.current) return;
+
+      if (status === "started") {
+        setListening(true);
+      }
+
       if (status === "stopped") {
         nativeStoppedWaitRef.current?.resolve();
         setListening(false);
@@ -157,6 +186,7 @@ export const useVoiceCapture = ({
 
     if (usePartialResults) {
       const partialResultsHandle = await SpeechRecognition.addListener("partialResults", (payload: any) => {
+        if (sessionId !== sessionIdRef.current) return;
         const partialMatch = extractFirstMatch(payload);
         if (partialMatch) {
           setTranscriptSafe(partialMatch);
@@ -195,12 +225,14 @@ export const useVoiceCapture = ({
 
       void startPromise
         .then((result: any) => {
+          if (sessionId !== sessionIdRef.current) return;
           const finalMatch = extractFirstMatch(result);
           if (finalMatch) {
             setTranscriptSafe(finalMatch);
           }
         })
         .catch((error: any) => {
+          if (sessionId !== sessionIdRef.current) return;
           if (messageIncludesPermissionBlock(error)) {
             onPermissionBlocked?.();
           } else if (isNoSpeechError(error)) {
@@ -210,7 +242,10 @@ export const useVoiceCapture = ({
           }
         })
         .finally(() => {
+          if (sessionId !== sessionIdRef.current) return;
           nativeStartPromiseRef.current = null;
+          nativeStoppedWaitRef.current?.resolve();
+          setListening(false);
         });
     } catch (error) {
       if (messageIncludesPermissionBlock(error)) {
@@ -286,6 +321,8 @@ export const useVoiceCapture = ({
   }, [language, onError, onPermissionBlocked, setTranscriptSafe]);
 
   const startListening = useCallback(async () => {
+    if (listening) return true;
+
     try {
       return isNative ? await startNativeListening() : await startWebListening();
     } catch (error) {
@@ -296,7 +333,7 @@ export const useVoiceCapture = ({
       }
       return false;
     }
-  }, [isNative, onError, onPermissionBlocked, startNativeListening, startWebListening]);
+  }, [isNative, listening, onError, onPermissionBlocked, startNativeListening, startWebListening]);
 
   const resetTranscript = useCallback(() => {
     setTranscriptSafe("");
