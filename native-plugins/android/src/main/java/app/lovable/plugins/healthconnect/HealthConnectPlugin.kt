@@ -307,14 +307,15 @@ class HealthConnectPlugin : Plugin() {
                 val records = JSArray()
                 var caloriesReadError: Exception? = null
 
+                // Read TOTAL calories first (includes BMR + active — matches Samsung Health "Total burnt calories")
                 try {
-                    val activeRequest = ReadRecordsRequest(
-                        recordType = ActiveCaloriesBurnedRecord::class,
+                    val totalRequest = ReadRecordsRequest(
+                        recordType = TotalCaloriesBurnedRecord::class,
                         timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                     )
-                    val activeResponse = client.readRecords(activeRequest)
+                    val totalResponse = client.readRecords(totalRequest)
 
-                    for (record in activeResponse.records) {
+                    for (record in totalResponse.records) {
                         val obj = JSObject()
                         obj.put("value", record.energy.inKilocalories)
                         obj.put("unit", "kcal")
@@ -323,18 +324,19 @@ class HealthConnectPlugin : Plugin() {
                     }
                 } catch (e: Exception) {
                     caloriesReadError = e
-                    Log.w(tag, "Active calories read failed", e)
+                    Log.w(tag, "Total calories read failed", e)
                 }
 
+                // Fallback to active-only calories if total returned nothing
                 if (records.length() == 0) {
                     try {
-                        val totalRequest = ReadRecordsRequest(
-                            recordType = TotalCaloriesBurnedRecord::class,
+                        val activeRequest = ReadRecordsRequest(
+                            recordType = ActiveCaloriesBurnedRecord::class,
                             timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                         )
-                        val totalResponse = client.readRecords(totalRequest)
+                        val activeResponse = client.readRecords(activeRequest)
 
-                        for (record in totalResponse.records) {
+                        for (record in activeResponse.records) {
                             val obj = JSObject()
                             obj.put("value", record.energy.inKilocalories)
                             obj.put("unit", "kcal")
@@ -343,7 +345,7 @@ class HealthConnectPlugin : Plugin() {
                         }
                     } catch (e: Exception) {
                         if (caloriesReadError == null) caloriesReadError = e
-                        Log.w(tag, "Total calories read fallback failed", e)
+                        Log.w(tag, "Active calories fallback failed", e)
                     }
                 }
 
