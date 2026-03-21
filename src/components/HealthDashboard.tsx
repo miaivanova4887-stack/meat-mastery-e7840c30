@@ -80,6 +80,7 @@ export const HealthDashboard = () => {
             <p>Records sum: {healthData.activeCalories.toFixed(1)} kcal</p>
           </div>
         )}
+      )}
     </div>
   );
 };
