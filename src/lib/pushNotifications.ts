@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { Capacitor } from "@capacitor/core";
 
 const SW_PATH = "/sw.js";
 
@@ -23,6 +24,9 @@ export async function getVapidPublicKey(): Promise<string | null> {
 }
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  // Important: service workers can interfere with Capacitor native plugin injection.
+  // Never register SW inside native Android/iOS builds.
+  if (Capacitor.isNativePlatform()) return null;
   if (!("serviceWorker" in navigator)) return null;
   try {
     return await navigator.serviceWorker.register(SW_PATH);
@@ -32,6 +36,8 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
 }
 
 export async function subscribeToPush(): Promise<boolean> {
+  if (Capacitor.isNativePlatform()) return false;
+
   try {
     const publicKey = await getVapidPublicKey();
     if (!publicKey) return false;
@@ -69,6 +75,8 @@ export async function subscribeToPush(): Promise<boolean> {
 }
 
 export async function sendPushToAll(title: string, body: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) return;
+
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   await fetch(
     `https://${projectId}.supabase.co/functions/v1/push-notifications?action=send`,
