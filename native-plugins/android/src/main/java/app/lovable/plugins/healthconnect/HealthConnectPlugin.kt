@@ -312,10 +312,10 @@ class HealthConnectPlugin : Plugin() {
 
                 if (granted.contains(totalPermission)) {
                     var resolvedTotalKcal: Double? = null
-                    var resolvedSource = ""
-                    var discoveredOriginsList = listOf<String>()
+                    var debugInfo = ""
 
                     try {
+                        // 1) Read individual records for debug info
                         val totalRecordsResponse = client.readRecords(
                             ReadRecordsRequest(
                                 recordType = TotalCaloriesBurnedRecord::class,
@@ -323,49 +323,32 @@ class HealthConnectPlugin : Plugin() {
                             )
                         )
 
-                        discoveredOriginsList = totalRecordsResponse.records
+                        val origins = totalRecordsResponse.records
                             .map { it.metadata.dataOrigin.packageName }
                             .filter { it.isNotBlank() }
                             .distinct()
 
-                        val preferredOrigin = discoveredOriginsList.firstOrNull {
-                            it.contains("shealth", ignoreCase = true)
-                        } ?: discoveredOriginsList.sorted().firstOrNull()
+                        val recordCount = totalRecordsResponse.records.size
+                        val individualSum = totalRecordsResponse.records.sumOf { it.energy.inKilocalories }
 
-                        if (preferredOrigin != null) {
-                            val scopedAggregate = client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                    dataOriginFilter = setOf(DataOrigin(preferredOrigin))
-                                )
+                        // 2) Use GLOBAL aggregate — Health Connect deduplicates overlapping intervals
+                        val globalAggregate = client.aggregate(
+                            AggregateRequest(
+                                metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                             )
-
-                            val scopedTotal = scopedAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
-                            if (scopedTotal != null && scopedTotal > 0.0) {
-                                resolvedTotalKcal = scopedTotal
-                                resolvedSource = preferredOrigin
-                            }
-                        } else {
-                            val globalAggregate = client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                                )
-                            )
-                            val globalTotal = globalAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
-                            if (globalTotal != null && globalTotal > 0.0) {
-                                resolvedTotalKcal = globalTotal
-                                resolvedSource = "global"
-                            }
-                        }
-
-                        Log.d(
-                            tag,
-                            "Total calories origin resolution: discovered=${discoveredOriginsList.joinToString()} selected=$resolvedSource value=${resolvedTotalKcal ?: 0.0}"
                         )
+                        val globalTotal = globalAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
+
+                        debugInfo = "origins=${origins.joinToString(";")} records=$recordCount indivSum=${String.format("%.1f", individualSum)} globalAgg=${String.format("%.1f", globalTotal ?: 0.0)}"
+                        Log.d(tag, "Total calories debug: $debugInfo")
+
+                        if (globalTotal != null && globalTotal > 0.0) {
+                            resolvedTotalKcal = globalTotal
+                        }
                     } catch (e: Exception) {
-                        Log.w(tag, "Total calories origin resolution failed", e)
+                        Log.w(tag, "Total calories resolution failed", e)
+                        debugInfo = "error: ${e.message}"
                     }
 
                     if (resolvedTotalKcal != null && resolvedTotalKcal > 0.0) {
@@ -373,10 +356,9 @@ class HealthConnectPlugin : Plugin() {
                         obj.put("value", resolvedTotalKcal)
                         obj.put("unit", "kcal")
                         obj.put("timestamp", endTime.toString())
-                        obj.put("debugSource", resolvedSource)
-                        obj.put("debugOrigins", discoveredOriginsList.joinToString(", "))
+                        obj.put("debugSource", "global_aggregate")
+                        obj.put("debugOrigins", debugInfo)
                         records.put(obj)
-                        Log.d(tag, "Total calories (single deterministic source=$resolvedSource): $resolvedTotalKcal kcal")
                     }
                 }
 
