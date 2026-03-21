@@ -9,6 +9,11 @@ export interface HealthData {
   weight: number;
   sleep: number;
   activeCalories: number;
+  calorieDebug?: {
+    source: string;
+    origins: string;
+    rawValue: number;
+  };
 }
 
 interface HealthConnectContextType {
