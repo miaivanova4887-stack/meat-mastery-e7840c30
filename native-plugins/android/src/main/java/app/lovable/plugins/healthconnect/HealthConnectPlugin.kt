@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.ZoneId
 
 @CapacitorPlugin(name = "HealthConnect")
 class HealthConnectPlugin : Plugin() {
@@ -302,7 +303,14 @@ class HealthConnectPlugin : Plugin() {
             call.reject("HealthConnect not initialized")
             return
         }
-        val (startTime, endTime) = parseTimeRange(call) ?: return
+
+        // IMPORTANT: use native local-day boundaries to match Samsung Health "Daily activity" totals.
+        // We still capture the JS-requested range in debug output for diagnostics.
+        val requestedStartRaw = call.getString("startTime") ?: "missing"
+        val requestedEndRaw = call.getString("endTime") ?: "missing"
+        val zone = ZoneId.systemDefault()
+        val endTime = Instant.now()
+        val startTime = endTime.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -312,6 +320,7 @@ class HealthConnectPlugin : Plugin() {
 
                 if (granted.contains(totalPermission)) {
                     var resolvedTotalKcal: Double? = null
+                    var selectedSource = "unresolved"
                     var debugInfo = ""
 
                     try {
@@ -330,6 +339,24 @@ class HealthConnectPlugin : Plugin() {
 
                         val recordCount = totalRecordsResponse.records.size
                         val individualSum = totalRecordsResponse.records.sumOf { it.energy.inKilocalories }
+                        val latestRecordValue = totalRecordsResponse.records
+                            .maxByOrNull { it.endTime }
+                            ?.energy
+                            ?.inKilocalories
+
+                        val samsungPackage = "com.sec.android.app.shealth"
+                        var samsungOriginAgg: Double? = null
+
+                        if (origins.contains(samsungPackage)) {
+                            val samsungAgg = client.aggregate(
+                                AggregateRequest(
+                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                                    dataOriginFilter = setOf(DataOrigin(samsungPackage))
+                                )
+                            )
+                            samsungOriginAgg = samsungAgg[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
+                        }
 
                         // 2) Use GLOBAL aggregate — Health Connect deduplicates overlapping intervals
                         val globalAggregate = client.aggregate(
@@ -340,12 +367,26 @@ class HealthConnectPlugin : Plugin() {
                         )
                         val globalTotal = globalAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories
 
-                        debugInfo = "origins=${origins.joinToString(";")} records=$recordCount indivSum=${String.format("%.1f", individualSum)} globalAgg=${String.format("%.1f", globalTotal ?: 0.0)}"
-                        Log.d(tag, "Total calories debug: $debugInfo")
-
-                        if (globalTotal != null && globalTotal > 0.0) {
+                        if (samsungOriginAgg != null && samsungOriginAgg > 0.0) {
+                            resolvedTotalKcal = samsungOriginAgg
+                            selectedSource = "samsung_origin_aggregate_today"
+                        } else if (globalTotal != null && globalTotal > 0.0) {
                             resolvedTotalKcal = globalTotal
+                            selectedSource = "global_aggregate_today"
                         }
+
+                        // Heuristic: Samsung often exposes a running day-total as the latest record.
+                        // If aggregate is significantly higher, prefer latest day-total record.
+                        if (latestRecordValue != null && latestRecordValue > 300.0) {
+                            val baseline = resolvedTotalKcal ?: 0.0
+                            if (baseline <= 0.0 || baseline > latestRecordValue * 1.08) {
+                                resolvedTotalKcal = latestRecordValue
+                                selectedSource = "latest_total_record_today"
+                            }
+                        }
+
+                        debugInfo = "zone=${zone.id} reqStart=$requestedStartRaw reqEnd=$requestedEndRaw queryStart=$startTime queryEnd=$endTime origins=${origins.joinToString(";")} records=$recordCount latest=${String.format("%.1f", latestRecordValue ?: 0.0)} indivSum=${String.format("%.1f", individualSum)} samsungAgg=${String.format("%.1f", samsungOriginAgg ?: 0.0)} globalAgg=${String.format("%.1f", globalTotal ?: 0.0)} selected=$selectedSource"
+                        Log.d(tag, "Total calories debug: $debugInfo")
                     } catch (e: Exception) {
                         Log.w(tag, "Total calories resolution failed", e)
                         debugInfo = "error: ${e.message}"
@@ -356,7 +397,7 @@ class HealthConnectPlugin : Plugin() {
                         obj.put("value", resolvedTotalKcal)
                         obj.put("unit", "kcal")
                         obj.put("timestamp", endTime.toString())
-                        obj.put("debugSource", "global_aggregate")
+                        obj.put("debugSource", "v6_$selectedSource")
                         obj.put("debugOrigins", debugInfo)
                         records.put(obj)
                     }
@@ -377,6 +418,8 @@ class HealthConnectPlugin : Plugin() {
                                 obj.put("value", record.energy.inKilocalories)
                                 obj.put("unit", "kcal")
                                 obj.put("timestamp", record.endTime.toString())
+                                obj.put("debugSource", "v6_active_fallback_today")
+                                obj.put("debugOrigins", "zone=${zone.id} reqStart=$requestedStartRaw reqEnd=$requestedEndRaw queryStart=$startTime queryEnd=$endTime activeRecords=${activeResponse.records.size}")
                                 records.put(obj)
                             }
                             Log.d(tag, "Fell back to active calories: ${activeResponse.records.size} records")
