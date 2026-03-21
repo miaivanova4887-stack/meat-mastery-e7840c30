@@ -85,25 +85,36 @@ const HealthSync = () => {
               ) : "Connect"}
             </Button>
           ) : (
-            <div className="grid grid-cols-3 gap-2 mt-2">
-              <div className="bg-muted rounded-lg p-3 text-center">
-                <Footprints size={16} className="mx-auto text-primary mb-1" />
-                <p className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">Steps</p>
+            <>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <Footprints size={16} className="mx-auto text-primary mb-1" />
+                  <p className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</p>
+                  <p className="text-[10px] text-muted-foreground">Steps</p>
+                </div>
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <Heart size={16} className="mx-auto text-red-500 mb-1" />
+                  <p className="text-lg font-bold text-foreground">{healthData.heartRate || "—"}</p>
+                  <p className="text-[10px] text-muted-foreground">BPM</p>
+                </div>
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <Activity size={16} className="mx-auto text-blue-500 mb-1" />
+                  <p className="text-lg font-bold text-foreground">
+                    {healthData.weight ? `${healthData.weight.toFixed(1)}` : "—"}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">kg</p>
+                </div>
               </div>
-              <div className="bg-muted rounded-lg p-3 text-center">
-                <Heart size={16} className="mx-auto text-red-500 mb-1" />
-                <p className="text-lg font-bold text-foreground">{healthData.heartRate || "—"}</p>
-                <p className="text-[10px] text-muted-foreground">BPM</p>
-              </div>
-              <div className="bg-muted rounded-lg p-3 text-center">
-                <Activity size={16} className="mx-auto text-blue-500 mb-1" />
-                <p className="text-lg font-bold text-foreground">
-                  {healthData.weight ? `${healthData.weight.toFixed(1)}` : "—"}
-                </p>
-                <p className="text-[10px] text-muted-foreground">kg</p>
-              </div>
-            </div>
+              {healthData.calorieDebug && (
+                <div className="mt-2 bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono">
+                  <p>🔍 <strong>Calorie Debug</strong></p>
+                  <p>Source: {healthData.calorieDebug.source}</p>
+                  <p>Origins: {healthData.calorieDebug.origins}</p>
+                  <p>Raw value: {healthData.calorieDebug.rawValue.toFixed(1)} kcal</p>
+                  <p>Records sum: {healthData.activeCalories.toFixed(1)} kcal</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 

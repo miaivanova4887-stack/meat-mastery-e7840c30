@@ -9,6 +9,11 @@ export interface HealthData {
   weight: number;
   sleep: number;
   activeCalories: number;
+  calorieDebug?: {
+    source: string;
+    origins: string;
+    rawValue: number;
+  };
 }
 
 interface HealthConnectContextType {
@@ -70,12 +75,22 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         if (weightResult.records.length > 0) weight = weightResult.records[weightResult.records.length - 1].value;
       } catch (e) { console.warn("Failed to read weight:", e); }
 
+      let calorieDebug: HealthData['calorieDebug'] = undefined;
       try {
         const calResult = await HealthConnect.readActiveCalories(timeRange);
         activeCalories = calResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + r.value, 0);
+        // Capture debug info from first record if available
+        if (calResult.records.length > 0) {
+          const firstRec = calResult.records[0] as any;
+          calorieDebug = {
+            source: firstRec.debugSource || 'unknown',
+            origins: firstRec.debugOrigins || 'unknown',
+            rawValue: firstRec.value || 0,
+          };
+        }
       } catch (e) { console.warn("Failed to read active calories:", e); }
 
-      setHealthData({ steps, heartRate, weight, sleep: 0, activeCalories });
+      setHealthData({ steps, heartRate, weight, sleep: 0, activeCalories, calorieDebug });
     } catch (err: any) {
       console.error("fetchHealthData error:", err);
       setError(`Failed to fetch: ${err?.message || "Unknown error"}`);
