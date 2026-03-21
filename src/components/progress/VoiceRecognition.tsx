@@ -26,6 +26,7 @@ const VoiceRecognition = () => {
   const [parsedResult, setParsedResult] = useState<ParsedVoiceResult | null>(null);
   const autoProcessPendingRef = useRef(false);
   const stopInProgressRef = useRef(false);
+  const hasEnteredListeningRef = useRef(false);
   const addEntry = useAddEntry();
 
   const openMicrophoneSettings = useCallback(async () => {
@@ -55,6 +56,8 @@ const VoiceRecognition = () => {
   const handleStartListening = useCallback(async () => {
     setParsedResult(null);
     setIsStopping(false);
+    autoProcessPendingRef.current = false;
+    hasEnteredListeningRef.current = false;
     resetTranscript();
     const started = await startListening();
     autoProcessPendingRef.current = Boolean(started);
@@ -104,12 +107,19 @@ const VoiceRecognition = () => {
   }, [getTranscript, listening, processing, stopListening]);
 
   useEffect(() => {
+    if (listening) {
+      hasEnteredListeningRef.current = true;
+    }
+  }, [listening]);
+
+  useEffect(() => {
     if (listening || !autoProcessPendingRef.current) return;
+    if (!hasEnteredListeningRef.current) return;
 
     const timer = window.setTimeout(() => {
-      if (!autoProcessPendingRef.current) return;
+      if (!autoProcessPendingRef.current || !hasEnteredListeningRef.current) return;
       void stopAndProcess();
-    }, 450);
+    }, 700);
 
     return () => window.clearTimeout(timer);
   }, [listening, stopAndProcess]);

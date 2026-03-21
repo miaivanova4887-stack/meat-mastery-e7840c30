@@ -38,8 +38,13 @@ class HealthConnectPlugin : Plugin() {
         HealthPermission.getReadPermission(HeartRateRecord::class),
         HealthPermission.getReadPermission(WeightRecord::class),
         HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
+    )
+
+    private val optionalPermissions = setOf(
         HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
     )
+
+    private val requestedPermissions = requiredPermissions + optionalPermissions
 
     override fun load() {
         super.load()
@@ -139,7 +144,7 @@ class HealthConnectPlugin : Plugin() {
                 val launcher = permissionLauncher
                 if (launcher != null) {
                     pendingPermissionCall = call
-                    launcher.launch(requiredPermissions)
+                    launcher.launch(requestedPermissions)
                 } else {
                     Log.w(tag, "Permission launcher unavailable, opening Health Connect settings")
                     try {
@@ -286,43 +291,60 @@ class HealthConnectPlugin : Plugin() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val records = JSArray()
+                var caloriesReadError: Exception? = null
 
-                val activeRequest = ReadRecordsRequest(
-                    recordType = ActiveCaloriesBurnedRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                )
-                val activeResponse = client.readRecords(activeRequest)
-
-                for (record in activeResponse.records) {
-                    val obj = JSObject()
-                    obj.put("value", record.energy.inKilocalories)
-                    obj.put("unit", "kcal")
-                    obj.put("timestamp", record.endTime.toString())
-                    records.put(obj)
-                }
-
-                if (records.length() == 0) {
-                    val totalRequest = ReadRecordsRequest(
-                        recordType = TotalCaloriesBurnedRecord::class,
+                try {
+                    val activeRequest = ReadRecordsRequest(
+                        recordType = ActiveCaloriesBurnedRecord::class,
                         timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                     )
-                    val totalResponse = client.readRecords(totalRequest)
+                    val activeResponse = client.readRecords(activeRequest)
 
-                    for (record in totalResponse.records) {
+                    for (record in activeResponse.records) {
                         val obj = JSObject()
                         obj.put("value", record.energy.inKilocalories)
                         obj.put("unit", "kcal")
                         obj.put("timestamp", record.endTime.toString())
                         records.put(obj)
                     }
+                } catch (e: Exception) {
+                    caloriesReadError = e
+                    Log.w(tag, "Active calories read failed", e)
+                }
+
+                if (records.length() == 0) {
+                    try {
+                        val totalRequest = ReadRecordsRequest(
+                            recordType = TotalCaloriesBurnedRecord::class,
+                            timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                        )
+                        val totalResponse = client.readRecords(totalRequest)
+
+                        for (record in totalResponse.records) {
+                            val obj = JSObject()
+                            obj.put("value", record.energy.inKilocalories)
+                            obj.put("unit", "kcal")
+                            obj.put("timestamp", record.endTime.toString())
+                            records.put(obj)
+                        }
+                    } catch (e: Exception) {
+                        if (caloriesReadError == null) caloriesReadError = e
+                        Log.w(tag, "Total calories read fallback failed", e)
+                    }
+                }
+
+                if (records.length() == 0 && caloriesReadError != null) {
+                    Log.w(tag, "Returning empty calories due to read error", caloriesReadError)
                 }
 
                 val result = JSObject()
                 result.put("records", records)
                 call.resolve(result)
             } catch (e: Exception) {
-                Log.e(tag, "readActiveCalories failed", e)
-                call.reject("Failed to read calories: ${e.message}")
+                Log.e(tag, "readActiveCalories unexpected failure", e)
+                val fallback = JSObject()
+                fallback.put("records", JSArray())
+                call.resolve(fallback)
             }
         }
     }
