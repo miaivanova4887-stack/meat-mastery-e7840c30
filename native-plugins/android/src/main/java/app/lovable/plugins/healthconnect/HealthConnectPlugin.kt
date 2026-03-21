@@ -306,21 +306,12 @@ class HealthConnectPlugin : Plugin() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val records = JSArray()
-                var caloriesReadError: Exception? = null
-                val totalPermission = HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class)
-                val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
                 val granted = client.permissionController.getGrantedPermissions()
+                val totalPermission = HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class)
 
-                fun putRecord(valueKcal: Double, timestamp: String) {
-                    val obj = JSObject()
-                    obj.put("value", valueKcal)
-                    obj.put("unit", "kcal")
-                    obj.put("timestamp", timestamp)
-                    records.put(obj)
-                }
-
-                // Read TOTAL calories first (includes BMR + active — matches Samsung Health "Total burnt calories")
                 if (granted.contains(totalPermission)) {
+                    // Use ONLY the aggregate API — returns BMR + active combined
+                    // This matches Samsung Health "Total burnt calories"
                     try {
                         val totalAggregate = client.aggregate(
                             AggregateRequest(
@@ -331,52 +322,40 @@ class HealthConnectPlugin : Plugin() {
 
                         val total = totalAggregate[TotalCaloriesBurnedRecord.ENERGY_TOTAL]
                         if (total != null && total.inKilocalories > 0.0) {
-                            putRecord(total.inKilocalories, endTime.toString())
+                            val obj = JSObject()
+                            obj.put("value", total.inKilocalories)
+                            obj.put("unit", "kcal")
+                            obj.put("timestamp", endTime.toString())
+                            records.put(obj)
+                            Log.d(tag, "Total calories (aggregate): ${total.inKilocalories} kcal")
                         }
                     } catch (e: Exception) {
-                        caloriesReadError = e
-                        Log.w(tag, "Total calories aggregate read failed", e)
+                        Log.w(tag, "Total calories aggregate failed", e)
                     }
+                }
 
-                    // Some providers surface better interval data through readRecords, keep as fallback.
-                    if (records.length() == 0) {
+                // Only fall back to active calories if total aggregate returned nothing
+                if (records.length() == 0) {
+                    val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
+                    if (granted.contains(activePermission)) {
                         try {
-                            val totalRequest = ReadRecordsRequest(
-                                recordType = TotalCaloriesBurnedRecord::class,
+                            val activeRequest = ReadRecordsRequest(
+                                recordType = ActiveCaloriesBurnedRecord::class,
                                 timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                             )
-                            val totalResponse = client.readRecords(totalRequest)
-
-                            for (record in totalResponse.records) {
-                                putRecord(record.energy.inKilocalories, record.endTime.toString())
+                            val activeResponse = client.readRecords(activeRequest)
+                            for (record in activeResponse.records) {
+                                val obj = JSObject()
+                                obj.put("value", record.energy.inKilocalories)
+                                obj.put("unit", "kcal")
+                                obj.put("timestamp", record.endTime.toString())
+                                records.put(obj)
                             }
+                            Log.d(tag, "Fell back to active calories: ${activeResponse.records.size} records")
                         } catch (e: Exception) {
-                            if (caloriesReadError == null) caloriesReadError = e
-                            Log.w(tag, "Total calories record read failed", e)
+                            Log.w(tag, "Active calories fallback failed", e)
                         }
                     }
-                }
-
-                // Fallback to active-only calories if total returned nothing
-                if (records.length() == 0 && granted.contains(activePermission)) {
-                    try {
-                        val activeRequest = ReadRecordsRequest(
-                            recordType = ActiveCaloriesBurnedRecord::class,
-                            timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                        )
-                        val activeResponse = client.readRecords(activeRequest)
-
-                        for (record in activeResponse.records) {
-                            putRecord(record.energy.inKilocalories, record.endTime.toString())
-                        }
-                    } catch (e: Exception) {
-                        if (caloriesReadError == null) caloriesReadError = e
-                        Log.w(tag, "Active calories fallback failed", e)
-                    }
-                }
-
-                if (records.length() == 0 && caloriesReadError != null) {
-                    Log.w(tag, "Returning empty calories due to read error", caloriesReadError)
                 }
 
                 val result = JSObject()
