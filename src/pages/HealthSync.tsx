@@ -114,7 +114,7 @@ const HealthSync = () => {
                 <p>Records sum: {healthData.activeCalories.toFixed(1)} kcal</p>
               </div>
             )}
-          )}
+        </div>
 
         {/* Apple Health — only show on iOS */}
         {(!isNative || !isAndroid) && Capacitor.getPlatform() === "ios" && (
