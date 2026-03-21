@@ -104,8 +104,17 @@ const HealthSync = () => {
                 <p className="text-[10px] text-muted-foreground">kg</p>
               </div>
             </div>
+            {/* Debug overlay for calorie diagnosis */}
+            {healthData.calorieDebug && (
+              <div className="mt-2 bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono">
+                <p>🔍 <strong>Calorie Debug</strong></p>
+                <p>Source: {healthData.calorieDebug.source}</p>
+                <p>Origins: {healthData.calorieDebug.origins}</p>
+                <p>Raw value: {healthData.calorieDebug.rawValue.toFixed(1)} kcal</p>
+                <p>Records sum: {healthData.activeCalories.toFixed(1)} kcal</p>
+              </div>
+            )}
           )}
-        </div>
 
         {/* Apple Health — only show on iOS */}
         {(!isNative || !isAndroid) && Capacitor.getPlatform() === "ios" && (
