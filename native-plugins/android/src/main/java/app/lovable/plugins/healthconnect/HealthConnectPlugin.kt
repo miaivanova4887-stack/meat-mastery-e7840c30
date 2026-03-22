@@ -438,9 +438,9 @@ class HealthConnectPlugin : Plugin() {
 
                     val samsungOriginsFromRecords = totalCaloriesRecordsResponse
                         ?.records
-                        .mapNotNull { it.metadata.dataOrigin.packageName }
-                        .filter { isSamsungOrigin(it) }
-                        .toSet()
+                        ?.mapNotNull { it.metadata.dataOrigin.packageName }
+                        ?.filter { isSamsungOrigin(it) }
+                        ?.toSet() ?: emptySet()
 
                     val samsungOriginsToQuery = if (samsungOriginsFromRecords.isNotEmpty()) {
                         samsungOriginsFromRecords
