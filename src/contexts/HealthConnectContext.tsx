@@ -39,7 +39,7 @@ const HC_CONNECTED_KEY = "carnivore-hc-connected";
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
-    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0, calorieDebug: defaultCalorieDebug,
+    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(() => {
     try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
