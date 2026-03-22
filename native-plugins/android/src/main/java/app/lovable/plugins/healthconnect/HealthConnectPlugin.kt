@@ -439,6 +439,19 @@ class HealthConnectPlugin : Plugin() {
         return latest.second to detail
     }
 
+    /**
+     * Samsung Health Daily Activity uses a 4:00 AM local day boundary.
+     * Align calorie queries to that boundary so values match Samsung UI.
+     */
+    private fun samsungActivityDayStart(now: Instant, zone: ZoneId, dayStartHour: Int = 4): Instant {
+        val zonedNow = now.atZone(zone)
+        var start = zonedNow.toLocalDate().atTime(dayStartHour, 0).atZone(zone)
+        if (zonedNow.isBefore(start)) {
+            start = start.minusDays(1)
+        }
+        return start.toInstant()
+    }
+
     @PluginMethod
     fun readActiveCalories(call: PluginCall) {
         val client = healthConnectClient ?: run {
@@ -450,7 +463,8 @@ class HealthConnectPlugin : Plugin() {
         val requestedEndRaw = call.getString("endTime") ?: "missing"
         val zone = ZoneId.systemDefault()
         val endTime = Instant.now()
-        val startTime = endTime.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
+        val samsungDayStartHour = 4
+        val startTime = samsungActivityDayStart(endTime, zone, samsungDayStartHour)
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -460,17 +474,17 @@ class HealthConnectPlugin : Plugin() {
                 val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
                 val basalPermission = HealthPermission.getReadPermission(BasalMetabolicRateRecord::class)
 
-                // v13: ALWAYS return a debug record so we can see what's happening
+                // v14: ALWAYS return a debug record so we can see what's happening
                 val hasTotalPerm = granted.contains(totalPermission)
                 val hasActivePerm = granted.contains(activePermission)
                 val hasBasalPerm = granted.contains(basalPermission)
                 val allGrantedPerms = granted.joinToString(";")
 
-                Log.d(tag, "v13 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm allGranted=$allGrantedPerms")
+                Log.d(tag, "v14 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm allGranted=$allGrantedPerms")
 
                 var resolvedTotalKcal: Double? = null
-                var selectedSource = "v13_unresolved"
-                var debugInfo = "v13 perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) grantedAll=$allGrantedPerms"
+                var selectedSource = "v14_unresolved"
+                var debugInfo = "v14 perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) grantedAll=$allGrantedPerms"
 
                 // ---- AGGREGATE PATH (only if TotalCaloriesBurned permission granted) ----
                 var aggSamsungTotal = 0.0
@@ -621,28 +635,28 @@ class HealthConnectPlugin : Plugin() {
 
                 if (overlapSamsungLatest > 0.0) {
                     resolvedTotalKcal = overlapSamsungLatest
-                    selectedSource = "v13_samsung_latest_overlap"
+                    selectedSource = "v14_samsung_latest_overlap"
                 } else if (overlapSamsungDedup > 0.0) {
                     resolvedTotalKcal = overlapSamsungDedup
-                    selectedSource = "v13_samsung_dedup_overlap"
+                    selectedSource = "v14_samsung_dedup_overlap"
                 } else if (aggSamsungTotal > 0.0) {
                     resolvedTotalKcal = aggSamsungTotal
-                    selectedSource = "v13_samsung_aggregate_total"
+                    selectedSource = "v14_samsung_aggregate_total"
                 } else if (samsungActivePlusBasal > 0.0) {
                     resolvedTotalKcal = samsungActivePlusBasal
-                    selectedSource = "v13_samsung_active_plus_basal"
+                    selectedSource = "v14_samsung_active_plus_basal"
                 } else if (overlapGlobalLatest > 0.0) {
                     resolvedTotalKcal = overlapGlobalLatest
-                    selectedSource = "v13_global_latest_overlap"
+                    selectedSource = "v14_global_latest_overlap"
                 } else if (overlapGlobalDedup > 0.0) {
                     resolvedTotalKcal = overlapGlobalDedup
-                    selectedSource = "v13_global_dedup_overlap"
+                    selectedSource = "v14_global_dedup_overlap"
                 } else if (globalActivePlusBasal > 0.0) {
                     resolvedTotalKcal = globalActivePlusBasal
-                    selectedSource = "v13_global_active_plus_basal"
+                    selectedSource = "v14_global_active_plus_basal"
                 } else if (aggGlobalTotal > 0.0) {
                     resolvedTotalKcal = aggGlobalTotal
-                    selectedSource = "v13_global_aggregate_total"
+                    selectedSource = "v14_global_aggregate_total"
                 }
 
                 // ---- ACTIVE-ONLY FALLBACK ----
@@ -660,7 +674,7 @@ class HealthConnectPlugin : Plugin() {
                         activeSum = activeResponse.records.sumOf { it.energy.inKilocalories }
                         if (activeSum > 0.0) {
                             resolvedTotalKcal = activeSum
-                            selectedSource = "v13_active_only_fallback"
+                            selectedSource = "v14_active_only_fallback"
                         }
                     } catch (e: Exception) {
                         Log.w(tag, "Active-only fallback failed", e)
@@ -668,7 +682,7 @@ class HealthConnectPlugin : Plugin() {
                 }
 
                 // ---- BUILD FULL DEBUG STRING ----
-                debugInfo = "v13 zone=${zone.id} reqStart=$requestedStartRaw reqEnd=$requestedEndRaw start=$startTime end=$endTime " +
+                debugInfo = "v14 zone=${zone.id} dayStartHour=$samsungDayStartHour reqStart=$requestedStartRaw reqEnd=$requestedEndRaw start=$startTime end=$endTime " +
                     "perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) " +
                     "aggST=${String.format("%.1f", aggSamsungTotal)} " +
                     "aggGT=${String.format("%.1f", aggGlobalTotal)} " +
@@ -691,7 +705,7 @@ class HealthConnectPlugin : Plugin() {
                     debugInfo
                 }
 
-                Log.d(tag, "v13 calorie result: source=$selectedSource $boundedDebugInfo")
+                Log.d(tag, "v14 calorie result: source=$selectedSource $boundedDebugInfo")
 
                 // ---- ALWAYS return at least one record with debug info ----
                 val obj = JSObject()
@@ -713,7 +727,7 @@ class HealthConnectPlugin : Plugin() {
                 crashObj.put("value", 0.0)
                 crashObj.put("unit", "kcal")
                 crashObj.put("timestamp", endTime.toString())
-                crashObj.put("debugSource", "v13_crash")
+                crashObj.put("debugSource", "v14_crash")
                 crashObj.put("debugOrigins", "error:${e.message}")
                 crashRecords.put(crashObj)
                 val fallback = JSObject()
