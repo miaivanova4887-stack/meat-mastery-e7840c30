@@ -193,47 +193,7 @@ const Exercise = () => {
           )}
         </div>
 
-        {/* Yoga Buddhi Co. Apps */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles size={18} className="text-accent" />
-            <h2 className="font-display font-bold text-foreground">Yoga Buddhi Co.</h2>
-            <span className="text-[10px] text-muted-foreground ml-auto italic">All apps</span>
-          </div>
-          <div className="space-y-3">
-            {buddhiApps.map(({ app, icon: AppIcon, color, styles }, i) => (
-              <div key={app} className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
-                <button
-                  onClick={() => setExpandedApp(expandedApp === app ? null : app)}
-                  className="w-full flex items-center justify-between p-4 text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <AppIcon size={20} className={color} />
-                    <h3 className="font-display font-bold text-foreground text-sm">{app}</h3>
-                    <span className="text-[10px] bg-secondary/60 text-secondary-foreground px-2 py-0.5 rounded-full">{styles.length} styles</span>
-                  </div>
-                  <ChevronRight size={16} className={`text-muted-foreground transition-transform duration-200 ${expandedApp === app ? 'rotate-90' : ''}`} />
-                </button>
-                {expandedApp === app && (
-                  <div className="px-4 pb-4 space-y-2 animate-fade-in">
-                    {styles.map((style) => (
-                      <div key={style.name} className="bg-background/60 rounded-md p-3 border border-border/50">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-foreground">{style.name}</span>
-                          <div className="flex gap-1.5">
-                            <span className="text-[9px] bg-secondary/50 text-secondary-foreground px-1.5 py-0.5 rounded-full">{style.level}</span>
-                            <span className="text-[9px] bg-secondary/50 text-secondary-foreground px-1.5 py-0.5 rounded-full">{style.duration}</span>
-                          </div>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{style.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+
 
         {/* Original workout categories */}
         <div>
