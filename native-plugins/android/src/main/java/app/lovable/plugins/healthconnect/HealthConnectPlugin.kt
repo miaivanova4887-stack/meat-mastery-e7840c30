@@ -223,7 +223,11 @@ class HealthConnectPlugin : Plugin() {
                     0L
                 }
 
-                val resolvedSteps = maxOf(samsungSteps, globalSteps, 0L)
+                val resolvedSteps = when {
+                    samsungSteps > 0L -> samsungSteps
+                    globalSteps > 0L -> globalSteps
+                    else -> 0L
+                }
                 val records = JSArray()
                 val obj = JSObject()
                 obj.put("value", resolvedSteps)
