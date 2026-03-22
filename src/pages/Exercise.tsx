@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Dumbbell, Heart, Zap, Wind, Sparkles, Sun, Moon, Flame, TreePine, ChevronRight, Activity, Music, Waves, Brain, Info } from "lucide-react";
+import { ArrowLeft, Dumbbell, Heart, Zap, Wind, Sparkles, Sun, Moon, ChevronRight, Activity, Music, Brain, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -14,65 +14,7 @@ const exercises = [
   { icon: Heart, category: "Recovery", desc: "Recovery is where growth happens. The carnivore diet accelerates recovery through nutrient density.", items: ["Cold exposure — 2-5 min cold shower", "Foam rolling — 15 min", "Sleep 7-9 hours nightly", "Sauna — 15-20 min sessions"] },
 ];
 
-// All Yoga Buddhi Co. app categories
-const buddhiApps = [
-  {
-    app: "Yoga",
-    icon: Sun,
-    color: "text-accent",
-    styles: [
-      { name: "Vinyasa Flow", level: "All Levels", duration: "30-60 min", desc: "Dynamic sequences linking breath to movement. Builds heat and cardiovascular endurance." },
-      { name: "Power Yoga", level: "Intermediate+", duration: "45-60 min", desc: "Strength-focused sequences with longer holds. Builds functional muscle endurance." },
-      { name: "Yin Yoga", level: "All Levels", duration: "45-75 min", desc: "Deep passive stretches held 3-5 minutes. Targets fascia and connective tissue." },
-      { name: "Hatha", level: "Beginner-Friendly", duration: "45-60 min", desc: "Classic postures with steady pacing. Great for foundational flexibility." },
-      { name: "Restorative", level: "All Levels", duration: "60-90 min", desc: "Supported poses with props for total relaxation. Optimizes recovery." },
-    ],
-  },
-  {
-    app: "HIIT",
-    icon: Zap,
-    color: "text-destructive",
-    styles: [
-      { name: "Full Body Burn", level: "Intermediate+", duration: "20-30 min", desc: "Total body explosive movements. Maximum calorie burn in minimum time." },
-      { name: "Tabata", level: "Advanced", duration: "15-20 min", desc: "20s max effort / 10s rest × 8 rounds. The gold standard of interval training." },
-      { name: "Low-Impact HIIT", level: "Beginner-Friendly", duration: "20-30 min", desc: "High intensity without jumping. Joint-friendly but still challenging." },
-      { name: "EMOM (Every Min on Min)", level: "All Levels", duration: "20-30 min", desc: "Complete reps within 60s, rest remainder. Builds work capacity." },
-    ],
-  },
-  {
-    app: "Meditation",
-    icon: Brain,
-    color: "text-primary",
-    styles: [
-      { name: "Guided Mindfulness", level: "All Levels", duration: "10-20 min", desc: "Breath-focused awareness practice. Reduces cortisol and improves mental clarity." },
-      { name: "Body Scan", level: "All Levels", duration: "15-30 min", desc: "Progressive relaxation through body awareness. Ideal post-workout recovery." },
-      { name: "Sleep Meditation", level: "All Levels", duration: "20-45 min", desc: "Guided relaxation designed to ease you into deep, restorative sleep." },
-      { name: "Breathwork", level: "All Levels", duration: "10-15 min", desc: "Pranayama and box breathing techniques. Activates parasympathetic nervous system." },
-    ],
-  },
-  {
-    app: "Pilates",
-    icon: Activity,
-    color: "text-flame",
-    styles: [
-      { name: "Mat Pilates", level: "All Levels", duration: "30-45 min", desc: "Core-focused bodyweight work on the mat. Builds deep stabilizer strength." },
-      { name: "Power Pilates", level: "Intermediate+", duration: "30-45 min", desc: "Faster-paced with added resistance. Challenges endurance and muscle control." },
-      { name: "Stretch & Lengthen", level: "Beginner-Friendly", duration: "20-30 min", desc: "Flexibility-focused Pilates movements. Opens hips, spine, and shoulders." },
-      { name: "Core Blast", level: "All Levels", duration: "15-20 min", desc: "Targeted abdominal and lower back work. Essential for posture and lifting." },
-    ],
-  },
-  {
-    app: "Barre",
-    icon: Music,
-    color: "text-gold",
-    styles: [
-      { name: "Classic Barre", level: "All Levels", duration: "30-45 min", desc: "Ballet-inspired small movements with isometric holds. Sculpts lean muscle." },
-      { name: "Cardio Barre", level: "Intermediate+", duration: "30-40 min", desc: "Higher tempo barre with cardio bursts. Burns fat while toning." },
-      { name: "Barre Stretch", level: "Beginner-Friendly", duration: "20-30 min", desc: "Deep stretching with ballet-inspired flexibility work. Graceful recovery." },
-      { name: "Lower Body Barre", level: "All Levels", duration: "25-35 min", desc: "Glutes, thighs, and calves focused. Small pulses, big results." },
-    ],
-  },
-];
+
 
 // Quiz — 7 questions to cover all Buddhi apps
 const TOTAL_QUESTIONS = 7;
@@ -171,7 +113,7 @@ const Exercise = () => {
 
   const quizResult = quizStep === TOTAL_QUESTIONS ? getQuizResult(quizAnswers) : null;
 
-  const [expandedApp, setExpandedApp] = useState<string | null>(null);
+  
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       <div className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b border-border px-4 pb-3 flex items-center gap-3"
@@ -251,47 +193,7 @@ const Exercise = () => {
           )}
         </div>
 
-        {/* Yoga Buddhi Co. Apps */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles size={18} className="text-accent" />
-            <h2 className="font-display font-bold text-foreground">Yoga Buddhi Co.</h2>
-            <span className="text-[10px] text-muted-foreground ml-auto italic">All apps</span>
-          </div>
-          <div className="space-y-3">
-            {buddhiApps.map(({ app, icon: AppIcon, color, styles }, i) => (
-              <div key={app} className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
-                <button
-                  onClick={() => setExpandedApp(expandedApp === app ? null : app)}
-                  className="w-full flex items-center justify-between p-4 text-left"
-                >
-                  <div className="flex items-center gap-2">
-                    <AppIcon size={20} className={color} />
-                    <h3 className="font-display font-bold text-foreground text-sm">{app}</h3>
-                    <span className="text-[10px] bg-secondary/60 text-secondary-foreground px-2 py-0.5 rounded-full">{styles.length} styles</span>
-                  </div>
-                  <ChevronRight size={16} className={`text-muted-foreground transition-transform duration-200 ${expandedApp === app ? 'rotate-90' : ''}`} />
-                </button>
-                {expandedApp === app && (
-                  <div className="px-4 pb-4 space-y-2 animate-fade-in">
-                    {styles.map((style) => (
-                      <div key={style.name} className="bg-background/60 rounded-md p-3 border border-border/50">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-bold text-foreground">{style.name}</span>
-                          <div className="flex gap-1.5">
-                            <span className="text-[9px] bg-secondary/50 text-secondary-foreground px-1.5 py-0.5 rounded-full">{style.level}</span>
-                            <span className="text-[9px] bg-secondary/50 text-secondary-foreground px-1.5 py-0.5 rounded-full">{style.duration}</span>
-                          </div>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{style.desc}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+
 
         {/* Original workout categories */}
         <div>

@@ -132,7 +132,7 @@ const AddEntryDrawer = ({ open, onOpenChange, category, metricKey }: Props) => {
             <p className="text-[10px] text-muted-foreground text-right mt-0.5">{notes.length}/500</p>
           </div>
         </div>
-        <DrawerFooter className="flex-row gap-3">
+        <DrawerFooter className="flex-row gap-3" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
           <DrawerClose asChild>
             <Button variant="outline" className="flex-1">Cancel</Button>
           </DrawerClose>
