@@ -29,7 +29,6 @@ const HealthSync = () => {
   const safeSteps = toFiniteNumber(healthData.steps);
   const safeHeartRate = toFiniteNumber(healthData.heartRate);
   const safeWeight = toFiniteNumber(healthData.weight);
-  const safeRawCalories = toFiniteNumber(healthData.calorieDebug?.rawValue);
   const safeRecordCalories = toFiniteNumber(healthData.activeCalories);
 
   return (
