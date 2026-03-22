@@ -630,33 +630,13 @@ class HealthConnectPlugin : Plugin() {
                 }
 
                 // ---- RESOLVE best value ----
-                val samsungActivePlusBasal = aggSamsungActive + aggSamsungBasal
-                val globalActivePlusBasal = aggGlobalActive + aggGlobalBasal
-
-                if (overlapSamsungLatest > 0.0) {
-                    resolvedTotalKcal = overlapSamsungLatest
-                    selectedSource = "v15_samsung_latest_overlap"
-                } else if (overlapSamsungDedup > 0.0) {
-                    resolvedTotalKcal = overlapSamsungDedup
-                    selectedSource = "v15_samsung_dedup_overlap"
+                // v15: Pure raw aggregate — no overlap/dedup/cumulative logic
+                if (aggGlobalTotal > 0.0) {
+                    resolvedTotalKcal = aggGlobalTotal
+                    selectedSource = "v15_raw_aggregate"
                 } else if (aggSamsungTotal > 0.0) {
                     resolvedTotalKcal = aggSamsungTotal
-                    selectedSource = "v15_samsung_aggregate_total"
-                } else if (samsungActivePlusBasal > 0.0) {
-                    resolvedTotalKcal = samsungActivePlusBasal
-                    selectedSource = "v15_samsung_active_plus_basal"
-                } else if (overlapGlobalLatest > 0.0) {
-                    resolvedTotalKcal = overlapGlobalLatest
-                    selectedSource = "v15_global_latest_overlap"
-                } else if (overlapGlobalDedup > 0.0) {
-                    resolvedTotalKcal = overlapGlobalDedup
-                    selectedSource = "v15_global_dedup_overlap"
-                } else if (globalActivePlusBasal > 0.0) {
-                    resolvedTotalKcal = globalActivePlusBasal
-                    selectedSource = "v15_global_active_plus_basal"
-                } else if (aggGlobalTotal > 0.0) {
-                    resolvedTotalKcal = aggGlobalTotal
-                    selectedSource = "v15_global_aggregate_total"
+                    selectedSource = "v15_raw_samsung_aggregate"
                 }
 
                 // ---- ACTIVE-ONLY FALLBACK ----
