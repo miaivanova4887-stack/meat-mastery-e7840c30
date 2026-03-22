@@ -34,6 +34,13 @@ class HealthConnectPlugin : Plugin() {
     private var permissionLauncher: ActivityResultLauncher<Set<String>>? = null
     private var pendingPermissionCall: PluginCall? = null
 
+    private val samsungOriginPackages = setOf(
+        "com.sec.android.app.shealth",
+        "com.samsung.android.app.shealth",
+        "com.samsung.health",
+        "com.samsung.android.health",
+    )
+
     private val requiredPermissions = setOf(
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getReadPermission(HeartRateRecord::class),
@@ -95,6 +102,19 @@ class HealthConnectPlugin : Plugin() {
             call.reject("Invalid time range format: ${e.message}")
             null
         }
+    }
+
+    private fun isSamsungOrigin(packageName: String?): Boolean {
+        if (packageName.isNullOrBlank()) return false
+        val normalized = packageName.lowercase()
+        return samsungOriginPackages.contains(normalized) ||
+            normalized.contains("samsung") ||
+            normalized.contains("shealth") ||
+            normalized.contains("sec.android")
+    }
+
+    private fun defaultSamsungOriginFilter(): Set<DataOrigin> {
+        return samsungOriginPackages.map { DataOrigin(it) }.toSet()
     }
 
     @PluginMethod
@@ -197,7 +217,33 @@ class HealthConnectPlugin : Plugin() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val samsungOriginFilter = setOf(DataOrigin("com.sec.android.app.shealth"))
+                val stepsRecordsResponse = try {
+                    client.readRecords(
+                        ReadRecordsRequest(
+                            recordType = StepsRecord::class,
+                            timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                        )
+                    )
+                } catch (e: Exception) {
+                    Log.w(tag, "readSteps records fetch failed", e)
+                    null
+                }
+
+                val detectedSamsungOrigins = stepsRecordsResponse
+                    ?.records
+                    ?.mapNotNull { it.metadata.dataOrigin.packageName }
+                    ?.filter { isSamsungOrigin(it) }
+                    ?.toSet()
+                    ?.map { DataOrigin(it) }
+                    ?.toSet()
+                    ?: emptySet()
+
+                val samsungOriginFilter = if (detectedSamsungOrigins.isNotEmpty()) {
+                    detectedSamsungOrigins
+                } else {
+                    defaultSamsungOriginFilter()
+                }
+
                 val samsungSteps = try {
                     client.aggregate(
                         AggregateRequest(
@@ -348,10 +394,44 @@ class HealthConnectPlugin : Plugin() {
 
                 var aggSamsungTotal = 0.0
                 var aggGlobalTotal = 0.0
+                var latestSamsungSnapshot = 0.0
 
                 try {
-                    val samsungPackage = "com.sec.android.app.shealth"
-                    val samsungOriginFilter = setOf(DataOrigin(samsungPackage))
+                    val totalCaloriesRecordsResponse = try {
+                        client.readRecords(
+                            ReadRecordsRequest(
+                                recordType = TotalCaloriesBurnedRecord::class,
+                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                            )
+                        )
+                    } catch (e: Exception) {
+                        Log.w(tag, "readActiveCalories records fetch failed", e)
+                        null
+                    }
+
+                    val samsungRecords = totalCaloriesRecordsResponse
+                        ?.records
+                        ?.filter { isSamsungOrigin(it.metadata.dataOrigin.packageName) }
+                        ?: emptyList()
+
+                    latestSamsungSnapshot = samsungRecords
+                        .maxByOrNull { it.endTime }
+                        ?.energy
+                        ?.inKilocalories
+                        ?: 0.0
+                    latestSamsungSnapshot = sanitizeKcal(latestSamsungSnapshot)
+
+                    val detectedSamsungOrigins = samsungRecords
+                        .mapNotNull { it.metadata.dataOrigin.packageName }
+                        .toSet()
+                        .map { DataOrigin(it) }
+                        .toSet()
+
+                    val samsungOriginFilter = if (detectedSamsungOrigins.isNotEmpty()) {
+                        detectedSamsungOrigins
+                    } else {
+                        defaultSamsungOriginFilter()
+                    }
 
                     aggSamsungTotal = try {
                         client.aggregate(
@@ -378,11 +458,16 @@ class HealthConnectPlugin : Plugin() {
                     Log.w(tag, "Total aggregate block failed", e)
                 }
 
-                // Samsung Health-first resolution to match Samsung UI totals.
-                resolvedTotalKcal = if (aggSamsungTotal > 0.0) aggSamsungTotal else aggGlobalTotal
+                // Prefer Samsung totals; if Samsung aggregate appears inflated by overlapping snapshots,
+                // fall back to latest Samsung snapshot value.
+                resolvedTotalKcal = when {
+                    latestSamsungSnapshot > 0.0 && aggSamsungTotal > latestSamsungSnapshot * 1.2 -> latestSamsungSnapshot
+                    aggSamsungTotal > 0.0 -> aggSamsungTotal
+                    latestSamsungSnapshot > 0.0 -> latestSamsungSnapshot
+                    else -> aggGlobalTotal
+                }
 
                 resolvedTotalKcal = sanitizeKcal(resolvedTotalKcal)
-                Log.d(tag, "calorie result: resolved=${String.format("%.1f", resolvedTotalKcal)}")
 
                 val obj = JSObject()
                 obj.put("value", resolvedTotalKcal)
