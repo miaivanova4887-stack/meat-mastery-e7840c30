@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Dumbbell, Heart, Zap, Wind, Sparkles, Sun, Moon, Flame, TreePine, ChevronRight, Activity, Music, Waves, Brain, Info } from "lucide-react";
+import { ArrowLeft, Dumbbell, Heart, Zap, Wind, Sparkles, Sun, Moon, ChevronRight, Activity, Music, Brain, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
