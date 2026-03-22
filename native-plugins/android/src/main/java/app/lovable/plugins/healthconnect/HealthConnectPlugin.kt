@@ -689,8 +689,6 @@ class HealthConnectPlugin : Plugin() {
                 crashObj.put("value", 0.0)
                 crashObj.put("unit", "kcal")
                 crashObj.put("timestamp", endTime.toString())
-                crashObj.put("debugSource", "v15_crash")
-                crashObj.put("debugOrigins", "error:${e.message}")
                 crashRecords.put(crashObj)
                 val fallback = JSObject()
                 fallback.put("records", crashRecords)
