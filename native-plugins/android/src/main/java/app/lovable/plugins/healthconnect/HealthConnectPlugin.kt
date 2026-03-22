@@ -113,10 +113,6 @@ class HealthConnectPlugin : Plugin() {
             normalized.contains("sec.android")
     }
 
-    private fun defaultSamsungOriginFilter(): Set<DataOrigin> {
-        return samsungOriginPackages.map { DataOrigin(it) }.toSet()
-    }
-
     private suspend fun aggregateStepsForOrigin(
         client: HealthConnectClient,
         startTime: Instant,
