@@ -31,7 +31,7 @@ export const HealthDashboard = () => {
   const safeHeartRate = toFiniteNumber(healthData.heartRate);
   const safeWeight = toFiniteNumber(healthData.weight);
   const safeActiveCalories = toFiniteNumber(healthData.activeCalories);
-  const safeDebugSource = healthData.calorieDebug?.source?.slice(0, 3) || "?";
+  const safeDebugSource = healthData.calorieDebug?.source?.slice(0, 3) || "v15";
   const safeDebugOrigins = typeof healthData.calorieDebug?.origins === "string"
     ? healthData.calorieDebug.origins.slice(0, 2000)
     : "n/a";
@@ -107,7 +107,7 @@ export const HealthDashboard = () => {
           </div>
           {/* Build fingerprint — always visible when connected */}
           <p className="text-[9px] text-muted-foreground/60 font-mono text-right mt-1">
-            web:{WEB_BUILD} · src:{safeDebugSource}
+            web:{WEB_BUILD} · src:v15
           </p>
 
           {showDiag && healthData.calorieDebug && (
