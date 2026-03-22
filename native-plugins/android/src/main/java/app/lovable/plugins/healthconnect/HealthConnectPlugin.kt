@@ -152,7 +152,10 @@ class HealthConnectPlugin : Plugin() {
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 val granted = client.permissionController.getGrantedPermissions()
-                if (granted.containsAll(requiredPermissions)) {
+                val hasRequired = granted.containsAll(requiredPermissions)
+                val hasAllRequested = granted.containsAll(requestedPermissions)
+
+                if (hasRequired && hasAllRequested) {
                     val result = JSObject()
                     result.put("granted", true)
                     result.put("grantedCount", granted.size)
