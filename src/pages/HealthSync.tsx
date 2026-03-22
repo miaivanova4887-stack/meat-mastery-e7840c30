@@ -115,15 +115,7 @@ const HealthSync = () => {
                   <p className="text-[10px] text-muted-foreground">kg</p>
                 </div>
               </div>
-              {healthData.calorieDebug && (
-                <div className="mt-2 bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono">
-                  <p>🔍 <strong>Calorie Debug</strong></p>
-                  <p>Source: {healthData.calorieDebug.source}</p>
-                  <p>Origins: {(healthData.calorieDebug.origins || "n/a").slice(0, 2000)}</p>
-                  <p>Raw value: {safeRawCalories.toFixed(1)} kcal</p>
-                  <p>Records sum: {safeRecordCalories.toFixed(1)} kcal</p>
-                </div>
-              )}
+            
             </>
           )}
         </div>
