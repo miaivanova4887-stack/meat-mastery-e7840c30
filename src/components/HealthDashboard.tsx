@@ -76,9 +76,14 @@ export const HealthDashboard = () => {
             <div className="bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono">
               <p>🔍 <strong>Calorie Debug</strong></p>
               <p>Source: {healthData.calorieDebug.source}</p>
-              <p>Origins: {healthData.calorieDebug.origins}</p>
               <p>Raw value: {healthData.calorieDebug.rawValue.toFixed(1)} kcal</p>
-              <p>Records sum: {healthData.activeCalories.toFixed(1)} kcal</p>
+              <p>Display: {healthData.activeCalories.toFixed(1)} kcal</p>
+              {healthData.calorieDebug.origins && (
+                <details className="mt-1">
+                  <summary className="cursor-pointer text-primary">Full debug</summary>
+                  <p className="break-all mt-1">{healthData.calorieDebug.origins}</p>
+                </details>
+              )}
             </div>
           )}
         </>
