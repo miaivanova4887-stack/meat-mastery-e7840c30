@@ -22,6 +22,15 @@ const defaultCalorieDebug: NonNullable<HealthData["calorieDebug"]> = {
   rawValue: 0,
 };
 
+const toFiniteNumber = (value: unknown): number => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const toSafeText = (value: unknown, fallback: string): string => {
+  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+};
+
 interface HealthConnectContextType {
   healthData: HealthData;
   isConnected: boolean;
@@ -51,6 +60,7 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isFetchingRef = useRef(false);
 
   // Persist connection state
   useEffect(() => {
@@ -58,6 +68,9 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
   }, [isConnected]);
 
   const fetchHealthData = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+
     try {
       const now = new Date();
       const startOfDay = new Date();
@@ -68,17 +81,17 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
 
       try {
         const stepsResult = await HealthConnect.readSteps(timeRange);
-        steps = stepsResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + r.value, 0);
+        steps = stepsResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + toFiniteNumber(r.value), 0);
       } catch (e) { console.warn("Failed to read steps:", e); }
 
       try {
         const hrResult = await HealthConnect.readHeartRate(timeRange);
-        if (hrResult.records.length > 0) heartRate = hrResult.records[hrResult.records.length - 1].value;
+        if (hrResult.records.length > 0) heartRate = toFiniteNumber(hrResult.records[hrResult.records.length - 1].value);
       } catch (e) { console.warn("Failed to read heart rate:", e); }
 
       try {
         const weightResult = await HealthConnect.readWeight(timeRange);
-        if (weightResult.records.length > 0) weight = weightResult.records[weightResult.records.length - 1].value;
+        if (weightResult.records.length > 0) weight = toFiniteNumber(weightResult.records[weightResult.records.length - 1].value);
       } catch (e) { console.warn("Failed to read weight:", e); }
 
       let calorieDebug: HealthData['calorieDebug'] = {
@@ -88,15 +101,18 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
       };
       try {
         const calResult = await HealthConnect.readActiveCalories(timeRange);
-        activeCalories = calResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + r.value, 0);
+        activeCalories = calResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + toFiniteNumber(r.value), 0);
         // Capture debug info from first record if available
         if (calResult.records.length > 0) {
           const firstRec = calResult.records[0] as any;
           const hasNativeDebug = typeof firstRec.debugSource === 'string' && firstRec.debugSource.length > 0;
+          const rawNativeValue = toFiniteNumber(firstRec?.value);
           calorieDebug = {
-            source: hasNativeDebug ? firstRec.debugSource : 'fallback_active_records',
-            origins: hasNativeDebug ? (firstRec.debugOrigins || 'unknown') : 'native_debug_missing',
-            rawValue: hasNativeDebug ? (firstRec.value || 0) : activeCalories,
+            source: hasNativeDebug ? toSafeText(firstRec.debugSource, 'fallback_active_records') : 'fallback_active_records',
+            origins: hasNativeDebug
+              ? toSafeText(firstRec.debugOrigins, 'unknown').slice(0, 2000)
+              : 'native_debug_missing',
+            rawValue: hasNativeDebug ? rawNativeValue : activeCalories,
           };
         } else {
           calorieDebug = {
@@ -107,10 +123,19 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         }
       } catch (e) { console.warn("Failed to read active calories:", e); }
 
-      setHealthData({ steps, heartRate, weight, sleep: 0, activeCalories, calorieDebug });
+      setHealthData({
+        steps: toFiniteNumber(steps),
+        heartRate: toFiniteNumber(heartRate),
+        weight: toFiniteNumber(weight),
+        sleep: 0,
+        activeCalories: toFiniteNumber(activeCalories),
+        calorieDebug,
+      });
     } catch (err: any) {
       console.error("fetchHealthData error:", err);
       setError(`Failed to fetch: ${err?.message || "Unknown error"}`);
+    } finally {
+      isFetchingRef.current = false;
     }
   }, []);
 
@@ -164,13 +189,12 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
 
     const tryReconnect = async () => {
       try {
+        if (!Capacitor.isPluginAvailable("HealthConnect")) return;
         const { status } = await HealthConnect.checkAvailability();
         if (status === "available") {
-          const { granted } = await HealthConnect.requestPermissions();
-          if (granted) {
-            setIsConnected(true);
-            await fetchHealthData();
-          }
+          await fetchHealthData();
+        } else {
+          setIsConnected(false);
         }
       } catch {
         // silently fail — will retry on next resume
