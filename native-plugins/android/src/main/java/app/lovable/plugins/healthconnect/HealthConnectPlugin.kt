@@ -663,7 +663,7 @@ class HealthConnectPlugin : Plugin() {
                         activeSum = activeResponse.records.sumOf { it.energy.inKilocalories }
                         if (activeSum > 0.0) {
                             resolvedTotalKcal = activeSum
-                            selectedSource = "v15_active_only_fallback"
+                            selectedSource = "v14_active_only_fallback"
                         }
                     } catch (e: Exception) {
                         Log.w(tag, "Active-only fallback failed", e)
