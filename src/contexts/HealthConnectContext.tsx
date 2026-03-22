@@ -9,27 +9,14 @@ export interface HealthData {
   weight: number;
   sleep: number;
   activeCalories: number;
-  calorieDebug?: {
-    source: string;
-    origins: string;
-    rawValue: number;
-  };
 }
 
-const defaultCalorieDebug: NonNullable<HealthData["calorieDebug"]> = {
-  source: "pending",
-  origins: "pending",
-  rawValue: 0,
-};
 
 const toFiniteNumber = (value: unknown): number => {
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const toSafeText = (value: unknown, fallback: string): string => {
-  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
-};
 
 interface HealthConnectContextType {
   healthData: HealthData;
@@ -52,7 +39,7 @@ const HC_CONNECTED_KEY = "carnivore-hc-connected";
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
-    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0, calorieDebug: defaultCalorieDebug,
+    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(() => {
     try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
@@ -90,37 +77,17 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
       } catch (e) { console.warn("Failed to read heart rate:", e); }
 
       try {
-        const weightResult = await HealthConnect.readWeight(timeRange);
+        // Widen weight window to 30 days — weight may not be recorded daily
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const weightTimeRange = { startTime: thirtyDaysAgo.toISOString(), endTime: now.toISOString() };
+        const weightResult = await HealthConnect.readWeight(weightTimeRange);
         if (weightResult.records.length > 0) weight = toFiniteNumber(weightResult.records[weightResult.records.length - 1].value);
       } catch (e) { console.warn("Failed to read weight:", e); }
 
-      let calorieDebug: HealthData['calorieDebug'] = {
-        source: "no_data",
-        origins: "none",
-        rawValue: 0,
-      };
       try {
         const calResult = await HealthConnect.readActiveCalories(timeRange);
         activeCalories = calResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + toFiniteNumber(r.value), 0);
-        // Capture debug info from first record if available
-        if (calResult.records.length > 0) {
-          const firstRec = calResult.records[0] as any;
-          const hasNativeDebug = typeof firstRec.debugSource === 'string' && firstRec.debugSource.length > 0;
-          const rawNativeValue = toFiniteNumber(firstRec?.value);
-          calorieDebug = {
-            source: hasNativeDebug ? toSafeText(firstRec.debugSource, 'fallback_active_records') : 'fallback_active_records',
-            origins: hasNativeDebug
-              ? toSafeText(firstRec.debugOrigins, 'unknown').slice(0, 2000)
-              : 'native_debug_missing',
-            rawValue: hasNativeDebug ? rawNativeValue : activeCalories,
-          };
-        } else {
-          calorieDebug = {
-            source: 'empty_records',
-            origins: 'none',
-            rawValue: 0,
-          };
-        }
       } catch (e) { console.warn("Failed to read active calories:", e); }
 
       setHealthData({
@@ -129,7 +96,6 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         weight: toFiniteNumber(weight),
         sleep: 0,
         activeCalories: toFiniteNumber(activeCalories),
-        calorieDebug,
       });
     } catch (err: any) {
       console.error("fetchHealthData error:", err);

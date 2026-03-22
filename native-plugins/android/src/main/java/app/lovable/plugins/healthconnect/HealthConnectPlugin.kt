@@ -474,17 +474,14 @@ class HealthConnectPlugin : Plugin() {
                 val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
                 val basalPermission = HealthPermission.getReadPermission(BasalMetabolicRateRecord::class)
 
-                // v14: ALWAYS return a debug record so we can see what's happening
                 val hasTotalPerm = granted.contains(totalPermission)
                 val hasActivePerm = granted.contains(activePermission)
                 val hasBasalPerm = granted.contains(basalPermission)
-                val allGrantedPerms = granted.joinToString(";")
 
-                Log.d(tag, "v15 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm allGranted=$allGrantedPerms")
+                Log.d(tag, "v14 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm")
 
                 var resolvedTotalKcal: Double? = null
-                var selectedSource = "v15_unresolved"
-                var debugInfo = "v15 perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) grantedAll=$allGrantedPerms"
+                var selectedSource = "v14_unresolved"
 
                 // ---- AGGREGATE PATH (only if TotalCaloriesBurned permission granted) ----
                 var aggSamsungTotal = 0.0
@@ -630,13 +627,25 @@ class HealthConnectPlugin : Plugin() {
                 }
 
                 // ---- RESOLVE best value ----
-                // v15: Pure raw aggregate — no overlap/dedup/cumulative logic
-                if (aggGlobalTotal > 0.0) {
-                    resolvedTotalKcal = aggGlobalTotal
-                    selectedSource = "v15_raw_aggregate"
+                // v14: Prefer Samsung cumulative overlap snapshot (matches Samsung Health UI best)
+                if (overlapSamsungLatest > 0.0) {
+                    resolvedTotalKcal = overlapSamsungLatest
+                    selectedSource = "v14_samsung_latest_overlap"
+                } else if (overlapGlobalLatest > 0.0) {
+                    resolvedTotalKcal = overlapGlobalLatest
+                    selectedSource = "v14_global_latest_overlap"
+                } else if (overlapSamsungDedup > 0.0) {
+                    resolvedTotalKcal = overlapSamsungDedup
+                    selectedSource = "v14_samsung_dedup"
+                } else if (overlapGlobalDedup > 0.0) {
+                    resolvedTotalKcal = overlapGlobalDedup
+                    selectedSource = "v14_global_dedup"
                 } else if (aggSamsungTotal > 0.0) {
                     resolvedTotalKcal = aggSamsungTotal
-                    selectedSource = "v15_raw_samsung_aggregate"
+                    selectedSource = "v14_agg_samsung"
+                } else if (aggGlobalTotal > 0.0) {
+                    resolvedTotalKcal = aggGlobalTotal
+                    selectedSource = "v14_agg_global"
                 }
 
                 // ---- ACTIVE-ONLY FALLBACK ----
@@ -654,46 +663,19 @@ class HealthConnectPlugin : Plugin() {
                         activeSum = activeResponse.records.sumOf { it.energy.inKilocalories }
                         if (activeSum > 0.0) {
                             resolvedTotalKcal = activeSum
-                            selectedSource = "v15_active_only_fallback"
+                            selectedSource = "v14_active_only_fallback"
                         }
                     } catch (e: Exception) {
                         Log.w(tag, "Active-only fallback failed", e)
                     }
                 }
 
-                // ---- BUILD FULL DEBUG STRING ----
-                debugInfo = "v15 zone=${zone.id} dayStartHour=$samsungDayStartHour reqStart=$requestedStartRaw reqEnd=$requestedEndRaw start=$startTime end=$endTime " +
-                    "perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) " +
-                    "aggST=${String.format("%.1f", aggSamsungTotal)} " +
-                    "aggGT=${String.format("%.1f", aggGlobalTotal)} " +
-                    "aggSA=${String.format("%.1f", aggSamsungActive)} " +
-                    "aggGA=${String.format("%.1f", aggGlobalActive)} " +
-                    "aggSB=${String.format("%.1f", aggSamsungBasal)} " +
-                    "aggGB=${String.format("%.1f", aggGlobalBasal)} " +
-                    "ovST=${String.format("%.1f", overlapSamsungLatest)} " +
-                    "ovGT=${String.format("%.1f", overlapGlobalLatest)} " +
-                    "ovSD=${String.format("%.1f", overlapSamsungDedup)} " +
-                    "ovGD=${String.format("%.1f", overlapGlobalDedup)} " +
-                    "ovWin=[${overlapWindowStart}→${overlapWindowEnd}] " +
-                    "totalRecs=$recordCount samsungRecs=$samsungRecCount naiveSum=${String.format("%.1f", naiveSum)} " +
-                    "activeRecs=$activeRecCount activeSum=${String.format("%.1f", activeSum)} " +
-                    "resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)} $recordDump"
+                Log.d(tag, "v14 calorie result: source=$selectedSource resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)}")
 
-                val boundedDebugInfo = if (debugInfo.length > 3500) {
-                    debugInfo.take(3500) + " …[truncated]"
-                } else {
-                    debugInfo
-                }
-
-                Log.d(tag, "v15 calorie result: source=$selectedSource $boundedDebugInfo")
-
-                // ---- ALWAYS return at least one record with debug info ----
                 val obj = JSObject()
                 obj.put("value", sanitizeKcal(resolvedTotalKcal ?: 0.0))
                 obj.put("unit", "kcal")
                 obj.put("timestamp", endTime.toString())
-                obj.put("debugSource", selectedSource)
-                obj.put("debugOrigins", boundedDebugInfo)
                 records.put(obj)
 
                 val result = JSObject()
@@ -707,8 +689,6 @@ class HealthConnectPlugin : Plugin() {
                 crashObj.put("value", 0.0)
                 crashObj.put("unit", "kcal")
                 crashObj.put("timestamp", endTime.toString())
-                crashObj.put("debugSource", "v15_crash")
-                crashObj.put("debugOrigins", "error:${e.message}")
                 crashRecords.put(crashObj)
                 val fallback = JSObject()
                 fallback.put("records", crashRecords)
