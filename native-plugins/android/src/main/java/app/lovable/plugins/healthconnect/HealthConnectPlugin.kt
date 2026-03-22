@@ -7,8 +7,6 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import androidx.health.connect.client.permission.HealthPermission
-import androidx.health.connect.client.records.ActiveCaloriesBurnedRecord
-import androidx.health.connect.client.records.BasalMetabolicRateRecord
 import androidx.health.connect.client.records.HeartRateRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.TotalCaloriesBurnedRecord
@@ -44,12 +42,7 @@ class HealthConnectPlugin : Plugin() {
         HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class),
     )
 
-    private val optionalPermissions = setOf(
-        HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class),
-        HealthPermission.getReadPermission(BasalMetabolicRateRecord::class),
-    )
-
-    private val requestedPermissions = requiredPermissions + optionalPermissions
+    private val requestedPermissions = requiredPermissions
 
     override fun load() {
         super.load()
@@ -205,20 +198,39 @@ class HealthConnectPlugin : Plugin() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val request = ReadRecordsRequest(
-                    recordType = StepsRecord::class,
-                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                )
-
-                val response = client.readRecords(request)
-                val records = JSArray()
-                for (record in response.records) {
-                    val obj = JSObject()
-                    obj.put("value", record.count)
-                    obj.put("unit", "steps")
-                    obj.put("timestamp", record.endTime.toString())
-                    records.put(obj)
+                val samsungOriginFilter = setOf(DataOrigin("com.sec.android.app.shealth"))
+                val samsungSteps = try {
+                    client.aggregate(
+                        AggregateRequest(
+                            metrics = setOf(StepsRecord.COUNT_TOTAL),
+                            timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                            dataOriginFilter = samsungOriginFilter,
+                        )
+                    )[StepsRecord.COUNT_TOTAL] ?: 0L
+                } catch (e: Exception) {
+                    Log.w(tag, "readSteps samsung aggregate failed", e)
+                    0L
                 }
+
+                val globalSteps = try {
+                    client.aggregate(
+                        AggregateRequest(
+                            metrics = setOf(StepsRecord.COUNT_TOTAL),
+                            timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                        )
+                    )[StepsRecord.COUNT_TOTAL] ?: 0L
+                } catch (e: Exception) {
+                    Log.w(tag, "readSteps global aggregate failed", e)
+                    0L
+                }
+
+                val resolvedSteps = maxOf(samsungSteps, globalSteps, 0L)
+                val records = JSArray()
+                val obj = JSObject()
+                obj.put("value", resolvedSteps)
+                obj.put("unit", "steps")
+                obj.put("timestamp", endTime.toString())
+                records.put(obj)
 
                 val result = JSObject()
                 result.put("records", records)
@@ -459,8 +471,9 @@ class HealthConnectPlugin : Plugin() {
             return
         }
 
-        val requestedStartRaw = call.getString("startTime") ?: "missing"
-        val requestedEndRaw = call.getString("endTime") ?: "missing"
+        // Validate incoming call contract (startTime/endTime are required by bridge)
+        parseTimeRange(call) ?: return
+
         val zone = ZoneId.systemDefault()
         val endTime = Instant.now()
         val samsungDayStartHour = 4
@@ -471,209 +484,119 @@ class HealthConnectPlugin : Plugin() {
                 val records = JSArray()
                 val granted = client.permissionController.getGrantedPermissions()
                 val totalPermission = HealthPermission.getReadPermission(TotalCaloriesBurnedRecord::class)
-                val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
-                val basalPermission = HealthPermission.getReadPermission(BasalMetabolicRateRecord::class)
 
                 val hasTotalPerm = granted.contains(totalPermission)
-                val hasActivePerm = granted.contains(activePermission)
-                val hasBasalPerm = granted.contains(basalPermission)
+                var resolvedTotalKcal = 0.0
+                var selectedSource = "total_unresolved"
 
-                Log.d(tag, "v14 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm")
+                if (!hasTotalPerm) {
+                    val result = JSObject()
+                    result.put("records", records)
+                    call.resolve(result)
+                    return@launch
+                }
 
-                var resolvedTotalKcal: Double? = null
-                var selectedSource = "v14_unresolved"
-
-                // ---- AGGREGATE PATH (only if TotalCaloriesBurned permission granted) ----
                 var aggSamsungTotal = 0.0
                 var aggGlobalTotal = 0.0
-                var aggSamsungActive = 0.0
-                var aggGlobalActive = 0.0
-                var aggSamsungBasal = 0.0
-                var aggGlobalBasal = 0.0
 
                 // Wider overlap window helps capture long-running cumulative records
                 // that started before local midnight but still overlap today.
                 val overlapWindowStart = startTime.minusSeconds(36L * 60L * 60L)
                 val overlapWindowEnd = endTime.plusSeconds(12L * 60L * 60L)
 
-                var recordCount = 0
-                var naiveSum = 0.0
-                var samsungRecCount = 0
                 var overlapSamsungLatest = 0.0
                 var overlapGlobalLatest = 0.0
-                var overlapSamsungDedup = 0.0
-                var overlapGlobalDedup = 0.0
-                var recordDump = ""
 
-                if (hasTotalPerm) {
-                    try {
-                        val samsungPackage = "com.sec.android.app.shealth"
-                        val samsungOriginFilter = setOf(DataOrigin(samsungPackage))
+                try {
+                    val samsungPackage = "com.sec.android.app.shealth"
+                    val samsungOriginFilter = setOf(DataOrigin(samsungPackage))
 
-                        aggSamsungTotal = try {
-                            client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                    dataOriginFilter = samsungOriginFilter
-                                )
-                            )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
-                        } catch (e: Exception) { Log.w(tag, "aggSamsungTotal err", e); 0.0 }
-                        aggSamsungTotal = sanitizeKcal(aggSamsungTotal)
-
-                        aggGlobalTotal = try {
-                            client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                                )
-                            )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
-                        } catch (e: Exception) { Log.w(tag, "aggGlobalTotal err", e); 0.0 }
-                        aggGlobalTotal = sanitizeKcal(aggGlobalTotal)
-
-                    } catch (e: Exception) {
-                        Log.w(tag, "Total aggregate block failed", e)
-                    }
-                }
-
-                if (hasActivePerm) {
-                    aggSamsungActive = try {
-                        val samsungOriginFilter = setOf(DataOrigin("com.sec.android.app.shealth"))
+                    aggSamsungTotal = try {
                         client.aggregate(
                             AggregateRequest(
-                                metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+                                metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
                                 timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
                                 dataOriginFilter = samsungOriginFilter
                             )
-                        )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                    } catch (e: Exception) { Log.w(tag, "aggSamsungActive err", e); 0.0 }
-                    aggSamsungActive = sanitizeKcal(aggSamsungActive)
+                        )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
+                    } catch (e: Exception) { Log.w(tag, "aggSamsungTotal err", e); 0.0 }
+                    aggSamsungTotal = sanitizeKcal(aggSamsungTotal)
 
-                    aggGlobalActive = try {
+                    aggGlobalTotal = try {
                         client.aggregate(
                             AggregateRequest(
-                                metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
+                                metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
                                 timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                             )
-                        )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                    } catch (e: Exception) { Log.w(tag, "aggGlobalActive err", e); 0.0 }
-                    aggGlobalActive = sanitizeKcal(aggGlobalActive)
+                        )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
+                    } catch (e: Exception) { Log.w(tag, "aggGlobalTotal err", e); 0.0 }
+                    aggGlobalTotal = sanitizeKcal(aggGlobalTotal)
+
+                } catch (e: Exception) {
+                    Log.w(tag, "Total aggregate block failed", e)
                 }
 
-                if (hasBasalPerm) {
-                    aggSamsungBasal = try {
-                        val samsungOriginFilter = setOf(DataOrigin("com.sec.android.app.shealth"))
-                        client.aggregate(
-                            AggregateRequest(
-                                metrics = setOf(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL),
-                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                dataOriginFilter = samsungOriginFilter
-                            )
-                        )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                    } catch (e: Exception) { Log.w(tag, "aggSamsungBasal err", e); 0.0 }
-                    aggSamsungBasal = sanitizeKcal(aggSamsungBasal)
-
-                    aggGlobalBasal = try {
-                        client.aggregate(
-                            AggregateRequest(
-                                metrics = setOf(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL),
-                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                            )
-                        )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                    } catch (e: Exception) { Log.w(tag, "aggGlobalBasal err", e); 0.0 }
-                    aggGlobalBasal = sanitizeKcal(aggGlobalBasal)
-                }
-
-                // ---- OVERLAP RECORD PATH (preferred over aggregate if available) ----
-                if (hasTotalPerm) {
-                    try {
-                        val totalRecordsResponse = client.readRecords(
-                            ReadRecordsRequest(
-                                recordType = TotalCaloriesBurnedRecord::class,
-                                timeRangeFilter = TimeRangeFilter.between(overlapWindowStart, overlapWindowEnd)
-                            )
+                try {
+                    val totalRecordsResponse = client.readRecords(
+                        ReadRecordsRequest(
+                            recordType = TotalCaloriesBurnedRecord::class,
+                            timeRangeFilter = TimeRangeFilter.between(overlapWindowStart, overlapWindowEnd)
                         )
+                    )
 
-                        val allRecords = totalRecordsResponse.records
-                        recordCount = allRecords.size
-                        naiveSum = allRecords.sumOf { it.energy.inKilocalories }
+                    val allRecords = totalRecordsResponse.records
+                    val samsungRecords = allRecords.filter {
+                        it.metadata.dataOrigin.packageName == "com.sec.android.app.shealth"
+                    }
 
-                        val samsungRecords = allRecords.filter {
-                            it.metadata.dataOrigin.packageName == "com.sec.android.app.shealth"
-                        }
-                        samsungRecCount = samsungRecords.size
+                    overlapSamsungLatest = sanitizeKcal(latestCumulativeTotal(samsungRecords, startTime, endTime)?.first ?: 0.0)
+                    overlapGlobalLatest = sanitizeKcal(latestCumulativeTotal(allRecords, startTime, endTime)?.first ?: 0.0)
+                } catch (e: Exception) {
+                    Log.w(tag, "Overlap record read failed", e)
+                }
 
-                        val samsungLatest = latestCumulativeTotal(samsungRecords, startTime, endTime)
-                        val globalLatest = latestCumulativeTotal(allRecords, startTime, endTime)
+                // Resolve using TotalCaloriesBurned only (never Active calories).
+                val samsungCandidate = maxOf(overlapSamsungLatest, aggSamsungTotal)
+                val globalCandidate = maxOf(overlapGlobalLatest, aggGlobalTotal)
 
-                        overlapSamsungLatest = sanitizeKcal(samsungLatest?.first ?: 0.0)
-                        overlapGlobalLatest = sanitizeKcal(globalLatest?.first ?: 0.0)
-                        overlapSamsungDedup = sanitizeKcal(deduplicateCalorieRecords(samsungRecords, startTime, endTime))
-                        overlapGlobalDedup = sanitizeKcal(deduplicateCalorieRecords(allRecords, startTime, endTime))
-
-                        val uniqueOrigins = allRecords
-                            .map { it.metadata.dataOrigin.packageName }
-                            .toSet()
-                            .take(6)
-                            .joinToString(",")
-
-                        recordDump = allRecords.take(4).mapIndexed { i, r ->
-                            "r${i}:[${r.startTime}→${r.endTime} ${String.format("%.1f", r.energy.inKilocalories)}kcal ${r.metadata.dataOrigin.packageName}]"
-                        }.joinToString(" ") + " origins=$uniqueOrigins"
-                    } catch (e: Exception) {
-                        Log.w(tag, "Overlap record read failed", e)
-                        recordDump = "recordErr:${e.message}"
+                if (samsungCandidate > 0.0) {
+                    // Guard against partial overlap snapshots that are far below aggregate.
+                    resolvedTotalKcal = if (
+                        overlapSamsungLatest > 0.0 &&
+                        aggSamsungTotal > 0.0 &&
+                        overlapSamsungLatest < (aggSamsungTotal * 0.6)
+                    ) {
+                        selectedSource = "total_samsung_aggregate"
+                        aggSamsungTotal
+                    } else if (overlapSamsungLatest > 0.0) {
+                        selectedSource = "total_samsung_latest_overlap"
+                        overlapSamsungLatest
+                    } else {
+                        selectedSource = "total_samsung_aggregate"
+                        aggSamsungTotal
+                    }
+                } else if (globalCandidate > 0.0) {
+                    resolvedTotalKcal = if (
+                        overlapGlobalLatest > 0.0 &&
+                        aggGlobalTotal > 0.0 &&
+                        overlapGlobalLatest < (aggGlobalTotal * 0.6)
+                    ) {
+                        selectedSource = "total_global_aggregate"
+                        aggGlobalTotal
+                    } else if (overlapGlobalLatest > 0.0) {
+                        selectedSource = "total_global_latest_overlap"
+                        overlapGlobalLatest
+                    } else {
+                        selectedSource = "total_global_aggregate"
+                        aggGlobalTotal
                     }
                 }
 
-                // ---- RESOLVE best value ----
-                // v14: Prefer Samsung cumulative overlap snapshot (matches Samsung Health UI best)
-                if (overlapSamsungLatest > 0.0) {
-                    resolvedTotalKcal = overlapSamsungLatest
-                    selectedSource = "v14_samsung_latest_overlap"
-                } else if (overlapGlobalLatest > 0.0) {
-                    resolvedTotalKcal = overlapGlobalLatest
-                    selectedSource = "v14_global_latest_overlap"
-                } else if (overlapSamsungDedup > 0.0) {
-                    resolvedTotalKcal = overlapSamsungDedup
-                    selectedSource = "v14_samsung_dedup"
-                } else if (overlapGlobalDedup > 0.0) {
-                    resolvedTotalKcal = overlapGlobalDedup
-                    selectedSource = "v14_global_dedup"
-                } else if (aggSamsungTotal > 0.0) {
-                    resolvedTotalKcal = aggSamsungTotal
-                    selectedSource = "v14_agg_samsung"
-                } else if (aggGlobalTotal > 0.0) {
-                    resolvedTotalKcal = aggGlobalTotal
-                    selectedSource = "v14_agg_global"
-                }
-
-                // ---- ACTIVE-ONLY FALLBACK ----
-                var activeRecCount = 0
-                var activeSum = 0.0
-                if (resolvedTotalKcal == null && hasActivePerm) {
-                    try {
-                        val activeResponse = client.readRecords(
-                            ReadRecordsRequest(
-                                recordType = ActiveCaloriesBurnedRecord::class,
-                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                            )
-                        )
-                        activeRecCount = activeResponse.records.size
-                        activeSum = activeResponse.records.sumOf { it.energy.inKilocalories }
-                        if (activeSum > 0.0) {
-                            resolvedTotalKcal = activeSum
-                            selectedSource = "v14_active_only_fallback"
-                        }
-                    } catch (e: Exception) {
-                        Log.w(tag, "Active-only fallback failed", e)
-                    }
-                }
-
-                Log.d(tag, "v14 calorie result: source=$selectedSource resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)}")
+                resolvedTotalKcal = sanitizeKcal(resolvedTotalKcal)
+                Log.d(tag, "calorie result: source=$selectedSource resolved=${String.format("%.1f", resolvedTotalKcal)}")
 
                 val obj = JSObject()
-                obj.put("value", sanitizeKcal(resolvedTotalKcal ?: 0.0))
+                obj.put("value", resolvedTotalKcal)
                 obj.put("unit", "kcal")
                 obj.put("timestamp", endTime.toString())
                 records.put(obj)
