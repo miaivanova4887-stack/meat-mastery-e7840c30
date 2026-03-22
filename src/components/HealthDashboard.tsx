@@ -4,7 +4,7 @@ import { useHealthConnectContext } from '@/contexts/HealthConnectContext';
 import { useState } from 'react';
 
 // Build fingerprint — changes on every web build
-const WEB_BUILD = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev';
+const WEB_BUILD = (() => { try { return __BUILD_TIMESTAMP__; } catch { return 'dev'; } })();
 
 export const HealthDashboard = () => {
   const {
