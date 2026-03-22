@@ -21,6 +21,17 @@ const HealthSync = () => {
   const isAndroid = Capacitor.getPlatform() === "android";
   useScrollToTop();
 
+  const toFiniteNumber = (value: unknown, fallback = 0) => {
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const safeSteps = toFiniteNumber(healthData.steps);
+  const safeHeartRate = toFiniteNumber(healthData.heartRate);
+  const safeWeight = toFiniteNumber(healthData.weight);
+  const safeRawCalories = toFiniteNumber(healthData.calorieDebug?.rawValue);
+  const safeRecordCalories = toFiniteNumber(healthData.activeCalories);
+
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur-lg border-b border-border/40"
@@ -89,18 +100,18 @@ const HealthSync = () => {
               <div className="grid grid-cols-3 gap-2 mt-2">
                 <div className="bg-muted rounded-lg p-3 text-center">
                   <Footprints size={16} className="mx-auto text-primary mb-1" />
-                  <p className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</p>
+                  <p className="text-lg font-bold text-foreground">{safeSteps.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground">Steps</p>
                 </div>
                 <div className="bg-muted rounded-lg p-3 text-center">
                   <Heart size={16} className="mx-auto text-red-500 mb-1" />
-                  <p className="text-lg font-bold text-foreground">{healthData.heartRate || "—"}</p>
+                  <p className="text-lg font-bold text-foreground">{safeHeartRate || "—"}</p>
                   <p className="text-[10px] text-muted-foreground">BPM</p>
                 </div>
                 <div className="bg-muted rounded-lg p-3 text-center">
                   <Activity size={16} className="mx-auto text-blue-500 mb-1" />
                   <p className="text-lg font-bold text-foreground">
-                    {healthData.weight ? `${healthData.weight.toFixed(1)}` : "—"}
+                    {safeWeight ? `${safeWeight.toFixed(1)}` : "—"}
                   </p>
                   <p className="text-[10px] text-muted-foreground">kg</p>
                 </div>
@@ -109,9 +120,9 @@ const HealthSync = () => {
                 <div className="mt-2 bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono">
                   <p>🔍 <strong>Calorie Debug</strong></p>
                   <p>Source: {healthData.calorieDebug.source}</p>
-                  <p>Origins: {healthData.calorieDebug.origins}</p>
-                  <p>Raw value: {healthData.calorieDebug.rawValue.toFixed(1)} kcal</p>
-                  <p>Records sum: {healthData.activeCalories.toFixed(1)} kcal</p>
+                  <p>Origins: {(healthData.calorieDebug.origins || "n/a").slice(0, 2000)}</p>
+                  <p>Raw value: {safeRawCalories.toFixed(1)} kcal</p>
+                  <p>Records sum: {safeRecordCalories.toFixed(1)} kcal</p>
                 </div>
               )}
             </>

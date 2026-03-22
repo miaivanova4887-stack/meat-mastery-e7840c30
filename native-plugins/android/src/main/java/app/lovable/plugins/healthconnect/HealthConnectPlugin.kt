@@ -313,6 +313,10 @@ class HealthConnectPlugin : Plugin() {
         val origin: String
     )
 
+    private fun sanitizeKcal(value: Double): Double {
+        return if (value.isNaN() || value.isInfinite() || value < 0.0) 0.0 else value
+    }
+
     private fun scaledClippedKcal(
         record: TotalCaloriesBurnedRecord,
         queryStart: Instant,
@@ -456,17 +460,17 @@ class HealthConnectPlugin : Plugin() {
                 val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
                 val basalPermission = HealthPermission.getReadPermission(BasalMetabolicRateRecord::class)
 
-                // v11: ALWAYS return a debug record so we can see what's happening
+                // v12: ALWAYS return a debug record so we can see what's happening
                 val hasTotalPerm = granted.contains(totalPermission)
                 val hasActivePerm = granted.contains(activePermission)
                 val hasBasalPerm = granted.contains(basalPermission)
                 val allGrantedPerms = granted.joinToString(";")
 
-                Log.d(tag, "v11 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm allGranted=$allGrantedPerms")
+                Log.d(tag, "v12 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm allGranted=$allGrantedPerms")
 
                 var resolvedTotalKcal: Double? = null
-                var selectedSource = "v11_unresolved"
-                var debugInfo = "v11 perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) grantedAll=$allGrantedPerms"
+                var selectedSource = "v12_unresolved"
+                var debugInfo = "v12 perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) grantedAll=$allGrantedPerms"
 
                 // ---- AGGREGATE PATH (only if TotalCaloriesBurned permission granted) ----
                 var aggSamsungTotal = 0.0
@@ -490,6 +494,7 @@ class HealthConnectPlugin : Plugin() {
                                 )
                             )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
                         } catch (e: Exception) { Log.w(tag, "aggSamsungTotal err", e); 0.0 }
+                        aggSamsungTotal = sanitizeKcal(aggSamsungTotal)
 
                         aggGlobalTotal = try {
                             client.aggregate(
@@ -499,6 +504,7 @@ class HealthConnectPlugin : Plugin() {
                                 )
                             )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
                         } catch (e: Exception) { Log.w(tag, "aggGlobalTotal err", e); 0.0 }
+                        aggGlobalTotal = sanitizeKcal(aggGlobalTotal)
 
                     } catch (e: Exception) {
                         Log.w(tag, "Total aggregate block failed", e)
@@ -516,6 +522,7 @@ class HealthConnectPlugin : Plugin() {
                             )
                         )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
                     } catch (e: Exception) { Log.w(tag, "aggSamsungActive err", e); 0.0 }
+                    aggSamsungActive = sanitizeKcal(aggSamsungActive)
 
                     aggGlobalActive = try {
                         client.aggregate(
@@ -525,6 +532,7 @@ class HealthConnectPlugin : Plugin() {
                             )
                         )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
                     } catch (e: Exception) { Log.w(tag, "aggGlobalActive err", e); 0.0 }
+                    aggGlobalActive = sanitizeKcal(aggGlobalActive)
                 }
 
                 if (hasBasalPerm) {
@@ -538,6 +546,7 @@ class HealthConnectPlugin : Plugin() {
                             )
                         )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
                     } catch (e: Exception) { Log.w(tag, "aggSamsungBasal err", e); 0.0 }
+                    aggSamsungBasal = sanitizeKcal(aggSamsungBasal)
 
                     aggGlobalBasal = try {
                         client.aggregate(
@@ -547,6 +556,7 @@ class HealthConnectPlugin : Plugin() {
                             )
                         )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
                     } catch (e: Exception) { Log.w(tag, "aggGlobalBasal err", e); 0.0 }
+                    aggGlobalBasal = sanitizeKcal(aggGlobalBasal)
                 }
 
                 // ---- RESOLVE best value ----
@@ -555,16 +565,16 @@ class HealthConnectPlugin : Plugin() {
 
                 if (aggSamsungTotal > 0.0) {
                     resolvedTotalKcal = aggSamsungTotal
-                    selectedSource = "v11_samsung_aggregate_total"
-                } else if (aggGlobalTotal > 0.0) {
-                    resolvedTotalKcal = aggGlobalTotal
-                    selectedSource = "v11_global_aggregate_total"
+                    selectedSource = "v12_samsung_aggregate_total"
                 } else if (samsungActivePlusBasal > 0.0) {
                     resolvedTotalKcal = samsungActivePlusBasal
-                    selectedSource = "v11_samsung_active_plus_basal"
+                    selectedSource = "v12_samsung_active_plus_basal"
                 } else if (globalActivePlusBasal > 0.0) {
                     resolvedTotalKcal = globalActivePlusBasal
-                    selectedSource = "v11_global_active_plus_basal"
+                    selectedSource = "v12_global_active_plus_basal"
+                } else if (aggGlobalTotal > 0.0) {
+                    resolvedTotalKcal = aggGlobalTotal
+                    selectedSource = "v12_global_aggregate_total"
                 }
 
                 // ---- RECORD-BASED FALLBACK ----
@@ -600,13 +610,13 @@ class HealthConnectPlugin : Plugin() {
 
                         if (samsungLatest != null && samsungLatest.first > 0.0) {
                             resolvedTotalKcal = samsungLatest.first
-                            selectedSource = "v11_samsung_latest_fallback"
+                            selectedSource = "v12_samsung_latest_fallback"
                         } else if (globalLatest != null && globalLatest.first > 0.0) {
                             resolvedTotalKcal = globalLatest.first
-                            selectedSource = "v11_global_latest_fallback"
+                            selectedSource = "v12_global_latest_fallback"
                         } else if (deduplicatedTotal > 0.0) {
                             resolvedTotalKcal = deduplicatedTotal
-                            selectedSource = "v11_dedup_fallback"
+                            selectedSource = "v12_dedup_fallback"
                         }
                     } catch (e: Exception) {
                         Log.w(tag, "Record-based fallback failed", e)
@@ -629,7 +639,7 @@ class HealthConnectPlugin : Plugin() {
                         activeSum = activeResponse.records.sumOf { it.energy.inKilocalories }
                         if (activeSum > 0.0) {
                             resolvedTotalKcal = activeSum
-                            selectedSource = "v11_active_only_fallback"
+                            selectedSource = "v12_active_only_fallback"
                         }
                     } catch (e: Exception) {
                         Log.w(tag, "Active-only fallback failed", e)
@@ -637,7 +647,7 @@ class HealthConnectPlugin : Plugin() {
                 }
 
                 // ---- BUILD FULL DEBUG STRING ----
-                debugInfo = "v11 zone=${zone.id} start=$startTime end=$endTime " +
+                debugInfo = "v12 zone=${zone.id} start=$startTime end=$endTime " +
                     "perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) " +
                     "aggST=${String.format("%.1f", aggSamsungTotal)} " +
                     "aggGT=${String.format("%.1f", aggGlobalTotal)} " +
@@ -649,15 +659,21 @@ class HealthConnectPlugin : Plugin() {
                     "activeRecs=$activeRecCount activeSum=${String.format("%.1f", activeSum)} " +
                     "resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)} $recordDump"
 
-                Log.d(tag, "v11 calorie result: source=$selectedSource $debugInfo")
+                val boundedDebugInfo = if (debugInfo.length > 3500) {
+                    debugInfo.take(3500) + " …[truncated]"
+                } else {
+                    debugInfo
+                }
+
+                Log.d(tag, "v12 calorie result: source=$selectedSource $boundedDebugInfo")
 
                 // ---- ALWAYS return at least one record with debug info ----
                 val obj = JSObject()
-                obj.put("value", resolvedTotalKcal ?: 0.0)
+                obj.put("value", sanitizeKcal(resolvedTotalKcal ?: 0.0))
                 obj.put("unit", "kcal")
                 obj.put("timestamp", endTime.toString())
                 obj.put("debugSource", selectedSource)
-                obj.put("debugOrigins", debugInfo)
+                obj.put("debugOrigins", boundedDebugInfo)
                 records.put(obj)
 
                 val result = JSObject()
@@ -671,7 +687,7 @@ class HealthConnectPlugin : Plugin() {
                 crashObj.put("value", 0.0)
                 crashObj.put("unit", "kcal")
                 crashObj.put("timestamp", endTime.toString())
-                crashObj.put("debugSource", "v11_crash")
+                crashObj.put("debugSource", "v12_crash")
                 crashObj.put("debugOrigins", "error:${e.message}")
                 crashRecords.put(crashObj)
                 val fallback = JSObject()
