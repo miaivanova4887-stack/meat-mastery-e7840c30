@@ -1,6 +1,10 @@
-import { Footprints, Heart, Weight, RefreshCw, Flame } from 'lucide-react';
+import { Footprints, Heart, Weight, RefreshCw, Flame, Bug } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useHealthConnectContext } from '@/contexts/HealthConnectContext';
+import { useState } from 'react';
+
+// Build fingerprint — changes on every web build
+const WEB_BUILD = typeof __BUILD_TIMESTAMP__ !== 'undefined' ? __BUILD_TIMESTAMP__ : 'dev';
 
 export const HealthDashboard = () => {
   const {
@@ -11,6 +15,7 @@ export const HealthDashboard = () => {
     requestPermissions,
     fetchHealthData,
   } = useHealthConnectContext();
+  const [showDiag, setShowDiag] = useState(false);
 
   // Don't show on non-native or if not connected and not on Android
   if (!Capacitor.isNativePlatform() && !isConnected) return null;
@@ -20,13 +25,22 @@ export const HealthDashboard = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-bold text-foreground">Health Data</h2>
         {isConnected && (
-          <button
-            onClick={fetchHealthData}
-            className="text-muted-foreground hover:text-foreground transition-colors p-1"
-            title="Refresh"
-          >
-            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setShowDiag(prev => !prev)}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              title="Diagnostics"
+            >
+              <Bug size={14} />
+            </button>
+            <button
+              onClick={fetchHealthData}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              title="Refresh"
+            >
+              <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -72,18 +86,18 @@ export const HealthDashboard = () => {
               <p className="text-[10px] text-muted-foreground">kcal</p>
             </div>
           </div>
-          {healthData.calorieDebug && (
-            <div className="bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono">
-              <p>🔍 <strong>Calorie Debug</strong></p>
+          {/* Build fingerprint — always visible when connected */}
+          <p className="text-[9px] text-muted-foreground/60 font-mono text-right mt-1">
+            web:{WEB_BUILD} · src:{healthData.calorieDebug?.source?.substring(0, 3) || '?'}
+          </p>
+
+          {showDiag && healthData.calorieDebug && (
+            <div className="bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono mt-1">
+              <p>🔍 <strong>Full Diagnostics</strong></p>
               <p>Source: {healthData.calorieDebug.source}</p>
-              <p>Raw value: {healthData.calorieDebug.rawValue.toFixed(1)} kcal</p>
+              <p>Raw: {healthData.calorieDebug.rawValue.toFixed(1)} kcal</p>
               <p>Display: {healthData.activeCalories.toFixed(1)} kcal</p>
-              {healthData.calorieDebug.origins && (
-                <details className="mt-1">
-                  <summary className="cursor-pointer text-primary">Full debug</summary>
-                  <p className="break-all mt-1">{healthData.calorieDebug.origins}</p>
-                </details>
-              )}
+              <p className="break-all mt-1 text-[8px]">{healthData.calorieDebug.origins}</p>
             </div>
           )}
         </>
