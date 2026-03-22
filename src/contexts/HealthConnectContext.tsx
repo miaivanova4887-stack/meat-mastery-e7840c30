@@ -11,11 +11,6 @@ export interface HealthData {
   activeCalories: number;
 }
 
-const defaultCalorieDebug: NonNullable<HealthData["calorieDebug"]> = {
-  source: "pending",
-  origins: "pending",
-  rawValue: 0,
-};
 
 const toFiniteNumber = (value: unknown): number => {
   const parsed = typeof value === "number" ? value : Number(value);
