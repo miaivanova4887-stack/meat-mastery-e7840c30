@@ -14,65 +14,7 @@ const exercises = [
   { icon: Heart, category: "Recovery", desc: "Recovery is where growth happens. The carnivore diet accelerates recovery through nutrient density.", items: ["Cold exposure — 2-5 min cold shower", "Foam rolling — 15 min", "Sleep 7-9 hours nightly", "Sauna — 15-20 min sessions"] },
 ];
 
-// All Yoga Buddhi Co. app categories
-const buddhiApps = [
-  {
-    app: "Yoga",
-    icon: Sun,
-    color: "text-accent",
-    styles: [
-      { name: "Vinyasa Flow", level: "All Levels", duration: "30-60 min", desc: "Dynamic sequences linking breath to movement. Builds heat and cardiovascular endurance." },
-      { name: "Power Yoga", level: "Intermediate+", duration: "45-60 min", desc: "Strength-focused sequences with longer holds. Builds functional muscle endurance." },
-      { name: "Yin Yoga", level: "All Levels", duration: "45-75 min", desc: "Deep passive stretches held 3-5 minutes. Targets fascia and connective tissue." },
-      { name: "Hatha", level: "Beginner-Friendly", duration: "45-60 min", desc: "Classic postures with steady pacing. Great for foundational flexibility." },
-      { name: "Restorative", level: "All Levels", duration: "60-90 min", desc: "Supported poses with props for total relaxation. Optimizes recovery." },
-    ],
-  },
-  {
-    app: "HIIT",
-    icon: Zap,
-    color: "text-destructive",
-    styles: [
-      { name: "Full Body Burn", level: "Intermediate+", duration: "20-30 min", desc: "Total body explosive movements. Maximum calorie burn in minimum time." },
-      { name: "Tabata", level: "Advanced", duration: "15-20 min", desc: "20s max effort / 10s rest × 8 rounds. The gold standard of interval training." },
-      { name: "Low-Impact HIIT", level: "Beginner-Friendly", duration: "20-30 min", desc: "High intensity without jumping. Joint-friendly but still challenging." },
-      { name: "EMOM (Every Min on Min)", level: "All Levels", duration: "20-30 min", desc: "Complete reps within 60s, rest remainder. Builds work capacity." },
-    ],
-  },
-  {
-    app: "Meditation",
-    icon: Brain,
-    color: "text-primary",
-    styles: [
-      { name: "Guided Mindfulness", level: "All Levels", duration: "10-20 min", desc: "Breath-focused awareness practice. Reduces cortisol and improves mental clarity." },
-      { name: "Body Scan", level: "All Levels", duration: "15-30 min", desc: "Progressive relaxation through body awareness. Ideal post-workout recovery." },
-      { name: "Sleep Meditation", level: "All Levels", duration: "20-45 min", desc: "Guided relaxation designed to ease you into deep, restorative sleep." },
-      { name: "Breathwork", level: "All Levels", duration: "10-15 min", desc: "Pranayama and box breathing techniques. Activates parasympathetic nervous system." },
-    ],
-  },
-  {
-    app: "Pilates",
-    icon: Activity,
-    color: "text-flame",
-    styles: [
-      { name: "Mat Pilates", level: "All Levels", duration: "30-45 min", desc: "Core-focused bodyweight work on the mat. Builds deep stabilizer strength." },
-      { name: "Power Pilates", level: "Intermediate+", duration: "30-45 min", desc: "Faster-paced with added resistance. Challenges endurance and muscle control." },
-      { name: "Stretch & Lengthen", level: "Beginner-Friendly", duration: "20-30 min", desc: "Flexibility-focused Pilates movements. Opens hips, spine, and shoulders." },
-      { name: "Core Blast", level: "All Levels", duration: "15-20 min", desc: "Targeted abdominal and lower back work. Essential for posture and lifting." },
-    ],
-  },
-  {
-    app: "Barre",
-    icon: Music,
-    color: "text-gold",
-    styles: [
-      { name: "Classic Barre", level: "All Levels", duration: "30-45 min", desc: "Ballet-inspired small movements with isometric holds. Sculpts lean muscle." },
-      { name: "Cardio Barre", level: "Intermediate+", duration: "30-40 min", desc: "Higher tempo barre with cardio bursts. Burns fat while toning." },
-      { name: "Barre Stretch", level: "Beginner-Friendly", duration: "20-30 min", desc: "Deep stretching with ballet-inspired flexibility work. Graceful recovery." },
-      { name: "Lower Body Barre", level: "All Levels", duration: "25-35 min", desc: "Glutes, thighs, and calves focused. Small pulses, big results." },
-    ],
-  },
-];
+
 
 // Quiz — 7 questions to cover all Buddhi apps
 const TOTAL_QUESTIONS = 7;
