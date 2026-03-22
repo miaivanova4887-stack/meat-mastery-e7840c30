@@ -474,17 +474,14 @@ class HealthConnectPlugin : Plugin() {
                 val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
                 val basalPermission = HealthPermission.getReadPermission(BasalMetabolicRateRecord::class)
 
-                // v14: ALWAYS return a debug record so we can see what's happening
                 val hasTotalPerm = granted.contains(totalPermission)
                 val hasActivePerm = granted.contains(activePermission)
                 val hasBasalPerm = granted.contains(basalPermission)
-                val allGrantedPerms = granted.joinToString(";")
 
-                Log.d(tag, "v15 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm allGranted=$allGrantedPerms")
+                Log.d(tag, "v14 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm")
 
                 var resolvedTotalKcal: Double? = null
-                var selectedSource = "v15_unresolved"
-                var debugInfo = "v15 perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) grantedAll=$allGrantedPerms"
+                var selectedSource = "v14_unresolved"
 
                 // ---- AGGREGATE PATH (only if TotalCaloriesBurned permission granted) ----
                 var aggSamsungTotal = 0.0
