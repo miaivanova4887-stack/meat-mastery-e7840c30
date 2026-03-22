@@ -298,12 +298,8 @@ class HealthConnectPlugin : Plugin() {
     }
 
     /**
-     * Deduplicate overlapping TotalCaloriesBurnedRecord intervals.
-     * Samsung Health (and watches) write overlapping time-range records.
-     * Health Connect aggregate() sums them naively → inflated totals.
-     * 
-     * Strategy: sort by startTime, merge overlapping intervals,
-     * keep the record with the highest kcal for each merged interval.
+     * Fallback deduplication for overlapping TotalCaloriesBurnedRecord intervals.
+     * Used only when no reliable day-cumulative snapshot can be resolved.
      */
     private data class CalorieInterval(
         val startEpoch: Long,
@@ -312,6 +308,22 @@ class HealthConnectPlugin : Plugin() {
         val origin: String
     )
 
+    private fun scaledClippedKcal(
+        record: TotalCaloriesBurnedRecord,
+        queryStart: Instant,
+        queryEnd: Instant
+    ): Double {
+        val clippedStart = maxOf(record.startTime, queryStart)
+        val clippedEnd = minOf(record.endTime, queryEnd)
+        if (!clippedEnd.isAfter(clippedStart)) return 0.0
+
+        val fullDurationSec = (record.endTime.epochSecond - record.startTime.epochSecond).coerceAtLeast(1L)
+        val clippedDurationSec = (clippedEnd.epochSecond - clippedStart.epochSecond).coerceAtLeast(0L)
+        if (clippedDurationSec <= 0L) return 0.0
+
+        return record.energy.inKilocalories * (clippedDurationSec.toDouble() / fullDurationSec.toDouble())
+    }
+
     private fun deduplicateCalorieRecords(
         records: List<TotalCaloriesBurnedRecord>,
         queryStart: Instant,
@@ -319,20 +331,14 @@ class HealthConnectPlugin : Plugin() {
     ): Double {
         if (records.isEmpty()) return 0.0
 
-        // Convert to intervals sorted by start time.
-        // IMPORTANT: clip each record to the query range and proportionally scale kcal.
-        // Samsung can provide records spanning the full day (including future hours),
-        // so consuming full record energy inflates "calories so far".
+        // Convert to intervals sorted by start time and clip/scale to query range.
         val intervals = records.mapNotNull { record ->
             val clippedStart = maxOf(record.startTime, queryStart)
             val clippedEnd = minOf(record.endTime, queryEnd)
             if (!clippedEnd.isAfter(clippedStart)) return@mapNotNull null
 
-            val fullDurationSec = (record.endTime.epochSecond - record.startTime.epochSecond).coerceAtLeast(1L)
-            val clippedDurationSec = (clippedEnd.epochSecond - clippedStart.epochSecond).coerceAtLeast(0L)
-            if (clippedDurationSec == 0L) return@mapNotNull null
-
-            val scaledKcal = record.energy.inKilocalories * (clippedDurationSec.toDouble() / fullDurationSec.toDouble())
+            val scaledKcal = scaledClippedKcal(record, queryStart, queryEnd)
+            if (scaledKcal <= 0.0) return@mapNotNull null
 
             CalorieInterval(
                 startEpoch = clippedStart.epochSecond,
@@ -381,6 +387,49 @@ class HealthConnectPlugin : Plugin() {
         return merged.sumOf { it.kcal }
     }
 
+    /**
+     * Samsung often writes day-cumulative "total burned" snapshots
+     * (start near midnight, end grows through the day). For this pattern,
+     * the latest snapshot best matches Samsung Health UI.
+     */
+    private fun latestCumulativeTotal(
+        records: List<TotalCaloriesBurnedRecord>,
+        queryStart: Instant,
+        queryEnd: Instant
+    ): Pair<Double, String>? {
+        if (records.isEmpty()) return null
+
+        val startToleranceSec = 15 * 60L
+        val minCoverageSec = 3 * 60 * 60L
+
+        val candidates = records.mapNotNull { record ->
+            val clippedStart = maxOf(record.startTime, queryStart)
+            val clippedEnd = minOf(record.endTime, queryEnd)
+            if (!clippedEnd.isAfter(clippedStart)) return@mapNotNull null
+
+            val startsNearDayStart = !record.startTime.isAfter(queryStart.plusSeconds(startToleranceSec))
+            if (!startsNearDayStart) return@mapNotNull null
+
+            val coverageSec = (clippedEnd.epochSecond - queryStart.epochSecond).coerceAtLeast(0L)
+            if (coverageSec < minCoverageSec) return@mapNotNull null
+
+            val scaled = scaledClippedKcal(record, queryStart, queryEnd)
+            if (scaled <= 0.0) return@mapNotNull null
+
+            Triple(clippedEnd, scaled, record)
+        }
+
+        if (candidates.isEmpty()) return null
+
+        val latest = candidates.maxWith(
+            compareBy<Triple<Instant, Double, TotalCaloriesBurnedRecord>> { it.first }
+                .thenBy { it.second }
+        )
+
+        val detail = "start=${latest.third.startTime} end=${latest.third.endTime} scaled=${String.format("%.1f", latest.second)}"
+        return latest.second to detail
+    }
+
     @PluginMethod
     fun readActiveCalories(call: PluginCall) {
         val client = healthConnectClient ?: run {
@@ -423,15 +472,7 @@ class HealthConnectPlugin : Plugin() {
                         val recordCount = allRecords.size
                         val naiveSum = allRecords.sumOf { it.energy.inKilocalories }
                         val naiveClippedSum = allRecords.sumOf { record ->
-                            val clippedStart = maxOf(record.startTime, startTime)
-                            val clippedEnd = minOf(record.endTime, endTime)
-                            if (!clippedEnd.isAfter(clippedStart)) {
-                                0.0
-                            } else {
-                                val fullDurationSec = (record.endTime.epochSecond - record.startTime.epochSecond).coerceAtLeast(1L)
-                                val clippedDurationSec = (clippedEnd.epochSecond - clippedStart.epochSecond).coerceAtLeast(0L)
-                                record.energy.inKilocalories * (clippedDurationSec.toDouble() / fullDurationSec.toDouble())
-                            }
+                            scaledClippedKcal(record, startTime, endTime)
                         }
 
                         // Build per-record debug dump (first 10 records)
@@ -439,29 +480,37 @@ class HealthConnectPlugin : Plugin() {
                             "r${i}:[${r.startTime}→${r.endTime} ${String.format("%.1f", r.energy.inKilocalories)}kcal ${r.metadata.dataOrigin.packageName}]"
                         }.joinToString(" ")
 
-                        // DEDUPLICATE overlapping intervals
-                        val deduplicatedTotal = deduplicateCalorieRecords(allRecords, startTime, endTime)
-
-                        // Also try Samsung-only dedup
                         val samsungPackage = "com.sec.android.app.shealth"
                         val samsungRecords = allRecords.filter { 
                             it.metadata.dataOrigin.packageName == samsungPackage 
                         }
+
+                        // Preferred path: use latest day-cumulative snapshot
+                        val samsungLatest = latestCumulativeTotal(samsungRecords, startTime, endTime)
+                        val globalLatest = latestCumulativeTotal(allRecords, startTime, endTime)
+
+                        // Fallback path: overlap dedup if no cumulative candidates
+                        val deduplicatedTotal = deduplicateCalorieRecords(allRecords, startTime, endTime)
                         val samsungDedup = if (samsungRecords.isNotEmpty()) {
                             deduplicateCalorieRecords(samsungRecords, startTime, endTime)
                         } else null
 
-                        // Prefer Samsung-only dedup, then global dedup
-                        if (samsungDedup != null && samsungDedup > 0.0) {
+                        if (samsungLatest != null && samsungLatest.first > 0.0) {
+                            resolvedTotalKcal = samsungLatest.first
+                            selectedSource = "v9_samsung_latest_total"
+                        } else if (globalLatest != null && globalLatest.first > 0.0) {
+                            resolvedTotalKcal = globalLatest.first
+                            selectedSource = "v9_global_latest_total"
+                        } else if (samsungDedup != null && samsungDedup > 0.0) {
                             resolvedTotalKcal = samsungDedup
-                            selectedSource = "v8_samsung_dedup_clipped"
+                            selectedSource = "v9_samsung_dedup_fallback"
                         } else if (deduplicatedTotal > 0.0) {
                             resolvedTotalKcal = deduplicatedTotal
-                            selectedSource = "v8_global_dedup_clipped"
+                            selectedSource = "v9_global_dedup_fallback"
                         }
 
-                        debugInfo = "zone=${zone.id} start=$startTime end=$endTime origins=${origins.joinToString(";")} recs=$recordCount naiveSum=${String.format("%.1f", naiveSum)} naiveClipped=${String.format("%.1f", naiveClippedSum)} samsungDedup=${String.format("%.1f", samsungDedup ?: 0.0)} globalDedup=${String.format("%.1f", deduplicatedTotal)} samsungRecs=${samsungRecords.size} $recordDump"
-                        Log.d(tag, "v8 calorie debug: $debugInfo")
+                        debugInfo = "zone=${zone.id} start=$startTime end=$endTime origins=${origins.joinToString(";")} recs=$recordCount naiveSum=${String.format("%.1f", naiveSum)} naiveClipped=${String.format("%.1f", naiveClippedSum)} samsungLatest=${String.format("%.1f", samsungLatest?.first ?: 0.0)} globalLatest=${String.format("%.1f", globalLatest?.first ?: 0.0)} samsungDedup=${String.format("%.1f", samsungDedup ?: 0.0)} globalDedup=${String.format("%.1f", deduplicatedTotal)} samsungLatestMeta=${samsungLatest?.second ?: "none"} globalLatestMeta=${globalLatest?.second ?: "none"} samsungRecs=${samsungRecords.size} $recordDump"
+                        Log.d(tag, "v9 calorie debug: $debugInfo")
                     } catch (e: Exception) {
                         Log.w(tag, "Total calories resolution failed", e)
                         debugInfo = "error: ${e.message}"
@@ -493,7 +542,7 @@ class HealthConnectPlugin : Plugin() {
                                 obj.put("value", record.energy.inKilocalories)
                                 obj.put("unit", "kcal")
                                 obj.put("timestamp", record.endTime.toString())
-                                 obj.put("debugSource", "v8_active_fallback")
+                                 obj.put("debugSource", "v9_active_fallback")
                                 obj.put("debugOrigins", "activeRecords=${activeResponse.records.size}")
                                 records.put(obj)
                             }
