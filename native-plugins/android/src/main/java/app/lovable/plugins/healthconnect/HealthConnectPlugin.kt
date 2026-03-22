@@ -117,6 +117,47 @@ class HealthConnectPlugin : Plugin() {
         return samsungOriginPackages.map { DataOrigin(it) }.toSet()
     }
 
+    private suspend fun aggregateStepsForOrigin(
+        client: HealthConnectClient,
+        startTime: Instant,
+        endTime: Instant,
+        originPackage: String,
+    ): Long {
+        return try {
+            client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(StepsRecord.COUNT_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                    dataOriginFilter = setOf(DataOrigin(originPackage)),
+                )
+            )[StepsRecord.COUNT_TOTAL] ?: 0L
+        } catch (e: Exception) {
+            Log.w(tag, "aggregateStepsForOrigin failed for $originPackage", e)
+            0L
+        }
+    }
+
+    private suspend fun aggregateTotalCaloriesForOrigin(
+        client: HealthConnectClient,
+        startTime: Instant,
+        endTime: Instant,
+        originPackage: String,
+    ): Double {
+        return try {
+            val value = client.aggregate(
+                AggregateRequest(
+                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                    dataOriginFilter = setOf(DataOrigin(originPackage)),
+                )
+            )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
+            sanitizeKcal(value)
+        } catch (e: Exception) {
+            Log.w(tag, "aggregateTotalCaloriesForOrigin failed for $originPackage", e)
+            0.0
+        }
+    }
+
     @PluginMethod
     fun checkAvailability(call: PluginCall) {
         try {
@@ -234,27 +275,18 @@ class HealthConnectPlugin : Plugin() {
                     ?.mapNotNull { it.metadata.dataOrigin.packageName }
                     ?.filter { isSamsungOrigin(it) }
                     ?.toSet()
-                    ?.map { DataOrigin(it) }
-                    ?.toSet()
                     ?: emptySet()
 
-                val samsungOriginFilter = if (detectedSamsungOrigins.isNotEmpty()) {
+                val samsungOriginsToQuery = if (detectedSamsungOrigins.isNotEmpty()) {
                     detectedSamsungOrigins
                 } else {
-                    defaultSamsungOriginFilter()
+                    samsungOriginPackages
                 }
 
-                val samsungSteps = try {
-                    client.aggregate(
-                        AggregateRequest(
-                            metrics = setOf(StepsRecord.COUNT_TOTAL),
-                            timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                            dataOriginFilter = samsungOriginFilter,
-                        )
-                    )[StepsRecord.COUNT_TOTAL] ?: 0L
-                } catch (e: Exception) {
-                    Log.w(tag, "readSteps samsung aggregate failed", e)
-                    0L
+                var samsungSteps = 0L
+                for (originPackage in samsungOriginsToQuery) {
+                    val originSteps = aggregateStepsForOrigin(client, startTime, endTime, originPackage)
+                    if (originSteps > samsungSteps) samsungSteps = originSteps
                 }
 
                 val globalSteps = try {
@@ -392,9 +424,8 @@ class HealthConnectPlugin : Plugin() {
                     return@launch
                 }
 
-                var aggSamsungTotal = 0.0
                 var aggGlobalTotal = 0.0
-                var latestSamsungSnapshot = 0.0
+                var aggSamsungBestByOrigin = 0.0
 
                 try {
                     val totalCaloriesRecordsResponse = try {
@@ -409,40 +440,22 @@ class HealthConnectPlugin : Plugin() {
                         null
                     }
 
-                    val samsungRecords = totalCaloriesRecordsResponse
+                    val samsungOriginsFromRecords = totalCaloriesRecordsResponse
                         ?.records
-                        ?.filter { isSamsungOrigin(it.metadata.dataOrigin.packageName) }
-                        ?: emptyList()
-
-                    latestSamsungSnapshot = samsungRecords
-                        .maxByOrNull { it.endTime }
-                        ?.energy
-                        ?.inKilocalories
-                        ?: 0.0
-                    latestSamsungSnapshot = sanitizeKcal(latestSamsungSnapshot)
-
-                    val detectedSamsungOrigins = samsungRecords
                         .mapNotNull { it.metadata.dataOrigin.packageName }
-                        .toSet()
-                        .map { DataOrigin(it) }
+                        .filter { isSamsungOrigin(it) }
                         .toSet()
 
-                    val samsungOriginFilter = if (detectedSamsungOrigins.isNotEmpty()) {
-                        detectedSamsungOrigins
+                    val samsungOriginsToQuery = if (samsungOriginsFromRecords.isNotEmpty()) {
+                        samsungOriginsFromRecords
                     } else {
-                        defaultSamsungOriginFilter()
+                        samsungOriginPackages
                     }
 
-                    aggSamsungTotal = try {
-                        client.aggregate(
-                            AggregateRequest(
-                                metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
-                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                dataOriginFilter = samsungOriginFilter
-                            )
-                        )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
-                    } catch (e: Exception) { Log.w(tag, "aggSamsungTotal err", e); 0.0 }
-                    aggSamsungTotal = sanitizeKcal(aggSamsungTotal)
+                    for (originPackage in samsungOriginsToQuery) {
+                        val originTotal = aggregateTotalCaloriesForOrigin(client, startTime, endTime, originPackage)
+                        if (originTotal > aggSamsungBestByOrigin) aggSamsungBestByOrigin = originTotal
+                    }
 
                     aggGlobalTotal = try {
                         client.aggregate(
@@ -458,12 +471,8 @@ class HealthConnectPlugin : Plugin() {
                     Log.w(tag, "Total aggregate block failed", e)
                 }
 
-                // Prefer Samsung totals; if Samsung aggregate appears inflated by overlapping snapshots,
-                // fall back to latest Samsung snapshot value.
                 resolvedTotalKcal = when {
-                    latestSamsungSnapshot > 0.0 && aggSamsungTotal > latestSamsungSnapshot * 1.2 -> latestSamsungSnapshot
-                    aggSamsungTotal > 0.0 -> aggSamsungTotal
-                    latestSamsungSnapshot > 0.0 -> latestSamsungSnapshot
+                    aggSamsungBestByOrigin > 0.0 -> aggSamsungBestByOrigin
                     else -> aggGlobalTotal
                 }
 
