@@ -456,196 +456,226 @@ class HealthConnectPlugin : Plugin() {
                 val activePermission = HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)
                 val basalPermission = HealthPermission.getReadPermission(BasalMetabolicRateRecord::class)
 
-                if (granted.contains(totalPermission)) {
-                    var resolvedTotalKcal: Double? = null
-                    var selectedSource = "unresolved"
-                    var debugInfo = ""
+                // v11: ALWAYS return a debug record so we can see what's happening
+                val hasTotalPerm = granted.contains(totalPermission)
+                val hasActivePerm = granted.contains(activePermission)
+                val hasBasalPerm = granted.contains(basalPermission)
+                val allGrantedPerms = granted.joinToString(";")
 
+                Log.d(tag, "v11 perms: total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm allGranted=$allGrantedPerms")
+
+                var resolvedTotalKcal: Double? = null
+                var selectedSource = "v11_unresolved"
+                var debugInfo = "v11 perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) grantedAll=$allGrantedPerms"
+
+                // ---- AGGREGATE PATH (only if TotalCaloriesBurned permission granted) ----
+                var aggSamsungTotal = 0.0
+                var aggGlobalTotal = 0.0
+                var aggSamsungActive = 0.0
+                var aggGlobalActive = 0.0
+                var aggSamsungBasal = 0.0
+                var aggGlobalBasal = 0.0
+
+                if (hasTotalPerm) {
                     try {
                         val samsungPackage = "com.sec.android.app.shealth"
                         val samsungOriginFilter = setOf(DataOrigin(samsungPackage))
 
-                        val samsungTotalAggregate = client.aggregate(
+                        aggSamsungTotal = try {
+                            client.aggregate(
+                                AggregateRequest(
+                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                                    dataOriginFilter = samsungOriginFilter
+                                )
+                            )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
+                        } catch (e: Exception) { Log.w(tag, "aggSamsungTotal err", e); 0.0 }
+
+                        aggGlobalTotal = try {
+                            client.aggregate(
+                                AggregateRequest(
+                                    metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                                )
+                            )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
+                        } catch (e: Exception) { Log.w(tag, "aggGlobalTotal err", e); 0.0 }
+
+                    } catch (e: Exception) {
+                        Log.w(tag, "Total aggregate block failed", e)
+                    }
+                }
+
+                if (hasActivePerm) {
+                    aggSamsungActive = try {
+                        val samsungOriginFilter = setOf(DataOrigin("com.sec.android.app.shealth"))
+                        client.aggregate(
                             AggregateRequest(
-                                metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                                metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
                                 timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
                                 dataOriginFilter = samsungOriginFilter
                             )
-                        )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
+                        )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+                    } catch (e: Exception) { Log.w(tag, "aggSamsungActive err", e); 0.0 }
 
-                        val globalTotalAggregate = client.aggregate(
+                    aggGlobalActive = try {
+                        client.aggregate(
                             AggregateRequest(
-                                metrics = setOf(TotalCaloriesBurnedRecord.ENERGY_TOTAL),
+                                metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
                                 timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                             )
-                        )[TotalCaloriesBurnedRecord.ENERGY_TOTAL]?.inKilocalories ?: 0.0
+                        )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+                    } catch (e: Exception) { Log.w(tag, "aggGlobalActive err", e); 0.0 }
+                }
 
-                        val samsungActiveAggregate = if (granted.contains(activePermission)) {
-                            client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                    dataOriginFilter = samsungOriginFilter
-                                )
-                            )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                        } else {
-                            0.0
-                        }
+                if (hasBasalPerm) {
+                    aggSamsungBasal = try {
+                        val samsungOriginFilter = setOf(DataOrigin("com.sec.android.app.shealth"))
+                        client.aggregate(
+                            AggregateRequest(
+                                metrics = setOf(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL),
+                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
+                                dataOriginFilter = samsungOriginFilter
+                            )
+                        )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+                    } catch (e: Exception) { Log.w(tag, "aggSamsungBasal err", e); 0.0 }
 
-                        val globalActiveAggregate = if (granted.contains(activePermission)) {
-                            client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                                )
-                            )[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                        } else {
-                            0.0
-                        }
+                    aggGlobalBasal = try {
+                        client.aggregate(
+                            AggregateRequest(
+                                metrics = setOf(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL),
+                                timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
+                            )
+                        )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
+                    } catch (e: Exception) { Log.w(tag, "aggGlobalBasal err", e); 0.0 }
+                }
 
-                        val samsungBasalAggregate = if (granted.contains(basalPermission)) {
-                            client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime),
-                                    dataOriginFilter = samsungOriginFilter
-                                )
-                            )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                        } else {
-                            0.0
-                        }
+                // ---- RESOLVE best value ----
+                val samsungActivePlusBasal = aggSamsungActive + aggSamsungBasal
+                val globalActivePlusBasal = aggGlobalActive + aggGlobalBasal
 
-                        val globalBasalAggregate = if (granted.contains(basalPermission)) {
-                            client.aggregate(
-                                AggregateRequest(
-                                    metrics = setOf(BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL),
-                                    timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
-                                )
-                            )[BasalMetabolicRateRecord.BASAL_CALORIES_TOTAL]?.inKilocalories ?: 0.0
-                        } else {
-                            0.0
-                        }
+                if (aggSamsungTotal > 0.0) {
+                    resolvedTotalKcal = aggSamsungTotal
+                    selectedSource = "v11_samsung_aggregate_total"
+                } else if (aggGlobalTotal > 0.0) {
+                    resolvedTotalKcal = aggGlobalTotal
+                    selectedSource = "v11_global_aggregate_total"
+                } else if (samsungActivePlusBasal > 0.0) {
+                    resolvedTotalKcal = samsungActivePlusBasal
+                    selectedSource = "v11_samsung_active_plus_basal"
+                } else if (globalActivePlusBasal > 0.0) {
+                    resolvedTotalKcal = globalActivePlusBasal
+                    selectedSource = "v11_global_active_plus_basal"
+                }
 
-                        val samsungActivePlusBasal = samsungActiveAggregate + samsungBasalAggregate
-                        val globalActivePlusBasal = globalActiveAggregate + globalBasalAggregate
+                // ---- RECORD-BASED FALLBACK ----
+                var recordCount = 0
+                var naiveSum = 0.0
+                var samsungRecCount = 0
+                var recordDump = ""
 
-                        if (samsungTotalAggregate > 0.0) {
-                            resolvedTotalKcal = samsungTotalAggregate
-                            selectedSource = "v10_samsung_aggregate_total"
-                        } else if (globalTotalAggregate > 0.0) {
-                            resolvedTotalKcal = globalTotalAggregate
-                            selectedSource = "v10_global_aggregate_total"
-                        } else if (samsungActivePlusBasal > 0.0) {
-                            resolvedTotalKcal = samsungActivePlusBasal
-                            selectedSource = "v10_samsung_active_plus_basal_aggregate"
-                        } else if (globalActivePlusBasal > 0.0) {
-                            resolvedTotalKcal = globalActivePlusBasal
-                            selectedSource = "v10_global_active_plus_basal_aggregate"
-                        }
-
-                        // If aggregate paths can't resolve a value, fallback to record-based logic.
-                        // Read ALL individual TotalCaloriesBurnedRecord entries
+                if (hasTotalPerm && resolvedTotalKcal == null) {
+                    try {
                         val totalRecordsResponse = client.readRecords(
                             ReadRecordsRequest(
                                 recordType = TotalCaloriesBurnedRecord::class,
                                 timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                             )
                         )
-
                         val allRecords = totalRecordsResponse.records
-                        val origins = allRecords
-                            .map { it.metadata.dataOrigin.packageName }
-                            .filter { it.isNotBlank() }
-                            .distinct()
+                        recordCount = allRecords.size
+                        naiveSum = allRecords.sumOf { it.energy.inKilocalories }
 
-                        val recordCount = allRecords.size
-                        val naiveSum = allRecords.sumOf { it.energy.inKilocalories }
-                        val naiveClippedSum = allRecords.sumOf { record ->
-                            scaledClippedKcal(record, startTime, endTime)
+                        val samsungRecords = allRecords.filter {
+                            it.metadata.dataOrigin.packageName == "com.sec.android.app.shealth"
                         }
+                        samsungRecCount = samsungRecords.size
 
-                        // Build per-record debug dump (first 10 records)
-                        val recordDump = allRecords.take(10).mapIndexed { i, r ->
+                        recordDump = allRecords.take(5).mapIndexed { i, r ->
                             "r${i}:[${r.startTime}→${r.endTime} ${String.format("%.1f", r.energy.inKilocalories)}kcal ${r.metadata.dataOrigin.packageName}]"
                         }.joinToString(" ")
 
-                        val samsungRecords = allRecords.filter { 
-                            it.metadata.dataOrigin.packageName == samsungPackage 
-                        }
-
-                        // Preferred path: use latest day-cumulative snapshot
                         val samsungLatest = latestCumulativeTotal(samsungRecords, startTime, endTime)
                         val globalLatest = latestCumulativeTotal(allRecords, startTime, endTime)
-
-                        // Fallback path: overlap dedup if no cumulative candidates
                         val deduplicatedTotal = deduplicateCalorieRecords(allRecords, startTime, endTime)
-                        val samsungDedup = if (samsungRecords.isNotEmpty()) {
-                            deduplicateCalorieRecords(samsungRecords, startTime, endTime)
-                        } else null
 
-                        if (resolvedTotalKcal == null && samsungLatest != null && samsungLatest.first > 0.0) {
+                        if (samsungLatest != null && samsungLatest.first > 0.0) {
                             resolvedTotalKcal = samsungLatest.first
-                            selectedSource = "v10_samsung_latest_total_fallback"
-                        } else if (resolvedTotalKcal == null && globalLatest != null && globalLatest.first > 0.0) {
+                            selectedSource = "v11_samsung_latest_fallback"
+                        } else if (globalLatest != null && globalLatest.first > 0.0) {
                             resolvedTotalKcal = globalLatest.first
-                            selectedSource = "v10_global_latest_total_fallback"
-                        } else if (resolvedTotalKcal == null && samsungDedup != null && samsungDedup > 0.0) {
-                            resolvedTotalKcal = samsungDedup
-                            selectedSource = "v10_samsung_dedup_fallback"
-                        } else if (resolvedTotalKcal == null && deduplicatedTotal > 0.0) {
+                            selectedSource = "v11_global_latest_fallback"
+                        } else if (deduplicatedTotal > 0.0) {
                             resolvedTotalKcal = deduplicatedTotal
-                            selectedSource = "v10_global_dedup_fallback"
+                            selectedSource = "v11_dedup_fallback"
                         }
-
-                        debugInfo = "requestedStart=$requestedStartRaw requestedEnd=$requestedEndRaw zone=${zone.id} start=$startTime end=$endTime perms(total=${granted.contains(totalPermission)} active=${granted.contains(activePermission)} basal=${granted.contains(basalPermission)}) aggSamsungTotal=${String.format("%.1f", samsungTotalAggregate)} aggGlobalTotal=${String.format("%.1f", globalTotalAggregate)} aggSamsungActive=${String.format("%.1f", samsungActiveAggregate)} aggGlobalActive=${String.format("%.1f", globalActiveAggregate)} aggSamsungBasal=${String.format("%.1f", samsungBasalAggregate)} aggGlobalBasal=${String.format("%.1f", globalBasalAggregate)} origins=${origins.joinToString(";")} recs=$recordCount naiveSum=${String.format("%.1f", naiveSum)} naiveClipped=${String.format("%.1f", naiveClippedSum)} samsungLatest=${String.format("%.1f", samsungLatest?.first ?: 0.0)} globalLatest=${String.format("%.1f", globalLatest?.first ?: 0.0)} samsungDedup=${String.format("%.1f", samsungDedup ?: 0.0)} globalDedup=${String.format("%.1f", deduplicatedTotal)} samsungLatestMeta=${samsungLatest?.second ?: "none"} globalLatestMeta=${globalLatest?.second ?: "none"} samsungRecs=${samsungRecords.size} $recordDump"
-                        Log.d(tag, "v10 calorie debug: $debugInfo")
                     } catch (e: Exception) {
-                        Log.w(tag, "Total calories resolution failed", e)
-                        debugInfo = "error: ${e.message}"
-                    }
-
-                    if (resolvedTotalKcal != null && resolvedTotalKcal > 0.0) {
-                        val obj = JSObject()
-                        obj.put("value", resolvedTotalKcal)
-                        obj.put("unit", "kcal")
-                        obj.put("timestamp", endTime.toString())
-                        obj.put("debugSource", selectedSource)
-                        obj.put("debugOrigins", debugInfo)
-                        records.put(obj)
+                        Log.w(tag, "Record-based fallback failed", e)
+                        recordDump = "error:${e.message}"
                     }
                 }
 
-                // Fallback to ActiveCaloriesBurnedRecord
-                if (records.length() == 0) {
-                    if (granted.contains(activePermission)) {
-                        try {
-                            val activeRequest = ReadRecordsRequest(
+                // ---- ACTIVE-ONLY FALLBACK ----
+                var activeRecCount = 0
+                var activeSum = 0.0
+                if (resolvedTotalKcal == null && hasActivePerm) {
+                    try {
+                        val activeResponse = client.readRecords(
+                            ReadRecordsRequest(
                                 recordType = ActiveCaloriesBurnedRecord::class,
                                 timeRangeFilter = TimeRangeFilter.between(startTime, endTime)
                             )
-                            val activeResponse = client.readRecords(activeRequest)
-                            for (record in activeResponse.records) {
-                                val obj = JSObject()
-                                obj.put("value", record.energy.inKilocalories)
-                                obj.put("unit", "kcal")
-                                obj.put("timestamp", record.endTime.toString())
-                                obj.put("debugSource", "v10_active_fallback")
-                                obj.put("debugOrigins", "activeRecords=${activeResponse.records.size}")
-                                records.put(obj)
-                            }
-                        } catch (e: Exception) {
-                            Log.w(tag, "Active calories fallback failed", e)
+                        )
+                        activeRecCount = activeResponse.records.size
+                        activeSum = activeResponse.records.sumOf { it.energy.inKilocalories }
+                        if (activeSum > 0.0) {
+                            resolvedTotalKcal = activeSum
+                            selectedSource = "v11_active_only_fallback"
                         }
+                    } catch (e: Exception) {
+                        Log.w(tag, "Active-only fallback failed", e)
                     }
                 }
+
+                // ---- BUILD FULL DEBUG STRING ----
+                debugInfo = "v11 zone=${zone.id} start=$startTime end=$endTime " +
+                    "perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) " +
+                    "aggST=${String.format("%.1f", aggSamsungTotal)} " +
+                    "aggGT=${String.format("%.1f", aggGlobalTotal)} " +
+                    "aggSA=${String.format("%.1f", aggSamsungActive)} " +
+                    "aggGA=${String.format("%.1f", aggGlobalActive)} " +
+                    "aggSB=${String.format("%.1f", aggSamsungBasal)} " +
+                    "aggGB=${String.format("%.1f", aggGlobalBasal)} " +
+                    "totalRecs=$recordCount samsungRecs=$samsungRecCount naiveSum=${String.format("%.1f", naiveSum)} " +
+                    "activeRecs=$activeRecCount activeSum=${String.format("%.1f", activeSum)} " +
+                    "resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)} $recordDump"
+
+                Log.d(tag, "v11 calorie result: source=$selectedSource $debugInfo")
+
+                // ---- ALWAYS return at least one record with debug info ----
+                val obj = JSObject()
+                obj.put("value", resolvedTotalKcal ?: 0.0)
+                obj.put("unit", "kcal")
+                obj.put("timestamp", endTime.toString())
+                obj.put("debugSource", selectedSource)
+                obj.put("debugOrigins", debugInfo)
+                records.put(obj)
 
                 val result = JSObject()
                 result.put("records", records)
                 call.resolve(result)
             } catch (e: Exception) {
                 Log.e(tag, "readActiveCalories unexpected failure", e)
+                // Even on crash, return debug info
+                val crashRecords = JSArray()
+                val crashObj = JSObject()
+                crashObj.put("value", 0.0)
+                crashObj.put("unit", "kcal")
+                crashObj.put("timestamp", endTime.toString())
+                crashObj.put("debugSource", "v11_crash")
+                crashObj.put("debugOrigins", "error:${e.message}")
+                crashRecords.put(crashObj)
                 val fallback = JSObject()
-                fallback.put("records", JSArray())
+                fallback.put("records", crashRecords)
                 call.resolve(fallback)
             }
         }
