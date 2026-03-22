@@ -17,6 +17,13 @@ const toFiniteNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const maxRecordValue = (records: HealthConnectRecord[]): number => {
+  return records.reduce((max, record) => {
+    const value = toFiniteNumber(record.value);
+    return value > max ? value : max;
+  }, 0);
+};
+
 
 interface HealthConnectContextType {
   healthData: HealthData;
@@ -68,7 +75,7 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
 
       try {
         const stepsResult = await HealthConnect.readSteps(timeRange);
-        steps = stepsResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + toFiniteNumber(r.value), 0);
+        steps = maxRecordValue(stepsResult.records);
       } catch (e) { console.warn("Failed to read steps:", e); }
 
       try {
@@ -87,7 +94,7 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
 
       try {
         const calResult = await HealthConnect.readActiveCalories(timeRange);
-        activeCalories = calResult.records.reduce((sum: number, r: HealthConnectRecord) => sum + toFiniteNumber(r.value), 0);
+        activeCalories = maxRecordValue(calResult.records);
       } catch (e) { console.warn("Failed to read active calories:", e); }
 
       setHealthData({
