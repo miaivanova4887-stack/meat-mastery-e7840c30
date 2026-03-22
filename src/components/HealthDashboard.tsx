@@ -17,6 +17,25 @@ export const HealthDashboard = () => {
   } = useHealthConnectContext();
   const [showDiag, setShowDiag] = useState(false);
 
+  const toFiniteNumber = (value: unknown, fallback = 0) => {
+    const parsed = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const formatOneDecimal = (value: unknown) => {
+    const parsed = toFiniteNumber(value, Number.NaN);
+    return Number.isFinite(parsed) ? parsed.toFixed(1) : "—";
+  };
+
+  const safeSteps = toFiniteNumber(healthData.steps);
+  const safeHeartRate = toFiniteNumber(healthData.heartRate);
+  const safeWeight = toFiniteNumber(healthData.weight);
+  const safeActiveCalories = toFiniteNumber(healthData.activeCalories);
+  const safeDebugSource = healthData.calorieDebug?.source?.slice(0, 3) || "?";
+  const safeDebugOrigins = typeof healthData.calorieDebug?.origins === "string"
+    ? healthData.calorieDebug.origins.slice(0, 2000)
+    : "n/a";
+
   // Don't show on non-native or if not connected and not on Android
   if (!Capacitor.isNativePlatform() && !isConnected) return null;
 
@@ -63,41 +82,41 @@ export const HealthDashboard = () => {
           <div className="grid grid-cols-4 gap-2">
             <div className="bg-muted rounded-xl p-3 text-center">
               <Footprints size={16} className="mx-auto text-primary mb-1" />
-              <p className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</p>
+              <p className="text-lg font-bold text-foreground">{safeSteps.toLocaleString()}</p>
               <p className="text-[10px] text-muted-foreground">Steps</p>
             </div>
             <div className="bg-muted rounded-xl p-3 text-center">
               <Heart size={16} className="mx-auto text-destructive mb-1" />
-              <p className="text-lg font-bold text-foreground">{healthData.heartRate || "—"}</p>
+              <p className="text-lg font-bold text-foreground">{safeHeartRate || "—"}</p>
               <p className="text-[10px] text-muted-foreground">BPM</p>
             </div>
             <div className="bg-muted rounded-xl p-3 text-center">
               <Weight size={16} className="mx-auto text-primary mb-1" />
               <p className="text-lg font-bold text-foreground">
-                {healthData.weight ? healthData.weight.toFixed(1) : "—"}
+                {safeWeight > 0 ? formatOneDecimal(safeWeight) : "—"}
               </p>
               <p className="text-[10px] text-muted-foreground">kg</p>
             </div>
             <div className="bg-muted rounded-xl p-3 text-center">
               <Flame size={16} className="mx-auto text-orange-500 mb-1" />
               <p className="text-lg font-bold text-foreground">
-                {Math.round(healthData.activeCalories || 0)}
+                {Math.round(safeActiveCalories)}
               </p>
               <p className="text-[10px] text-muted-foreground">kcal</p>
             </div>
           </div>
           {/* Build fingerprint — always visible when connected */}
           <p className="text-[9px] text-muted-foreground/60 font-mono text-right mt-1">
-            web:{WEB_BUILD} · src:{healthData.calorieDebug?.source?.substring(0, 3) || '?'}
+            web:{WEB_BUILD} · src:{safeDebugSource}
           </p>
 
           {showDiag && healthData.calorieDebug && (
             <div className="bg-muted/50 border border-border rounded-lg p-2 text-[10px] text-muted-foreground font-mono mt-1">
               <p>🔍 <strong>Full Diagnostics</strong></p>
               <p>Source: {healthData.calorieDebug.source}</p>
-              <p>Raw: {healthData.calorieDebug.rawValue.toFixed(1)} kcal</p>
-              <p>Display: {healthData.activeCalories.toFixed(1)} kcal</p>
-              <p className="break-all mt-1 text-[8px]">{healthData.calorieDebug.origins}</p>
+              <p>Raw: {formatOneDecimal(healthData.calorieDebug.rawValue)} kcal</p>
+              <p>Display: {formatOneDecimal(safeActiveCalories)} kcal</p>
+              <p className="break-all mt-1 text-[8px]">{safeDebugOrigins}</p>
             </div>
           )}
         </>
