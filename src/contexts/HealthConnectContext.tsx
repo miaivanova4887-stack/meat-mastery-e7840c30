@@ -77,7 +77,11 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
       } catch (e) { console.warn("Failed to read heart rate:", e); }
 
       try {
-        const weightResult = await HealthConnect.readWeight(timeRange);
+        // Widen weight window to 30 days — weight may not be recorded daily
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const weightTimeRange = { startTime: thirtyDaysAgo.toISOString(), endTime: now.toISOString() };
+        const weightResult = await HealthConnect.readWeight(weightTimeRange);
         if (weightResult.records.length > 0) weight = toFiniteNumber(weightResult.records[weightResult.records.length - 1].value);
       } catch (e) { console.warn("Failed to read weight:", e); }
 
