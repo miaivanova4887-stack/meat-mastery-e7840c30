@@ -670,31 +670,7 @@ class HealthConnectPlugin : Plugin() {
                     }
                 }
 
-                // ---- BUILD FULL DEBUG STRING ----
-                debugInfo = "v15 zone=${zone.id} dayStartHour=$samsungDayStartHour reqStart=$requestedStartRaw reqEnd=$requestedEndRaw start=$startTime end=$endTime " +
-                    "perms(total=$hasTotalPerm active=$hasActivePerm basal=$hasBasalPerm) " +
-                    "aggST=${String.format("%.1f", aggSamsungTotal)} " +
-                    "aggGT=${String.format("%.1f", aggGlobalTotal)} " +
-                    "aggSA=${String.format("%.1f", aggSamsungActive)} " +
-                    "aggGA=${String.format("%.1f", aggGlobalActive)} " +
-                    "aggSB=${String.format("%.1f", aggSamsungBasal)} " +
-                    "aggGB=${String.format("%.1f", aggGlobalBasal)} " +
-                    "ovST=${String.format("%.1f", overlapSamsungLatest)} " +
-                    "ovGT=${String.format("%.1f", overlapGlobalLatest)} " +
-                    "ovSD=${String.format("%.1f", overlapSamsungDedup)} " +
-                    "ovGD=${String.format("%.1f", overlapGlobalDedup)} " +
-                    "ovWin=[${overlapWindowStart}→${overlapWindowEnd}] " +
-                    "totalRecs=$recordCount samsungRecs=$samsungRecCount naiveSum=${String.format("%.1f", naiveSum)} " +
-                    "activeRecs=$activeRecCount activeSum=${String.format("%.1f", activeSum)} " +
-                    "resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)} $recordDump"
-
-                val boundedDebugInfo = if (debugInfo.length > 3500) {
-                    debugInfo.take(3500) + " …[truncated]"
-                } else {
-                    debugInfo
-                }
-
-                Log.d(tag, "v15 calorie result: source=$selectedSource $boundedDebugInfo")
+                Log.d(tag, "v14 calorie result: source=$selectedSource resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)}")
 
                 // ---- ALWAYS return at least one record with debug info ----
                 val obj = JSObject()
