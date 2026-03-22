@@ -25,7 +25,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.Instant
-import java.time.ZoneId
 
 @CapacitorPlugin(name = "HealthConnect")
 class HealthConnectPlugin : Plugin() {
@@ -314,154 +313,8 @@ class HealthConnectPlugin : Plugin() {
         }
     }
 
-    /**
-     * Fallback deduplication for overlapping TotalCaloriesBurnedRecord intervals.
-     * Used only when no reliable day-cumulative snapshot can be resolved.
-     */
-    private data class CalorieInterval(
-        val startEpoch: Long,
-        val endEpoch: Long,
-        val kcal: Double,
-        val origin: String
-    )
-
     private fun sanitizeKcal(value: Double): Double {
         return if (value.isNaN() || value.isInfinite() || value < 0.0) 0.0 else value
-    }
-
-    private fun scaledClippedKcal(
-        record: TotalCaloriesBurnedRecord,
-        queryStart: Instant,
-        queryEnd: Instant
-    ): Double {
-        val clippedStart = maxOf(record.startTime, queryStart)
-        val clippedEnd = minOf(record.endTime, queryEnd)
-        if (!clippedEnd.isAfter(clippedStart)) return 0.0
-
-        val fullDurationSec = (record.endTime.epochSecond - record.startTime.epochSecond).coerceAtLeast(1L)
-        val clippedDurationSec = (clippedEnd.epochSecond - clippedStart.epochSecond).coerceAtLeast(0L)
-        if (clippedDurationSec <= 0L) return 0.0
-
-        return record.energy.inKilocalories * (clippedDurationSec.toDouble() / fullDurationSec.toDouble())
-    }
-
-    private fun deduplicateCalorieRecords(
-        records: List<TotalCaloriesBurnedRecord>,
-        queryStart: Instant,
-        queryEnd: Instant
-    ): Double {
-        if (records.isEmpty()) return 0.0
-
-        // Convert to intervals sorted by start time and clip/scale to query range.
-        val intervals = records.mapNotNull { record ->
-            val clippedStart = maxOf(record.startTime, queryStart)
-            val clippedEnd = minOf(record.endTime, queryEnd)
-            if (!clippedEnd.isAfter(clippedStart)) return@mapNotNull null
-
-            val scaledKcal = scaledClippedKcal(record, queryStart, queryEnd)
-            if (scaledKcal <= 0.0) return@mapNotNull null
-
-            CalorieInterval(
-                startEpoch = clippedStart.epochSecond,
-                endEpoch = clippedEnd.epochSecond,
-                kcal = scaledKcal,
-                origin = record.metadata.dataOrigin.packageName
-            )
-        }.sortedBy { it.startEpoch }
-
-        if (intervals.isEmpty()) return 0.0
-
-        // Merge overlapping intervals: when two intervals overlap,
-        // keep the one with higher kcal (it's the more complete measurement)
-        val merged = mutableListOf<CalorieInterval>()
-        var current = intervals[0]
-
-        for (i in 1 until intervals.size) {
-            val next = intervals[i]
-            if (next.startEpoch < current.endEpoch) {
-                // Overlapping — keep the one with higher kcal value
-                // (the more complete measurement)
-                current = if (next.kcal > current.kcal) {
-                    // Next is better but expand to cover full range
-                    CalorieInterval(
-                        minOf(current.startEpoch, next.startEpoch),
-                        maxOf(current.endEpoch, next.endEpoch),
-                        next.kcal,
-                        next.origin
-                    )
-                } else {
-                    CalorieInterval(
-                        minOf(current.startEpoch, next.startEpoch),
-                        maxOf(current.endEpoch, next.endEpoch),
-                        current.kcal,
-                        current.origin
-                    )
-                }
-            } else {
-                // No overlap — commit current and move on
-                merged.add(current)
-                current = next
-            }
-        }
-        merged.add(current)
-
-        return merged.sumOf { it.kcal }
-    }
-
-    /**
-     * Samsung often writes day-cumulative "total burned" snapshots
-     * (start near midnight, end grows through the day). For this pattern,
-     * the latest snapshot best matches Samsung Health UI.
-     */
-    private fun latestCumulativeTotal(
-        records: List<TotalCaloriesBurnedRecord>,
-        queryStart: Instant,
-        queryEnd: Instant
-    ): Pair<Double, String>? {
-        if (records.isEmpty()) return null
-
-        val startToleranceSec = 15 * 60L
-        val minCoverageSec = 3 * 60 * 60L
-
-        val candidates = records.mapNotNull { record ->
-            val clippedStart = maxOf(record.startTime, queryStart)
-            val clippedEnd = minOf(record.endTime, queryEnd)
-            if (!clippedEnd.isAfter(clippedStart)) return@mapNotNull null
-
-            val startsNearDayStart = !record.startTime.isAfter(queryStart.plusSeconds(startToleranceSec))
-            if (!startsNearDayStart) return@mapNotNull null
-
-            val coverageSec = (clippedEnd.epochSecond - queryStart.epochSecond).coerceAtLeast(0L)
-            if (coverageSec < minCoverageSec) return@mapNotNull null
-
-            val scaled = scaledClippedKcal(record, queryStart, queryEnd)
-            if (scaled <= 0.0) return@mapNotNull null
-
-            Triple(clippedEnd, scaled, record)
-        }
-
-        if (candidates.isEmpty()) return null
-
-        val latest = candidates.maxWith(
-            compareBy<Triple<Instant, Double, TotalCaloriesBurnedRecord>> { it.first }
-                .thenBy { it.second }
-        )
-
-        val detail = "start=${latest.third.startTime} end=${latest.third.endTime} scaled=${String.format("%.1f", latest.second)}"
-        return latest.second to detail
-    }
-
-    /**
-     * Samsung Health Daily Activity uses a 4:00 AM local day boundary.
-     * Align calorie queries to that boundary so values match Samsung UI.
-     */
-    private fun samsungActivityDayStart(now: Instant, zone: ZoneId, dayStartHour: Int = 4): Instant {
-        val zonedNow = now.atZone(zone)
-        var start = zonedNow.toLocalDate().atTime(dayStartHour, 0).atZone(zone)
-        if (zonedNow.isBefore(start)) {
-            start = start.minusDays(1)
-        }
-        return start.toInstant()
     }
 
     @PluginMethod
@@ -471,13 +324,7 @@ class HealthConnectPlugin : Plugin() {
             return
         }
 
-        // Validate incoming call contract (startTime/endTime are required by bridge)
-        parseTimeRange(call) ?: return
-
-        val zone = ZoneId.systemDefault()
-        val endTime = Instant.now()
-        val samsungDayStartHour = 4
-        val startTime = samsungActivityDayStart(endTime, zone, samsungDayStartHour)
+        val (startTime, endTime) = parseTimeRange(call) ?: return
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -487,7 +334,6 @@ class HealthConnectPlugin : Plugin() {
 
                 val hasTotalPerm = granted.contains(totalPermission)
                 var resolvedTotalKcal = 0.0
-                var selectedSource = "total_unresolved"
 
                 if (!hasTotalPerm) {
                     val result = JSObject()
@@ -498,14 +344,6 @@ class HealthConnectPlugin : Plugin() {
 
                 var aggSamsungTotal = 0.0
                 var aggGlobalTotal = 0.0
-
-                // Wider overlap window helps capture long-running cumulative records
-                // that started before local midnight but still overlap today.
-                val overlapWindowStart = startTime.minusSeconds(36L * 60L * 60L)
-                val overlapWindowEnd = endTime.plusSeconds(12L * 60L * 60L)
-
-                var overlapSamsungLatest = 0.0
-                var overlapGlobalLatest = 0.0
 
                 try {
                     val samsungPackage = "com.sec.android.app.shealth"
@@ -536,64 +374,11 @@ class HealthConnectPlugin : Plugin() {
                     Log.w(tag, "Total aggregate block failed", e)
                 }
 
-                try {
-                    val totalRecordsResponse = client.readRecords(
-                        ReadRecordsRequest(
-                            recordType = TotalCaloriesBurnedRecord::class,
-                            timeRangeFilter = TimeRangeFilter.between(overlapWindowStart, overlapWindowEnd)
-                        )
-                    )
-
-                    val allRecords = totalRecordsResponse.records
-                    val samsungRecords = allRecords.filter {
-                        it.metadata.dataOrigin.packageName == "com.sec.android.app.shealth"
-                    }
-
-                    overlapSamsungLatest = sanitizeKcal(latestCumulativeTotal(samsungRecords, startTime, endTime)?.first ?: 0.0)
-                    overlapGlobalLatest = sanitizeKcal(latestCumulativeTotal(allRecords, startTime, endTime)?.first ?: 0.0)
-                } catch (e: Exception) {
-                    Log.w(tag, "Overlap record read failed", e)
-                }
-
-                // Resolve using TotalCaloriesBurned only (never Active calories).
-                val samsungCandidate = maxOf(overlapSamsungLatest, aggSamsungTotal)
-                val globalCandidate = maxOf(overlapGlobalLatest, aggGlobalTotal)
-
-                if (samsungCandidate > 0.0) {
-                    // Guard against partial overlap snapshots that are far below aggregate.
-                    resolvedTotalKcal = if (
-                        overlapSamsungLatest > 0.0 &&
-                        aggSamsungTotal > 0.0 &&
-                        overlapSamsungLatest < (aggSamsungTotal * 0.6)
-                    ) {
-                        selectedSource = "total_samsung_aggregate"
-                        aggSamsungTotal
-                    } else if (overlapSamsungLatest > 0.0) {
-                        selectedSource = "total_samsung_latest_overlap"
-                        overlapSamsungLatest
-                    } else {
-                        selectedSource = "total_samsung_aggregate"
-                        aggSamsungTotal
-                    }
-                } else if (globalCandidate > 0.0) {
-                    resolvedTotalKcal = if (
-                        overlapGlobalLatest > 0.0 &&
-                        aggGlobalTotal > 0.0 &&
-                        overlapGlobalLatest < (aggGlobalTotal * 0.6)
-                    ) {
-                        selectedSource = "total_global_aggregate"
-                        aggGlobalTotal
-                    } else if (overlapGlobalLatest > 0.0) {
-                        selectedSource = "total_global_latest_overlap"
-                        overlapGlobalLatest
-                    } else {
-                        selectedSource = "total_global_aggregate"
-                        aggGlobalTotal
-                    }
-                }
+                // Samsung Health-first resolution to match Samsung UI totals.
+                resolvedTotalKcal = if (aggSamsungTotal > 0.0) aggSamsungTotal else aggGlobalTotal
 
                 resolvedTotalKcal = sanitizeKcal(resolvedTotalKcal)
-                Log.d(tag, "calorie result: source=$selectedSource resolved=${String.format("%.1f", resolvedTotalKcal)}")
+                Log.d(tag, "calorie result: resolved=${String.format("%.1f", resolvedTotalKcal)}")
 
                 val obj = JSObject()
                 obj.put("value", resolvedTotalKcal)
@@ -606,7 +391,6 @@ class HealthConnectPlugin : Plugin() {
                 call.resolve(result)
             } catch (e: Exception) {
                 Log.e(tag, "readActiveCalories unexpected failure", e)
-                // Even on crash, return debug info
                 val crashRecords = JSArray()
                 val crashObj = JSObject()
                 crashObj.put("value", 0.0)
