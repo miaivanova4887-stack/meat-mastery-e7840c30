@@ -672,13 +672,10 @@ class HealthConnectPlugin : Plugin() {
 
                 Log.d(tag, "v14 calorie result: source=$selectedSource resolved=${String.format("%.1f", resolvedTotalKcal ?: 0.0)}")
 
-                // ---- ALWAYS return at least one record with debug info ----
                 val obj = JSObject()
                 obj.put("value", sanitizeKcal(resolvedTotalKcal ?: 0.0))
                 obj.put("unit", "kcal")
                 obj.put("timestamp", endTime.toString())
-                obj.put("debugSource", selectedSource)
-                obj.put("debugOrigins", boundedDebugInfo)
                 records.put(obj)
 
                 val result = JSObject()
