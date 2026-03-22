@@ -17,9 +17,6 @@ const toFiniteNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const toSafeText = (value: unknown, fallback: string): string => {
-  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
-};
 
 interface HealthConnectContextType {
   healthData: HealthData;
