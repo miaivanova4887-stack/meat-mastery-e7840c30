@@ -627,13 +627,25 @@ class HealthConnectPlugin : Plugin() {
                 }
 
                 // ---- RESOLVE best value ----
-                // v15: Pure raw aggregate — no overlap/dedup/cumulative logic
-                if (aggGlobalTotal > 0.0) {
-                    resolvedTotalKcal = aggGlobalTotal
-                    selectedSource = "v15_raw_aggregate"
+                // v14: Prefer Samsung cumulative overlap snapshot (matches Samsung Health UI best)
+                if (overlapSamsungLatest > 0.0) {
+                    resolvedTotalKcal = overlapSamsungLatest
+                    selectedSource = "v14_samsung_latest_overlap"
+                } else if (overlapGlobalLatest > 0.0) {
+                    resolvedTotalKcal = overlapGlobalLatest
+                    selectedSource = "v14_global_latest_overlap"
+                } else if (overlapSamsungDedup > 0.0) {
+                    resolvedTotalKcal = overlapSamsungDedup
+                    selectedSource = "v14_samsung_dedup"
+                } else if (overlapGlobalDedup > 0.0) {
+                    resolvedTotalKcal = overlapGlobalDedup
+                    selectedSource = "v14_global_dedup"
                 } else if (aggSamsungTotal > 0.0) {
                     resolvedTotalKcal = aggSamsungTotal
-                    selectedSource = "v15_raw_samsung_aggregate"
+                    selectedSource = "v14_agg_samsung"
+                } else if (aggGlobalTotal > 0.0) {
+                    resolvedTotalKcal = aggGlobalTotal
+                    selectedSource = "v14_agg_global"
                 }
 
                 // ---- ACTIVE-ONLY FALLBACK ----
