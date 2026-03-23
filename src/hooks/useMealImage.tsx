@@ -7,6 +7,22 @@ const pendingRequests = new Map<string, Promise<string | null>>();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+
+const toCacheKey = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+
+// Check public bucket first — no edge function call needed
+async function checkBucketCache(recipeName: string): Promise<string | null> {
+  const key = toCacheKey(recipeName);
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/meal-images/${key}.png`;
+  try {
+    const resp = await fetch(publicUrl, { method: "HEAD" });
+    if (resp.ok) return publicUrl;
+  } catch { /* not cached */ }
+  return null;
+}
+
 const requestKeyFor = (recipeName: string, tags?: string[]) => {
   const tagsKey = (tags || []).map((t) => t.toLowerCase()).sort().join("|");
   return `${recipeName}::${tagsKey}`;
@@ -35,7 +51,6 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
         .catch(reject)
         .finally(() => {
           activeRequests--;
-          // Small delay before processing next to avoid rate limits
           setTimeout(processQueue, 300);
         });
     });
@@ -49,6 +64,11 @@ function fetchImage(recipeName: string, tags?: string[]): Promise<string | null>
   if (request) return request;
 
   request = enqueue(async () => {
+    // 1. Check bucket cache first (free, instant)
+    const cached = await checkBucketCache(recipeName);
+    if (cached) return cached;
+
+    // 2. Fall back to edge function (generates + caches)
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const { data, error } = await supabase.functions.invoke(
@@ -58,14 +78,12 @@ function fetchImage(recipeName: string, tags?: string[]): Promise<string | null>
 
         if (error) {
           console.warn(`[MealImage] Edge fn error for "${recipeName}":`, error);
-          // Don't retry on auth/credits errors
           if (error.message?.includes("402") || error.message?.includes("401")) break;
           continue;
         }
 
         if (data?.error) {
           console.warn(`[MealImage] API error for "${recipeName}":`, data.error);
-          // Don't retry on credits exhausted or rate limit
           if (data.error.includes("credits") || data.error.includes("402")) break;
           if (data.error.includes("429")) {
             await sleep(2000);
