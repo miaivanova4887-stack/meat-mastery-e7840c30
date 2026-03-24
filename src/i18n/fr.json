@@ -217,7 +217,40 @@
     "showIngredients": "Voir les ingrédients",
     "hideIngredients": "Masquer les ingrédients",
     "inList": "Dans la liste",
-    "favorites": "Favoris"
+    "favorites": "Favoris",
+    "openList": "Ouvrir la liste",
+    "added": "{{name}} ajouté",
+    "tiers": {
+      "lion": "🦁 Lion",
+      "strict": "🥩 Carnivore strict",
+      "animal_based": "🍳 Base animale"
+    },
+    "cravings": {
+      "all": "🔥 Tout",
+      "snack": "🍖 Collations",
+      "sweets": "🍯 Sucreries",
+      "seafood": "🦐 Fruits de mer",
+      "bakery": "🥞 Boulangerie",
+      "comfort": "🍖 Réconfort",
+      "quick": "⚡ Rapide",
+      "organs": "🦴 Abats",
+      "cheesy": "🧀 Fromager",
+      "crispy": "🥓 Croustillant",
+      "grilling": "🔥 Grillades"
+    },
+    "cuisines": {
+      "all": "🌍 Toutes les cuisines",
+      "western": "🇺🇸 Occidental",
+      "indian": "🇮🇳 Indien",
+      "thai": "🇹🇭 Thaï",
+      "chinese": "🇨🇳 Chinois",
+      "mexican": "🇲🇽 Mexicain",
+      "korean": "🇰🇷 Coréen",
+      "japanese": "🇯🇵 Japonais",
+      "african": "🌍 Africain",
+      "middle_eastern": "🕌 Moyen-oriental",
+      "mediterranean": "🫒 Méditerranéen"
+    }
   },
   "mealPlan": {
     "title": "Plan de repas",

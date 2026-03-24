@@ -217,7 +217,40 @@
     "showIngredients": "Show Ingredients",
     "hideIngredients": "Hide Ingredients",
     "inList": "In list",
-    "favorites": "Favorites"
+    "favorites": "Favorites",
+    "openList": "Open list",
+    "added": "{{name}} added",
+    "tiers": {
+      "lion": "🦁 Lion",
+      "strict": "🥩 Strict Carnivore",
+      "animal_based": "🍳 Animal Based"
+    },
+    "cravings": {
+      "all": "🔥 All",
+      "snack": "🍖 Snacks",
+      "sweets": "🍯 Sweets",
+      "seafood": "🦐 Seafood",
+      "bakery": "🥞 Bakery",
+      "comfort": "🍖 Comfort",
+      "quick": "⚡ Quick Bites",
+      "organs": "🦴 Organ Meats",
+      "cheesy": "🧀 Cheesy",
+      "crispy": "🥓 Crispy",
+      "grilling": "🔥 Grilling"
+    },
+    "cuisines": {
+      "all": "🌍 All Cuisines",
+      "western": "🇺🇸 Western",
+      "indian": "🇮🇳 Indian",
+      "thai": "🇹🇭 Thai",
+      "chinese": "🇨🇳 Chinese",
+      "mexican": "🇲🇽 Mexican",
+      "korean": "🇰🇷 Korean",
+      "japanese": "🇯🇵 Japanese",
+      "african": "🌍 African",
+      "middle_eastern": "🕌 Middle Eastern",
+      "mediterranean": "🫒 Mediterranean"
+    }
   },
   "mealPlan": {
     "title": "Meal Plan",
