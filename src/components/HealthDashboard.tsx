@@ -1,4 +1,4 @@
-import { Footprints, Heart, Weight, RefreshCw, Flame, CheckCircle2, Watch } from 'lucide-react';
+import { Footprints, Heart, Weight, Flame, CheckCircle2, Watch } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { useNavigate } from 'react-router-dom';
 import { useHealthConnectContext } from '@/contexts/HealthConnectContext';
