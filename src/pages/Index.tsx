@@ -123,8 +123,7 @@ const Index = () => {
             {t("home.healingJourney")}
           </p>
           <h1 className="text-[2.2rem] font-black text-foreground leading-[1.02] tracking-[-0.02em]">
-            {t("home.healthIsWealth")}<br />
-            <span className="text-gradient-flame">{t("home.healthIsWealth2")}</span>
+            {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
           </h1>
           <p className="text-muted-foreground mt-2.5 text-[13px] max-w-[280px] leading-relaxed font-light">
             {subtitle}
