@@ -698,7 +698,7 @@ const Profile = () => {
                 </div>
                 {notifPrefs.dailyReminder && (
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
-                    <span className="text-sm text-muted-foreground">Reminder Time</span>
+                    <span className="text-sm text-muted-foreground">{t("profile.reminderTime")}</span>
                     <input
                       type="time"
                       value={notifPrefs.reminderTime}
