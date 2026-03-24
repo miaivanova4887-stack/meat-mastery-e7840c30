@@ -1,15 +1,15 @@
 const CarnivoreXLogo = ({ className = "", size = "md" }: { className?: string; size?: "sm" | "md" | "lg" }) => {
   const styles = {
-    sm: "text-[0.85rem]",
+    sm: "text-[11px]",
     md: "text-[1.05rem]",
     lg: "text-[1.4rem]",
   };
 
   return (
-    <span className={`inline-flex items-baseline leading-none select-none ${styles[size]} ${className}`}>
-      <span className="font-light tracking-[0.08em] text-primary">C</span>
-      <span className="font-light tracking-[0.08em] text-primary text-[0.85em]">arnivore</span>
-      <span className="font-bold tracking-tight text-primary/60">X</span>
+    <span className={`inline-flex items-baseline leading-none select-none font-bold uppercase tracking-[0.2em] ${styles[size]} ${className}`}>
+      <span className="text-primary">C</span>
+      <span className="text-primary">arnivore</span>
+      <span className="text-primary/60">X</span>
     </span>
   );
 };
