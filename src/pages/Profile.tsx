@@ -763,8 +763,8 @@ const Profile = () => {
                     <BarChart3 size={18} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Analytics Dashboard</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Users, engagement, CMS page views</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.analyticsDashboard")}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.analyticsDesc")}</p>
                   </div>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </button>
