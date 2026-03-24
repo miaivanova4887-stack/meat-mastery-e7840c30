@@ -839,10 +839,10 @@ const Profile = () => {
                       action: () => window.open(`mailto:?subject=${encodeURIComponent("Check out Vore!")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`, "_blank"),
                     },
                     {
-                      label: "Copy Link",
+                      label: t("profile.copyLink"),
                       icon: Copy,
                       color: "bg-secondary text-muted-foreground",
-                      action: () => { navigator.clipboard.writeText(shareUrl); toast.success("Link copied!"); },
+                      action: () => { navigator.clipboard.writeText(shareUrl); toast.success(t("profile.linkCopied")); },
                     },
                   ];
                   return shareButtons.map(({ label, icon: Icon, color, action }) => (
