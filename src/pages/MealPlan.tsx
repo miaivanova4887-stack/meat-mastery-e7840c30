@@ -43,7 +43,7 @@ const MealPlan = () => {
   const { t } = useTranslation();
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals, toggleCompleted, isCompleted, dayCompletionCount } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
-  const { addItem, hasItem } = useShoppingBag();
+  const { addItem, hasItem, count: bagCount } = useShoppingBag();
   const profile = useUserProfile();
   const { syncMealToProgress } = useMealSync();
   const userSlots = useMemo(() => activeSlots(profile.mealsPerDay), [profile.mealsPerDay]);
