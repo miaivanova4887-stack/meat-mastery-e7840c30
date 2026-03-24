@@ -6,10 +6,9 @@ const CarnivoreXLogo = ({ className = "", size = "md" }: { className?: string; s
   };
 
   return (
-    <span className={`inline-flex items-baseline leading-none select-none font-bold uppercase tracking-[0.2em] ${styles[size]} ${className}`}>
-      <span className="text-primary">C</span>
-      <span className="text-primary">arnivore</span>
-      <span className="text-primary/60">X</span>
+    <span className={`inline-flex items-baseline leading-none select-none font-bold tracking-[0.2em] ${styles[size]} ${className}`}>
+      <span className="text-primary">Carnivore</span>
+      <span className="text-primary/60 font-bold">X</span>
     </span>
   );
 };
