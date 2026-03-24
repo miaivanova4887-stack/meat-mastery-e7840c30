@@ -116,11 +116,11 @@ const Index = () => {
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/70 mb-3 animate-fade-in">
             {greeting}
           </p>
-          <h1 className="text-[2rem] font-black tracking-[-0.03em] leading-none text-foreground">
-            <span className="text-primary text-[2.6rem] font-black tracking-[-0.04em] drop-shadow-[0_0_20px_hsl(var(--primary)/0.4)]">
+          <h1 className="text-[1.8rem] font-bold tracking-[-0.03em] leading-none text-foreground">
+            <span className="text-primary text-[1.8rem] font-semibold tracking-[-0.02em] drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]">
               Carnivore
             </span>
-            <span className="text-primary/60 text-[2.6rem] font-light tracking-[-0.04em]">X</span>
+            <span className="text-primary/50 text-[1.8rem] font-light tracking-[-0.02em]">X</span>
           </h1>
           <p className="text-muted-foreground mt-1.5 text-[13px] max-w-[280px] leading-relaxed">
             {subtitle}
