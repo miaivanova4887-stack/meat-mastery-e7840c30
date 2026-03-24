@@ -604,5 +604,9 @@
     "helpful": "Ravi que ce soit utile !",
     "thanks": "Merci pour votre retour !",
     "wasHelpful": "Était-ce utile ?"
+  },
+  "brand": {
+    "name": "CarnivoreX",
+    "tagline": "Votre compagnon carnivore"
   }
 }

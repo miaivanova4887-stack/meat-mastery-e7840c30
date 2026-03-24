@@ -604,5 +604,9 @@
     "helpful": "Glad you found it useful!",
     "thanks": "Thanks for your feedback!",
     "wasHelpful": "Was this helpful?"
+  },
+  "brand": {
+    "name": "CarnivoreX",
+    "tagline": "Your carnivore companion"
   }
 }

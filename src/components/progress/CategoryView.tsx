@@ -8,6 +8,7 @@ import SetGoalDrawer from "./SetGoalDrawer";
 import { format } from "date-fns";
 import { useDeleteEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
+import { useTranslation } from "react-i18next";
 
 const RANGE_OPTIONS = [
   { label: "1 W", days: 7 },
@@ -24,11 +25,11 @@ interface Props {
 const CM_TO_IN = 0.393701;
 
 const CategoryView = ({ category }: Props) => {
+  const { t } = useTranslation();
   const allMetrics = METRICS[category];
   const profile = useUserProfile();
   const sex = profile.body.sex;
 
-  // For body_measurements: show hips only for female/unspecified
   const metrics = useMemo(() => {
     if (category !== "body_measurements") return allMetrics;
     return allMetrics.filter((m) => {
@@ -70,7 +71,6 @@ const CategoryView = ({ category }: Props) => {
     return currentMeta.unit;
   };
 
-  // Compute daily average: sum per local day, then average across days
   const avg = useMemo(() => {
     if (metricEntries.length === 0) return null;
     const dailyMap = new Map<string, number>();
@@ -87,6 +87,9 @@ const CategoryView = ({ category }: Props) => {
   const goalPct = currentGoal && latestValue != null
     ? Math.round((latestValue / currentGoal.target_value) * 100)
     : null;
+
+  // Translate metric label
+  const metricLabel = (key: string) => t(`progress.metrics.${key}`, { defaultValue: key });
 
   if (!currentMeta) return null;
 
@@ -122,7 +125,7 @@ const CategoryView = ({ category }: Props) => {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {m.icon} {m.label}
+              {m.icon} {metricLabel(m.key)}
             </button>
           ))}
         </div>
@@ -141,17 +144,15 @@ const CategoryView = ({ category }: Props) => {
         <div className="relative overflow-hidden bg-card rounded-xl p-4 border border-border">
           <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--gold))] opacity-[0.06]" />
           <div className="relative">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Daily Avg</p>
-            <p className="text-3xl font-bold text-foreground mt-1.5">
-              {avg ?? "—"}
-            </p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("progress.dailyAvg")}</p>
+            <p className="text-3xl font-bold text-foreground mt-1.5">{avg ?? "—"}</p>
             <span className="text-xs text-muted-foreground">{displayUnit()}</span>
           </div>
         </div>
         <div className="relative overflow-hidden bg-card rounded-xl p-4 border border-border">
           <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--gold))] to-[hsl(var(--flame))] opacity-[0.06]" />
           <div className="relative">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Goal</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("progress.goal")}</p>
             <p className="text-3xl font-bold text-foreground mt-1.5">
               {currentGoal ? (useImperial ? convertVal(currentGoal.target_value) : currentGoal.target_value) : "—"}
             </p>
@@ -169,14 +170,14 @@ const CategoryView = ({ category }: Props) => {
         </div>
       </div>
 
-      {/* Chart - larger */}
+      {/* Chart */}
       <div className="bg-card rounded-xl p-4 border border-border">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs font-bold text-foreground uppercase tracking-wider">{currentMeta.icon} {currentMeta.label} Trend</p>
-          <p className="text-[10px] text-muted-foreground">{RANGE_OPTIONS.find(r => r.days === range)?.label} range</p>
+          <p className="text-xs font-bold text-foreground uppercase tracking-wider">{currentMeta.icon} {metricLabel(currentMeta.key)} {t("progress.trend")}</p>
+          <p className="text-[10px] text-muted-foreground">{RANGE_OPTIONS.find(r => r.days === range)?.label} {t("progress.range")}</p>
         </div>
         {isLoading ? (
-          <div className="h-56 flex items-center justify-center text-muted-foreground text-sm">Loading...</div>
+          <div className="h-56 flex items-center justify-center text-muted-foreground text-sm">{t("progress.loading")}</div>
         ) : (
           <ProgressChart entries={entries} metricKey={activeMetric} goal={currentGoal} rangeDays={range} sumValues={category === "diet_trends"} />
         )}
@@ -186,7 +187,7 @@ const CategoryView = ({ category }: Props) => {
       {metricEntries.length > 0 && (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="px-4 py-2.5 border-b border-border">
-            <p className="text-xs font-bold text-foreground uppercase tracking-wider">Recent Entries</p>
+            <p className="text-xs font-bold text-foreground uppercase tracking-wider">{t("progress.recentEntries")}</p>
           </div>
           <div className="divide-y divide-border max-h-48 overflow-y-auto">
             {[...metricEntries].reverse().slice(0, 10).map((e) => (
@@ -208,10 +209,10 @@ const CategoryView = ({ category }: Props) => {
       {/* Action buttons */}
       <div className="flex gap-3">
         <Button onClick={() => setShowAdd(true)} className="flex-1 gap-2 h-11 shadow-md shadow-primary/10">
-          <Plus size={16} /> Add Entry
+          <Plus size={16} /> {t("progress.addEntry")}
         </Button>
         <Button variant="outline" onClick={() => setShowGoal(true)} className="gap-2 h-11">
-          <Crosshair size={16} /> Goals
+          <Crosshair size={16} /> {t("progress.goals")}
         </Button>
       </div>
 
