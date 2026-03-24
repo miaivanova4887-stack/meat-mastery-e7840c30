@@ -437,7 +437,7 @@ const Recipes = () => {
 
           {filtered.builtIn.map((r, i) => <RecipeCard key={r.name} r={r} i={i} />)}
 
-          {totalCount === 0 && <div className="text-center py-12 text-muted-foreground text-sm">No recipes found. Try adjusting your filters.</div>}
+          {totalCount === 0 && <div className="text-center py-12 text-muted-foreground text-sm">{t("recipes.noRecipes")}</div>}
         </div>
       </div>
     </div>
