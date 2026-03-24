@@ -330,10 +330,10 @@ const Profile = () => {
             )}
             <div className="flex items-center gap-3 mt-1.5">
               <span className="text-[11px] text-muted-foreground">
-                <strong className="text-foreground">{myRecipes.length}</strong> recipes
+                <strong className="text-foreground">{myRecipes.length}</strong> {t("profile.recipes")}
               </span>
               <span className="text-[11px] text-muted-foreground">
-                <strong className="text-foreground">{likedRecipes.length + favoriteRecipes.length}</strong> likes
+                <strong className="text-foreground">{likedRecipes.length + favoriteRecipes.length}</strong> {t("profile.likes")}
               </span>
               {profile?.diet_tier && (
                 <span className="text-[11px] text-muted-foreground">
