@@ -113,18 +113,15 @@ const Index = () => {
           style={{ background: "linear-gradient(90deg, hsl(var(--flame)), hsl(var(--gold)))" }}
         />
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between"
-          style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingLeft: "16px", paddingRight: "16px" }}
+          style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingLeft: "24px", paddingRight: "16px" }}
         >
           <CarnivoreXLogo size="sm" className="animate-fade-in" />
           <ThemeToggle />
         </div>
-        <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">
-          <div className="flex items-center gap-2 mb-2 animate-fade-in">
-            <div className="w-5 h-[1.5px] rounded-full bg-primary" />
-            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
-              {t("home.healingJourney")}
-            </p>
-          </div>
+        <div className="absolute bottom-0 left-0 right-0 pb-8" style={{ paddingLeft: "24px", paddingRight: "24px" }}>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary mb-2 animate-fade-in">
+            {t("home.healingJourney")}
+          </p>
           <h1 className="text-[2.2rem] font-black text-foreground leading-[1.02] tracking-[-0.02em]">
             {t("home.healthIsWealth")}<br />
             <span className="text-gradient-flame">{t("home.healthIsWealth2")}</span>
