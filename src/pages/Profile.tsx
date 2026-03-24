@@ -652,7 +652,7 @@ const Profile = () => {
                       onClick={() => {
                         localStorage.setItem("carnivore-meals-per-day", String(n));
                         window.dispatchEvent(new Event("profile-update"));
-                        toast.success(`Updated to ${n} meals/day`);
+                        toast.success(t("profile.mealsUpdated", { count: n }));
                       }}
                       className={`flex-1 flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                         current === n ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
