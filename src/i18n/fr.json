@@ -10,6 +10,7 @@
   "home": {
     "healthIsWealth": "La santé,",
     "healthIsWealth2": "c'est la richesse.",
+    "healingJourney": "Votre parcours de guérison",
     "recommendedForYou": "Recommandé pour vous",
     "updatePreferences": "Modifier vos préférences",
     "resetTitle": "Réinitialiser vos préférences ?",
@@ -608,5 +609,45 @@
   "brand": {
     "name": "CarnivoreX",
     "tagline": "Votre compagnon carnivore"
+  },
+  "feed": {
+    "article1": {
+      "title": "Viande rouge et santé cardiaque : une nouvelle méta-analyse remet en question les anciennes hypothèses",
+      "summary": "Une méta-analyse de 2025 portant sur 14 études n'a trouvé aucun lien significatif entre la consommation de viande rouge non transformée et le risque cardiovasculaire.",
+      "body": "Cette méta-analyse complète a examiné les données de plus de 1,2 million de participants dans 14 études de cohorte prospectives. Les chercheurs ont constaté que la consommation de jusqu'à 100 g de viande rouge non transformée par jour ne montrait aucune association statistiquement significative avec les maladies cardiovasculaires, les AVC ou la mortalité toutes causes confondues.\n\nCela remet en question des décennies de conseils diététiques qui classifiaient largement toute viande rouge comme nocive. La distinction clé semble être entre les viandes transformées et non transformées.\n\nLa Dre Sarah Mitchell, auteure principale, a noté : « Nos résultats suggèrent que la relation entre viande rouge et santé cardiaque est bien plus nuancée que ce que les directives précédentes indiquaient. »",
+      "feedbackQ": "Avez-vous trouvé cette recherche intéressante ?"
+    },
+    "article2": {
+      "title": "De la fatigue chronique à l'athlète de compétition : le parcours de 18 mois de Marc",
+      "summary": "Après des années de lutte contre des symptômes auto-immuns, Marc a adopté un régime carnivore strict et a documenté sa transformation jusqu'à compléter son premier marathon.",
+      "body": "Marc Reynolds, 34 ans, a passé cinq ans à lutter contre la thyroïdite de Hashimoto, la fatigue chronique et un brouillard cérébral débilitant. Après que les traitements conventionnels aient apporté un soulagement limité, il a décidé d'essayer le carnivore strict.\n\n« Les deux premières semaines étaient difficiles », se souvient Marc. « Mais à la troisième semaine, le brouillard commençait à se dissiper. Au deuxième mois, j'avais une énergie que je n'avais pas ressentie depuis mes vingt ans. »\n\nEn 18 mois, Marc a perdu 20 kilos, a vu ses anticorps thyroïdiens chuter de 60 % et est passé de difficilement marcher un kilomètre à terminer le marathon de Chicago.",
+      "feedbackQ": "Aimeriez-vous voir plus d'histoires comme celle-ci ?"
+    },
+    "article3": {
+      "title": "Le pouvoir des abats : pourquoi le foie est le multivitamine de la nature",
+      "summary": "Gramme pour gramme, le foie de bœuf contient plus de nutriments biodisponibles que n'importe quel aliment végétal. Voici comment l'intégrer chaque semaine.",
+      "body": "Une seule portion de 100 g de foie de bœuf fournit 1 049 % de vos besoins quotidiens en vitamine B12, 860 % en vitamine A et 338 % en riboflavine.\n\nSi vous ne supportez pas le goût, essayez ces stratégies :\n\n1. Pilules de foie congelé — Coupez le foie cru en morceaux de la taille d'un petit pois, congelez, puis avalez comme des compléments.\n2. Mélangez avec du bœuf haché — Mélangez 20 % de foie avec 80 % de bœuf haché pour des burgers.\n3. Pâté — Une préparation classique avec du beurre et des herbes.\n4. Capsules de foie déshydraté — Des compléments de haute qualité offrent bon nombre des mêmes bienfaits.",
+      "feedbackQ": "Avez-vous essayé ? Aimeriez-vous plus de conseils comme celui-ci ?"
+    },
+    "article4": {
+      "title": "Vous êtes plus fort que vous ne le pensez : embrassez le parcours",
+      "summary": "Chaque jour du régime carnivore est un pas vers la reconquête de votre santé. Les envies s'estompent, l'énergie monte et les résultats parlent d'eux-mêmes.",
+      "body": "Le parcours carnivore n'est pas toujours facile — mais rien de valable ne l'est.\n\nDans les premières semaines, votre corps s'adapte. Vous pourriez vous sentir fatigué, irritable, ou regretter vos anciens aliments réconfortants. C'est normal.\n\nMais voici ce qui se passe de l'autre côté : une clarté mentale qui ressemble à un super pouvoir, une énergie stable sans crash, un sommeil plus profond, une inflammation réduite et un sentiment de contrôle sur votre santé.\n\nChaque personne qui a réussi sur ce chemin se tenait exactement là où vous êtes maintenant. Ils ont continué. Vous le pouvez aussi.",
+      "feedbackQ": "Cela vous a-t-il aidé dans votre parcours ?"
+    },
+    "article5": {
+      "title": "Régime carnivore et microbiome intestinal : les dernières recherches",
+      "summary": "Des recherches émergentes suggèrent que les bactéries tolérantes à la bile prospèrent avec le carnivore, réduisant potentiellement l'inflammation systémique.",
+      "body": "Une nouvelle étude a examiné la flore intestinale de 200 adeptes du carnivore à long terme par rapport à des témoins omnivores appariés.\n\nRésultats clés : la diversité microbienne globale a diminué, mais les espèces tolérantes à la bile comme Bilophila et Alistipes ont augmenté significativement. Ces espèces sont associées à un métabolisme amélioré des acides biliaires et une perméabilité intestinale réduite.\n\nLes marqueurs d'inflammation systémique (CRP, IL-6) étaient 23 % plus bas dans le groupe carnivore.",
+      "feedbackQ": "Voulez-vous en savoir plus sur la recherche en santé intestinale ?"
+    },
+    "article6": {
+      "title": "Carnivore à petit budget : nourrir une famille de quatre pour moins de 80 €/semaine",
+      "summary": "Le bœuf haché, les œufs et les achats en gros stratégiques peuvent rendre le régime carnivore étonnamment abordable.",
+      "body": "Liste de courses hebdomadaire :\n• 5 kg de bœuf haché — ~30 €\n• 5 douzaines d'œufs — ~12 €\n• 1 kg de beurre — ~6 €\n• 2 kg de cuisses de poulet — ~8 €\n• 1 kg de foie de bœuf — ~4 €\n• Sel, saindoux — ~4 €\n• Ingrédients pour bouillon d'os — ~3 €\n\nTotal : ~67 €. Achetez en gros, faites vos courses dans les magasins de gros et demandez à votre boucher les abats et les os.",
+      "feedbackQ": "L'alimentation à petit budget vous intéresse-t-elle ?"
+    },
+    "feedbackYes": "Oui",
+    "feedbackNo": "Pas vraiment"
   }
 }
