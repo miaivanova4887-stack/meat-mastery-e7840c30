@@ -2,7 +2,8 @@ import { HealthDashboard } from '@/components/HealthDashboard';
 import MotivationCTA from '@/components/MotivationCTA';
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { ChevronRight, RotateCcw, Sparkles } from "lucide-react";
+import { ChevronRight, RotateCcw } from "lucide-react";
+import CarnivoreXLogo from "@/components/CarnivoreXLogo";
 import { useTranslation } from "react-i18next";
 import heroMale from "@/assets/hero-athletic.jpg";
 import heroFemale from "@/assets/hero-athletic-female.jpg";
@@ -116,12 +117,7 @@ const Index = () => {
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/70 mb-3 animate-fade-in">
             {greeting}
           </p>
-          <h1 className="text-[1.8rem] font-bold tracking-[-0.03em] leading-none text-foreground">
-            <span className="text-primary text-[1.8rem] font-semibold tracking-[-0.02em] drop-shadow-[0_0_16px_hsl(var(--primary)/0.35)]">
-              Carnivore
-            </span>
-            <span className="text-primary/50 text-[1.8rem] font-light tracking-[-0.02em]">X</span>
-          </h1>
+          <CarnivoreXLogo size="md" className="drop-shadow-[0_0_16px_hsl(var(--primary)/0.3)]" />
           <p className="text-muted-foreground mt-1.5 text-[13px] max-w-[280px] leading-relaxed">
             {subtitle}
           </p>
