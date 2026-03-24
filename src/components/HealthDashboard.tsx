@@ -58,13 +58,6 @@ export const HealthDashboard = () => {
         <CheckCircle2 size={16} className="text-green-500" />
         <p className="text-[13px] font-bold text-foreground">Health Connect Synced</p>
         <span className="text-[10px] text-muted-foreground ml-auto">Auto-refreshing</span>
-        <button
-          onClick={fetchHealthData}
-          className="text-muted-foreground hover:text-foreground transition-colors p-1"
-          title="Refresh"
-        >
-          <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-        </button>
       </div>
       <div className="relative grid grid-cols-4 gap-2">
         <div className="bg-muted rounded-lg p-3 text-center">

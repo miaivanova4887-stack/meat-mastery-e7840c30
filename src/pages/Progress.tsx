@@ -121,7 +121,7 @@ const Progress = () => {
                 <p className="text-[10px] text-muted-foreground">BPM</p>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
-                <Activity size={16} className="mx-auto text-blue-500 mb-1" />
+                <Weight size={16} className="mx-auto text-primary mb-1" />
                 <p className="text-lg font-bold text-foreground">
                   {healthData.weight ? `${healthData.weight.toFixed(1)}` : "—"}
                 </p>
