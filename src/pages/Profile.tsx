@@ -691,8 +691,8 @@ const Profile = () => {
               <div className="ios-card p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Daily Reminder</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Get reminded to log your meals every day</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.dailyReminder")}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.dailyReminderDesc")}</p>
                   </div>
                   <Switch checked={notifPrefs.dailyReminder} onCheckedChange={(v) => updateNotifPref("dailyReminder", v)} />
                 </div>
