@@ -78,61 +78,74 @@ function BackButtonHandler() {
   return null;
 }
 
-const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-        <ShoppingBagProvider>
-        <UserProfileProvider>
-        <HealthConnectProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <PageViewTracker />
-            <ScrollToTopHandler />
-            <BackButtonHandler />
-            <Routes>
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/" element={<Index />} />
-              <Route path="/benefits" element={<Benefits />} />
-              <Route path="/recipes" element={<Recipes />} />
-              <Route path="/timer" element={<KetosisTimer />} />
-              <Route path="/recipe-coach" element={<RecipeCoach />} />
-              <Route path="/create-recipe" element={<CreateRecipe />} />
-              <Route path="/meal-plan" element={<MealPlan />} />
-              <Route path="/ingredients" element={<Ingredients />} />
-              <Route path="/exercise" element={<Exercise />} />
-              <Route path="/cravings" element={<Cravings />} />
-              <Route path="/stories" element={<Stories />} />
-              <Route path="/sustain" element={<Sustain />} />
-              <Route path="/myths" element={<Myths />} />
-              <Route path="/guide" element={<Guide />} />
-              <Route path="/getting-started" element={<GettingStarted />} />
-              <Route path="/budget" element={<BudgetEating />} />
-              <Route path="/athletic" element={<AthleticPerformance />} />
-              <Route path="/shopping-bag" element={<ShoppingBag />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/progress" element={<ProgressPage />} />
-              <Route path="/progress/sync" element={<HealthSync />} />
-              <Route path="/cms" element={<CmsEditor />} />
-              <Route path="/p/:slug" element={<CmsPageView />} />
-              <Route path="/news" element={<NewsFeed />} />
-              <Route path="/admin/notifications" element={<AdminNotifications />} />
-              <Route path="/admin/analytics" element={<AdminAnalytics />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <BottomNav />
-          </BrowserRouter>
-        </HealthConnectProvider>
-        </UserProfileProvider>
-        </ShoppingBagProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
-  </ThemeProvider>
-);
+const App = () => {
+  const [splashDone, setSplashDone] = useState(() => {
+    // Only show splash once per session
+    return sessionStorage.getItem("splash-shown") === "1";
+  });
+
+  const handleSplashFinished = useCallback(() => {
+    sessionStorage.setItem("splash-shown", "1");
+    setSplashDone(true);
+  }, []);
+
+  return (
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <AuthProvider>
+          <ShoppingBagProvider>
+          <UserProfileProvider>
+          <HealthConnectProvider>
+            {!splashDone && <SplashScreen onFinished={handleSplashFinished} />}
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <PageViewTracker />
+              <ScrollToTopHandler />
+              <BackButtonHandler />
+              <Routes>
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/" element={<Index />} />
+                <Route path="/benefits" element={<Benefits />} />
+                <Route path="/recipes" element={<Recipes />} />
+                <Route path="/timer" element={<KetosisTimer />} />
+                <Route path="/recipe-coach" element={<RecipeCoach />} />
+                <Route path="/create-recipe" element={<CreateRecipe />} />
+                <Route path="/meal-plan" element={<MealPlan />} />
+                <Route path="/ingredients" element={<Ingredients />} />
+                <Route path="/exercise" element={<Exercise />} />
+                <Route path="/cravings" element={<Cravings />} />
+                <Route path="/stories" element={<Stories />} />
+                <Route path="/sustain" element={<Sustain />} />
+                <Route path="/myths" element={<Myths />} />
+                <Route path="/guide" element={<Guide />} />
+                <Route path="/getting-started" element={<GettingStarted />} />
+                <Route path="/budget" element={<BudgetEating />} />
+                <Route path="/athletic" element={<AthleticPerformance />} />
+                <Route path="/shopping-bag" element={<ShoppingBag />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/community" element={<Community />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/progress" element={<ProgressPage />} />
+                <Route path="/progress/sync" element={<HealthSync />} />
+                <Route path="/cms" element={<CmsEditor />} />
+                <Route path="/p/:slug" element={<CmsPageView />} />
+                <Route path="/news" element={<NewsFeed />} />
+                <Route path="/admin/notifications" element={<AdminNotifications />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <BottomNav />
+            </BrowserRouter>
+          </HealthConnectProvider>
+          </UserProfileProvider>
+          </ShoppingBagProvider>
+          </AuthProvider>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
+  );
+};
 
 export default App;
