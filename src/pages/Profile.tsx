@@ -724,8 +724,8 @@ const Profile = () => {
               <div className="ios-card p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Weekly Progress Summary</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Receive your weekly stats every Monday morning</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.weeklySummary")}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.weeklySummaryDesc")}</p>
                   </div>
                   <Switch checked={notifPrefs.weeklySummary} onCheckedChange={(v) => updateNotifPref("weeklySummary", v)} />
                 </div>
