@@ -804,8 +804,8 @@ const Profile = () => {
                   <Users size={18} className="text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Invite a Friend</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Share the carnivore lifestyle with someone you care about</p>
+                  <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.inviteFriend")}</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.inviteFriendDesc")}</p>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
