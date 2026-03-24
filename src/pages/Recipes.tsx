@@ -429,9 +429,9 @@ const Recipes = () => {
 
           {filtered.custom.length > 0 && (
             <>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">My Recipes</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("recipes.myRecipes")}</p>
               {filtered.custom.map((r, i) => <RecipeCard key={r.id} r={r} i={i} isCustom />)}
-              {filtered.builtIn.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-2">All Recipes</p>}
+              {filtered.builtIn.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-2">{t("recipes.allRecipes")}</p>}
             </>
           )}
 
