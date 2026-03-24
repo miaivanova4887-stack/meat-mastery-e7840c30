@@ -105,9 +105,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       {/* Hero */}
-      <div className="relative h-[55vh] overflow-hidden">
-        <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-black/30" />
+      <div className="relative h-[58vh] overflow-hidden">
+        <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover scale-105" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-black/40" />
+        {/* Accent glow behind hero */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-32 rounded-full blur-[80px] opacity-20"
+          style={{ background: "linear-gradient(90deg, hsl(var(--flame)), hsl(var(--gold)))" }}
+        />
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between"
           style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingLeft: "16px", paddingRight: "16px" }}
         >
@@ -115,13 +119,17 @@ const Index = () => {
           <ThemeToggle />
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-1 animate-fade-in">
-            {t("home.healingJourney")}
-          </p>
-          <h1 className="text-4xl font-display font-black text-foreground leading-[1.05] tracking-tight">
-            {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
+          <div className="flex items-center gap-2 mb-2 animate-fade-in">
+            <div className="w-5 h-[1.5px] rounded-full bg-primary" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
+              {t("home.healingJourney")}
+            </p>
+          </div>
+          <h1 className="text-[2.2rem] font-black text-foreground leading-[1.02] tracking-[-0.02em]">
+            {t("home.healthIsWealth")}<br />
+            <span className="text-gradient-flame">{t("home.healthIsWealth2")}</span>
           </h1>
-          <p className="text-muted-foreground mt-2 text-[13px] max-w-[280px] leading-relaxed">
+          <p className="text-muted-foreground mt-2.5 text-[13px] max-w-[280px] leading-relaxed font-light">
             {subtitle}
           </p>
         </div>
@@ -146,21 +154,24 @@ const Index = () => {
                 key={path}
                 onClick={() => navigate(path)}
                 className={`ios-card overflow-hidden text-left transition-all active:scale-[0.97] group ${
-                  highlighted ? "ring-1 ring-primary/20" : ""
+                  highlighted ? "ring-1 ring-primary/30" : ""
                 }`}
               >
                 <div className="relative h-24 w-full">
                   <img src={icon} alt={label} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                  {highlighted && (
+                    <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
+                  )}
                 </div>
-                <div className="px-3 pb-3 pt-1 flex items-center justify-between">
+                <div className="px-3 pb-3 pt-1.5 flex items-center justify-between">
                   <div>
-                    <span className="text-[13px] font-bold text-foreground block">{label}</span>
+                    <span className="text-[13px] font-semibold text-foreground block leading-tight">{label}</span>
                     {highlighted && (
-                      <span className="text-[10px] text-primary mt-0.5 font-semibold block">{t("home.recommendedForYou")}</span>
+                      <span className="text-[9px] text-primary mt-0.5 font-semibold uppercase tracking-wider block">{t("home.recommendedForYou")}</span>
                     )}
                   </div>
-                  <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                  <ChevronRight size={13} className="text-muted-foreground/60 shrink-0 group-hover:text-primary transition-colors" />
                 </div>
               </button>
             );
@@ -168,11 +179,12 @@ const Index = () => {
         </div>
 
         {/* Quote */}
-        <div className="ios-card p-5">
-          <p className="text-[13px] italic text-foreground/60 leading-relaxed">
+        <div className="ios-card p-5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-primary/40 via-primary/10 to-transparent" />
+          <p className="text-[13px] italic text-foreground/60 leading-relaxed pl-3">
             "{quoteText}"
           </p>
-          <span className="text-[11px] text-muted-foreground mt-2 block font-medium">— {quoteAuthor}</span>
+          <span className="text-[10px] text-muted-foreground mt-2 block font-medium uppercase tracking-wider pl-3">— {quoteAuthor}</span>
         </div>
         {/* Health Data */}
         <HealthDashboard />
