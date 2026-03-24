@@ -673,7 +673,7 @@ const Profile = () => {
             </div>
 
             {/* Alerts / Notification Settings */}
-            <h2 className="text-lg font-display font-bold text-foreground pt-3">Alerts</h2>
+            <h2 className="text-lg font-display font-bold text-foreground pt-3">{t("profile.alerts")}</h2>
 
             {/* Enable Notifications */}
             <div className="ios-card p-4">
