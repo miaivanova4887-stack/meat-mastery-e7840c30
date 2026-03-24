@@ -179,11 +179,12 @@ const Index = () => {
         </div>
 
         {/* Quote */}
-        <div className="ios-card p-5">
-          <p className="text-[13px] italic text-foreground/60 leading-relaxed">
+        <div className="ios-card p-5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-primary/40 via-primary/10 to-transparent" />
+          <p className="text-[13px] italic text-foreground/60 leading-relaxed pl-3">
             "{quoteText}"
           </p>
-          <span className="text-[11px] text-muted-foreground mt-2 block font-medium">— {quoteAuthor}</span>
+          <span className="text-[10px] text-muted-foreground mt-2 block font-medium uppercase tracking-wider pl-3">— {quoteAuthor}</span>
         </div>
         {/* Health Data */}
         <HealthDashboard />
