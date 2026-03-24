@@ -211,7 +211,7 @@ const Recipes = () => {
         {/* Structured cooking steps for built-in recipes (parsed from desc) */}
         {!isCustom && r.desc && (
           <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
-            <p className="text-xs font-semibold text-foreground mb-1">🔥 Cooking Steps</p>
+            <p className="text-xs font-semibold text-foreground mb-1">{t("recipes.cookingSteps")}</p>
             <ol className="space-y-1.5">
               {(r.steps && r.steps.length > 0 ? r.steps : r.desc.split(/\.\s+/).filter((s: string) => s.trim().length > 3).map((s: string) => s.trim().replace(/\.$/, '') + '.')).map((step: string, j: number) => (
                 <li key={j} className="text-sm text-muted-foreground flex gap-2">
