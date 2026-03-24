@@ -117,8 +117,8 @@ const Recipes = () => {
       const parsed = parseAmount(ing.amount);
       addItem(ing.name, parsed.quantity * mult, parsed.unit);
     });
-    toast.success(`${ingredients.length} ingredients added to shopping list`, {
-      action: { label: "Open list", onClick: () => navigate("/shopping-bag") },
+    toast.success(t("recipes.ingredientsAdded", { count: ingredients.length }), {
+      action: { label: t("recipes.openList"), onClick: () => navigate("/shopping-bag") },
     });
   }, [addItem, navigate]);
 
