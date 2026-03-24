@@ -525,7 +525,7 @@ const Profile = () => {
                             <p className="text-[11px] text-muted-foreground mb-2">{item.feedbackQ}</p>
                             {feedbackMap[item.id] ? (
                               <span className="text-[11px] text-primary font-medium">
-                                {feedbackMap[item.id] === "yes" ? "👍 Thanks! We'll show more like this." : "👌 Got it — we'll adjust."}
+                                {feedbackMap[item.id] === "yes" ? t("profile.feedbackYesReply") : t("profile.feedbackNoReply")}
                               </span>
                             ) : (
                               <div className="flex gap-2">
