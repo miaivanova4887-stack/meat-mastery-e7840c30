@@ -732,13 +732,13 @@ const Profile = () => {
               </div>
 
               {/* News Preferences */}
-              <h3 className="text-sm font-display font-bold text-foreground pt-2">News Feed Preferences</h3>
+              <h3 className="text-sm font-display font-bold text-foreground pt-2">{t("profile.newsFeedPrefs")}</h3>
               <div className="ios-card p-4 space-y-4">
                 {[
-                  { key: "scienceNews", label: "🔬 Science & Research", desc: "Latest carnivore diet studies and findings" },
-                  { key: "motivationNews", label: "⚡ Motivation", desc: "Daily inspiration and success mindset" },
-                  { key: "caseStudyNews", label: "❤️ Case Studies", desc: "Real transformation stories" },
-                  { key: "tipNews", label: "💡 Tips & Tricks", desc: "Practical advice for your journey" },
+                  { key: "scienceNews", label: t("profile.scienceNews"), desc: t("profile.scienceNewsDesc") },
+                  { key: "motivationNews", label: t("profile.motivationNews"), desc: t("profile.motivationNewsDesc") },
+                  { key: "caseStudyNews", label: t("profile.caseStudyNews"), desc: t("profile.caseStudyNewsDesc") },
+                  { key: "tipNews", label: t("profile.tipNews"), desc: t("profile.tipNewsDesc") },
                 ].map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center justify-between">
                     <div className="flex-1 mr-4">
