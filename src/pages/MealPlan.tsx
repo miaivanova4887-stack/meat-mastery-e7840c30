@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, X, Trash2, ShoppingCart, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
+import { ArrowLeft, Plus, X, Trash2, ShoppingCart, ShoppingBag, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
@@ -43,7 +43,7 @@ const MealPlan = () => {
   const { t } = useTranslation();
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals, toggleCompleted, isCompleted, dayCompletionCount } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
-  const { addItem, hasItem } = useShoppingBag();
+  const { addItem, hasItem, count: bagCount } = useShoppingBag();
   const profile = useUserProfile();
   const { syncMealToProgress } = useMealSync();
   const userSlots = useMemo(() => activeSlots(profile.mealsPerDay), [profile.mealsPerDay]);
@@ -381,6 +381,14 @@ const MealPlan = () => {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("mealPlan.title")}</h1>
+        <button onClick={() => navigate("/shopping-bag")} className="relative text-primary hover:text-primary/80 mr-1">
+          <ShoppingBag size={18} />
+          {bagCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+              {bagCount > 9 ? "9+" : bagCount}
+            </span>
+          )}
+        </button>
         <button
           onClick={() => { clearWeek(); toast(t("mealPlan.weekCleared")); }}
           className="text-xs text-muted-foreground hover:text-destructive transition-colors"
