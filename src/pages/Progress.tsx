@@ -106,19 +106,19 @@ const Progress = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-green-600/5" />
             <div className="relative flex items-center gap-2 mb-3">
               <CheckCircle2 size={16} className="text-green-500" />
-              <p className="text-[13px] font-bold text-foreground">Health Connect Synced</p>
-              <span className="text-[10px] text-muted-foreground ml-auto">Auto-refreshing</span>
+              <p className="text-[13px] font-bold text-foreground">{t("progress.healthConnectSynced")}</p>
+              <span className="text-[10px] text-muted-foreground ml-auto">{t("progress.autoRefreshing")}</span>
             </div>
             <div className="relative grid grid-cols-4 gap-2">
               <div className="bg-muted rounded-lg p-3 text-center">
                 <Footprints size={16} className="mx-auto text-primary mb-1" />
                 <p className="text-lg font-bold text-foreground">{healthData.steps.toLocaleString()}</p>
-                <p className="text-[10px] text-muted-foreground">Steps</p>
+                <p className="text-[10px] text-muted-foreground">{t("progress.steps")}</p>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
                 <Heart size={16} className="mx-auto text-red-500 mb-1" />
                 <p className="text-lg font-bold text-foreground">{healthData.heartRate || "—"}</p>
-                <p className="text-[10px] text-muted-foreground">BPM</p>
+                <p className="text-[10px] text-muted-foreground">{t("progress.bpm")}</p>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
                 <Weight size={16} className="mx-auto text-primary mb-1" />

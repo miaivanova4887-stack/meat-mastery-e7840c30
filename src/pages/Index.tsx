@@ -116,6 +116,7 @@ const Index = () => {
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-2 animate-fade-in">
             {greeting}
           </p>
+          <p className="text-[13px] font-bold text-primary/80 tracking-wider mb-1">{t("brand.name")}</p>
           <h1 className="text-4xl font-display font-black text-foreground leading-[1.05] tracking-tight">
             {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
           </h1>
