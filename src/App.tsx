@@ -9,6 +9,7 @@ import { ShoppingBagProvider } from "./contexts/ShoppingBagContext";
 import { UserProfileProvider } from "./contexts/UserProfileContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import BottomNav from "./components/BottomNav";
+import SplashScreen from "./components/SplashScreen";
 import Index from "./pages/Index";
 import Benefits from "./pages/Benefits";
 import Recipes from "./pages/Recipes";
