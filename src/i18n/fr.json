@@ -211,7 +211,12 @@
     "myRecipes": "Mes recettes",
     "allRecipes": "Toutes les recettes",
     "noRecipes": "Aucune recette trouvée. Essayez d'ajuster vos filtres.",
-    "ingredientsAdded": "{{count}} ingrédients ajoutés à la liste de courses"
+    "ingredientsAdded": "{{count}} ingrédients ajoutés à la liste de courses",
+    "cookingSteps": "🔥 Étapes de cuisson",
+    "showIngredients": "Voir les ingrédients",
+    "hideIngredients": "Masquer les ingrédients",
+    "inList": "Dans la liste",
+    "favorites": "Favoris"
   },
   "mealPlan": {
     "title": "Plan de repas",
