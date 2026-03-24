@@ -822,7 +822,7 @@ const Profile = () => {
                           navigator.share({ title: "Vore — Carnivore Diet App", text: shareText, url: shareUrl }).catch(() => {});
                         } else {
                           navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-                          toast.success("Link copied to clipboard!");
+                          toast.success(t("profile.linkCopied"));
                         }
                       },
                     },
