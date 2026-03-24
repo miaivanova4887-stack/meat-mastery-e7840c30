@@ -372,12 +372,12 @@ const Profile = () => {
           myRecipes.length === 0 ? (
             <div className="text-center py-12">
               <ChefHat size={32} className="mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">No shared recipes yet</p>
+              <p className="text-sm text-muted-foreground">{t("profile.noSharedRecipes")}</p>
               <button
                 onClick={() => navigate("/create-recipe?share=true")}
                 className="mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
               >
-                Share Your First Recipe
+                {t("profile.shareFirst")}
               </button>
             </div>
           ) : myRecipes.map((r) => <RecipeCard key={r.id} r={r} />)
@@ -388,20 +388,20 @@ const Profile = () => {
           (likedRecipes.length === 0 && favoriteRecipes.length === 0) ? (
             <div className="text-center py-12">
               <Heart size={32} className="mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">No liked recipes yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Tap the ♥ on any recipe to save it here</p>
+              <p className="text-sm text-muted-foreground">{t("profile.noLikedRecipes")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("profile.noLikedHint")}</p>
               <div className="flex gap-2 justify-center mt-4">
                 <button
                   onClick={() => navigate("/recipes")}
                   className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
                 >
-                  Browse Recipes
+                  {t("profile.browseRecipes")}
                 </button>
                 <button
                   onClick={() => navigate("/community")}
                   className="px-4 py-2 rounded-xl bg-secondary text-foreground text-xs font-semibold"
                 >
-                  Community
+                  {t("profile.browseCommunity")}
                 </button>
               </div>
             </div>
