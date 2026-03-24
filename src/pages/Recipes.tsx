@@ -385,7 +385,7 @@ const Recipes = () => {
           {(Object.keys(TIER_LABELS) as DietTier[]).map((tier) => (
             <button key={tier} onClick={() => setActiveTier(tier)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${activeTier === tier ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
-            >{TIER_LABELS[tier]}</button>
+            >{t(`recipes.tiers.${tier}`)}</button>
           ))}
         </div>
 
@@ -397,19 +397,19 @@ const Recipes = () => {
             <Heart size={11} className={showFavoritesOnly ? "fill-destructive" : ""} />
             {t("recipes.favorites")}
           </button>
-          {Object.entries(FINAL_MENU).map(([key, label]) => (
+          {(["all", "snack", "sweets", "seafood", "bakery", "comfort", "quick", "organs", "cheesy", "crispy", "grilling"] as const).map((key) => (
             <button key={key} onClick={() => setActiveFilter(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeFilter === key ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
-            >{label}</button>
+            >{t(`recipes.cravings.${key}`)}</button>
           ))}
         </div>
 
         {/* Cuisine filter */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-          {(Object.entries(CUISINE_LABELS) as [string, string][]).map(([key, label]) => (
+          {(Object.keys(CUISINE_LABELS) as (CuisineType | "all")[]).map((key) => (
             <button key={key} onClick={() => setActiveCuisine(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeCuisine === key ? "bg-primary/20 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
-            >{label}</button>
+            >{t(`recipes.cuisines.${key}`)}</button>
           ))}
         </div>
 
