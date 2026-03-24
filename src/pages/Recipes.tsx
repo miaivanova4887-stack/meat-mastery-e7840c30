@@ -373,7 +373,7 @@ const Recipes = () => {
 
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search recipes, ingredients, tags…" value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value) setActiveTag(null); }}
+          <input type="text" placeholder={t("recipes.searchPlaceholder")} value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value) setActiveTag(null); }}
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30" />
           {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><X size={14} /></button>}
         </div>
