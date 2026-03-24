@@ -789,8 +789,8 @@ const Profile = () => {
                     <Globe size={18} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">CMS Editor</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Create & manage custom pages</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.cmsEditor")}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.cmsEditorDesc")}</p>
                   </div>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </button>
