@@ -363,8 +363,8 @@ const Recipes = () => {
             <ChefHat size={22} className="text-primary-foreground drop-shadow-sm" />
           </div>
           <div className="text-left flex-1 relative z-10">
-            <p className="text-sm font-bold text-foreground tracking-tight">AI Recipe Coach</p>
-            <p className="text-[11px] text-muted-foreground">Get personalised meal ideas based on your goals</p>
+            <p className="text-sm font-bold text-foreground tracking-tight">{t("recipes.aiCoach")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("recipes.aiCoachDesc")}</p>
           </div>
           <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
             <ArrowLeft size={13} className="text-primary rotate-180" />
