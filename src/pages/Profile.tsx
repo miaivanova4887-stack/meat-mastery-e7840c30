@@ -446,19 +446,19 @@ const Profile = () => {
                 { id: "6", title: "Budget Carnivore: Feed a Family of Four for Under $100/Week", summary: "Ground beef, eggs, and strategic bulk buying can make the carnivore diet surprisingly affordable.", body: "Weekly Shopping List:\n• 10 lbs ground beef — ~$35\n• 5 dozen eggs — ~$15\n• 2 lbs butter — ~$8\n• 4 lbs chicken thighs — ~$10\n• 2 lbs beef liver — ~$5\n• Salt, tallow — ~$5\n• Bone broth ingredients — ~$3\n\nTotal: ~$81. Buy in bulk, shop at warehouse clubs, and ask your butcher for organ meats and bones.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", feedbackQ: "Is budget eating something you'd like more tips on?", date: "2026-03-05" },
               ];
               const filtered = newsItems.filter((n) => notifPrefs[n.category]);
-              if (filtered.length === 0) return (
+               if (filtered.length === 0) return (
                 <div className="text-center py-10 text-muted-foreground">
                   <Newspaper size={36} className="mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Enable categories in Settings → News Preferences</p>
+                  <p className="text-sm">{t("profile.enableCategoriesHint")}</p>
                 </div>
               );
               const formatDate = (ds: string) => {
                 const diff = getLocalDayDiff(ds);
                 if (diff === null) return "";
-                if (diff === 0) return "Today";
-                if (diff === 1) return "Yesterday";
-                if (diff > 1 && diff < 7) return `${diff}d ago`;
-                return new Date(ds).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                if (diff === 0) return t("profile.today");
+                if (diff === 1) return t("profile.yesterday");
+                if (diff > 1 && diff < 7) return t("profile.daysAgo", { count: diff });
+                return new Date(ds).toLocaleDateString(undefined, { month: "short", day: "numeric" });
               };
               return (
                 <div className="space-y-3">
