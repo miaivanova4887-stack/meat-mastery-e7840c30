@@ -827,7 +827,7 @@ const Profile = () => {
                       },
                     },
                     {
-                      label: "WhatsApp",
+                      label: t("profile.whatsApp"),
                       icon: MessageCircle,
                       color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                       action: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank"),
