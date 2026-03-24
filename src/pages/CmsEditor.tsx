@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { Loader2, ShieldAlert } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import CmsToolbar from "@/components/cms/CmsToolbar";
 import CmsComponentLibrary from "@/components/cms/CmsComponentLibrary";
 import CmsCanvas from "@/components/cms/CmsCanvas";
@@ -7,12 +11,24 @@ import CmsPageManager from "@/components/cms/CmsPageManager";
 import { useCmsStore } from "@/components/cms/useCmsStore";
 import { PlacedComponent } from "@/components/cms/cmsTypes";
 import { Layers, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function CmsEditor() {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [previewMode, setPreviewMode] = useState("desktop");
   const [leftTab, setLeftTab] = useState<"components" | "pages">("components");
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const store = useCmsStore();
+
+  // Admin check
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { setIsAdmin(false); return; }
+    (supabase as any).from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
+      .then(({ data }: any) => setIsAdmin(!!data));
+  }, [user, authLoading]);
 
   const handleAddComponent = (type: string) => {
     const y = store.components.length * 20 + 40;
@@ -49,6 +65,31 @@ export default function CmsEditor() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [store]);
+
+  // Loading state
+  if (authLoading || isAdmin === null) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Not admin
+  if (!isAdmin) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4 px-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
+          <ShieldAlert size={32} className="text-destructive" />
+        </div>
+        <h1 className="text-xl font-display font-bold text-foreground">Admin Access Required</h1>
+        <p className="text-sm text-muted-foreground max-w-sm">
+          The CMS Editor is restricted to administrators. Sign in with an admin account to manage pages.
+        </p>
+        <Button variant="outline" onClick={() => navigate(-1)}>Go Back</Button>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
