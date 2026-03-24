@@ -5,127 +5,85 @@ import { supabase } from "@/integrations/supabase/client";
 const imageCache = new Map<string, string>();
 const pendingRequests = new Map<string, Promise<string | null>>();
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const toCacheKey = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
 
-// Check public bucket first — no edge function call needed
-async function checkBucketCache(recipeName: string): Promise<string | null> {
+/** Build an optimized image URL with width/quality params via Supabase render API */
+function optimizedUrl(key: string, width = 480, quality = 70): string {
+  // Use Supabase's built-in image transformation render endpoint
+  return `${SUPABASE_URL}/storage/v1/render/image/public/meal-images/${key}.png?width=${width}&quality=${quality}&resize=contain`;
+}
+
+/** Fallback to raw public URL */
+function rawUrl(key: string): string {
+  return `${SUPABASE_URL}/storage/v1/object/public/meal-images/${key}.png`;
+}
+
+// Check if optimized render endpoint works, else fall back to raw
+async function resolveImageUrl(recipeName: string): Promise<string | null> {
   const key = toCacheKey(recipeName);
-  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/meal-images/${key}.png`;
+  
+  // Try optimized (smaller, faster) first
+  const optUrl = optimizedUrl(key, 480, 70);
   try {
-    const resp = await fetch(publicUrl, { method: "HEAD" });
-    if (resp.ok) return publicUrl;
-  } catch { /* not cached */ }
+    const resp = await fetch(optUrl, { method: "HEAD" });
+    if (resp.ok) return optUrl;
+  } catch { /* fall through */ }
+
+  // Fall back to raw public URL
+  const raw = rawUrl(key);
+  try {
+    const resp = await fetch(raw, { method: "HEAD" });
+    if (resp.ok) return raw;
+  } catch { /* not found */ }
+
   return null;
 }
 
-const requestKeyFor = (recipeName: string, tags?: string[]) => {
-  const tagsKey = (tags || []).map((t) => t.toLowerCase()).sort().join("|");
-  return `${recipeName}::${tagsKey}`;
-};
-
-// Throttled queue: max 2 concurrent requests, 1s delay between batches
+// Throttled queue: max 3 concurrent, deduped
 const requestQueue: Array<() => void> = [];
 let activeRequests = 0;
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = 3;
 
 function processQueue() {
   while (activeRequests < MAX_CONCURRENT && requestQueue.length > 0) {
     const next = requestQueue.shift();
-    if (next) {
-      activeRequests++;
-      next();
-    }
+    if (next) { activeRequests++; next(); }
   }
 }
 
 function enqueue<T>(fn: () => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     requestQueue.push(() => {
-      fn()
-        .then(resolve)
-        .catch(reject)
-        .finally(() => {
-          activeRequests--;
-          setTimeout(processQueue, 300);
-        });
+      fn().then(resolve).catch(reject).finally(() => {
+        activeRequests--;
+        setTimeout(processQueue, 100);
+      });
     });
     processQueue();
   });
 }
 
-function fetchImage(recipeName: string, tags?: string[]): Promise<string | null> {
-  const requestKey = requestKeyFor(recipeName, tags);
-  let request = pendingRequests.get(requestKey);
+function fetchImage(recipeName: string): Promise<string | null> {
+  let request = pendingRequests.get(recipeName);
   if (request) return request;
 
-  request = enqueue(async () => {
-    // 1. Check bucket cache first (free, instant)
-    const cached = await checkBucketCache(recipeName);
-    if (cached) return cached;
-
-    // 2. Fall back to edge function (generates + caches)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const { data, error } = await supabase.functions.invoke(
-          "generate-meal-image",
-          { body: { recipeName, tags } }
-        );
-
-        if (error) {
-          console.warn(`[MealImage] Edge fn error for "${recipeName}":`, error);
-          if (error.message?.includes("402") || error.message?.includes("401")) break;
-          continue;
-        }
-
-        if (data?.error) {
-          console.warn(`[MealImage] API error for "${recipeName}":`, data.error);
-          if (data.error.includes("credits") || data.error.includes("402")) break;
-          if (data.error.includes("429")) {
-            await sleep(2000);
-            continue;
-          }
-          continue;
-        }
-
-        if (data?.imageUrl) {
-          return data.imageUrl as string;
-        }
-      } catch {
-        // retry below
-      }
-
-      if (attempt < 1) {
-        await sleep(450 * (attempt + 1));
-      }
-    }
-
-    return null;
-  });
-
-  pendingRequests.set(requestKey, request);
-  request.finally(() => pendingRequests.delete(requestKey));
+  request = enqueue(() => resolveImageUrl(recipeName));
+  pendingRequests.set(recipeName, request);
+  request.finally(() => pendingRequests.delete(recipeName));
   return request;
 }
 
-export function useMealImage(recipeName: string, tags?: string[], enabled = true) {
-  const tagsKey = (tags || []).join("|");
+export function useMealImage(recipeName: string, _tags?: string[], enabled = true) {
   const [imageUrl, setImageUrl] = useState<string | null>(
     imageCache.get(recipeName) || null
   );
   const [loading, setLoading] = useState(!imageCache.has(recipeName) && enabled);
 
   useEffect(() => {
-    if (!recipeName || !enabled) {
-      setLoading(false);
-      return;
-    }
-
-    setImageUrl(imageCache.get(recipeName) || null);
+    if (!recipeName || !enabled) { setLoading(false); return; }
 
     if (imageCache.has(recipeName)) {
       setImageUrl(imageCache.get(recipeName)!);
@@ -134,27 +92,29 @@ export function useMealImage(recipeName: string, tags?: string[], enabled = true
     }
 
     setLoading(true);
-    fetchImage(recipeName, tags).then((url) => {
+    fetchImage(recipeName).then((url) => {
       if (url) {
         imageCache.set(recipeName, url);
         setImageUrl(url);
       }
       setLoading(false);
     });
-  }, [recipeName, tagsKey, enabled]);
+  }, [recipeName, enabled]);
 
   return { imageUrl, loading };
 }
 
-// Lazy MealImage component: only fetches when visible in viewport
+/** Lazy MealImage component: only fetches when visible in viewport */
 export function MealImage({
   recipeName,
   tags,
   className = "",
+  width,
 }: {
   recipeName: string;
   tags?: string[];
   className?: string;
+  width?: number;
 }) {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -206,6 +166,9 @@ export function MealImage({
       alt={recipeName}
       className={`object-cover rounded-xl ${className}`}
       loading="lazy"
+      decoding="async"
+      width={width}
+      fetchPriority="low"
     />
   );
 }
