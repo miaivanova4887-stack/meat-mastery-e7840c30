@@ -200,14 +200,21 @@ const Recipes = () => {
           ))}
         </div>
 
-        <p className="text-sm text-secondary-foreground/70 mt-3 leading-relaxed">{r.desc}</p>
+        <p className="text-sm text-secondary-foreground/70 mt-3 leading-relaxed">
+          {!isCustom && isFrench && recipeTranslationsFr[r.name]?.desc ? recipeTranslationsFr[r.name].desc : r.desc}
+        </p>
 
-        {/* Structured cooking steps for built-in recipes (parsed from desc) */}
+        {/* Structured cooking steps for built-in recipes */}
         {!isCustom && r.desc && (
           <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
             <p className="text-xs font-semibold text-foreground mb-1">{t("recipes.cookingSteps")}</p>
             <ol className="space-y-1.5">
-              {(r.steps && r.steps.length > 0 ? r.steps : r.desc.split(/\.\s+/).filter((s: string) => s.trim().length > 3).map((s: string) => s.trim().replace(/\.$/, '') + '.')).map((step: string, j: number) => (
+              {((!isCustom && isFrench && recipeTranslationsFr[r.name]?.steps?.length)
+                ? recipeTranslationsFr[r.name].steps
+                : (r.steps && r.steps.length > 0
+                  ? r.steps
+                  : r.desc.split(/\.\s+/).filter((s: string) => s.trim().length > 3).map((s: string) => s.trim().replace(/\.$/, '') + '.'))
+              ).map((step: string, j: number) => (
                 <li key={j} className="text-sm text-muted-foreground flex gap-2">
                   <span className="text-primary font-bold flex-shrink-0">{j + 1}.</span>
                   {step}
