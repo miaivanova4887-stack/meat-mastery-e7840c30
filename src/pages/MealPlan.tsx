@@ -381,6 +381,14 @@ const MealPlan = () => {
           <ArrowLeft size={20} />
         </button>
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">{t("mealPlan.title")}</h1>
+        <button onClick={() => navigate("/shopping-bag")} className="relative text-primary hover:text-primary/80 mr-1">
+          <ShoppingBag size={18} />
+          {bagCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
+              {bagCount > 9 ? "9+" : bagCount}
+            </span>
+          )}
+        </button>
         <button
           onClick={() => { clearWeek(); toast(t("mealPlan.weekCleared")); }}
           className="text-xs text-muted-foreground hover:text-destructive transition-colors"
