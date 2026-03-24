@@ -865,8 +865,8 @@ const Profile = () => {
                 <div className="flex items-center gap-3">
                   <Globe size={18} className="text-muted-foreground" />
                   <div>
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Language</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Switch app language</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.language")}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.languageDesc")}</p>
                   </div>
                 </div>
                 <LanguageSwitcher />
