@@ -639,13 +639,13 @@ const Profile = () => {
             <div className="ios-card p-4">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">
                 <UtensilsCrossed size={11} className="inline mr-1" />
-                Meals Per Day
+                {t("profile.mealsPerDay")}
               </label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map((n) => {
                   const current = parseInt(localStorage.getItem("carnivore-meals-per-day") || "3") || 3;
-                  const labels: Record<number, string> = { 1: "1 meal", 2: "2 meals", 3: "3 meals", 4: "4 meals" };
-                  const descs: Record<number, string> = { 1: "OMAD", 2: "Lunch + Dinner", 3: "Breakfast, Lunch, Dinner", 4: "3 meals + Snack" };
+                  const labels: Record<number, string> = { 1: t("profile.mealLabels.1"), 2: t("profile.mealLabels.2"), 3: t("profile.mealLabels.3"), 4: t("profile.mealLabels.4") };
+                  const descs: Record<number, string> = { 1: t("profile.mealDescs.1"), 2: t("profile.mealDescs.2"), 3: t("profile.mealDescs.3"), 4: t("profile.mealDescs.4") };
                   return (
                     <button
                       key={n}
