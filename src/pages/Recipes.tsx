@@ -1,7 +1,8 @@
 import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart, Check } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { recipes, TIER_LABELS, CRAVING_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
+import { recipes, TIER_LABELS, CUISINE_LABELS, type DietTier, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
+import { recipeTranslationsFr } from "@/data/recipesFr";
 import { useTranslation } from "react-i18next";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
@@ -36,7 +37,7 @@ const Recipes = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const profile = useUserProfile();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const defaultTier = tierFromProfile((profile as any).diet) ?? "strict";
   const { customRecipes, deleteRecipe } = useCustomRecipes();
   const { addItem, hasItem, count: bagCount } = useShoppingBag();
@@ -50,6 +51,7 @@ const Recipes = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const isFrench = i18n.language.startsWith("fr");
 
   // Read tag from URL search params
   useEffect(() => {
@@ -66,6 +68,9 @@ const Recipes = () => {
     const filter = (list: typeof recipes) => {
       const matches = list.filter((r) => {
         const recipeTags = Array.isArray(r.tags) ? r.tags : [];
+        const localizedDesc = isFrench && recipeTranslationsFr[r.name]?.desc
+          ? recipeTranslationsFr[r.name].desc
+          : r.desc;
 
         // Diet tier filter
         if (!r.tier.includes(activeTier)) return false;
@@ -86,7 +91,7 @@ const Recipes = () => {
         // Search
         if (search) {
           const q = search.toLowerCase();
-          return r.name.toLowerCase().includes(q) || recipeTags.some((t) => t.toLowerCase().includes(q)) || r.desc.toLowerCase().includes(q);
+          return r.name.toLowerCase().includes(q) || recipeTags.some((t) => t.toLowerCase().includes(q)) || localizedDesc.toLowerCase().includes(q);
         }
         // Favorites filter
         if (showFavoritesOnly && !isFavorite(r.name)) return false;
@@ -108,7 +113,7 @@ const Recipes = () => {
       custom: filter(customRecipes) as CustomRecipe[],
       builtIn: filter(recipes),
     };
-  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, isFavorite, activeTag]);
+  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, isFavorite, activeTag, isFrench]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
@@ -195,14 +200,21 @@ const Recipes = () => {
           ))}
         </div>
 
-        <p className="text-sm text-secondary-foreground/70 mt-3 leading-relaxed">{r.desc}</p>
+        <p className="text-sm text-secondary-foreground/70 mt-3 leading-relaxed">
+          {!isCustom && isFrench && recipeTranslationsFr[r.name]?.desc ? recipeTranslationsFr[r.name].desc : r.desc}
+        </p>
 
-        {/* Structured cooking steps for built-in recipes (parsed from desc) */}
+        {/* Structured cooking steps for built-in recipes */}
         {!isCustom && r.desc && (
           <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
             <p className="text-xs font-semibold text-foreground mb-1">{t("recipes.cookingSteps")}</p>
             <ol className="space-y-1.5">
-              {(r.steps && r.steps.length > 0 ? r.steps : r.desc.split(/\.\s+/).filter((s: string) => s.trim().length > 3).map((s: string) => s.trim().replace(/\.$/, '') + '.')).map((step: string, j: number) => (
+              {((!isCustom && isFrench && recipeTranslationsFr[r.name]?.steps?.length)
+                ? recipeTranslationsFr[r.name].steps
+                : (r.steps && r.steps.length > 0
+                  ? r.steps
+                  : r.desc.split(/\.\s+/).filter((s: string) => s.trim().length > 3).map((s: string) => s.trim().replace(/\.$/, '') + '.'))
+              ).map((step: string, j: number) => (
                 <li key={j} className="text-sm text-muted-foreground flex gap-2">
                   <span className="text-primary font-bold flex-shrink-0">{j + 1}.</span>
                   {step}
