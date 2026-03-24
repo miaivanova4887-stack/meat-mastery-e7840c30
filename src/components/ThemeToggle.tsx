@@ -1,4 +1,4 @@
-import { Moon, Sun, Monitor } from "lucide-react";
+import { Moon, Sun, Smartphone } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useState, useRef, useEffect } from "react";
 
@@ -18,7 +18,7 @@ const ThemeToggle = () => {
   const options = [
     { value: "light", label: "Light", icon: Sun },
     { value: "dark", label: "Dark", icon: Moon },
-    { value: "system", label: "System", icon: Monitor },
+    { value: "system", label: "System", icon: Smartphone },
   ] as const;
 
   return (
