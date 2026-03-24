@@ -308,13 +308,20 @@ const KetosisTimer = () => {
                 <button
                   onClick={() => setExpandedPhase(expandedPhase === i ? null : i)}
                   className={`ios-card flex items-center gap-3 p-3 transition-all w-full text-left ${
-                    isCurrent ? "ring-1 ring-primary/20" : ""
+                    isCurrent && isRunning
+                      ? "ring-2 ring-[hsl(var(--gold))] shadow-[0_0_18px_-4px_hsl(var(--gold)/0.45)]"
+                      : isCurrent
+                      ? "ring-1 ring-[hsl(var(--gold))]/40"
+                      : ""
                   } ${!isCurrent ? "cursor-pointer active:scale-[0.99]" : ""}`}
+                  style={isCurrent && isRunning ? { background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(38 70% 48% / 0.08) 100%)' } : undefined}
                 >
-                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${reached ? "bg-primary" : isCurrent ? "bg-primary/40" : "bg-muted"}`} />
+                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                    reached ? "bg-[hsl(var(--gold))]" : isCurrent ? "bg-[hsl(var(--gold))]/40 animate-pulse" : "bg-muted"
+                  }`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-[13px] font-semibold text-foreground">{phase.name}</span>
+                      <span className={`text-[13px] font-semibold ${isCurrent && isRunning ? "text-[hsl(var(--gold))]" : "text-foreground"}`}>{phase.name}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-[11px] text-muted-foreground">{phase.range}</span>
                         {!isCurrent && (isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />)}
@@ -322,8 +329,8 @@ const KetosisTimer = () => {
                     </div>
                     {isCurrent && isRunning && (
                       <div className="flex items-center gap-1 mt-1">
-                        <Flame size={11} className="text-primary" />
-                        <span className="text-[11px] text-primary font-medium">{t("timer.youAreHere")}</span>
+                        <Flame size={11} className="text-[hsl(var(--gold))]" />
+                        <span className="text-[11px] text-[hsl(var(--gold))] font-medium">{t("timer.youAreHere")}</span>
                       </div>
                     )}
                     {timeUntilText && (
