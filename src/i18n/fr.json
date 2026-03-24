@@ -246,15 +246,103 @@
     "failedToSave": "Échec de la sauvegarde"
   },
   "benefits": {
-    "title": "Bienfaits potentiels"
+    "title": "Bienfaits potentiels",
+    "items": {
+      "inflammation": { "title": "Réduction de l'inflammation", "desc": "Éliminer les toxines végétales et les huiles de graines peut réduire considérablement l'inflammation systémique, aidant avec les douleurs articulaires et les maladies auto-immunes.", "q": "Avez-vous remarqué moins d'inflammation ?" },
+      "autophagy": { "title": "Autophagie et renouvellement cellulaire", "desc": "Votre corps active de puissants mécanismes d'auto-guérison, recyclant les cellules endommagées et en régénérant de nouvelles. Beaucoup rapportent paraître et se sentir jusqu'à 10 ans plus jeunes.", "q": "Intéressé par l'autophagie ?" },
+      "clarity": { "title": "Clarté mentale", "desc": "Une glycémie stable et les cétones alimentent le cerveau efficacement, menant à une concentration accrue et moins de brouillard mental.", "q": "Avez-vous expérimenté une pensée plus claire ?" },
+      "fatloss": { "title": "Perte de graisse", "desc": "La satiété des protéines et des graisses réduit naturellement l'apport calorique. Beaucoup rapportent une perte de poids sans effort sans compter les calories.", "q": "La perte de gras est-elle une priorité ?" },
+      "gut": { "title": "Guérison intestinale", "desc": "Supprimer les fibres et les irritants végétaux permet à la paroi intestinale de guérir, améliorant la digestion et l'absorption des nutriments.", "q": "Avez-vous remarqué des améliorations digestives ?" },
+      "energy": { "title": "Énergie soutenue", "desc": "Pas de coup de fatigue. Le métabolisme adapté aux graisses fournit une énergie stable tout au long de la journée.", "q": "Ressentez-vous une énergie plus constante ?" },
+      "hormones_f": { "title": "Équilibre hormonal féminin", "desc": "De nombreuses femmes constatent la disparition des douleurs menstruelles, des cycles plus légers et prévisibles, et un rythme hormonal stable — souvent dès les premiers mois.", "q": "Avez-vous remarqué des améliorations hormonales ?" },
+      "testosterone": { "title": "Optimisation de la testostérone", "desc": "La viande rouge et les graisses animales fournissent le cholestérol et le zinc essentiels à la production de testostérone. Beaucoup d'hommes rapportent une amélioration de la vitalité en quelques semaines.", "q": "Ressentez-vous le boost de testostérone ?" },
+      "lean_muscle": { "title": "Muscle et composition corporelle", "desc": "Les protéines animales hautement biodisponibles alimentent la synthèse protéique musculaire tout en réduisant naturellement la graisse corporelle.", "q": "Voyez-vous des changements de composition corporelle ?" },
+      "clean": { "title": "Manger incroyablement propre", "desc": "Zéro sucre, zéro conservateur, aucun colorant ni arôme artificiel. Votre corps reçoit une nutrition animale pure exactement comme la nature l'a conçu.", "q": "L'alimentation propre est-elle importante pour vous ?" },
+      "glow": { "title": "Transformation globale", "desc": "Au-delà de l'élimination de l'acné, de l'eczéma et du psoriasis — beaucoup constatent des yeux plus brillants, des cheveux plus épais, des ongles plus forts et un teint radieux.", "q": "Avez-vous remarqué des changements de peau ou de cheveux ?" },
+      "no_counting": { "title": "Oubliez le comptage de calories", "desc": "Les repas riches en protéines et en graisses régulent naturellement les hormones d'appétit et de satiété. La plupart mangent sans effort la bonne quantité.", "q": "Appréciez-vous de ne pas compter les calories ?" },
+      "sports": { "title": "Performance sportive accrue", "desc": "Les athlètes adaptés aux graisses rapportent une endurance améliorée, une récupération plus rapide et une plus grande puissance explosive.", "q": "Êtes-vous un athlète actif ?" },
+      "stress": { "title": "Résistance au stress", "desc": "Une glycémie stable et des hormones optimisées construisent un système nerveux résilient. Beaucoup rapportent gérer la pression avec calme et concentration.", "q": "Vous sentez-vous plus résistant au stress ?" }
+    }
   },
-  "timer": {
-    "title": "Chrono cétose",
-    "start": "Démarrer",
-    "pause": "Pause",
-    "reset": "Réinitialiser",
-    "target": "Objectif : {{hours}}h pour la cétose complète",
-    "youAreHere": "Vous êtes ici actuellement"
+  "myths": {
+    "title": "Mythes démystifiés",
+    "count": "{{count}} mythes courants — démystifiés par la science",
+    "feedbackQ": "Cela a-t-il changé votre perspective ?",
+    "items": [
+      { "title": "\"La viande rouge cause les maladies cardiaques\"", "content": "Cette affirmation repose sur des études épidémiologiques obsolètes confondant viandes transformées et morceaux frais. Les méta-analyses modernes ne montrent aucun lien significatif entre la viande rouge non transformée et les maladies cardiovasculaires. Les graisses saturées d'aliments entiers augmentent le LDL large et flottant — le type inoffensif." },
+      { "title": "\"Vous aurez le scorbut sans fruits\"", "content": "La viande fraîche contient suffisamment de vitamine C pour prévenir le scorbut. Les besoins diminuent considérablement avec un régime pauvre en glucides car le glucose et la vitamine C entrent en compétition pour les mêmes transporteurs cellulaires. Les Inuits ont prospéré pendant des millénaires avec un régime uniquement carné." },
+      { "title": "\"Les fibres sont essentielles à la digestion\"", "content": "Plusieurs études montrent que réduire ou éliminer les fibres peut améliorer la constipation, les ballonnements et les symptômes du SCI. L'intestin ne nécessite pas de fibres — il s'adapte à un régime tout-viande en produisant moins de volume et en absorbant les nutriments plus efficacement." },
+      { "title": "\"Trop de protéines endommage les reins\"", "content": "Chez les individus en bonne santé, un apport élevé en protéines n'altère pas la fonction rénale. Ce mythe provient d'études sur des personnes souffrant de maladies rénales préexistantes. Vos reins sont conçus pour filtrer les protéines — c'est littéralement leur fonction." },
+      { "title": "\"Vous avez besoin de glucides pour l'énergie\"", "content": "Le corps peut produire tout le glucose dont il a besoin par néoglucogenèse. Les individus adaptés aux graisses fonctionnent aux cétones — une source de carburant plus propre et plus stable. De nombreux athlètes d'élite performent au plus haut niveau avec zéro glucide." },
+      { "title": "\"Le cholestérol de la viande est dangereux\"", "content": "Le cholestérol alimentaire a un impact minimal sur le cholestérol sanguin pour la plupart des gens. Le foie produit 80 % de votre cholestérol indépendamment du régime. Le cholestérol est essentiel pour la production d'hormones, les membranes cellulaires et le fonctionnement cérébral." },
+      { "title": "\"Les plantes sont les aliments les plus sains\"", "content": "Les plantes contiennent des anti-nutriments (oxalates, lectines, phytates) qui peuvent altérer l'absorption des minéraux et déclencher l'inflammation. Les aliments d'origine animale fournissent les formes les plus biodisponibles de fer, zinc, B12 et acides aminés essentiels." },
+      { "title": "\"Le carnivore n'est qu'un régime à la mode\"", "content": "Les humains ont été principalement carnivores pendant plus de 2 millions d'années. La révolution agricole (céréales, sucre) n'a que 10 000 ans. Le carnivore n'est pas nouveau — c'est un retour à la façon dont notre espèce a évolué pour se nourrir." }
+    ]
+  },
+  "guide": {
+    "title": "Guide complet",
+    "subtitle": "Un guide complet de l'alimentation carnivore · 7 sections",
+    "whatIs": { "title": "Qu'est-ce que le régime carnivore ?", "content": "Le régime carnivore est un régime d'élimination composé exclusivement de produits animaux. Il supprime tous les aliments végétaux, se concentrant sur la viande, le poisson, les œufs et parfois les produits laitiers. En éliminant les irritants potentiels, il permet à votre corps de guérir et révèle quels aliments votre système tolère vraiment.", "q": "Était-ce une bonne introduction ?" },
+    "foodsToEat": { "title": "Aliments à manger", "q": "Cette liste est-elle assez claire ?", "items": ["Bœuf : Steaks, rôtis, viande hachée, abats", "Porc : Côtelettes, bacon, épaule, ventre", "Agneau : Côtelettes, gigot, agneau haché", "Volaille : Poulet, dinde, canard", "Poisson : Saumon, sardines, maquereau", "Œufs : De toute façon, autant que désiré", "Produits laitiers : Beurre, fromage, crème (si toléré)", "Abats : Foie, cœur, rein — les multivitamines de la nature"] },
+    "foodsToAvoid": { "title": "Aliments à éviter", "q": "Utile de savoir quoi supprimer ?", "items": ["Tous les légumes et fruits", "Céréales et légumineuses", "Noix et graines", "Huiles végétales et de graines", "Sucre et édulcorants", "Aliments transformés de toute sorte"] },
+    "whyTry": { "title": "Pourquoi les gens essaient", "q": "Certaines de ces raisons vous parlent ?", "items": ["Maladies auto-immunes", "Problèmes digestifs (SCI, ballonnements, SIBO)", "Perte de poids et recomposition corporelle", "Santé mentale et clarté", "Approche régime d'élimination", "Simplicité — pas de comptage, pas de planification"] },
+    "gettingStarted": { "title": "Pour commencer", "q": "Vous sentez-vous prêt ?", "items": ["1. Videz votre cuisine des aliments non carnivores", "2. Faites le plein de viandes de qualité — privilégiez les ruminants", "3. Engagez-vous pour 30 jours minimum pour un essai équitable", "4. Notez comment vous vous sentez chaque jour (énergie, humeur, digestion)", "5. Ajustez le ratio graisses/protéines selon votre réponse"] },
+    "electrolytes": { "title": "Gestion des électrolytes", "q": "Ces données étaient-elles utiles ?", "rows": [{ "label": "Sodium", "value": "5-7g par jour" }, { "label": "Potassium", "value": "Via l'apport en viande" }, { "label": "Magnésium", "value": "Supplémenter si crampes" }] },
+    "disclaimer": { "title": "Avertissement médical", "content": "Consultez votre professionnel de santé avant de commencer toute nouvelle approche alimentaire, surtout si vous avez des conditions préexistantes ou prenez des médicaments. Ce guide est éducatif — pas un avis médical." }
+  },
+  "cravings": {
+    "title": "Combattre les envies",
+    "intro": "Les envies sont le signe que votre corps se détoxifie du sucre et des glucides. Voici comment persévérer :",
+    "items": {
+      "fat": { "title": "Mangez plus de gras", "desc": "Les envies signifient souvent que vous ne mangez pas assez. Ajoutez du beurre, du suif ou des morceaux gras. Votre corps a besoin d'énergie — donnez-lui de la graisse animale, pas du sucre.", "q": "Allez-vous essayer de manger plus de gras ?" },
+      "hydrate": { "title": "Restez hydraté + Électrolytes", "desc": "Buvez de l'eau avec du sel, du magnésium et du potassium. Un manque d'électrolytes imite les envies de sucre. Le bouillon d'os est une excellente source.", "q": "Suivez-vous vos électrolytes ?" },
+      "coffee": { "title": "Café noir ou thé", "desc": "La caféine peut aider à supprimer l'appétit pendant l'adaptation. Gardez-le noir — pas d'édulcorants. Cela aide à combler le fossé les premières semaines.", "q": "Le café aide-t-il vos envies ?" },
+      "sleep": { "title": "Priorisez le sommeil", "desc": "Un mauvais sommeil augmente la ghréline (hormone de la faim) et réduit la leptine. Visez 7-9 heures. Cela seul peut éliminer la plupart des envies.", "q": "Dormez-vous suffisamment ?" },
+      "withdrawal": { "title": "Comprendre le sevrage", "desc": "Le sucre est addictif. Les symptômes de sevrage culminent aux jours 3-5 et s'estompent vers la semaine 2-3. C'est temporaire — votre cerveau se recâble.", "q": "Avez-vous dépassé la phase de sevrage ?" },
+      "temptation": { "title": "Supprimez toute tentation", "desc": "Videz votre cuisine des aliments non carnivores. Ne comptez pas sur la volonté. Faites du bon choix le seul choix disponible.", "q": "Avez-vous vidé votre cuisine ?" }
+    }
+  },
+  "sustain": {
+    "title": "Maintenir ses résultats",
+    "intro": "Le succès à long terme demande plus que de la volonté. Construisez des systèmes qui font du carnivore votre mode par défaut.",
+    "items": {
+      "goals": { "title": "Fixez des objectifs non liés à la balance", "desc": "Suivez l'énergie, la qualité du sommeil, la clarté mentale et les gains de force — pas seulement le poids. Ces victoires maintiennent la motivation à long terme.", "q": "Suivez-vous des objectifs non liés au poids ?" },
+      "prep": { "title": "Préparez vos repas chaque semaine", "desc": "Cuisinez en lot le week-end. Du bœuf haché précuit, des œufs durs et des steaks pré-assaisonnés rendent la conformité sans effort pendant les semaines chargées.", "q": "Préparez-vous vos repas régulièrement ?" },
+      "rotate": { "title": "Alternez vos protéines", "desc": "Évitez la lassitude alimentaire en alternant bœuf, agneau, porc, fruits de mer et abats. La variété au sein du carnivore garde les repas excitants.", "q": "Alternez-vous vos sources de protéines ?" },
+      "community": { "title": "Rejoignez une communauté", "desc": "Connectez-vous avec d'autres carnivores en ligne ou localement. La responsabilité et les expériences partagées rendent le mode de vie naturel, pas restrictif.", "q": "Faites-vous partie d'une communauté ?" },
+      "track": { "title": "Suivez vos progrès", "desc": "Prenez des photos mensuelles, suivez les mensurations et notez comment vous vous sentez. Revoir les progrès pendant les semaines difficiles ravive la motivation.", "q": "Suivez-vous vos progrès ?" },
+      "lifestyle": { "title": "Adoptez-le comme mode de vie", "desc": "Ce n'est pas un défi de 30 jours — c'est ainsi que les humains ont mangé pendant des millénaires. Passez de la mentalité 'régime' à 'ma façon de manger'. La durabilité suit l'identité.", "q": "Avez-vous fait ce changement de mentalité ?" }
+    }
+  },
+  "gettingStarted": {
+    "title": "Vos 30 premiers jours",
+    "subtitle": "Une feuille de route semaine par semaine pour votre parcours carnivore · 5 sections",
+    "week1": { "title": "Semaine 1 : La page blanche", "q": "Êtes-vous prêt à commencer ?", "items": ["Videz votre garde-manger de tous les aliments non animaux", "Faites le plein de bœuf, sel, beurre et œufs", "Mangez jusqu'à satiété — pas de comptage de calories encore", "Attendez-vous à des maux de tête et une baisse d'énergie (c'est normal)", "Buvez beaucoup d'eau avec une pincée de sel"] },
+    "week2": { "title": "Semaine 2 : Surfer sur la vague", "q": "Vous vous reconnaissez ?", "items": ["Les niveaux d'énergie peuvent monter et descendre", "Augmentez le sel si vous vous sentez dans le brouillard ou fatigué", "Le sommeil peut être plus léger — ça se stabilise bientôt", "Les envies atteignent leur pic, puis commencent à s'estomper", "Gardez les repas simples : steak, œufs, répéter"] },
+    "week3": { "title": "Semaine 3 : Trouver son rythme", "q": "Vous avez trouvé votre rythme ?", "items": ["L'énergie commence à se stabiliser notablement", "La digestion trouve un nouveau rythme", "L'appétit commence à s'autoréguler naturellement", "Beaucoup rapportent une meilleure concentration mentale ici", "Des améliorations de la peau et des articulations peuvent apparaître"] },
+    "week4": { "title": "Semaine 4 : Mode optimisation", "q": "Prêt à optimiser ?", "items": ["Essayez différentes coupes et sources animales", "Introduisez les abats pour la densité nutritionnelle", "Ajustez votre ratio idéal graisses/protéines", "Réfléchissez à comment votre corps et votre esprit se sentent", "Décidez votre voie : strict ou souple"] },
+    "tips": { "title": "Conseils de survie", "q": "Allez-vous essayer l'un de ces conseils ?", "items": ["Gardez des électrolytes à portée — sel, magnésium, potassium", "Adoptez le gras — c'est votre nouvelle source d'énergie", "La simplicité gagne : ne compliquez pas les repas au début", "Notez vos symptômes, énergie et humeur chaque jour", "Engagez-vous pour les 30 jours complets avant de juger les résultats"] },
+    "warning": { "title": "Avertissement d'adaptation", "content": "Les 1 à 2 premières semaines peuvent être difficiles alors que votre corps change de source d'énergie. C'est temporaire. Des symptômes grippaux, des changements digestifs et de la fatigue sont courants pendant l'adaptation et ne sont pas un signe que quelque chose va mal." }
+  },
+  "budget": {
+    "title": "Carnivore petit budget",
+    "subtitle": "Des stratégies intelligentes pour bien manger sans se ruiner · 6 sections",
+    "cuts": { "title": "Coupes abordables qui livrent", "q": "Allez-vous essayer l'une de ces coupes ?", "items": ["Bœuf haché : L'incontournable du petit budget — polyvalent et dense en nutriments", "Paleron : Parfait pour la cuisson lente, fond en bouche", "Cuisses de poulet : Moins chères que les poitrines, bien plus savoureuses", "Épaule de porc : Rapport qualité-prix incroyable avec beaucoup de gras", "Cœur de bœuf : L'un des abats les moins chers, riche en CoQ10", "Sardines en conserve : Très bon marché, pleines d'oméga-3"] },
+    "shopping": { "title": "Acheter plus malin", "q": "Utilisez-vous déjà certaines de ces stratégies ?", "items": ["Achetez en gros pendant les promotions et congelez", "Vérifiez les rayons de démarque pour la viande en promotion", "Les grossistes offrent souvent les meilleurs prix au kilo", "Créez une relation avec votre boucher local pour des offres", "Achetez des poulets entiers au lieu de morceaux individuels"] },
+    "bulk": { "title": "Acheter en gros", "q": "Envisageriez-vous un achat en gros ?", "items": ["Renseignez-vous sur les quarts ou demi-bœuf auprès des fermes locales", "Partagez les grosses commandes avec amis ou famille pour réduire le coût", "Un congélateur coffre se rentabilise en quelques mois", "Le prix au kilo baisse considérablement avec les achats en gros", "De nombreuses fermes proposent des facilités de paiement"] },
+    "free": { "title": "Nourriture gratuite ou presque", "q": "Avez-vous essayé l'une de ces options ?", "items": ["Chasse et pêche — investissez une fois, mangez pendant des mois", "Demandez aux bouchers les os, parures de gras et chutes", "Les abats sont souvent donnés ou vendus à bas prix", "Faites votre propre suif à partir de gras de bœuf (souvent gratuit)", "Préparez un riche bouillon d'os avec les restes d'os"] },
+    "prep": { "title": "Préparation hebdomadaire petit budget", "q": "Cela conviendrait-il à votre emploi du temps ?", "items": ["Cuisinez 2 kg de bœuf haché le dimanche", "Mijotez les coupes dures et économiques en plats tendres", "Faites bouillir une douzaine d'œufs pour des protéines à emporter", "Faites du suif une fois par mois pour votre réserve de graisse de cuisson", "Congelez des portions individuelles pour des semaines zéro déchet"] }
+  },
+  "athletic": {
+    "title": "Performance sportive",
+    "subtitle": "Comment le carnivore alimente la force, l'endurance et la récupération · 7 sections",
+    "adapt": { "title": "La phase d'adaptation", "q": "Êtes-vous en phase d'adaptation ?", "items": ["Prévoyez 2 à 6 semaines pour une adaptation complète aux graisses", "Les performances initiales peuvent baisser — c'est temporaire", "L'endurance rebondit généralement et dépasse souvent le niveau initial", "Les athlètes de force peuvent avoir besoin de plus de protéines", "Ne jugez pas vos performances pendant la transition"] },
+    "pre": { "title": "Alimentation pré-entraînement", "q": "Allez-vous essayer cette approche ?", "items": ["Mangez votre repas principal 2-3 heures avant l'entraînement", "Concentrez-vous sur des protéines facilement digestibles comme les œufs ou le bœuf haché", "Certains athlètes s'épanouissent en s'entraînant complètement à jeun", "Évitez les coupes très grasses juste avant les séances intenses", "Expérimentez pour trouver votre point idéal personnel"] },
+    "post": { "title": "Récupération post-entraînement", "q": "Votre récupération est-elle au point ?", "items": ["Priorisez un repas riche en protéines dans les 2 heures", "Le ribeye ou le faux-filet est un excellent repas de récupération", "Ne lésinez pas sur le gras — il soutient la récupération hormonale", "Salez généreusement vos aliments pour reconstituer les électrolytes", "Le bouillon d'os est une excellente alternative de boisson de récupération"] },
+    "endurance": { "title": "Sports d'endurance", "q": "Pratiquez-vous l'entraînement d'endurance ?", "items": ["L'adaptation aux graisses fournit un réservoir de carburant presque illimité", "Plus de fringale due à l'épuisement du glycogène en pleine course", "Énergie stable sans les montagnes russes du crash de sucre", "Les athlètes d'ultra-endurance rapportent les meilleurs résultats avec le carnivore", "Certains compétiteurs d'élite ajoutent des glucides ciblés pour les événements de pointe"] },
+    "strength": { "title": "Force et développement musculaire", "q": "Ces données sont-elles utiles pour votre entraînement ?", "rows": [{ "label": "Objectif protéines", "value": "1,8–2,6g par kg de poids corporel" }, { "label": "Créatine", "value": "Naturellement présente dans la viande rouge" }, { "label": "Fenêtre de récupération", "value": "Dans les 2 heures post-entraînement" }, { "label": "Meilleur aliment récup", "value": "Steak ribeye + œufs" }] },
+    "benefits": { "title": "Avantages de la musculation", "q": "Avez-vous remarqué ces avantages ?", "items": ["Le temps de récupération raccourcit souvent avec le carnivore", "Les douleurs articulaires et l'inflammation diminuent fréquemment", "Une meilleure qualité de sommeil favorise la croissance musculaire", "Moins de ballonnements signifie une meilleure visibilité de la composition corporelle", "Une glycémie stable élimine les coups de fatigue en pleine séance"] },
+    "note": { "title": "Note sur la performance", "content": "Si vous compétitionnez à haut niveau, travaillez avec un praticien sportif familier avec l'athlétisme pauvre en glucides. Les besoins individuels varient considérablement selon le type de sport, l'intensité et le volume d'entraînement." }
   },
   "exercise": {
     "title": "Exercice et mouvement",
@@ -263,35 +351,48 @@
     "takeQuiz": "Faire le quiz",
     "tryAgain": "Réessayer",
     "cancel": "Annuler",
-    "previousQuestion": "Question précédente"
+    "previousQuestion": "Question précédente",
+    "yourPlan": "Votre plan",
+    "trainingPrograms": "Programmes d'entraînement",
+    "categories": {
+      "strength": { "name": "Musculation", "desc": "Le régime carnivore fournit les protéines optimales pour la croissance musculaire. Concentrez-vous sur les mouvements composés.", "items": ["Soulevé de terre — 3x5 lourd", "Squats — 4x6", "Développé couché — 4x8", "Développé épaules — 3x8", "Rowing barre — 4x8", "Tractions — 3 séries à l'échec"] },
+      "hiit": { "name": "Haute intensité (HIIT)", "desc": "De courtes explosions maximisent la combustion des graisses et la réponse hormonale. Gardez les séances sous 20 minutes.", "items": ["Sprints par intervalles — 30s/60s x 8", "Kettlebell swings — 5x20", "Battle ropes — 4x30s", "Burpees — style Tabata"] },
+      "liss": { "name": "Faible intensité continue", "desc": "La marche et les mouvements légers favorisent la récupération et l'oxydation des graisses sans augmenter le cortisol.", "items": ["Marche rapide — 30-60 min par jour", "Natation — 30 min allure facile", "Vélo — 45 min modéré", "Yoga/étirements — 20 min"] },
+      "recovery": { "name": "Récupération", "desc": "La récupération est là où la croissance se produit. Le régime carnivore accélère la récupération grâce à la densité nutritionnelle.", "items": ["Exposition au froid — 2-5 min douche froide", "Rouleau de massage — 15 min", "Sommeil 7-9 heures par nuit", "Sauna — 15-20 min"] }
+    },
+    "quiz": {
+      "q1": "Quel est votre niveau d'énergie en ce moment ?",
+      "q1_opts": ["🔥 À fond", "😌 Calme et stable", "😴 Faible / fatigué", "⚡ Agité"],
+      "q2": "De quoi votre corps a-t-il besoin aujourd'hui ?",
+      "q2_opts": ["💪 Force et puissance", "🧘 Souplesse et étirements", "🫁 Respiration et calme", "🛌 Récupération profonde"],
+      "q3": "Combien de temps avez-vous ?",
+      "q3_opts": ["15 min", "30 min", "45 min", "60+ min"],
+      "q4": "Êtes-vous courbaturé d'hier ?",
+      "q4_opts": ["😎 Pas du tout", "🤏 Un peu raide", "😬 Assez courbaturé", "🫠 Peux à peine bouger"],
+      "q5": "Quelle est votre humeur ?",
+      "q5_opts": ["🧠 Concentré et déterminé", "🌊 Au fil de l'eau", "😤 Besoin de me défouler", "🕊️ En quête de paix"],
+      "q6": "Quel type de mouvement vous attire ?",
+      "q6_opts": ["🏋️ Explosif et intense", "🩰 Contrôlé et précis", "🧘 Lent et ancré", "💃 Rythmé et gracieux"],
+      "q7": "Quel est votre objectif principal maintenant ?",
+      "q7_opts": ["🔥 Brûler du gras", "💪 Gagner en force", "🧠 Clarté mentale", "😌 Soulager le stress"]
+    },
+    "personalTips": {
+      "loseWeight_sedentary": "Commencez par des marches quotidiennes et du HIIT à faible impact. Créez l'habitude, puis augmentez l'intensité.",
+      "loseWeight_light": "Ajoutez 2-3 séances de HIIT par semaine en plus de vos marches. Le gras fondra avec le carnivore.",
+      "loseWeight_active": "Votre niveau d'activité est idéal pour la perte de gras. Mélangez musculation et HIIT pour des résultats maximaux.",
+      "buildMuscle": "Concentrez-vous sur la musculation 4-5x/semaine. Le carnivore fournit les protéines — vous fournissez l'effort.",
+      "maintain": "Gardez un mélange équilibré de force, cardio et récupération. La constance bat l'intensité.",
+      "health_sedentary": "Commencez doucement — yoga, marche et respiration. Le mouvement est un remède, surtout avec le carnivore.",
+      "health_active": "Associez vos entraînements à des pratiques de récupération. Le yoga et la méditation amplifient les effets curatifs du carnivore."
+    }
   },
-  "cravings": {
-    "title": "Combattre les envies",
-    "intro": "Les envies sont le signe que votre corps se détoxifie du sucre et des glucides. Voici comment persévérer :"
-  },
-  "sustain": {
-    "title": "Maintenir ses résultats",
-    "intro": "Le succès à long terme demande plus que de la volonté. Construisez des systèmes qui font du carnivore votre mode par défaut."
-  },
-  "myths": {
-    "title": "Mythes démystifiés",
-    "count": "{{count}} mythes courants — démystifiés par la science"
-  },
-  "guide": {
-    "title": "Guide complet",
-    "subtitle": "Un guide complet de l'alimentation carnivore · 7 sections"
-  },
-  "gettingStarted": {
-    "title": "Vos 30 premiers jours",
-    "subtitle": "Une feuille de route semaine par semaine pour votre parcours carnivore · 5 sections"
-  },
-  "budget": {
-    "title": "Carnivore petit budget",
-    "subtitle": "Des stratégies intelligentes pour bien manger sans se ruiner · 6 sections"
-  },
-  "athletic": {
-    "title": "Performance sportive",
-    "subtitle": "Comment le carnivore alimente la force, l'endurance et la récupération · 7 sections"
+  "timer": {
+    "title": "Chrono cétose",
+    "start": "Démarrer",
+    "pause": "Pause",
+    "reset": "Réinitialiser",
+    "target": "Objectif : {{hours}}h pour la cétose complète",
+    "youAreHere": "Vous êtes ici actuellement"
   },
   "ingredients": {
     "title": "Ingrédients approuvés"
@@ -321,21 +422,14 @@
     "signIn": "Connexion"
   },
   "quotes": {
-    "lose_weight": {
-      "text": "L'adaptation aux graisses est le super-pouvoir métabolique qui fait du carnivore l'outil ultime de perte de poids.",
-      "author": "Dr. Ken Berry"
-    },
-    "build_muscle": {
-      "text": "La protéine animale est la source d'acides aminés la plus biodisponible pour la croissance musculaire. Point.",
-      "author": "Dr. Shawn Baker"
-    },
-    "maintain": {
-      "text": "Le régime carnivore est le régime d'élimination qui vous aide à découvrir ce dont votre corps a vraiment besoin.",
-      "author": "Dr. Shawn Baker"
-    },
-    "improve_health": {
-      "text": "Quand vous éliminez ce qui vous nuit et mangez ce qui vous guérit, le corps sait quoi faire.",
-      "author": "Dr. Paul Saladino"
-    }
+    "lose_weight": { "text": "L'adaptation aux graisses est le super-pouvoir métabolique qui fait du carnivore l'outil ultime de perte de poids.", "author": "Dr. Ken Berry" },
+    "build_muscle": { "text": "La protéine animale est la source d'acides aminés la plus biodisponible pour la croissance musculaire. Point.", "author": "Dr. Shawn Baker" },
+    "maintain": { "text": "Le régime carnivore est le régime d'élimination qui vous aide à découvrir ce dont votre corps a vraiment besoin.", "author": "Dr. Shawn Baker" },
+    "improve_health": { "text": "Quand vous éliminez ce qui vous nuit et mangez ce qui vous guérit, le corps sait quoi faire.", "author": "Dr. Paul Saladino" }
+  },
+  "feedback": {
+    "helpful": "Ravi que ce soit utile !",
+    "thanks": "Merci pour votre retour !",
+    "wasHelpful": "Était-ce utile ?"
   }
 }

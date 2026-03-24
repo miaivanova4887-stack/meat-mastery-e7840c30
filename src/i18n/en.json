@@ -246,15 +246,103 @@
     "failedToSave": "Failed to save"
   },
   "benefits": {
-    "title": "Potential Benefits"
+    "title": "Potential Benefits",
+    "items": {
+      "inflammation": { "title": "Reduced Inflammation", "desc": "Eliminating plant toxins and seed oils can dramatically lower systemic inflammation, helping with joint pain and autoimmune conditions.", "q": "Have you noticed less inflammation?" },
+      "autophagy": { "title": "Autophagy & Cellular Renewal", "desc": "Your body activates powerful self-healing mechanisms, recycling damaged cells and regenerating new ones. Many report looking and feeling up to 10 years younger as their body repairs from the inside out.", "q": "Interested in learning more about autophagy?" },
+      "clarity": { "title": "Mental Clarity", "desc": "Stable blood sugar and ketones fuel the brain efficiently, leading to sharper focus and reduced brain fog.", "q": "Have you experienced clearer thinking?" },
+      "fatloss": { "title": "Fat Loss", "desc": "High protein and fat satiety naturally reduces caloric intake. Many report effortless weight loss without counting calories.", "q": "Is fat loss a priority for you?" },
+      "gut": { "title": "Gut Healing", "desc": "Removing fiber and plant irritants allows the gut lining to heal, improving digestion and nutrient absorption.", "q": "Have you noticed digestive improvements?" },
+      "energy": { "title": "Sustained Energy", "desc": "No sugar crashes. Fat-adapted metabolism provides steady energy throughout the day.", "q": "Feeling more consistent energy?" },
+      "hormones_f": { "title": "Women's Hormonal Balance", "desc": "Many women experience vanishing period pain, lighter and more predictable cycles, and a stable, consistent hormonal rhythm — often within the first few months.", "q": "Have you noticed hormonal improvements?" },
+      "testosterone": { "title": "Testosterone Optimization", "desc": "Red meat and animal fats provide the cholesterol and zinc essential for testosterone production. Many men report improved drive, confidence, and vitality within weeks.", "q": "Feeling the testosterone boost?" },
+      "lean_muscle": { "title": "Lean Muscle & Body Composition", "desc": "High bioavailable protein fuels muscle protein synthesis while naturally reducing body fat. Men often notice a harder, more defined physique without strict gym protocols.", "q": "Seeing body composition changes?" },
+      "clean": { "title": "Eating Incredibly Clean", "desc": "Zero sugars, zero preservatives, no artificial colours or flavours. Your body receives pure, whole-animal nutrition exactly as nature intended — nothing processed, nothing synthetic.", "q": "Does clean eating matter to you?" },
+      "glow": { "title": "Overall Glow-Up", "desc": "Beyond clearing acne, eczema, and psoriasis — many experience brighter eyes, thicker hair, stronger nails, and a radiant complexion that reflects deep internal health.", "q": "Noticed any skin or hair changes?" },
+      "no_counting": { "title": "Forget Calorie Counting Forever", "desc": "High-protein, high-fat meals naturally regulate appetite and satiety hormones. Most people effortlessly eat the right amount — no tracking apps, no food scales, no mental math.", "q": "Do you enjoy not counting calories?" },
+      "sports": { "title": "Higher Sports Performance", "desc": "Fat-adapted athletes report improved endurance, faster recovery, and greater explosive power. Reduced inflammation means less downtime between training sessions.", "q": "Are you an active athlete?" },
+      "stress": { "title": "Stress Resistance", "desc": "Stable blood sugar and optimized hormones build a resilient nervous system. Many report handling pressure with calm focus instead of anxiety and burnout.", "q": "Feeling more resilient to stress?" }
+    }
   },
-  "timer": {
-    "title": "Ketosis Timer",
-    "start": "Start",
-    "pause": "Pause",
-    "reset": "Reset",
-    "target": "Target: {{hours}}h for full ketosis",
-    "youAreHere": "You are currently here"
+  "myths": {
+    "title": "Myths Busted",
+    "count": "{{count}} common myths — debunked with science",
+    "feedbackQ": "Did this change your perspective?",
+    "items": [
+      { "title": "\"Red meat causes heart disease\"", "content": "This claim is based on outdated epidemiological studies that conflated processed meats with fresh cuts. Modern meta-analyses show no significant link between unprocessed red meat and cardiovascular disease. Saturated fat from whole foods raises large, buoyant LDL — the harmless kind." },
+      { "title": "\"You'll get scurvy without fruit\"", "content": "Fresh meat contains enough vitamin C to prevent scurvy. The requirement drops dramatically on a low-carb diet because glucose and vitamin C compete for the same cellular transporters. Inuit populations thrived for millennia on meat-only diets without deficiency." },
+      { "title": "\"Fiber is essential for digestion\"", "content": "Multiple studies show that reducing or eliminating fiber can improve constipation, bloating, and IBS symptoms. The gut doesn't require fiber — it adapts to an all-meat diet by producing less bulk and absorbing nutrients more efficiently." },
+      { "title": "\"Too much protein damages kidneys\"", "content": "In healthy individuals, high protein intake does not impair kidney function. This myth originated from studies on people with pre-existing kidney disease. Your kidneys are designed to filter protein — that's literally their job." },
+      { "title": "\"You need carbs for energy\"", "content": "The body can produce all the glucose it needs through gluconeogenesis. Fat-adapted individuals run on ketones — a cleaner, more stable fuel source. Many elite athletes perform at peak levels on zero-carb diets." },
+      { "title": "\"Cholesterol from meat is dangerous\"", "content": "Dietary cholesterol has minimal impact on blood cholesterol for most people. The liver produces 80% of your cholesterol regardless of diet. Cholesterol is essential for hormone production, cell membranes, and brain function." },
+      { "title": "\"Plants are the healthiest foods\"", "content": "Plants contain anti-nutrients (oxalates, lectins, phytates) that can impair mineral absorption and trigger inflammation. Animal foods provide the most bioavailable forms of iron, zinc, B12, and essential amino acids with zero anti-nutrients." },
+      { "title": "\"Carnivore is just a fad diet\"", "content": "Humans have been primarily carnivorous for 2+ million years. The agricultural revolution (grains, sugar) is only 10,000 years old. Carnivore isn't new — it's a return to how our species evolved to eat." }
+    ]
+  },
+  "guide": {
+    "title": "Complete Guide",
+    "subtitle": "A comprehensive guide to carnivore eating · 7 sections",
+    "whatIs": { "title": "What is the Carnivore Diet?", "content": "The carnivore diet is an elimination diet consisting exclusively of animal products. It removes all plant foods, focusing on meat, fish, eggs, and sometimes dairy. By stripping away potential irritants, it lets your body heal and reveals which foods your system truly tolerates.", "q": "Was this a good introduction?" },
+    "foodsToEat": { "title": "Foods to Eat", "q": "Is this list clear enough?", "items": ["Beef: Steaks, roasts, ground beef, organs", "Pork: Chops, bacon, shoulder, belly", "Lamb: Chops, leg, ground lamb", "Poultry: Chicken, turkey, duck", "Fish: Salmon, sardines, mackerel", "Eggs: Any style, as many as desired", "Dairy: Butter, cheese, cream (if tolerated)", "Organs: Liver, heart, kidney — nature's multivitamins"] },
+    "foodsToAvoid": { "title": "Foods to Avoid", "q": "Helpful to know what to cut?", "items": ["All vegetables and fruits", "Grains and legumes", "Nuts and seeds", "Vegetable and seed oils", "Sugar and sweeteners", "Processed foods of any kind"] },
+    "whyTry": { "title": "Why People Try It", "q": "Do any of these resonate with you?", "items": ["Autoimmune conditions", "Digestive issues (IBS, bloating, SIBO)", "Weight loss and body recomposition", "Mental health and clarity", "Elimination diet approach", "Simplicity — no counting, no planning"] },
+    "gettingStarted": { "title": "Getting Started", "q": "Feel ready to begin?", "items": ["1. Clear out non-carnivore foods from your kitchen", "2. Stock up on quality meats — prioritize ruminants", "3. Commit to 30 days minimum for a fair trial", "4. Track how you feel daily (energy, mood, digestion)", "5. Adjust fat-to-protein ratio based on your response"] },
+    "electrolytes": { "title": "Electrolyte Management", "q": "Was this data useful?", "rows": [{ "label": "Sodium", "value": "5-7g daily" }, { "label": "Potassium", "value": "From meat intake" }, { "label": "Magnesium", "value": "Supplement if cramping" }] },
+    "disclaimer": { "title": "Medical Disclaimer", "content": "Consult your healthcare provider before starting any new dietary approach, especially if you have pre-existing conditions or take medications. This guide is educational — not medical advice." }
+  },
+  "cravings": {
+    "title": "Combat Cravings",
+    "intro": "Cravings are your body detoxing from sugar and carbs. Here's how to push through:",
+    "items": {
+      "fat": { "title": "Eat More Fat", "desc": "Cravings often mean you're not eating enough. Add butter, tallow, or fatty cuts. Your body craves energy — give it animal fat, not sugar.", "q": "Will you try eating more fat?" },
+      "hydrate": { "title": "Stay Hydrated + Electrolytes", "desc": "Drink water with salt, magnesium, and potassium. Low electrolytes mimic sugar cravings. Bone broth is an excellent source.", "q": "Do you keep up with electrolytes?" },
+      "coffee": { "title": "Black Coffee or Tea", "desc": "Caffeine can help suppress appetite during adaptation. Keep it black — no sweeteners. This helps bridge the gap in early weeks.", "q": "Does coffee help your cravings?" },
+      "sleep": { "title": "Prioritize Sleep", "desc": "Poor sleep spikes ghrelin (hunger hormone) and lowers leptin. Aim for 7-9 hours. This alone can eliminate most cravings.", "q": "Are you getting enough sleep?" },
+      "withdrawal": { "title": "Understand the Withdrawal", "desc": "Sugar is addictive. Withdrawal symptoms peak at days 3-5 and fade by week 2-3. It's temporary — your brain is rewiring.", "q": "Are you past the withdrawal phase?" },
+      "temptation": { "title": "Remove All Temptation", "desc": "Clear your kitchen of non-carnivore foods. Don't rely on willpower. Make the right choice the only choice available.", "q": "Have you cleared your kitchen?" }
+    }
+  },
+  "sustain": {
+    "title": "Sustain Results",
+    "intro": "Long-term success requires more than willpower. Build systems that make carnivore your default.",
+    "items": {
+      "goals": { "title": "Set Non-Scale Goals", "desc": "Track energy, sleep quality, mental clarity, and strength gains — not just weight. These victories keep motivation alive long-term.", "q": "Do you track non-scale goals?" },
+      "prep": { "title": "Meal Prep Weekly", "desc": "Cook in bulk on weekends. Pre-cooked ground beef, hard-boiled eggs, and pre-seasoned steaks make compliance effortless during busy weeks.", "q": "Do you meal prep regularly?" },
+      "rotate": { "title": "Rotate Your Proteins", "desc": "Avoid food fatigue by rotating beef, lamb, pork, seafood, and organ meats. Variety within carnivore keeps meals exciting.", "q": "Do you rotate your protein sources?" },
+      "community": { "title": "Join a Community", "desc": "Connect with other carnivores online or locally. Accountability and shared experiences make the lifestyle feel natural, not restrictive.", "q": "Are you part of a community?" },
+      "track": { "title": "Track Your Progress", "desc": "Take monthly photos, track body measurements, and log how you feel. Reviewing progress during tough weeks reignites motivation.", "q": "Are you tracking your progress?" },
+      "lifestyle": { "title": "Embrace It as Lifestyle", "desc": "This isn't a 30-day challenge — it's how humans ate for millennia. Shift your mindset from 'diet' to 'the way I eat.' Sustainability follows identity.", "q": "Have you made the mindset shift?" }
+    }
+  },
+  "gettingStarted": {
+    "title": "Your First 30 Days",
+    "subtitle": "A week-by-week roadmap for your carnivore journey · 5 sections",
+    "week1": { "title": "Week 1: The Clean Slate", "q": "Are you ready to start?", "items": ["Empty your pantry of all non-animal foods", "Stock up on beef, salt, butter, and eggs", "Eat until satisfied — no calorie counting yet", "Expect headaches and low energy (totally normal)", "Drink plenty of water with a pinch of salt"] },
+    "week2": { "title": "Week 2: Riding the Wave", "q": "Can you relate to this?", "items": ["Energy levels may swing up and down", "Bump up salt intake if you feel foggy or tired", "Sleep might be lighter — it settles soon", "Cravings hit their peak, then start fading", "Keep meals simple: steak, eggs, repeat"] },
+    "week3": { "title": "Week 3: Finding Your Groove", "q": "Feeling the groove yet?", "items": ["Energy starts to stabilize noticeably", "Digestion settles into a new rhythm", "Appetite begins to self-regulate naturally", "Many report improved mental focus here", "Skin and joint improvements may appear"] },
+    "week4": { "title": "Week 4: Optimization Mode", "q": "Ready to optimize?", "items": ["Try different cuts and animal sources", "Introduce organ meats for nutrient density", "Dial in your ideal fat-to-protein ratio", "Reflect on how your body and mind feel overall", "Decide your path forward: strict or relaxed"] },
+    "tips": { "title": "Survival Tips", "q": "Will you try any of these?", "items": ["Keep electrolytes handy — salt, magnesium, potassium", "Embrace the fat — it's your new fuel source", "Simplicity wins: don't overcomplicate meals early on", "Journal your symptoms, energy, and mood daily", "Commit to the full 30 days before judging results"] },
+    "warning": { "title": "Adaptation Warning", "content": "The first 1–2 weeks can feel rough as your body switches fuel sources. This is temporary. Flu-like symptoms, digestive changes, and fatigue are common during adaptation and not a sign something is wrong." }
+  },
+  "budget": {
+    "title": "Carnivore on a Budget",
+    "subtitle": "Smart strategies to eat well without breaking the bank · 6 sections",
+    "cuts": { "title": "Affordable Cuts That Deliver", "q": "Will you try any of these cuts?", "items": ["Ground beef: The ultimate budget staple — versatile and nutrient-dense", "Chuck roast: Perfect for slow cooking, falls apart tender", "Chicken thighs: Cheaper than breast, far more flavorful", "Pork shoulder: Incredible value with high fat content", "Beef heart: One of the cheapest organs, packed with CoQ10", "Canned sardines: Dirt cheap, loaded with omega-3s"] },
+    "shopping": { "title": "Shopping Smarter", "q": "Do you already use any of these strategies?", "items": ["Buy in bulk when sales hit and freeze portions", "Check clearance sections for marked-down meat", "Warehouse clubs often have the best per-pound prices", "Build a relationship with your local butcher for deals", "Buy whole chickens instead of individual parts"] },
+    "bulk": { "title": "Buying in Bulk", "q": "Would you consider a bulk buy?", "items": ["Look into quarter or half cow shares from local farms", "Split large orders with friends or family to reduce cost", "A chest freezer pays for itself within months", "Cost per pound drops dramatically with bulk purchases", "Many farms offer payment plans for large orders"] },
+    "free": { "title": "Free & Nearly Free Food", "q": "Have you tried any of these?", "items": ["Hunting and fishing — invest once, eat for months", "Ask butchers for bones, fat trimmings, and scraps", "Organ meats are often given away or sold cheaply", "Render your own tallow from beef fat (often free)", "Make rich bone broth from leftover bones"] },
+    "prep": { "title": "Weekly Meal Prep on a Budget", "q": "Would this work for your schedule?", "items": ["Batch cook 5 lbs of ground beef on Sunday", "Slow-cook tough, cheap cuts into tender meals", "Hard-boil a dozen eggs for grab-and-go protein", "Render tallow once a month for cooking fat supply", "Freeze individual portions for zero-waste weeks"] }
+  },
+  "athletic": {
+    "title": "Athletic Performance",
+    "subtitle": "How carnivore fuels strength, endurance, and recovery · 7 sections",
+    "adapt": { "title": "The Adaptation Phase", "q": "Are you in the adaptation phase?", "items": ["Allow 2–6 weeks for full fat adaptation", "Initial performance may dip — this is temporary", "Endurance typically rebounds and often exceeds baseline", "Strength athletes may need slightly higher protein", "Don't judge performance during the transition period"] },
+    "pre": { "title": "Pre-Training Fueling", "q": "Will you try this approach?", "items": ["Eat your main meal 2–3 hours before training", "Focus on easily digestible proteins like eggs or ground beef", "Some athletes thrive training completely fasted", "Avoid heavy fatty cuts right before intense sessions", "Experiment to find your personal sweet spot"] },
+    "post": { "title": "Post-Workout Recovery", "q": "Is your recovery on point?", "items": ["Prioritize a protein-rich meal within 2 hours", "Ribeye or strip steak is an excellent recovery meal", "Don't skimp on fat — it supports hormone recovery", "Salt your food generously to replenish electrolytes", "Bone broth is a great recovery drink alternative"] },
+    "endurance": { "title": "Endurance Sports", "q": "Are you into endurance training?", "items": ["Fat adaptation provides a near-unlimited fuel tank", "No more bonking from glycogen depletion mid-race", "Steady energy without the sugar crash roller coaster", "Ultra-endurance athletes report best results on carnivore", "Some elite competitors add targeted carbs for peak events"] },
+    "strength": { "title": "Strength & Muscle Building", "q": "Is this data useful for your training?", "rows": [{ "label": "Protein target", "value": "0.8–1.2g per lb bodyweight" }, { "label": "Creatine", "value": "Naturally present in red meat" }, { "label": "Recovery window", "value": "Within 2 hours post-training" }, { "label": "Top recovery food", "value": "Ribeye steak + eggs" }] },
+    "benefits": { "title": "Strength Training Benefits", "q": "Have you noticed these benefits?", "items": ["Recovery time often shortens on carnivore", "Joint pain and inflammation frequently decrease", "Better sleep quality supports muscle growth", "Reduced bloating means better body composition visibility", "Stable blood sugar eliminates energy crashes mid-session"] },
+    "note": { "title": "Performance Note", "content": "If you compete at an elite level, work with a sports-aware practitioner familiar with low-carb athletics. Individual needs vary significantly based on sport type, intensity, and training volume." }
   },
   "exercise": {
     "title": "Exercise & Movement",
@@ -263,35 +351,48 @@
     "takeQuiz": "Take the Quiz",
     "tryAgain": "Try Again",
     "cancel": "Cancel",
-    "previousQuestion": "Previous question"
+    "previousQuestion": "Previous question",
+    "yourPlan": "Your plan",
+    "trainingPrograms": "Training Programs",
+    "categories": {
+      "strength": { "name": "Strength Training", "desc": "The carnivore diet provides optimal protein for muscle growth. Focus on compound movements.", "items": ["Deadlifts — 3x5 heavy", "Squats — 4x6", "Bench Press — 4x8", "Overhead Press — 3x8", "Barbell Rows — 4x8", "Pull-ups — 3 sets to failure"] },
+      "hiit": { "name": "High-Intensity (HIIT)", "desc": "Short bursts maximize fat burning and hormonal response. Keep sessions under 20 minutes.", "items": ["Sprint intervals — 30s on/60s off x 8", "Kettlebell swings — 5x20", "Battle ropes — 4x30s", "Burpees — Tabata style"] },
+      "liss": { "name": "Low-Intensity Steady State", "desc": "Walking and light movement support recovery and fat oxidation without spiking cortisol.", "items": ["Brisk walking — 30-60 min daily", "Swimming — 30 min easy pace", "Cycling — 45 min moderate", "Yoga/stretching — 20 min"] },
+      "recovery": { "name": "Recovery", "desc": "Recovery is where growth happens. The carnivore diet accelerates recovery through nutrient density.", "items": ["Cold exposure — 2-5 min cold shower", "Foam rolling — 15 min", "Sleep 7-9 hours nightly", "Sauna — 15-20 min sessions"] }
+    },
+    "quiz": {
+      "q1": "What's your energy level right now?",
+      "q1_opts": ["🔥 Fired up", "😌 Calm & steady", "😴 Low / fatigued", "⚡ Restless"],
+      "q2": "What does your body need today?",
+      "q2_opts": ["💪 Strength & power", "🧘 Flexibility & stretch", "🫁 Breathwork & calm", "🛌 Deep recovery"],
+      "q3": "How much time do you have?",
+      "q3_opts": ["15 min", "30 min", "45 min", "60+ min"],
+      "q4": "How sore are you from yesterday?",
+      "q4_opts": ["😎 Not at all", "🤏 A little tight", "😬 Pretty sore", "🫠 Can barely move"],
+      "q5": "What's your mood?",
+      "q5_opts": ["🧠 Focused & driven", "🌊 Go with the flow", "😤 Need to blow off steam", "🕊️ Seeking peace"],
+      "q6": "What kind of movement appeals to you?",
+      "q6_opts": ["🏋️ Explosive & intense", "🩰 Controlled & precise", "🧘 Slow & grounding", "💃 Rhythmic & graceful"],
+      "q7": "What's your main goal right now?",
+      "q7_opts": ["🔥 Burn fat & get lean", "💪 Build strength", "🧠 Mental clarity", "😌 Stress relief"]
+    },
+    "personalTips": {
+      "loseWeight_sedentary": "Start with daily walks and low-impact HIIT. Build the habit, then increase intensity.",
+      "loseWeight_light": "Add 2-3 HIIT sessions per week alongside your walking. Fat will melt off on carnivore.",
+      "loseWeight_active": "Your activity level is great for fat loss. Mix strength training with HIIT for maximum results.",
+      "buildMuscle": "Focus on strength training 4-5x/week. Carnivore provides the protein — you provide the effort.",
+      "maintain": "Keep a balanced mix of strength, cardio, and recovery. Consistency beats intensity.",
+      "health_sedentary": "Start gentle — yoga, walking, and breathwork. Movement is medicine, especially on carnivore.",
+      "health_active": "Pair your workouts with recovery practices. Yoga and meditation amplify carnivore's healing effects."
+    }
   },
-  "cravings": {
-    "title": "Combat Cravings",
-    "intro": "Cravings are your body detoxing from sugar and carbs. Here's how to push through:"
-  },
-  "sustain": {
-    "title": "Sustain Results",
-    "intro": "Long-term success requires more than willpower. Build systems that make carnivore your default."
-  },
-  "myths": {
-    "title": "Myths Busted",
-    "count": "{{count}} common myths — debunked with science"
-  },
-  "guide": {
-    "title": "Complete Guide",
-    "subtitle": "A comprehensive guide to carnivore eating · 7 sections"
-  },
-  "gettingStarted": {
-    "title": "Your First 30 Days",
-    "subtitle": "A week-by-week roadmap for your carnivore journey · 5 sections"
-  },
-  "budget": {
-    "title": "Carnivore on a Budget",
-    "subtitle": "Smart strategies to eat well without breaking the bank · 6 sections"
-  },
-  "athletic": {
-    "title": "Athletic Performance",
-    "subtitle": "How carnivore fuels strength, endurance, and recovery · 7 sections"
+  "timer": {
+    "title": "Ketosis Timer",
+    "start": "Start",
+    "pause": "Pause",
+    "reset": "Reset",
+    "target": "Target: {{hours}}h for full ketosis",
+    "youAreHere": "You are currently here"
   },
   "ingredients": {
     "title": "Approved Ingredients"
@@ -321,21 +422,14 @@
     "signIn": "Sign In"
   },
   "quotes": {
-    "lose_weight": {
-      "text": "Fat adaptation is the metabolic superpower that makes carnivore the ultimate weight loss tool.",
-      "author": "Dr. Ken Berry"
-    },
-    "build_muscle": {
-      "text": "Animal protein is the most bioavailable source of amino acids for muscle growth. Period.",
-      "author": "Dr. Shawn Baker"
-    },
-    "maintain": {
-      "text": "The carnivore diet is the elimination diet that helps you discover what your body truly needs.",
-      "author": "Dr. Shawn Baker"
-    },
-    "improve_health": {
-      "text": "When you remove the things that harm you and eat the things that heal you, the body knows what to do.",
-      "author": "Dr. Paul Saladino"
-    }
+    "lose_weight": { "text": "Fat adaptation is the metabolic superpower that makes carnivore the ultimate weight loss tool.", "author": "Dr. Ken Berry" },
+    "build_muscle": { "text": "Animal protein is the most bioavailable source of amino acids for muscle growth. Period.", "author": "Dr. Shawn Baker" },
+    "maintain": { "text": "The carnivore diet is the elimination diet that helps you discover what your body truly needs.", "author": "Dr. Shawn Baker" },
+    "improve_health": { "text": "When you remove the things that harm you and eat the things that heal you, the body knows what to do.", "author": "Dr. Paul Saladino" }
+  },
+  "feedback": {
+    "helpful": "Glad you found it useful!",
+    "thanks": "Thanks for your feedback!",
+    "wasHelpful": "Was this helpful?"
   }
 }
