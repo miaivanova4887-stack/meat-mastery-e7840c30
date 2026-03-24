@@ -466,14 +466,6 @@ const Profile = () => {
 
           return (
             <div className="space-y-3">
-              {!userProfile.isComplete && (
-                <div className="ios-card p-4 border-primary/30">
-                  <p className="text-sm text-muted-foreground">Complete onboarding first to see your goals.</p>
-                  <button onClick={() => navigate("/onboarding")} className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold">
-                    Start Onboarding
-                  </button>
-                </div>
-              )}
 
               {/* Primary Goal */}
               <div className="ios-card p-4">
