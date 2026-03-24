@@ -56,7 +56,7 @@ const Profile = () => {
       localStorage.setItem("carnivore-feed-feedback", JSON.stringify(next));
       return next;
     });
-    toast.success(value === "yes" ? "We'll show more like this!" : "Noted — we'll adjust your feed");
+    toast.success(value === "yes" ? t("profile.feedbackYes") : t("profile.feedbackNo"));
   };
 
   // Notification preferences
