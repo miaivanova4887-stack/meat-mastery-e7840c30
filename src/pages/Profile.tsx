@@ -833,7 +833,7 @@ const Profile = () => {
                       action: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank"),
                     },
                     {
-                      label: "Email",
+                      label: t("profile.email"),
                       icon: Mail,
                       color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
                       action: () => window.open(`mailto:?subject=${encodeURIComponent("Check out Vore!")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`, "_blank"),
