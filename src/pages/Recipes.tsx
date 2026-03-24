@@ -255,7 +255,7 @@ const Recipes = () => {
                             {ing.amount && <span className="font-medium text-foreground">{ing.amount}</span>} {ing.name}
                           </span>
                           {inBag ? (
-                            <span className="text-[10px] text-green-500 font-medium px-1.5">In list</span>
+                            <span className="text-[10px] text-green-500 font-medium px-1.5">{t("recipes.inList")}</span>
                           ) : (
                             <button
                               onClick={() => {
