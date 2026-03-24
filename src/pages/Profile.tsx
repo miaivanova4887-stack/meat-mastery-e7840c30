@@ -465,7 +465,7 @@ const Profile = () => {
                   {/* Progress Milestones */}
                   {progressMilestones.length > 0 && (
                     <>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Progress Milestones</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("profile.progressMilestones")}</p>
                       {progressMilestones.map((m) => (
                         <div key={m.id} className="ios-card p-4 flex items-start gap-3">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${m.color}`}>
