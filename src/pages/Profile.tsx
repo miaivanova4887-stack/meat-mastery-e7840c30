@@ -84,7 +84,7 @@ const Profile = () => {
       window.dispatchEvent(new Event("profile-update"));
       return next;
     });
-    toast.success("Notification preference updated");
+    toast.success(t("profile.notifPrefUpdated"));
   };
   const [loading, setLoading] = useState(true);
 
