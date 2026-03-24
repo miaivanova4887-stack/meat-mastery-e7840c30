@@ -425,7 +425,7 @@ const Recipes = () => {
         </div>
 
         <div className="space-y-3 pt-1">
-          <span className="text-xs text-muted-foreground">{totalCount} recipes</span>
+          <span className="text-xs text-muted-foreground">{totalCount} {t("profile.recipes")}</span>
 
           {filtered.custom.length > 0 && (
             <>
