@@ -6,6 +6,7 @@ import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { openAppSettings } from "@/lib/openAppSettings";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
+import { useTranslation } from "react-i18next";
 
 interface ParsedEntry {
   category: string;
@@ -28,11 +29,12 @@ const VoiceRecognition = () => {
   const stopInProgressRef = useRef(false);
   const hasEnteredListeningRef = useRef(false);
   const addEntry = useAddEntry();
+  const { t } = useTranslation();
 
   const openMicrophoneSettings = useCallback(async () => {
     const opened = await openAppSettings();
     if (!opened) {
-      toast.error("Couldn’t open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", {
+      toast.error("Couldn't open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", {
         duration: 6000,
       });
     }
@@ -80,7 +82,7 @@ const VoiceRecognition = () => {
     const capturedTranscript = (getTranscript().trim() || transcriptBeforeStop).trim();
 
     if (!capturedTranscript) {
-      toast.error("I couldn’t recognize speech. Please speak clearly and try again.");
+      toast.error("I couldn't recognize speech. Please speak clearly and try again.");
       setIsStopping(false);
       stopInProgressRef.current = false;
       return;
@@ -162,7 +164,7 @@ const VoiceRecognition = () => {
               <>
                 <Loader2 size={28} className="text-primary animate-spin" />
                 <p className="text-sm font-medium text-foreground">
-                  {isStopping && !processing ? "Stopping microphone…" : "Parsing speech…"}
+                  {isStopping && !processing ? t("progress.stoppingMic") : t("progress.parsingSpeech")}
                 </p>
               </>
             ) : listening ? (
@@ -170,9 +172,9 @@ const VoiceRecognition = () => {
                 <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center animate-pulse">
                   <MicOff size={22} className="text-destructive" />
                 </div>
-                <p className="text-sm font-semibold text-foreground">Tap to stop & process</p>
+                <p className="text-sm font-semibold text-foreground">{t("progress.tapToStop")}</p>
                 <p className="text-[11px] text-muted-foreground max-w-[240px] text-center truncate">
-                  {transcript || "Listening…"}
+                  {transcript || t("progress.listening")}
                 </p>
               </>
             ) : (
@@ -180,9 +182,9 @@ const VoiceRecognition = () => {
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <Mic size={22} className="text-primary" />
                 </div>
-                <p className="text-sm font-semibold text-foreground">Voice Log</p>
+                <p className="text-sm font-semibold text-foreground">{t("progress.voiceLog")}</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Speak to log meals, stats, vitals & more
+                  {t("progress.voiceLogDesc")}
                 </p>
               </>
             )}
@@ -205,10 +207,10 @@ const VoiceRecognition = () => {
           </div>
           <div className="flex gap-2">
             <Button onClick={logEntries} className="flex-1" disabled={addEntry.isPending}>
-              {addEntry.isPending ? "Logging…" : "✓ Log All"}
+              {addEntry.isPending ? t("progress.logging") : t("progress.logAll")}
             </Button>
             <Button variant="outline" onClick={() => { setParsedResult(null); resetTranscript(); }}>
-              Dismiss
+              {t("progress.dismiss")}
             </Button>
           </div>
         </div>
