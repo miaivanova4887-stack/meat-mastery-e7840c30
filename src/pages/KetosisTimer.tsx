@@ -271,16 +271,8 @@ const KetosisTimer = () => {
           </button>
         </div>
 
-        {/* Current phase personalised tip */}
-        <div className="w-full mt-8">
-          <div className="ios-card p-4">
-            <p className="text-[13px] font-semibold text-foreground">{currentPhase.name}</p>
-            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{currentPhase.tip}</p>
-          </div>
-        </div>
-
-        {/* Phase milestones */}
-        <div className="w-full mt-4 space-y-2">
+        {/* Phase milestones — unified cards */}
+        <div className="w-full mt-8 space-y-2.5">
           <p className="text-xs text-muted-foreground text-center mb-3">{t("timer.target", { hours: KETOSIS_TARGET_HOURS })}</p>
           {phases.map((phase, i) => {
             const h = milestoneHours[i];
@@ -291,7 +283,6 @@ const KetosisTimer = () => {
             const isExpanded = expandedPhase === i || isCurrent;
             const bodyDesc = PHASE_BODY_DESCRIPTIONS[i];
 
-            // Calculate time until this phase
             let timeUntilText = "";
             if (isFuture && isRunning) {
               const phaseStartSeconds = h * 3600;
@@ -299,23 +290,25 @@ const KetosisTimer = () => {
               if (remaining > 0) {
                 const rh = Math.floor(remaining / 3600);
                 const rm = Math.floor((remaining % 3600) / 60);
-                timeUntilText = `You will be in this phase in ${rh}h ${rm}m`;
+                timeUntilText = `${rh}h ${rm}m away`;
               }
             }
 
             return (
-              <div key={h} className="space-y-2">
-                <button
-                  onClick={() => setExpandedPhase(expandedPhase === i ? null : i)}
-                  className={`ios-card flex items-center gap-3 p-3 transition-all w-full text-left ${
-                    isCurrent && isRunning
-                      ? "ring-2 ring-[hsl(var(--gold))] shadow-[0_0_18px_-4px_hsl(var(--gold)/0.45)]"
-                      : isCurrent
-                      ? "ring-1 ring-[hsl(var(--gold))]/40"
-                      : ""
-                  } ${!isCurrent ? "cursor-pointer active:scale-[0.99]" : ""}`}
-                  style={isCurrent && isRunning ? { background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(38 70% 48% / 0.08) 100%)' } : undefined}
-                >
+              <div
+                key={h}
+                onClick={() => !isCurrent && setExpandedPhase(expandedPhase === i ? null : i)}
+                className={`ios-card overflow-hidden transition-all ${
+                  isCurrent && isRunning
+                    ? "ring-2 ring-[hsl(var(--gold))] shadow-[0_0_20px_-4px_hsl(var(--gold)/0.45)]"
+                    : isCurrent
+                    ? "ring-1 ring-[hsl(var(--gold))]/40"
+                    : "cursor-pointer active:scale-[0.99]"
+                }`}
+                style={isCurrent && isRunning ? { background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(38 70% 48% / 0.08) 100%)' } : undefined}
+              >
+                {/* Header row */}
+                <div className="flex items-center gap-3 p-3 pb-2">
                   <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
                     reached ? "bg-[hsl(var(--gold))]" : isCurrent ? "bg-[hsl(var(--gold))]/40 animate-pulse" : "bg-muted"
                   }`} />
@@ -323,45 +316,50 @@ const KetosisTimer = () => {
                     <div className="flex items-center justify-between">
                       <span className={`text-[13px] font-semibold ${isCurrent && isRunning ? "text-[hsl(var(--gold))]" : "text-foreground"}`}>{phase.name}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground">{phase.range}</span>
+                        {timeUntilText ? (
+                          <span className="flex items-center gap-1 text-[11px] text-primary/70 font-medium">
+                            <Clock size={10} /> {timeUntilText}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">{phase.range}</span>
+                        )}
                         {!isCurrent && (isExpanded ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />)}
                       </div>
                     </div>
                     {isCurrent && isRunning && (
-                      <div className="flex items-center gap-1 mt-1">
+                      <div className="flex items-center gap-1 mt-0.5">
                         <Flame size={11} className="text-[hsl(var(--gold))]" />
                         <span className="text-[11px] text-[hsl(var(--gold))] font-medium">{t("timer.youAreHere")}</span>
                       </div>
                     )}
-                    {timeUntilText && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Clock size={11} className="text-primary/60" />
-                        <span className="text-[11px] text-primary/80 font-medium">{timeUntilText}</span>
+                  </div>
+                </div>
+
+                {/* Personalised tip — always visible for current, shown on expand for others */}
+                {isExpanded && (
+                  <div className={`${isCurrent ? '' : 'opacity-80'}`}>
+                    <p className="px-3 pb-2 text-xs text-muted-foreground leading-relaxed">{phase.tip}</p>
+
+                    {/* Video inline */}
+                    {video && (
+                      <div className="mx-3 mb-2 rounded-xl overflow-hidden border border-border/50">
+                        <video
+                          src={video}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          preload="auto"
+                          className="w-full aspect-video object-cover"
+                          ref={(el) => { if (el) el.play().catch(() => {}); }}
+                        />
                       </div>
                     )}
-                  </div>
-                </button>
-                {isExpanded && video && (
-                  <div className={`space-y-2 ${isCurrent ? '' : 'opacity-70'}`}>
-                    <div className="rounded-xl overflow-hidden border border-border">
-                      <video
-                        src={video}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        preload="auto"
-                        className="w-full aspect-video object-cover"
-                        ref={(el) => {
-                          if (el) {
-                            el.play().catch(() => {});
-                          }
-                        }}
-                      />
-                    </div>
+
+                    {/* Science description */}
                     {bodyDesc && (
-                      <div className="ios-card p-3">
-                        <p className="text-[12px] text-muted-foreground leading-relaxed">{bodyDesc}</p>
+                      <div className="mx-3 mb-3 bg-muted/40 rounded-lg p-2.5">
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{bodyDesc}</p>
                       </div>
                     )}
                   </div>
