@@ -24,48 +24,18 @@ const GettingStarted = () => {
       <div className="p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("gettingStarted.subtitle")}</p>
 
-        <ContentSection type="key_points" title="Week 1: The Clean Slate" feedbackId="started-w1" feedbackQuestion="Are you ready to start?" items={[
-          "Empty your pantry of all non-animal foods",
-          "Stock up on beef, salt, butter, and eggs",
-          "Eat until satisfied — no calorie counting yet",
-          "Expect headaches and low energy (totally normal)",
-          "Drink plenty of water with a pinch of salt",
-        ]} />
+        <ContentSection type="key_points" title={t("gettingStarted.week1.title")} feedbackId="started-w1" feedbackQuestion={t("gettingStarted.week1.q")} items={t("gettingStarted.week1.items", { returnObjects: true }) as string[]} />
 
-        <ContentSection type="key_points" title="Week 2: Riding the Wave" feedbackId="started-w2" feedbackQuestion="Can you relate to this?" items={[
-          "Energy levels may swing up and down",
-          "Bump up salt intake if you feel foggy or tired",
-          "Sleep might be lighter — it settles soon",
-          "Cravings hit their peak, then start fading",
-          "Keep meals simple: steak, eggs, repeat",
-        ]} />
+        <ContentSection type="key_points" title={t("gettingStarted.week2.title")} feedbackId="started-w2" feedbackQuestion={t("gettingStarted.week2.q")} items={t("gettingStarted.week2.items", { returnObjects: true }) as string[]} />
 
-        <ContentSection type="key_points" title="Week 3: Finding Your Groove" feedbackId="started-w3" feedbackQuestion="Feeling the groove yet?" items={[
-          "Energy starts to stabilize noticeably",
-          "Digestion settles into a new rhythm",
-          "Appetite begins to self-regulate naturally",
-          "Many report improved mental focus here",
-          "Skin and joint improvements may appear",
-        ]} />
+        <ContentSection type="key_points" title={t("gettingStarted.week3.title")} feedbackId="started-w3" feedbackQuestion={t("gettingStarted.week3.q")} items={t("gettingStarted.week3.items", { returnObjects: true }) as string[]} />
 
-        <ContentSection type="key_points" title="Week 4: Optimization Mode" feedbackId="started-w4" feedbackQuestion="Ready to optimize?" items={[
-          "Try different cuts and animal sources",
-          "Introduce organ meats for nutrient density",
-          "Dial in your ideal fat-to-protein ratio",
-          "Reflect on how your body and mind feel overall",
-          "Decide your path forward: strict or relaxed",
-        ]} />
+        <ContentSection type="key_points" title={t("gettingStarted.week4.title")} feedbackId="started-w4" feedbackQuestion={t("gettingStarted.week4.q")} items={t("gettingStarted.week4.items", { returnObjects: true }) as string[]} />
 
-        <ContentSection type="tips" title="Survival Tips" feedbackId="started-tips" feedbackQuestion="Will you try any of these?" items={[
-          "Keep electrolytes handy — salt, magnesium, potassium",
-          "Embrace the fat — it's your new fuel source",
-          "Simplicity wins: don't overcomplicate meals early on",
-          "Journal your symptoms, energy, and mood daily",
-          "Commit to the full 30 days before judging results",
-        ]} />
+        <ContentSection type="tips" title={t("gettingStarted.tips.title")} feedbackId="started-tips" feedbackQuestion={t("gettingStarted.tips.q")} items={t("gettingStarted.tips.items", { returnObjects: true }) as string[]} />
 
-        <ContentSection type="important" title="Adaptation Warning">
-          The first 1–2 weeks can feel rough as your body switches fuel sources. This is temporary. Flu-like symptoms, digestive changes, and fatigue are common during adaptation and not a sign something is wrong.
+        <ContentSection type="important" title={t("gettingStarted.warning.title")}>
+          {t("gettingStarted.warning.content")}
         </ContentSection>
       </div>
 
