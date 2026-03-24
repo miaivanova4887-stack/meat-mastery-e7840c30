@@ -781,6 +781,19 @@ const Profile = () => {
                   </div>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </button>
+                <button
+                  onClick={() => navigate("/cms")}
+                  className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Globe size={18} className="text-primary" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h3 className="font-display font-bold text-foreground text-[15px]">CMS Editor</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Create & manage custom pages</p>
+                  </div>
+                  <ChevronRight size={14} className="text-muted-foreground" />
+                </button>
               </div>
             )}
 
