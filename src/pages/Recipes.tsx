@@ -278,7 +278,7 @@ const Recipes = () => {
 
                 {custom && custom.steps.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground mb-1">Steps</p>
+                    <p className="text-xs font-semibold text-foreground mb-1">{t("recipes.steps")}</p>
                     <ol className="space-y-1.5">
                       {custom.steps.map((step, j) => (
                         <li key={j} className="text-sm text-muted-foreground flex gap-2">
