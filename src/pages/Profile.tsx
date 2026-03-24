@@ -484,7 +484,7 @@ const Profile = () => {
                           </button>
                         </div>
                       ))}
-                      {filtered.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">News & Tips</p>}
+                      {filtered.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">{t("profile.newsTips")}</p>}
                     </>
                   )}
                   {filtered.map((item) => {
