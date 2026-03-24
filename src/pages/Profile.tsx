@@ -586,7 +586,7 @@ const Profile = () => {
             {/* Bio */}
             <div className="ios-card p-4">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Bio</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("profile.bio")}</label>
                 {editingField === "bio" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("bio")} className="text-primary"><Check size={14} /></button>
