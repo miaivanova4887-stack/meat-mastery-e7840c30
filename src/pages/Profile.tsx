@@ -679,8 +679,8 @@ const Profile = () => {
             <div className="ios-card p-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1 mr-4">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Enable Notifications</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Allow Vore to send you helpful reminders</p>
+                   <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.enableNotifications")}</h3>
+                   <p className="text-xs text-muted-foreground mt-0.5">{t("profile.enableNotificationsDesc")}</p>
                 </div>
                 <Switch checked={notifPrefs.enabled} onCheckedChange={(v) => updateNotifPref("enabled", v)} />
               </div>
