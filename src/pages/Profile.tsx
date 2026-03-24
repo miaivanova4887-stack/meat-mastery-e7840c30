@@ -879,7 +879,7 @@ const Profile = () => {
               className="w-full ios-card p-4 flex items-center gap-3 text-destructive hover:bg-destructive/5 transition-colors"
             >
               <LogOut size={18} />
-              <span className="text-sm font-semibold">Sign Out</span>
+              <span className="text-sm font-semibold">{t("profile.signOut")}</span>
             </button>
           </div>
         )}
