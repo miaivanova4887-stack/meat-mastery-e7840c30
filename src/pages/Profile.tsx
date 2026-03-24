@@ -612,7 +612,7 @@ const Profile = () => {
 
             {/* Diet Tier */}
             <div className="ios-card p-4">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Diet Tier</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("profile.dietTier")}</label>
               <div className="flex gap-2 flex-wrap">
                 {Object.entries(tierLabels).map(([key, label]) => (
                   <button
