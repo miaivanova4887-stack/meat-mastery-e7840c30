@@ -754,7 +754,7 @@ const Profile = () => {
             {/* Admin Panel */}
             {isAdmin && (
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Admin Tools</p>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("profile.adminTools")}</p>
                 <button
                   onClick={() => navigate("/admin/analytics")}
                   className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
