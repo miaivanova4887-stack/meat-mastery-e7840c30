@@ -713,8 +713,8 @@ const Profile = () => {
               <div className="ios-card p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Streak Reminders</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Get notified at 8 PM if your streak is at risk</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.streakReminders")}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.streakRemindersDesc")}</p>
                   </div>
                   <Switch checked={notifPrefs.streakReminder} onCheckedChange={(v) => updateNotifPref("streakReminder", v)} />
                 </div>
