@@ -56,7 +56,7 @@ const Profile = () => {
       localStorage.setItem("carnivore-feed-feedback", JSON.stringify(next));
       return next;
     });
-    toast.success(value === "yes" ? "We'll show more like this!" : "Noted — we'll adjust your feed");
+    toast.success(value === "yes" ? t("profile.feedbackYes") : t("profile.feedbackNo"));
   };
 
   // Notification preferences
@@ -84,7 +84,7 @@ const Profile = () => {
       window.dispatchEvent(new Event("profile-update"));
       return next;
     });
-    toast.success("Notification preference updated");
+    toast.success(t("profile.notifPrefUpdated"));
   };
   const [loading, setLoading] = useState(true);
 
@@ -330,10 +330,10 @@ const Profile = () => {
             )}
             <div className="flex items-center gap-3 mt-1.5">
               <span className="text-[11px] text-muted-foreground">
-                <strong className="text-foreground">{myRecipes.length}</strong> recipes
+                <strong className="text-foreground">{myRecipes.length}</strong> {t("profile.recipes")}
               </span>
               <span className="text-[11px] text-muted-foreground">
-                <strong className="text-foreground">{likedRecipes.length + favoriteRecipes.length}</strong> likes
+                <strong className="text-foreground">{likedRecipes.length + favoriteRecipes.length}</strong> {t("profile.likes")}
               </span>
               {profile?.diet_tier && (
                 <span className="text-[11px] text-muted-foreground">
@@ -372,12 +372,12 @@ const Profile = () => {
           myRecipes.length === 0 ? (
             <div className="text-center py-12">
               <ChefHat size={32} className="mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">No shared recipes yet</p>
+              <p className="text-sm text-muted-foreground">{t("profile.noSharedRecipes")}</p>
               <button
                 onClick={() => navigate("/create-recipe?share=true")}
                 className="mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
               >
-                Share Your First Recipe
+                {t("profile.shareFirst")}
               </button>
             </div>
           ) : myRecipes.map((r) => <RecipeCard key={r.id} r={r} />)
@@ -388,20 +388,20 @@ const Profile = () => {
           (likedRecipes.length === 0 && favoriteRecipes.length === 0) ? (
             <div className="text-center py-12">
               <Heart size={32} className="mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">No liked recipes yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Tap the ♥ on any recipe to save it here</p>
+              <p className="text-sm text-muted-foreground">{t("profile.noLikedRecipes")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("profile.noLikedHint")}</p>
               <div className="flex gap-2 justify-center mt-4">
                 <button
                   onClick={() => navigate("/recipes")}
                   className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
                 >
-                  Browse Recipes
+                  {t("profile.browseRecipes")}
                 </button>
                 <button
                   onClick={() => navigate("/community")}
                   className="px-4 py-2 rounded-xl bg-secondary text-foreground text-xs font-semibold"
                 >
-                  Community
+                  {t("profile.browseCommunity")}
                 </button>
               </div>
             </div>
@@ -446,26 +446,26 @@ const Profile = () => {
                 { id: "6", title: "Budget Carnivore: Feed a Family of Four for Under $100/Week", summary: "Ground beef, eggs, and strategic bulk buying can make the carnivore diet surprisingly affordable.", body: "Weekly Shopping List:\n• 10 lbs ground beef — ~$35\n• 5 dozen eggs — ~$15\n• 2 lbs butter — ~$8\n• 4 lbs chicken thighs — ~$10\n• 2 lbs beef liver — ~$5\n• Salt, tallow — ~$5\n• Bone broth ingredients — ~$3\n\nTotal: ~$81. Buy in bulk, shop at warehouse clubs, and ask your butcher for organ meats and bones.", category: "tipNews", catLabel: "Tip", catIcon: Zap, catColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", feedbackQ: "Is budget eating something you'd like more tips on?", date: "2026-03-05" },
               ];
               const filtered = newsItems.filter((n) => notifPrefs[n.category]);
-              if (filtered.length === 0) return (
+               if (filtered.length === 0) return (
                 <div className="text-center py-10 text-muted-foreground">
                   <Newspaper size={36} className="mx-auto mb-2 opacity-40" />
-                  <p className="text-sm">Enable categories in Settings → News Preferences</p>
+                  <p className="text-sm">{t("profile.enableCategoriesHint")}</p>
                 </div>
               );
               const formatDate = (ds: string) => {
                 const diff = getLocalDayDiff(ds);
                 if (diff === null) return "";
-                if (diff === 0) return "Today";
-                if (diff === 1) return "Yesterday";
-                if (diff > 1 && diff < 7) return `${diff}d ago`;
-                return new Date(ds).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                if (diff === 0) return t("profile.today");
+                if (diff === 1) return t("profile.yesterday");
+                if (diff > 1 && diff < 7) return t("profile.daysAgo", { count: diff });
+                return new Date(ds).toLocaleDateString(undefined, { month: "short", day: "numeric" });
               };
               return (
                 <div className="space-y-3">
                   {/* Progress Milestones */}
                   {progressMilestones.length > 0 && (
                     <>
-                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Progress Milestones</p>
+                      <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("profile.progressMilestones")}</p>
                       {progressMilestones.map((m) => (
                         <div key={m.id} className="ios-card p-4 flex items-start gap-3">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${m.color}`}>
@@ -484,7 +484,7 @@ const Profile = () => {
                           </button>
                         </div>
                       ))}
-                      {filtered.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">News & Tips</p>}
+                      {filtered.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-1">{t("profile.newsTips")}</p>}
                     </>
                   )}
                   {filtered.map((item) => {
@@ -525,7 +525,7 @@ const Profile = () => {
                             <p className="text-[11px] text-muted-foreground mb-2">{item.feedbackQ}</p>
                             {feedbackMap[item.id] ? (
                               <span className="text-[11px] text-primary font-medium">
-                                {feedbackMap[item.id] === "yes" ? "👍 Thanks! We'll show more like this." : "👌 Got it — we'll adjust."}
+                                {feedbackMap[item.id] === "yes" ? t("profile.feedbackYesReply") : t("profile.feedbackNoReply")}
                               </span>
                             ) : (
                               <div className="flex gap-2">
@@ -560,7 +560,7 @@ const Profile = () => {
             {/* Display Name */}
             <div className="ios-card p-4">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Display Name</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("profile.displayName")}</label>
                 {editingField === "display_name" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("display_name")} className="text-primary"><Check size={14} /></button>
@@ -586,7 +586,7 @@ const Profile = () => {
             {/* Bio */}
             <div className="ios-card p-4">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Bio</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("profile.bio")}</label>
                 {editingField === "bio" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("bio")} className="text-primary"><Check size={14} /></button>
@@ -612,7 +612,7 @@ const Profile = () => {
 
             {/* Diet Tier */}
             <div className="ios-card p-4">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Diet Tier</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("profile.dietTier")}</label>
               <div className="flex gap-2 flex-wrap">
                 {Object.entries(tierLabels).map(([key, label]) => (
                   <button
@@ -621,7 +621,7 @@ const Profile = () => {
                       setEditValues((v) => ({ ...v, diet_tier: key }));
                       await (supabase as any).from("profiles").update({ diet_tier: key }).eq("id", user!.id);
                       setProfile((p) => p ? { ...p, diet_tier: key } : p);
-                      toast.success("Diet tier updated!");
+                      toast.success(t("profile.dietTierUpdated"));
                     }}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                       (profile?.diet_tier || "strict") === key
@@ -639,20 +639,20 @@ const Profile = () => {
             <div className="ios-card p-4">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">
                 <UtensilsCrossed size={11} className="inline mr-1" />
-                Meals Per Day
+                {t("profile.mealsPerDay")}
               </label>
               <div className="flex gap-2">
                 {[1, 2, 3, 4].map((n) => {
                   const current = parseInt(localStorage.getItem("carnivore-meals-per-day") || "3") || 3;
-                  const labels: Record<number, string> = { 1: "1 meal", 2: "2 meals", 3: "3 meals", 4: "4 meals" };
-                  const descs: Record<number, string> = { 1: "OMAD", 2: "Lunch + Dinner", 3: "Breakfast, Lunch, Dinner", 4: "3 meals + Snack" };
+                  const labels: Record<number, string> = { 1: t("profile.mealLabels.1"), 2: t("profile.mealLabels.2"), 3: t("profile.mealLabels.3"), 4: t("profile.mealLabels.4") };
+                  const descs: Record<number, string> = { 1: t("profile.mealDescs.1"), 2: t("profile.mealDescs.2"), 3: t("profile.mealDescs.3"), 4: t("profile.mealDescs.4") };
                   return (
                     <button
                       key={n}
                       onClick={() => {
                         localStorage.setItem("carnivore-meals-per-day", String(n));
                         window.dispatchEvent(new Event("profile-update"));
-                        toast.success(`Updated to ${n} meals/day`);
+                        toast.success(t("profile.mealsUpdated", { count: n }));
                       }}
                       className={`flex-1 flex flex-col items-center gap-0.5 px-2 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                         current === n ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
@@ -668,19 +668,19 @@ const Profile = () => {
 
             {/* Email (read-only) */}
             <div className="ios-card p-4">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Email</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">{t("profile.email")}</label>
               <p className="text-sm text-foreground">{user?.email}</p>
             </div>
 
             {/* Alerts / Notification Settings */}
-            <h2 className="text-lg font-display font-bold text-foreground pt-3">Alerts</h2>
+            <h2 className="text-lg font-display font-bold text-foreground pt-3">{t("profile.alerts")}</h2>
 
             {/* Enable Notifications */}
             <div className="ios-card p-4">
               <div className="flex items-center justify-between">
                 <div className="flex-1 mr-4">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Enable Notifications</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Allow Vore to send you helpful reminders</p>
+                   <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.enableNotifications")}</h3>
+                   <p className="text-xs text-muted-foreground mt-0.5">{t("profile.enableNotificationsDesc")}</p>
                 </div>
                 <Switch checked={notifPrefs.enabled} onCheckedChange={(v) => updateNotifPref("enabled", v)} />
               </div>
@@ -691,14 +691,14 @@ const Profile = () => {
               <div className="ios-card p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Daily Reminder</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Get reminded to log your meals every day</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.dailyReminder")}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.dailyReminderDesc")}</p>
                   </div>
                   <Switch checked={notifPrefs.dailyReminder} onCheckedChange={(v) => updateNotifPref("dailyReminder", v)} />
                 </div>
                 {notifPrefs.dailyReminder && (
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/40">
-                    <span className="text-sm text-muted-foreground">Reminder Time</span>
+                    <span className="text-sm text-muted-foreground">{t("profile.reminderTime")}</span>
                     <input
                       type="time"
                       value={notifPrefs.reminderTime}
@@ -713,8 +713,8 @@ const Profile = () => {
               <div className="ios-card p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Streak Reminders</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Get notified at 8 PM if your streak is at risk</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.streakReminders")}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.streakRemindersDesc")}</p>
                   </div>
                   <Switch checked={notifPrefs.streakReminder} onCheckedChange={(v) => updateNotifPref("streakReminder", v)} />
                 </div>
@@ -724,21 +724,21 @@ const Profile = () => {
               <div className="ios-card p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 mr-4">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Weekly Progress Summary</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Receive your weekly stats every Monday morning</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.weeklySummary")}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.weeklySummaryDesc")}</p>
                   </div>
                   <Switch checked={notifPrefs.weeklySummary} onCheckedChange={(v) => updateNotifPref("weeklySummary", v)} />
                 </div>
               </div>
 
               {/* News Preferences */}
-              <h3 className="text-sm font-display font-bold text-foreground pt-2">News Feed Preferences</h3>
+              <h3 className="text-sm font-display font-bold text-foreground pt-2">{t("profile.newsFeedPrefs")}</h3>
               <div className="ios-card p-4 space-y-4">
                 {[
-                  { key: "scienceNews", label: "🔬 Science & Research", desc: "Latest carnivore diet studies and findings" },
-                  { key: "motivationNews", label: "⚡ Motivation", desc: "Daily inspiration and success mindset" },
-                  { key: "caseStudyNews", label: "❤️ Case Studies", desc: "Real transformation stories" },
-                  { key: "tipNews", label: "💡 Tips & Tricks", desc: "Practical advice for your journey" },
+                  { key: "scienceNews", label: t("profile.scienceNews"), desc: t("profile.scienceNewsDesc") },
+                  { key: "motivationNews", label: t("profile.motivationNews"), desc: t("profile.motivationNewsDesc") },
+                  { key: "caseStudyNews", label: t("profile.caseStudyNews"), desc: t("profile.caseStudyNewsDesc") },
+                  { key: "tipNews", label: t("profile.tipNews"), desc: t("profile.tipNewsDesc") },
                 ].map(({ key, label, desc }) => (
                   <div key={key} className="flex items-center justify-between">
                     <div className="flex-1 mr-4">
@@ -754,7 +754,7 @@ const Profile = () => {
             {/* Admin Panel */}
             {isAdmin && (
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Admin Tools</p>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("profile.adminTools")}</p>
                 <button
                   onClick={() => navigate("/admin/analytics")}
                   className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
@@ -763,8 +763,8 @@ const Profile = () => {
                     <BarChart3 size={18} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Analytics Dashboard</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Users, engagement, CMS page views</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.analyticsDashboard")}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.analyticsDesc")}</p>
                   </div>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </button>
@@ -776,8 +776,8 @@ const Profile = () => {
                     <Bell size={18} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Notifications</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Send push & feed notifications to users</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.notifications")}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.notificationsDesc")}</p>
                   </div>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </button>
@@ -789,8 +789,8 @@ const Profile = () => {
                     <Globe size={18} className="text-primary" />
                   </div>
                   <div className="flex-1 text-left">
-                    <h3 className="font-display font-bold text-foreground text-[15px]">CMS Editor</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Create & manage custom pages</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.cmsEditor")}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.cmsEditorDesc")}</p>
                   </div>
                   <ChevronRight size={14} className="text-muted-foreground" />
                 </button>
@@ -804,8 +804,8 @@ const Profile = () => {
                   <Users size={18} className="text-primary" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-display font-bold text-foreground text-[15px]">Invite a Friend</h3>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Share the carnivore lifestyle with someone you care about</p>
+                  <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.inviteFriend")}</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.inviteFriendDesc")}</p>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -822,27 +822,27 @@ const Profile = () => {
                           navigator.share({ title: "Vore — Carnivore Diet App", text: shareText, url: shareUrl }).catch(() => {});
                         } else {
                           navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-                          toast.success("Link copied to clipboard!");
+                          toast.success(t("profile.linkCopied"));
                         }
                       },
                     },
                     {
-                      label: "WhatsApp",
+                      label: t("profile.whatsApp"),
                       icon: MessageCircle,
                       color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
                       action: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank"),
                     },
                     {
-                      label: "Email",
+                      label: t("profile.email"),
                       icon: Mail,
                       color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
                       action: () => window.open(`mailto:?subject=${encodeURIComponent("Check out Vore!")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`, "_blank"),
                     },
                     {
-                      label: "Copy Link",
+                      label: t("profile.copyLink"),
                       icon: Copy,
                       color: "bg-secondary text-muted-foreground",
-                      action: () => { navigator.clipboard.writeText(shareUrl); toast.success("Link copied!"); },
+                      action: () => { navigator.clipboard.writeText(shareUrl); toast.success(t("profile.linkCopied")); },
                     },
                   ];
                   return shareButtons.map(({ label, icon: Icon, color, action }) => (
@@ -865,8 +865,8 @@ const Profile = () => {
                 <div className="flex items-center gap-3">
                   <Globe size={18} className="text-muted-foreground" />
                   <div>
-                    <h3 className="font-display font-bold text-foreground text-[15px]">Language</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Switch app language</p>
+                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.language")}</h3>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.languageDesc")}</p>
                   </div>
                 </div>
                 <LanguageSwitcher />
@@ -879,7 +879,7 @@ const Profile = () => {
               className="w-full ios-card p-4 flex items-center gap-3 text-destructive hover:bg-destructive/5 transition-colors"
             >
               <LogOut size={18} />
-              <span className="text-sm font-semibold">Sign Out</span>
+              <span className="text-sm font-semibold">{t("profile.signOut")}</span>
             </button>
           </div>
         )}

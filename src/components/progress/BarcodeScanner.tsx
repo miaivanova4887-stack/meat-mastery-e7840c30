@@ -6,6 +6,7 @@ import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
 import { openAppSettings } from "@/lib/openAppSettings";
+import { useTranslation } from "react-i18next";
 
 interface ProductResult {
   name: string;
@@ -19,6 +20,7 @@ interface ProductResult {
 }
 
 const BarcodeScanner = () => {
+  const { t } = useTranslation();
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ProductResult | null>(null);
@@ -58,7 +60,6 @@ const BarcodeScanner = () => {
 
   const ensureCameraPermission = useCallback(async (): Promise<boolean> => {
     if (!navigator.mediaDevices?.getUserMedia) return true;
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { ideal: "environment" } },
@@ -80,9 +81,7 @@ const BarcodeScanner = () => {
       if (scannerRef.current?.isScanning) {
         await scannerRef.current.stop();
       }
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     scannerRef.current = null;
     setScanning(false);
   }, []);
@@ -100,16 +99,13 @@ const BarcodeScanner = () => {
     try {
       const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
       const data = await res.json();
-
       if (data.status !== 1 || !data.product) {
         toast.error("Product not found. Try a different barcode.");
         return;
       }
-
       const p = data.product;
       const n = p.nutriments || {};
       const servingSize = p.serving_size || p.quantity || "100g";
-
       setResult({
         name: p.product_name || p.product_name_en || "Unknown Product",
         brand: p.brands || "",
@@ -130,41 +126,24 @@ const BarcodeScanner = () => {
   const startScanner = useCallback(async () => {
     permissionHandledRef.current = false;
     const hasPermission = await ensureCameraPermission();
-    if (!hasPermission) {
-      setScanning(false);
-      return;
-    }
-
+    if (!hasPermission) { setScanning(false); return; }
     setScanning(true);
     setResult(null);
-
-    // Small delay so the DOM element is rendered
     await new Promise((r) => setTimeout(r, 100));
-
     try {
       const scanner = new Html5Qrcode("barcode-reader");
       scannerRef.current = scanner;
-
       await scanner.start(
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 120 } },
-        async (decodedText) => {
-          await stopScanner();
-          lookupBarcode(decodedText);
-        },
+        async (decodedText) => { await stopScanner(); lookupBarcode(decodedText); },
         async (scanError) => {
-          if (isPermissionDeniedMessage(scanError)) {
-            await stopScanner();
-            await handleCameraBlocked();
-          }
+          if (isPermissionDeniedMessage(scanError)) { await stopScanner(); await handleCameraBlocked(); }
         }
       );
     } catch (err: any) {
-      if (isPermissionDeniedMessage(err?.message || err)) {
-        await handleCameraBlocked();
-      } else {
-        toast.error("Camera not available. Please check your device settings.");
-      }
+      if (isPermissionDeniedMessage(err?.message || err)) { await handleCameraBlocked(); }
+      else { toast.error("Camera not available. Please check your device settings."); }
       setScanning(false);
     }
   }, [ensureCameraPermission, stopScanner, lookupBarcode, handleCameraBlocked, isPermissionDeniedMessage]);
@@ -173,19 +152,13 @@ const BarcodeScanner = () => {
     if (!result) return;
     const now = new Date().toISOString();
     const note = `[barcode] ${result.name}${result.brand ? ` (${result.brand})` : ""} (${quantity}x)`;
-
     const entries = [
       { category: "diet_trends" as const, metric: "calories", value: result.cal * quantity, unit: "kcal", notes: note, recorded_at: now },
       { category: "diet_trends" as const, metric: "protein", value: result.protein * quantity, unit: "g", notes: note, recorded_at: now },
       { category: "diet_trends" as const, metric: "fat", value: result.fat * quantity, unit: "g", notes: note, recorded_at: now },
     ];
-
     Promise.all(entries.map((e) => addEntry.mutateAsync(e)))
-      .then(() => {
-        toast.success(`${result.name} logged to progress`);
-        setResult(null);
-        setQuantity(1);
-      })
+      .then(() => { toast.success(`${result.name} logged to progress`); setResult(null); setQuantity(1); })
       .catch(() => toast.error("Failed to log nutrients"));
   }, [result, addEntry, quantity]);
 
@@ -202,15 +175,15 @@ const BarcodeScanner = () => {
             {loading ? (
               <>
                 <Loader2 size={28} className="text-primary animate-spin" />
-                <p className="text-sm font-medium text-foreground">Looking up product…</p>
+                <p className="text-sm font-medium text-foreground">{t("progress.lookingUpProduct")}</p>
               </>
             ) : (
               <>
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <ScanBarcode size={22} className="text-primary" />
                 </div>
-                <p className="text-sm font-semibold text-foreground">Scan Barcode</p>
-                <p className="text-[11px] text-muted-foreground">Scan a product barcode to log nutrients</p>
+                <p className="text-sm font-semibold text-foreground">{t("progress.scanBarcode")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("progress.scanBarcodeDesc")}</p>
               </>
             )}
           </div>
@@ -218,7 +191,7 @@ const BarcodeScanner = () => {
       ) : scanning ? (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="flex items-center justify-between p-3 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Point at barcode</p>
+            <p className="text-sm font-semibold text-foreground">{t("progress.pointAtBarcode")}</p>
             <button onClick={stopScanner} className="text-muted-foreground hover:text-foreground">
               <X size={18} />
             </button>
@@ -229,7 +202,7 @@ const BarcodeScanner = () => {
           {loading && (
             <div className="p-3 flex items-center gap-2 justify-center">
               <Loader2 size={16} className="text-primary animate-spin" />
-              <span className="text-sm text-muted-foreground">Looking up product…</span>
+              <span className="text-sm text-muted-foreground">{t("progress.lookingUpProduct")}</span>
             </div>
           )}
         </div>
@@ -241,42 +214,22 @@ const BarcodeScanner = () => {
             )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-foreground truncate">{result.name}</p>
-              {result.brand && (
-                <p className="text-[11px] text-muted-foreground">{result.brand}</p>
-              )}
-              <p className="text-[11px] text-muted-foreground">Serving: {result.serving}</p>
+              {result.brand && <p className="text-[11px] text-muted-foreground">{result.brand}</p>}
+              <p className="text-[11px] text-muted-foreground">{t("progress.serving")}: {result.serving}</p>
             </div>
           </div>
 
-          {/* Quantity Adjuster */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">Quantity</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("progress.quantity")}</p>
               <p className="text-sm font-bold text-foreground">{quantity}x</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(Math.max(0.25, quantity - 0.25))}
-              >
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(Math.max(0.25, quantity - 0.25))}>
                 <Minus size={14} />
               </Button>
-              <Slider
-                value={[quantity]}
-                onValueChange={([v]) => setQuantity(v)}
-                min={0.25}
-                max={4}
-                step={0.25}
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(Math.min(4, quantity + 0.25))}
-              >
+              <Slider value={[quantity]} onValueChange={([v]) => setQuantity(v)} min={0.25} max={4} step={0.25} className="flex-1" />
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(Math.min(4, quantity + 0.25))}>
                 <Plus size={14} />
               </Button>
             </div>
@@ -285,33 +238,31 @@ const BarcodeScanner = () => {
           <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round(result.cal * quantity)}</p>
-              <p className="text-[10px] text-muted-foreground">Cal</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.calories")}</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round(result.protein * quantity)}g</p>
-              <p className="text-[10px] text-muted-foreground">Protein</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.protein")}</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round(result.fat * quantity)}g</p>
-              <p className="text-[10px] text-muted-foreground">Fat</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.fat")}</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round(result.carbs * quantity)}g</p>
-              <p className="text-[10px] text-muted-foreground">Carbs</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.carbs")}</p>
             </div>
           </div>
 
           {result.carbs * quantity > 5 && (
-            <p className="text-[11px] text-destructive font-medium">
-              ⚠️ High carbs — may not be carnivore-friendly
-            </p>
+            <p className="text-[11px] text-destructive font-medium">{t("progress.highCarbsWarning")}</p>
           )}
 
           <div className="flex gap-2">
             <Button onClick={logToProgress} className="flex-1" disabled={addEntry.isPending}>
-              {addEntry.isPending ? "Logging…" : "✓ Log to Progress"}
+              {addEntry.isPending ? t("progress.logging") : t("progress.logToProgress")}
             </Button>
-            <Button variant="outline" onClick={() => { setResult(null); setQuantity(1); }}>Dismiss</Button>
+            <Button variant="outline" onClick={() => { setResult(null); setQuantity(1); }}>{t("progress.dismiss")}</Button>
           </div>
         </div>
       ) : null}

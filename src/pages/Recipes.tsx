@@ -198,7 +198,7 @@ const Recipes = () => {
         {/* Portion multiplier */}
         <div className="flex items-center gap-2 mt-3">
           <Users size={14} className="text-muted-foreground" />
-          <span className="text-xs text-muted-foreground mr-1">Servings</span>
+          <span className="text-xs text-muted-foreground mr-1">{t("recipes.servings")}</span>
           {MULTIPLIERS.map((m) => (
             <button key={m} onClick={() => setMult(m)}
               className={`w-9 h-9 rounded-lg text-xs font-semibold transition-all ${mult === m ? "bg-primary text-primary-foreground" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
@@ -211,7 +211,7 @@ const Recipes = () => {
         {/* Structured cooking steps for built-in recipes (parsed from desc) */}
         {!isCustom && r.desc && (
           <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
-            <p className="text-xs font-semibold text-foreground mb-1">🔥 Cooking Steps</p>
+            <p className="text-xs font-semibold text-foreground mb-1">{t("recipes.cookingSteps")}</p>
             <ol className="space-y-1.5">
               {(r.steps && r.steps.length > 0 ? r.steps : r.desc.split(/\.\s+/).filter((s: string) => s.trim().length > 3).map((s: string) => s.trim().replace(/\.$/, '') + '.')).map((step: string, j: number) => (
                 <li key={j} className="text-sm text-muted-foreground flex gap-2">
@@ -230,19 +230,19 @@ const Recipes = () => {
               className="flex items-center gap-1 mt-3 text-xs text-primary font-medium min-h-[36px]"
             >
               {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {isExpanded ? "Hide Ingredients" : "Show Ingredients"}
+              {isExpanded ? t("recipes.hideIngredients") : t("recipes.showIngredients")}
             </button>
 
             {isExpanded && (
               <div className="mt-3 space-y-3 border-t border-border/30 pt-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-semibold text-foreground">Ingredients</p>
+                    <p className="text-xs font-semibold text-foreground">{t("recipes.ingredients")}</p>
                     <button
                       onClick={() => addIngredientsToCart(ingredients, mult)}
                       className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors min-h-[32px]"
                     >
-                      <ShoppingBag size={13} /> Add to the shopping list
+                      <ShoppingBag size={13} /> {t("recipes.addAllToBag")}
                     </button>
                   </div>
                   <ul className="space-y-1">
@@ -255,7 +255,7 @@ const Recipes = () => {
                             {ing.amount && <span className="font-medium text-foreground">{ing.amount}</span>} {ing.name}
                           </span>
                           {inBag ? (
-                            <span className="text-[10px] text-green-500 font-medium px-1.5">In list</span>
+                            <span className="text-[10px] text-green-500 font-medium px-1.5">{t("recipes.inList")}</span>
                           ) : (
                             <button
                               onClick={() => {
@@ -278,7 +278,7 @@ const Recipes = () => {
 
                 {custom && custom.steps.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-foreground mb-1">Steps</p>
+                    <p className="text-xs font-semibold text-foreground mb-1">{t("recipes.steps")}</p>
                     <ol className="space-y-1.5">
                       {custom.steps.map((step, j) => (
                         <li key={j} className="text-sm text-muted-foreground flex gap-2">
@@ -294,7 +294,7 @@ const Recipes = () => {
                   <button onClick={() => deleteRecipe(custom.id)}
                     className="flex items-center gap-1.5 text-xs text-destructive font-medium mt-1 min-h-[36px]"
                   >
-                    <Trash2 size={14} /> Delete recipe
+                    <Trash2 size={14} /> {t("recipes.deleteRecipe")}
                   </button>
                 )}
               </div>
@@ -363,8 +363,8 @@ const Recipes = () => {
             <ChefHat size={22} className="text-primary-foreground drop-shadow-sm" />
           </div>
           <div className="text-left flex-1 relative z-10">
-            <p className="text-sm font-bold text-foreground tracking-tight">AI Recipe Coach</p>
-            <p className="text-[11px] text-muted-foreground">Get personalised meal ideas based on your goals</p>
+            <p className="text-sm font-bold text-foreground tracking-tight">{t("recipes.aiCoach")}</p>
+            <p className="text-[11px] text-muted-foreground">{t("recipes.aiCoachDesc")}</p>
           </div>
           <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
             <ArrowLeft size={13} className="text-primary rotate-180" />
@@ -373,7 +373,7 @@ const Recipes = () => {
 
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input type="text" placeholder="Search recipes, ingredients, tags…" value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value) setActiveTag(null); }}
+          <input type="text" placeholder={t("recipes.searchPlaceholder")} value={search} onChange={(e) => { setSearch(e.target.value); if (e.target.value) setActiveTag(null); }}
             className="w-full pl-9 pr-8 py-2.5 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30" />
           {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><X size={14} /></button>}
         </div>
@@ -406,7 +406,7 @@ const Recipes = () => {
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 ${showFavoritesOnly ? "bg-destructive/15 text-destructive border border-destructive/30" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
           >
             <Heart size={11} className={showFavoritesOnly ? "fill-destructive" : ""} />
-            Favorites
+            {t("recipes.favorites")}
           </button>
           {Object.entries(FINAL_MENU).map(([key, label]) => (
             <button key={key} onClick={() => setActiveFilter(key)}
@@ -425,19 +425,19 @@ const Recipes = () => {
         </div>
 
         <div className="space-y-3 pt-1">
-          <span className="text-xs text-muted-foreground">{totalCount} recipes</span>
+          <span className="text-xs text-muted-foreground">{totalCount} {t("profile.recipes")}</span>
 
           {filtered.custom.length > 0 && (
             <>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">My Recipes</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("recipes.myRecipes")}</p>
               {filtered.custom.map((r, i) => <RecipeCard key={r.id} r={r} i={i} isCustom />)}
-              {filtered.builtIn.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-2">All Recipes</p>}
+              {filtered.builtIn.length > 0 && <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pt-2">{t("recipes.allRecipes")}</p>}
             </>
           )}
 
           {filtered.builtIn.map((r, i) => <RecipeCard key={r.name} r={r} i={i} />)}
 
-          {totalCount === 0 && <div className="text-center py-12 text-muted-foreground text-sm">No recipes found. Try adjusting your filters.</div>}
+          {totalCount === 0 && <div className="text-center py-12 text-muted-foreground text-sm">{t("recipes.noRecipes")}</div>}
         </div>
       </div>
     </div>

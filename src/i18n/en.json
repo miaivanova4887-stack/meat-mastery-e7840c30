@@ -211,7 +211,12 @@
     "myRecipes": "My Recipes",
     "allRecipes": "All Recipes",
     "noRecipes": "No recipes found. Try adjusting your filters.",
-    "ingredientsAdded": "{{count}} ingredients added to shopping list"
+    "ingredientsAdded": "{{count}} ingredients added to shopping list",
+    "cookingSteps": "🔥 Cooking Steps",
+    "showIngredients": "Show Ingredients",
+    "hideIngredients": "Hide Ingredients",
+    "inList": "In list",
+    "favorites": "Favorites"
   },
   "mealPlan": {
     "title": "Meal Plan",
@@ -220,7 +225,24 @@
     "yourWeeklyFuel": "Your Weekly Fuel",
     "aiPlanner": "AI Meal Planner",
     "aiPlannerDesc": "Generate a single recipe, daily, or full week plan",
-    "weekCleared": "Week cleared"
+    "weekCleared": "Week cleared",
+    "pickRecipe": "Pick Recipe",
+    "change": "Change",
+    "now": "NOW",
+    "meals": "meals",
+    "clearDay": "Clear",
+    "swipe": "← swipe",
+    "shoppingList": "Shopping List",
+    "addAll": "Add All",
+    "searchRecipes": "Search recipes…",
+    "noRecipesFound": "No recipes found",
+    "generate": "Generate",
+    "generating": "Generating",
+    "singleRecipe": "🍽️ Single Recipe",
+    "fullDay": "📋 Full Day",
+    "fullWeek": "📅 Full Week",
+    "preferences": "Preferences (optional)",
+    "preferencesPlaceholder": "e.g. high protein, sweet treats, quick meals, seafood focus, under 30 min..."
   },
   "progress": {
     "title": "My Progress",
@@ -582,5 +604,9 @@
     "helpful": "Glad you found it useful!",
     "thanks": "Thanks for your feedback!",
     "wasHelpful": "Was this helpful?"
+  },
+  "brand": {
+    "name": "CarnivoreX",
+    "tagline": "Your carnivore companion"
   }
 }

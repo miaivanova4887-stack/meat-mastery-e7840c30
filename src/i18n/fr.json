@@ -211,7 +211,12 @@
     "myRecipes": "Mes recettes",
     "allRecipes": "Toutes les recettes",
     "noRecipes": "Aucune recette trouvée. Essayez d'ajuster vos filtres.",
-    "ingredientsAdded": "{{count}} ingrédients ajoutés à la liste de courses"
+    "ingredientsAdded": "{{count}} ingrédients ajoutés à la liste de courses",
+    "cookingSteps": "🔥 Étapes de cuisson",
+    "showIngredients": "Voir les ingrédients",
+    "hideIngredients": "Masquer les ingrédients",
+    "inList": "Dans la liste",
+    "favorites": "Favoris"
   },
   "mealPlan": {
     "title": "Plan de repas",
@@ -220,7 +225,24 @@
     "yourWeeklyFuel": "Votre énergie hebdomadaire",
     "aiPlanner": "Planificateur IA",
     "aiPlannerDesc": "Générer une recette, un jour ou une semaine complète",
-    "weekCleared": "Semaine vidée"
+    "weekCleared": "Semaine vidée",
+    "pickRecipe": "Choisir une recette",
+    "change": "Changer",
+    "now": "MAINT.",
+    "meals": "repas",
+    "clearDay": "Vider",
+    "swipe": "← glisser",
+    "shoppingList": "Liste de courses",
+    "addAll": "Tout ajouter",
+    "searchRecipes": "Rechercher des recettes…",
+    "noRecipesFound": "Aucune recette trouvée",
+    "generate": "Générer",
+    "generating": "Génération",
+    "singleRecipe": "🍽️ Recette unique",
+    "fullDay": "📋 Journée complète",
+    "fullWeek": "📅 Semaine complète",
+    "preferences": "Préférences (optionnel)",
+    "preferencesPlaceholder": "ex. riche en protéines, desserts, repas rapides, fruits de mer, moins de 30 min..."
   },
   "progress": {
     "title": "Mes progrès",
@@ -582,5 +604,9 @@
     "helpful": "Ravi que ce soit utile !",
     "thanks": "Merci pour votre retour !",
     "wasHelpful": "Était-ce utile ?"
+  },
+  "brand": {
+    "name": "CarnivoreX",
+    "tagline": "Votre compagnon carnivore"
   }
 }
