@@ -534,7 +534,7 @@ const Profile = () => {
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold transition-all active:scale-95"
                                 >
                                   <ThumbsUp size={12} />
-                                  Yes
+                                  {t("feed.feedbackYes")}
                                 </button>
                                 <button
                                   onClick={() => handleFeedback(item.id, "no")}
