@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAddEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 const PhotoRecognition = () => {
   const [loading, setLoading] = useState(false);
@@ -14,6 +15,7 @@ const PhotoRecognition = () => {
   const fileRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
   const profile = useUserProfile();
+  const { t } = useTranslation();
 
   const handlePhoto = useCallback(async (file: File) => {
     setLoading(true);
@@ -87,15 +89,15 @@ const PhotoRecognition = () => {
             {loading ? (
               <>
                 <Loader2 size={28} className="text-primary animate-spin" />
-                <p className="text-sm font-medium text-foreground">Analyzing food…</p>
+                <p className="text-sm font-medium text-foreground">{t("progress.analyzingFood")}</p>
               </>
             ) : (
               <>
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <Camera size={22} className="text-primary" />
                 </div>
-                <p className="text-sm font-semibold text-foreground">Snap & Log</p>
-                <p className="text-[11px] text-muted-foreground">Take a photo to auto-detect nutrients</p>
+                <p className="text-sm font-semibold text-foreground">{t("progress.snapLog")}</p>
+                <p className="text-[11px] text-muted-foreground">{t("progress.snapLogDesc")}</p>
               </>
             )}
           </div>
@@ -106,7 +108,7 @@ const PhotoRecognition = () => {
             <div>
               <p className="text-sm font-bold text-foreground">{result.recipeName}</p>
               <p className="text-[11px] text-muted-foreground">
-                Confidence: <span className={result.confidence === "high" ? "text-green-500" : result.confidence === "medium" ? "text-yellow-500" : "text-red-400"}>{result.confidence}</span>
+                {t("progress.confidence")}: <span className={result.confidence === "high" ? "text-green-500" : result.confidence === "medium" ? "text-yellow-500" : "text-red-400"}>{result.confidence}</span>
               </p>
             </div>
           </div>
@@ -114,32 +116,15 @@ const PhotoRecognition = () => {
           {/* Quantity Adjuster */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-medium text-muted-foreground">Quantity</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("progress.quantity")}</p>
               <p className="text-sm font-bold text-foreground">{quantity}x</p>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(Math.max(0.25, quantity - 0.25))}
-              >
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(Math.max(0.25, quantity - 0.25))}>
                 <Minus size={14} />
               </Button>
-              <Slider
-                value={[quantity]}
-                onValueChange={([v]) => setQuantity(v)}
-                min={0.25}
-                max={4}
-                step={0.25}
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setQuantity(Math.min(4, quantity + 0.25))}
-              >
+              <Slider value={[quantity]} onValueChange={([v]) => setQuantity(v)} min={0.25} max={4} step={0.25} className="flex-1" />
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setQuantity(Math.min(4, quantity + 0.25))}>
                 <Plus size={14} />
               </Button>
             </div>
@@ -148,22 +133,22 @@ const PhotoRecognition = () => {
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.cal) || 0) * quantity)}</p>
-              <p className="text-[10px] text-muted-foreground">Calories</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.calories")}</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.protein) || 0) * quantity)}</p>
-              <p className="text-[10px] text-muted-foreground">Protein</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.protein")}</p>
             </div>
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.fat) || 0) * quantity)}</p>
-              <p className="text-[10px] text-muted-foreground">Fat</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.fat")}</p>
             </div>
           </div>
           <div className="flex gap-2">
             <Button onClick={logToProgress} className="flex-1" disabled={addEntry.isPending}>
-              {addEntry.isPending ? "Logging…" : "✓ Log to Progress"}
+              {addEntry.isPending ? t("progress.logging") : t("progress.logToProgress")}
             </Button>
-            <Button variant="outline" onClick={() => { setResult(null); setQuantity(1); }}>Dismiss</Button>
+            <Button variant="outline" onClick={() => { setResult(null); setQuantity(1); }}>{t("progress.dismiss")}</Button>
           </div>
         </div>
       )}

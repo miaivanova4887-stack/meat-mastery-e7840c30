@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { useProgressEntries } from "@/hooks/useProgress";
-
+import { useTranslation } from "react-i18next";
 
 const NutrientBreakdown = () => {
   const { data: entries = [] } = useProgressEntries("diet_trends", 1);
+  const { t } = useTranslation();
 
   const today = useMemo(() => {
     const now = new Date();
@@ -23,18 +24,18 @@ const NutrientBreakdown = () => {
   }, [entries]);
 
   const macros = [
-    { label: "Calories", value: today.cal, unit: "kcal", color: "from-[hsl(var(--flame))] to-[hsl(var(--gold))]", icon: "🔥" },
-    { label: "Protein", value: today.protein, unit: "g", color: "from-[hsl(var(--primary))] to-[hsl(var(--ember))]", icon: "🥩" },
-    { label: "Fat", value: today.fat, unit: "g", color: "from-[hsl(var(--gold))] to-[hsl(var(--flame))]", icon: "🧈" },
+    { label: t("progress.calories"), value: today.cal, unit: "kcal", color: "from-[hsl(var(--flame))] to-[hsl(var(--gold))]", icon: "🔥" },
+    { label: t("progress.protein"), value: today.protein, unit: "g", color: "from-[hsl(var(--primary))] to-[hsl(var(--ember))]", icon: "🥩" },
+    { label: t("progress.fat"), value: today.fat, unit: "g", color: "from-[hsl(var(--gold))] to-[hsl(var(--flame))]", icon: "🧈" },
   ];
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold text-foreground">Today's Nutrition</h3>
+        <h3 className="text-sm font-bold text-foreground">{t("progress.todayNutrition")}</h3>
         {today.meals > 0 && (
           <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">
-            {today.meals} meal{today.meals > 1 ? "s" : ""} synced
+            {t(today.meals > 1 ? "progress.mealsSynced_plural" : "progress.mealsSynced", { count: today.meals })}
           </span>
         )}
       </div>
