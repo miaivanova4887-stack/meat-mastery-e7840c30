@@ -352,7 +352,7 @@ const Profile = () => {
         {([
           { key: "feed", label: t("profile.yourFeed"), icon: Newspaper },
           { key: "recipes", label: t("profile.myRecipes"), icon: ChefHat },
-          { key: "likes", label: t("profile.liked"), icon: Heart },
+          { key: "goals", label: "My Goals", icon: Crosshair },
           { key: "settings", label: t("profile.settings"), icon: Settings },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
