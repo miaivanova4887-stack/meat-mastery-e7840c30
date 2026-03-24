@@ -154,21 +154,24 @@ const Index = () => {
                 key={path}
                 onClick={() => navigate(path)}
                 className={`ios-card overflow-hidden text-left transition-all active:scale-[0.97] group ${
-                  highlighted ? "ring-1 ring-primary/20" : ""
+                  highlighted ? "ring-1 ring-primary/30" : ""
                 }`}
               >
                 <div className="relative h-24 w-full">
                   <img src={icon} alt={label} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                  {highlighted && (
+                    <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
+                  )}
                 </div>
-                <div className="px-3 pb-3 pt-1 flex items-center justify-between">
+                <div className="px-3 pb-3 pt-1.5 flex items-center justify-between">
                   <div>
-                    <span className="text-[13px] font-bold text-foreground block">{label}</span>
+                    <span className="text-[13px] font-semibold text-foreground block leading-tight">{label}</span>
                     {highlighted && (
-                      <span className="text-[10px] text-primary mt-0.5 font-semibold block">{t("home.recommendedForYou")}</span>
+                      <span className="text-[9px] text-primary mt-0.5 font-semibold uppercase tracking-wider block">{t("home.recommendedForYou")}</span>
                     )}
                   </div>
-                  <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+                  <ChevronRight size={13} className="text-muted-foreground/60 shrink-0 group-hover:text-primary transition-colors" />
                 </div>
               </button>
             );
