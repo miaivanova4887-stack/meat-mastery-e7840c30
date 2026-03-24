@@ -541,7 +541,7 @@ const Profile = () => {
                                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary text-muted-foreground text-[11px] font-semibold transition-all active:scale-95"
                                 >
                                   <ThumbsDown size={12} />
-                                  Not really
+                                  {t("feed.feedbackNo")}
                                 </button>
                               </div>
                             )}
