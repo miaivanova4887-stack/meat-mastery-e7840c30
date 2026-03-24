@@ -184,6 +184,9 @@ const Profile = () => {
           const metricEntries = byMetric[goal.metric] || [];
           const latest = metricEntries[0];
           if (latest && latest.value >= goal.target_value) {
+            // Only show goal_reached if the entry is within the last 24 hours
+            const entryAge = Date.now() - new Date(latest.recorded_at).getTime();
+            if (entryAge > 24 * 60 * 60 * 1000) return;
             const metricInfo = Object.values(METRICS).flat().find(m => m.key === goal.metric);
             milestones.push({
               id: `goal-${goal.metric}`,
