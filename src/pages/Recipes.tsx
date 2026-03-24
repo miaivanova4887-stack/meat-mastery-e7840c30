@@ -30,18 +30,7 @@ const tierFromProfile = (diet: string | undefined): DietTier | null => {
   return null;
 };
 
-// Snack is now in the upper craving-style menu, not in meal breakdown
-const UPPER_MENU: Record<string, string> = {
-  all: "🔥 All",
-  snack: "🍖 Snacks",
-  ...CRAVING_LABELS,
-};
-// Remove "all" duplicate from CRAVING_LABELS since we include it above
-delete (UPPER_MENU as any)["all"];
-const FINAL_MENU: Record<string, string> = { all: "🔥 All", snack: "🍖 Snacks" };
-for (const [k, v] of Object.entries(CRAVING_LABELS)) {
-  if (k !== "all") FINAL_MENU[k] = v;
-}
+// Filter menus are now built dynamically from i18n in the component
 
 const Recipes = () => {
   const navigate = useNavigate();
@@ -128,8 +117,8 @@ const Recipes = () => {
       const parsed = parseAmount(ing.amount);
       addItem(ing.name, parsed.quantity * mult, parsed.unit);
     });
-    toast.success(`${ingredients.length} ingredients added to shopping list`, {
-      action: { label: "Open list", onClick: () => navigate("/shopping-bag") },
+    toast.success(t("recipes.ingredientsAdded", { count: ingredients.length }), {
+      action: { label: t("recipes.openList"), onClick: () => navigate("/shopping-bag") },
     });
   }, [addItem, navigate]);
 
@@ -261,8 +250,8 @@ const Recipes = () => {
                               onClick={() => {
                                 const parsed = parseAmount(ing.amount);
                                 addItem(ing.name, parsed.quantity * mult, parsed.unit);
-                                toast.success(`${ing.name} added`, {
-                                  action: { label: "Open list", onClick: () => navigate("/shopping-bag") },
+                                toast.success(t("recipes.added", { name: ing.name }), {
+                                  action: { label: t("recipes.openList"), onClick: () => navigate("/shopping-bag") },
                                 });
                               }}
                               className="text-muted-foreground hover:text-primary p-1.5"
@@ -396,7 +385,7 @@ const Recipes = () => {
           {(Object.keys(TIER_LABELS) as DietTier[]).map((tier) => (
             <button key={tier} onClick={() => setActiveTier(tier)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${activeTier === tier ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"}`}
-            >{TIER_LABELS[tier]}</button>
+            >{t(`recipes.tiers.${tier}`)}</button>
           ))}
         </div>
 
@@ -408,19 +397,19 @@ const Recipes = () => {
             <Heart size={11} className={showFavoritesOnly ? "fill-destructive" : ""} />
             {t("recipes.favorites")}
           </button>
-          {Object.entries(FINAL_MENU).map(([key, label]) => (
+          {(["all", "snack", "sweets", "seafood", "bakery", "comfort", "quick", "organs", "cheesy", "crispy", "grilling"] as const).map((key) => (
             <button key={key} onClick={() => setActiveFilter(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeFilter === key ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
-            >{label}</button>
+            >{t(`recipes.cravings.${key}`)}</button>
           ))}
         </div>
 
         {/* Cuisine filter */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-          {(Object.entries(CUISINE_LABELS) as [string, string][]).map(([key, label]) => (
+          {(Object.keys(CUISINE_LABELS) as (CuisineType | "all")[]).map((key) => (
             <button key={key} onClick={() => setActiveCuisine(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeCuisine === key ? "bg-primary/20 text-primary border border-primary/40" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
-            >{label}</button>
+            >{t(`recipes.cuisines.${key}`)}</button>
           ))}
         </div>
 
