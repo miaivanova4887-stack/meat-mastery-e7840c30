@@ -114,11 +114,14 @@ const Index = () => {
           <ThemeToggle />
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/70 mb-3 animate-fade-in">
+          <CarnivoreXLogo size="sm" className="mb-2 animate-fade-in" />
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary/70 mb-1 animate-fade-in">
             {greeting}
           </p>
-          <CarnivoreXLogo size="md" className="drop-shadow-[0_0_16px_hsl(var(--primary)/0.3)]" />
-          <p className="text-muted-foreground mt-1.5 text-[13px] max-w-[280px] leading-relaxed">
+          <h1 className="text-4xl font-display font-black text-foreground leading-[1.05] tracking-tight">
+            {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
+          </h1>
+          <p className="text-muted-foreground mt-2 text-[13px] max-w-[280px] leading-relaxed">
             {subtitle}
           </p>
         </div>
