@@ -668,7 +668,7 @@ const Profile = () => {
 
             {/* Email (read-only) */}
             <div className="ios-card p-4">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Email</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">{t("profile.email")}</label>
               <p className="text-sm text-foreground">{user?.email}</p>
             </div>
 
