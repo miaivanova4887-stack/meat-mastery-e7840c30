@@ -560,7 +560,7 @@ const Profile = () => {
             {/* Display Name */}
             <div className="ios-card p-4">
               <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Display Name</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t("profile.displayName")}</label>
                 {editingField === "display_name" ? (
                   <div className="flex gap-1">
                     <button onClick={() => saveField("display_name")} className="text-primary"><Check size={14} /></button>
