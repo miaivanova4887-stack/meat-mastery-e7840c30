@@ -25,8 +25,8 @@ const SplashScreen = ({ onFinished }: { onFinished: () => void }) => {
           phase === "in" ? "opacity-0 scale-90 translate-y-4" : "opacity-100 scale-100 translate-y-0"
         }`}
       >
-        <h1 className="text-[3.2rem] font-black tracking-[-0.04em] leading-none">
-          <span className="text-primary drop-shadow-[0_0_30px_hsl(var(--primary)/0.5)]">
+        <h1 className="text-[2.4rem] font-semibold tracking-[-0.03em] leading-none">
+          <span className="text-primary drop-shadow-[0_0_24px_hsl(var(--primary)/0.45)]">
             Carnivore
           </span>
           <span className="text-primary/50 font-light">X</span>
