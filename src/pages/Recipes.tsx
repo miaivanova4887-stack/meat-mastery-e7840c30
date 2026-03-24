@@ -406,7 +406,7 @@ const Recipes = () => {
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 ${showFavoritesOnly ? "bg-destructive/15 text-destructive border border-destructive/30" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
           >
             <Heart size={11} className={showFavoritesOnly ? "fill-destructive" : ""} />
-            Favorites
+            {t("recipes.favorites")}
           </button>
           {Object.entries(FINAL_MENU).map(([key, label]) => (
             <button key={key} onClick={() => setActiveFilter(key)}
