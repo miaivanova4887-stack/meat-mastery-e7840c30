@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe, Crosshair } from "lucide-react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { recipes } from "@/data/recipes";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
+import { useUserProfile, type Goal, type Experience, type ActivityLevel, type Struggle, type Interest, type Sex } from "@/contexts/UserProfileContext";
 
 interface Profile {
   display_name: string | null;
