@@ -198,7 +198,7 @@ const Recipes = () => {
         {/* Portion multiplier */}
         <div className="flex items-center gap-2 mt-3">
           <Users size={14} className="text-muted-foreground" />
-          <span className="text-xs text-muted-foreground mr-1">Servings</span>
+          <span className="text-xs text-muted-foreground mr-1">{t("recipes.servings")}</span>
           {MULTIPLIERS.map((m) => (
             <button key={m} onClick={() => setMult(m)}
               className={`w-9 h-9 rounded-lg text-xs font-semibold transition-all ${mult === m ? "bg-primary text-primary-foreground" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
