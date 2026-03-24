@@ -211,7 +211,12 @@
     "myRecipes": "My Recipes",
     "allRecipes": "All Recipes",
     "noRecipes": "No recipes found. Try adjusting your filters.",
-    "ingredientsAdded": "{{count}} ingredients added to shopping list"
+    "ingredientsAdded": "{{count}} ingredients added to shopping list",
+    "cookingSteps": "🔥 Cooking Steps",
+    "showIngredients": "Show Ingredients",
+    "hideIngredients": "Hide Ingredients",
+    "inList": "In list",
+    "favorites": "Favorites"
   },
   "mealPlan": {
     "title": "Meal Plan",
