@@ -621,7 +621,7 @@ const Profile = () => {
                       setEditValues((v) => ({ ...v, diet_tier: key }));
                       await (supabase as any).from("profiles").update({ diet_tier: key }).eq("id", user!.id);
                       setProfile((p) => p ? { ...p, diet_tier: key } : p);
-                      toast.success("Diet tier updated!");
+                      toast.success(t("profile.dietTierUpdated"));
                     }}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
                       (profile?.diet_tier || "strict") === key
