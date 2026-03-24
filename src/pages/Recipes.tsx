@@ -237,12 +237,12 @@ const Recipes = () => {
               <div className="mt-3 space-y-3 border-t border-border/30 pt-3">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-semibold text-foreground">Ingredients</p>
+                    <p className="text-xs font-semibold text-foreground">{t("recipes.ingredients")}</p>
                     <button
                       onClick={() => addIngredientsToCart(ingredients, mult)}
                       className="flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors min-h-[32px]"
                     >
-                      <ShoppingBag size={13} /> Add to the shopping list
+                      <ShoppingBag size={13} /> {t("recipes.addAllToBag")}
                     </button>
                   </div>
                   <ul className="space-y-1">
