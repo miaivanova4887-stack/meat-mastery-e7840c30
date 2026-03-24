@@ -294,7 +294,7 @@ const Recipes = () => {
                   <button onClick={() => deleteRecipe(custom.id)}
                     className="flex items-center gap-1.5 text-xs text-destructive font-medium mt-1 min-h-[36px]"
                   >
-                    <Trash2 size={14} /> Delete recipe
+                    <Trash2 size={14} /> {t("recipes.deleteRecipe")}
                   </button>
                 )}
               </div>
