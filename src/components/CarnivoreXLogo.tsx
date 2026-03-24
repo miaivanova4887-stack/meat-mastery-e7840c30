@@ -7,7 +7,8 @@ const CarnivoreXLogo = ({ className = "", size = "md" }: { className?: string; s
 
   return (
     <span className={`inline-flex items-baseline leading-none select-none ${styles[size]} ${className}`}>
-      <span className="font-light tracking-[0.12em] uppercase text-primary">Carnivore</span>
+      <span className="font-light tracking-[0.08em] text-primary">C</span>
+      <span className="font-light tracking-[0.08em] text-primary text-[0.85em]">arnivore</span>
       <span className="font-bold tracking-tight text-primary/60">X</span>
     </span>
   );

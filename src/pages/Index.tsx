@@ -108,20 +108,20 @@ const Index = () => {
       <div className="relative h-[55vh] overflow-hidden">
         <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-black/30" />
-        <div className="absolute top-0 right-0 z-10 flex items-center gap-2"
-          style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingRight: "16px" }}
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between"
+          style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingLeft: "16px", paddingRight: "16px" }}
         >
+          <CarnivoreXLogo size="sm" className="animate-fade-in" />
           <ThemeToggle />
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">
-          <CarnivoreXLogo size="sm" className="mb-2 animate-fade-in" />
+          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-1 animate-fade-in">
+            {t("home.healingJourney")}
+          </p>
           <h1 className="text-4xl font-display font-black text-foreground leading-[1.05] tracking-tight">
             {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
           </h1>
-          <p className="text-[13px] font-semibold text-primary mt-2">
-            {t("home.healingJourney")}
-          </p>
-          <p className="text-muted-foreground mt-1 text-[13px] max-w-[280px] leading-relaxed">
+          <p className="text-muted-foreground mt-2 text-[13px] max-w-[280px] leading-relaxed">
             {subtitle}
           </p>
         </div>
