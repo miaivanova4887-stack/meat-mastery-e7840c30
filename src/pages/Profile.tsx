@@ -369,73 +369,254 @@ const Profile = () => {
       </div>
 
       <div className="px-4 space-y-3">
-        {/* My Recipes */}
+        {/* My Recipes + Liked Recipes */}
         {tab === "recipes" && (
-          myRecipes.length === 0 ? (
-            <div className="text-center py-12">
-              <ChefHat size={32} className="mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">{t("profile.noSharedRecipes")}</p>
-              <button
-                onClick={() => navigate("/create-recipe?share=true")}
-                className="mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
-              >
-                {t("profile.shareFirst")}
-              </button>
-            </div>
-          ) : myRecipes.map((r) => <RecipeCard key={r.id} r={r} />)
-        )}
+          <div className="space-y-3">
+            {/* My community recipes */}
+            {myRecipes.length > 0 && (
+              <>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Shared by You</p>
+                {myRecipes.map((r) => <RecipeCard key={r.id} r={r} />)}
+              </>
+            )}
 
-        {/* Liked Recipes */}
-        {tab === "likes" && (
-          (likedRecipes.length === 0 && favoriteRecipes.length === 0) ? (
-            <div className="text-center py-12">
-              <Heart size={32} className="mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">{t("profile.noLikedRecipes")}</p>
-              <p className="text-xs text-muted-foreground mt-1">{t("profile.noLikedHint")}</p>
-              <div className="flex gap-2 justify-center mt-4">
+            {/* Local favorites */}
+            {favoriteRecipes.length > 0 && (
+              <>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mt-2">♥ Favorites</p>
+                {favoriteRecipes.map((r) => (
+                  <div key={r.name} className="ios-card p-3.5 flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{r.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-0.5"><Clock size={11} /> {r.time}</span>
+                        <span className="flex items-center gap-0.5"><Flame size={11} /> {r.cal} cal</span>
+                      </div>
+                    </div>
+                    <button onClick={() => toggleFavorite(r.name)} className="p-1.5 rounded-lg active:scale-90 transition-all">
+                      <Heart size={16} className="fill-destructive text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {/* Community liked recipes */}
+            {likedRecipes.length > 0 && (
+              <>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mt-2">Liked from Community</p>
+                {likedRecipes.map((r) => <RecipeCard key={r.id} r={r} />)}
+              </>
+            )}
+
+            {myRecipes.length === 0 && favoriteRecipes.length === 0 && likedRecipes.length === 0 && (
+              <div className="text-center py-12">
+                <ChefHat size={32} className="mx-auto text-muted-foreground/40 mb-2" />
+                <p className="text-sm text-muted-foreground">{t("profile.noSharedRecipes")}</p>
                 <button
-                  onClick={() => navigate("/recipes")}
-                  className="px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
+                  onClick={() => navigate("/create-recipe?share=true")}
+                  className="mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold"
                 >
-                  {t("profile.browseRecipes")}
-                </button>
-                <button
-                  onClick={() => navigate("/community")}
-                  className="px-4 py-2 rounded-xl bg-secondary text-foreground text-xs font-semibold"
-                >
-                  {t("profile.browseCommunity")}
+                  {t("profile.shareFirst")}
                 </button>
               </div>
-            </div>
-          ) : (
+            )}
+          </div>
+        )}
+
+        {/* My Goals — editable onboarding data */}
+        {tab === "goals" && (() => {
+          const goalLabels: Record<Goal, string> = { lose_weight: "Lose Weight", build_muscle: "Build Muscle", maintain: "Maintain", improve_health: "Improve Health" };
+          const expLabels: Record<Experience, string> = { beginner: "Beginner", tried_briefly: "Tried Briefly", months_in: "Months In", veteran: "Veteran" };
+          const actLabels: Record<ActivityLevel, string> = { sedentary: "Sedentary", light: "Light", moderate: "Moderate", very_active: "Very Active" };
+          const strugLabels: Record<Struggle, string> = { sugar_cravings: "Sugar Cravings", low_energy: "Low Energy", digestive: "Digestive Issues", social_pressure: "Social Pressure", recipe_ideas: "Need Recipe Ideas", discipline: "Discipline" };
+          const interestLabels: Record<Interest, string> = { recipes: "Recipes", exercise: "Exercise", ketosis: "Ketosis", mental_clarity: "Mental Clarity", progress_tracking: "Progress Tracking", motivation: "Motivation" };
+          const sexLabels: Record<Sex, string> = { male: "Male", female: "Female", unspecified: "Not Set" };
+
+          const saveOnboarding = (key: string, value: any) => {
+            localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+            window.dispatchEvent(new Event("profile-update"));
+            toast.success("Updated!");
+          };
+
+          const updateAnswer = (index: number, value: any) => {
+            try {
+              const raw = localStorage.getItem("carnivore-onboarding-answers");
+              const answers = raw ? JSON.parse(raw) : [0, 0, [], 1, []];
+              answers[index] = value;
+              saveOnboarding("carnivore-onboarding-answers", answers);
+            } catch { /* ignore */ }
+          };
+
+          const updateBody = (field: string, value: any) => {
+            try {
+              const raw = localStorage.getItem("carnivore-onboarding-body");
+              const body = raw ? JSON.parse(raw) : {};
+              body[field] = value;
+              saveOnboarding("carnivore-onboarding-body", body);
+            } catch { /* ignore */ }
+          };
+
+          const GOAL_MAP: Goal[] = ["lose_weight", "build_muscle", "maintain", "improve_health"];
+          const EXP_MAP: Experience[] = ["beginner", "tried_briefly", "months_in", "veteran"];
+          const ACTIVITY_MAP: ActivityLevel[] = ["sedentary", "light", "moderate", "very_active"];
+          const STRUGGLE_MAP: Struggle[] = ["sugar_cravings", "low_energy", "digestive", "social_pressure", "recipe_ideas", "discipline"];
+          const INTEREST_MAP: Interest[] = ["recipes", "exercise", "ketosis", "mental_clarity", "progress_tracking", "motivation"];
+          const SEX_MAP: Sex[] = ["male", "female", "unspecified"];
+
+          return (
             <div className="space-y-3">
-              {/* Local favorites */}
-              {favoriteRecipes.length > 0 && (
-                <>
-                  {favoriteRecipes.map((r) => (
-                    <div key={r.name} className="ios-card p-3.5 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">{r.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-0.5"><Clock size={11} /> {r.time}</span>
-                          <span className="flex items-center gap-0.5"><Flame size={11} /> {r.cal} cal</span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => toggleFavorite(r.name)}
-                        className="p-1.5 rounded-lg active:scale-90 transition-all"
-                      >
-                        <Heart size={16} className="fill-destructive text-destructive" />
+              {!userProfile.isComplete && (
+                <div className="ios-card p-4 border-primary/30">
+                  <p className="text-sm text-muted-foreground">Complete onboarding first to see your goals.</p>
+                  <button onClick={() => navigate("/onboarding")} className="mt-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold">
+                    Start Onboarding
+                  </button>
+                </div>
+              )}
+
+              {/* Primary Goal */}
+              <div className="ios-card p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">🎯 Primary Goal</label>
+                <div className="flex gap-2 flex-wrap">
+                  {GOAL_MAP.map((g, i) => (
+                    <button key={g} onClick={() => updateAnswer(0, i)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${userProfile.goal === g ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+                      {goalLabels[g]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Experience */}
+              <div className="ios-card p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">📊 Experience Level</label>
+                <div className="flex gap-2 flex-wrap">
+                  {EXP_MAP.map((e, i) => (
+                    <button key={e} onClick={() => updateAnswer(1, i)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${userProfile.experience === e ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+                      {expLabels[e]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Activity Level */}
+              <div className="ios-card p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">🏃 Activity Level</label>
+                <div className="flex gap-2 flex-wrap">
+                  {ACTIVITY_MAP.map((a, i) => (
+                    <button key={a} onClick={() => updateAnswer(3, i)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${userProfile.activityLevel === a ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+                      {actLabels[a]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Body Stats */}
+              <div className="ios-card p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-3">🧍 Body Stats</label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-muted-foreground w-16">Sex</span>
+                    {SEX_MAP.map((s, i) => (
+                      <button key={s} onClick={() => updateBody("sex", i)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${userProfile.body.sex === s ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+                        {sexLabels[s]}
                       </button>
+                    ))}
+                  </div>
+                  {([
+                    { label: "Age", field: "age", unit: "years", val: userProfile.body.age },
+                    { label: "Height", field: "height", unit: "cm", val: userProfile.body.height },
+                    { label: "Weight", field: "weight", unit: "kg", val: userProfile.body.weight },
+                    { label: "Goal Weight", field: "goalWeight", unit: "kg", val: userProfile.body.goalWeight },
+                  ] as const).map(({ label, field, unit, val }) => (
+                    <div key={field} className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground w-16">{label}</span>
+                      <input
+                        type="number"
+                        defaultValue={val ?? ""}
+                        onBlur={(e) => updateBody(field, e.target.value ? Number(e.target.value) : null)}
+                        className="flex-1 bg-secondary rounded-lg px-3 py-1.5 text-sm text-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 max-w-[120px]"
+                      />
+                      <span className="text-xs text-muted-foreground">{unit}</span>
                     </div>
                   ))}
-                </>
-              )}
-              {/* Community liked recipes */}
-              {likedRecipes.map((r) => <RecipeCard key={r.id} r={r} />)}
+                </div>
+              </div>
+
+              {/* Struggles */}
+              <div className="ios-card p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">💪 Struggles</label>
+                <div className="flex gap-2 flex-wrap">
+                  {STRUGGLE_MAP.map((s, i) => {
+                    const active = userProfile.struggles.includes(s);
+                    return (
+                      <button key={s} onClick={() => {
+                        try {
+                          const raw = localStorage.getItem("carnivore-onboarding-answers");
+                          const answers = raw ? JSON.parse(raw) : [0, 0, [], 1, []];
+                          const current: number[] = answers[2] || [];
+                          answers[2] = active ? current.filter((x: number) => x !== i) : [...current, i];
+                          saveOnboarding("carnivore-onboarding-answers", answers);
+                        } catch { /* ignore */ }
+                      }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${active ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+                        {strugLabels[s]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Interests */}
+              <div className="ios-card p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">⭐ Interests</label>
+                <div className="flex gap-2 flex-wrap">
+                  {INTEREST_MAP.map((s, i) => {
+                    const active = userProfile.interests.includes(s);
+                    return (
+                      <button key={s} onClick={() => {
+                        try {
+                          const raw = localStorage.getItem("carnivore-onboarding-answers");
+                          const answers = raw ? JSON.parse(raw) : [0, 0, [], 1, []];
+                          const current: number[] = answers[4] || [];
+                          answers[4] = active ? current.filter((x: number) => x !== i) : [...current, i];
+                          saveOnboarding("carnivore-onboarding-answers", answers);
+                        } catch { /* ignore */ }
+                      }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${active ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+                        {interestLabels[s]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Nutrition Targets (computed, read-only) */}
+              <div className="ios-card p-4">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">🥩 Daily Nutrition Targets</label>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-lg font-bold text-foreground">{userProfile.nutritionTargets.calories}</p>
+                    <p className="text-[10px] text-muted-foreground">kcal</p>
+                  </div>
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-lg font-bold text-primary">{userProfile.nutritionTargets.protein}g</p>
+                    <p className="text-[10px] text-muted-foreground">protein</p>
+                  </div>
+                  <div className="bg-secondary rounded-xl p-3">
+                    <p className="text-lg font-bold text-foreground">{userProfile.nutritionTargets.fat}g</p>
+                    <p className="text-[10px] text-muted-foreground">fat</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-2 text-center">Auto-calculated from your body stats, goal & activity level</p>
+              </div>
             </div>
-          )
-        )}
+          );
+        })()}
 
         {/* Your Feed */}
         {tab === "feed" && (() => {
