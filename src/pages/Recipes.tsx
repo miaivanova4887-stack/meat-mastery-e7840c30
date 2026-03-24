@@ -230,7 +230,7 @@ const Recipes = () => {
               className="flex items-center gap-1 mt-3 text-xs text-primary font-medium min-h-[36px]"
             >
               {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              {isExpanded ? "Hide Ingredients" : "Show Ingredients"}
+              {isExpanded ? t("recipes.hideIngredients") : t("recipes.showIngredients")}
             </button>
 
             {isExpanded && (
