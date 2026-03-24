@@ -105,9 +105,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       {/* Hero */}
-      <div className="relative h-[55vh] overflow-hidden">
-        <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-black/30" />
+      <div className="relative h-[58vh] overflow-hidden">
+        <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover scale-105" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-black/40" />
+        {/* Accent glow behind hero */}
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-32 rounded-full blur-[80px] opacity-20"
+          style={{ background: "linear-gradient(90deg, hsl(var(--flame)), hsl(var(--gold)))" }}
+        />
         <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between"
           style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingLeft: "16px", paddingRight: "16px" }}
         >
@@ -115,13 +119,17 @@ const Index = () => {
           <ThemeToggle />
         </div>
         <div className="absolute bottom-0 left-0 right-0 p-6 pb-8">
-          <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-1 animate-fade-in">
-            {t("home.healingJourney")}
-          </p>
-          <h1 className="text-4xl font-display font-black text-foreground leading-[1.05] tracking-tight">
-            {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
+          <div className="flex items-center gap-2 mb-2 animate-fade-in">
+            <div className="w-5 h-[1.5px] rounded-full bg-primary" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary">
+              {t("home.healingJourney")}
+            </p>
+          </div>
+          <h1 className="text-[2.2rem] font-black text-foreground leading-[1.02] tracking-[-0.02em]">
+            {t("home.healthIsWealth")}<br />
+            <span className="text-gradient-flame">{t("home.healthIsWealth2")}</span>
           </h1>
-          <p className="text-muted-foreground mt-2 text-[13px] max-w-[280px] leading-relaxed">
+          <p className="text-muted-foreground mt-2.5 text-[13px] max-w-[280px] leading-relaxed font-light">
             {subtitle}
           </p>
         </div>
