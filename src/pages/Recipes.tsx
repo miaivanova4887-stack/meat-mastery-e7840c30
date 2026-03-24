@@ -30,18 +30,7 @@ const tierFromProfile = (diet: string | undefined): DietTier | null => {
   return null;
 };
 
-// Snack is now in the upper craving-style menu, not in meal breakdown
-const UPPER_MENU: Record<string, string> = {
-  all: "🔥 All",
-  snack: "🍖 Snacks",
-  ...CRAVING_LABELS,
-};
-// Remove "all" duplicate from CRAVING_LABELS since we include it above
-delete (UPPER_MENU as any)["all"];
-const FINAL_MENU: Record<string, string> = { all: "🔥 All", snack: "🍖 Snacks" };
-for (const [k, v] of Object.entries(CRAVING_LABELS)) {
-  if (k !== "all") FINAL_MENU[k] = v;
-}
+// Filter menus are now built dynamically from i18n in the component
 
 const Recipes = () => {
   const navigate = useNavigate();
