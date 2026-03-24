@@ -250,8 +250,8 @@ const Recipes = () => {
                               onClick={() => {
                                 const parsed = parseAmount(ing.amount);
                                 addItem(ing.name, parsed.quantity * mult, parsed.unit);
-                                toast.success(`${ing.name} added`, {
-                                  action: { label: "Open list", onClick: () => navigate("/shopping-bag") },
+                                toast.success(t("recipes.added", { name: ing.name }), {
+                                  action: { label: t("recipes.openList"), onClick: () => navigate("/shopping-bag") },
                                 });
                               }}
                               className="text-muted-foreground hover:text-primary p-1.5"
