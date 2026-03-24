@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Watch, Footprints, Heart, Activity, CheckCircle2, Flame } from "lucide-react";
+import { ArrowLeft, Watch, Footprints, Heart, Weight, CheckCircle2, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -121,7 +121,7 @@ const Progress = () => {
                 <p className="text-[10px] text-muted-foreground">BPM</p>
               </div>
               <div className="bg-muted rounded-lg p-3 text-center">
-                <Activity size={16} className="mx-auto text-blue-500 mb-1" />
+                <Weight size={16} className="mx-auto text-primary mb-1" />
                 <p className="text-lg font-bold text-foreground">
                   {healthData.weight ? `${healthData.weight.toFixed(1)}` : "—"}
                 </p>
