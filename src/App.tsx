@@ -138,7 +138,7 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav />
-              <BuildStamp />
+              
             </BrowserRouter>
           </HealthConnectProvider>
           </UserProfileProvider>

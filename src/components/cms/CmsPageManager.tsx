@@ -1,11 +1,32 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, FileText, Trash2, Globe, GlobeLock, Pencil } from "lucide-react";
+import { Plus, FileText, Trash2, Globe, GlobeLock, Layout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { PlacedComponent } from "./cmsTypes";
+
+const APP_PAGES = [
+  { title: "Home", path: "/" },
+  { title: "Benefits", path: "/benefits" },
+  { title: "Recipes", path: "/recipes" },
+  { title: "Ketosis Timer", path: "/timer" },
+  { title: "Meal Plan", path: "/meal-plan" },
+  { title: "Ingredients", path: "/ingredients" },
+  { title: "Exercise", path: "/exercise" },
+  { title: "Cravings", path: "/cravings" },
+  { title: "Sustain Results", path: "/sustain" },
+  { title: "Myths Busted", path: "/myths" },
+  { title: "Complete Guide", path: "/guide" },
+  { title: "Getting Started", path: "/getting-started" },
+  { title: "Budget Eating", path: "/budget" },
+  { title: "Athletic Performance", path: "/athletic" },
+  { title: "Community", path: "/community" },
+  { title: "Progress", path: "/progress" },
+  { title: "News Feed", path: "/news" },
+  { title: "Profile", path: "/profile" },
+];
 
 interface CmsPage {
   id: string;
