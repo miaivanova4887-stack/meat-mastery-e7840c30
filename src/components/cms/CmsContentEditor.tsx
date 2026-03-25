@@ -68,7 +68,6 @@ const SECTION_NAMES: Record<string, string> = {
   links: "Links & Buttons",
   phases: "Ketosis Phases",
   science: "Science Descriptions",
-  tips: "Tips",
   controls: "Controls & Labels",
   coaching_cta: "Coaching CTA",
 };
