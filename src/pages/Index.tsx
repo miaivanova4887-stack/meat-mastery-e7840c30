@@ -72,6 +72,7 @@ const Index = () => {
   const profile = useUserProfile();
   const [showResetDrawer, setShowResetDrawer] = useState(false);
   const { t } = useTranslation();
+  const { hasAccess } = useSubscription();
 
   if (!isOnboardingComplete()) {
     return <Navigate to="/onboarding" replace />;
