@@ -1,25 +1,18 @@
 
 
-## Move YogaFlowProgram to First Position in Training Programs
+## Update TTS Voice Parameters
 
-### Change
-**File: `src/pages/Exercise.tsx`**
+**File:** `src/components/exercise/YogaFlowProgram.tsx`
 
-Move `<YogaFlowProgram />` from line 191 (after `categoryKeys.map()`) to line 170 (before `categoryKeys.map()`), so it renders as the first item inside the Training Programs section.
+**Change:** On line 46, add `rate`, `pitch`, and `volume` parameters to the single `TextToSpeech.speak()` call inside the `speak` callback:
 
-```
-Before:
-  <h2>Training Programs</h2>
-  {categoryKeys.map(...)}
-  <YogaFlowProgram />
+```typescript
+// Before
+await TextToSpeech.speak({ text, lang: ttsLang });
 
-After:
-  <h2>Training Programs</h2>
-  <YogaFlowProgram />
-  {categoryKeys.map(...)}
+// After
+await TextToSpeech.speak({ text, lang: ttsLang, rate: 0.85, pitch: 1.05, volume: 1.0 });
 ```
 
-### What does NOT change
-- No styling, logic, imports, or other components modified
-- Only the render order changes
+This is the only `speak()` invocation — all pose announcements, side switches, and completion messages flow through this one callback. No other changes.
 
