@@ -308,6 +308,8 @@
     "highCarbsWarning": "⚠️ Glucides élevés — peut ne pas être compatible carnivore",
     "voiceLog": "Journal vocal",
     "voiceLogDesc": "Parlez pour enregistrer repas, stats, constantes & plus",
+    "typeOrSpeak": "Écrire ou Parler",
+    "typeOrSpeakDesc": "Enregistrez vos repas par texte ou voix — sans crédits IA",
     "stoppingMic": "Arrêt du micro…",
     "parsingSpeech": "Analyse de la parole…",
     "tapToStop": "Appuyez pour arrêter et traiter",
