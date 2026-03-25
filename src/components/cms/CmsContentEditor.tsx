@@ -40,6 +40,7 @@ const PAGE_NAMES: Record<string, string> = {
   exercise: "Exercise",
   ingredients: "Ingredients",
   ketosis: "Ketosis Timer",
+  timer: "Ketosis Timer",
   stories: "Success Stories",
   community: "Community",
   shopping: "Shopping Bag",
@@ -65,6 +66,10 @@ const SECTION_NAMES: Record<string, string> = {
   mealDescs: "Meal Descriptions",
   quiz: "Quiz",
   links: "Links & Buttons",
+  phases: "Ketosis Phases",
+  science: "Science Descriptions",
+  controls: "Controls & Labels",
+  coaching_cta: "Coaching CTA",
 };
 
 // Known link/button pairs per page: { page, section, label_key (i18n path), url }
