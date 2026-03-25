@@ -58,6 +58,11 @@ function ScrollToTopHandler() {
   return null;
 }
 
+function ContentOverrideLoader() {
+  useContentOverrides();
+  return null;
+}
+
 /** Handles Android hardware back button for in-app navigation */
 function BackButtonHandler() {
   const navigate = useNavigate();
