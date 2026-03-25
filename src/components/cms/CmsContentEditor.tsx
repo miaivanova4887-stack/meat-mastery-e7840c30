@@ -64,7 +64,37 @@ const SECTION_NAMES: Record<string, string> = {
   mealLabels: "Meal Labels",
   mealDescs: "Meal Descriptions",
   quiz: "Quiz",
+  links: "Links & Buttons",
 };
+
+// Known link/button pairs per page: { page, section, label_key (i18n path), url }
+const LINK_PAIRS: Array<{ page: string; section: string; labelKey: string; labelEn: string; labelFr: string; url: string }> = [
+  { page: "home", section: "links", labelKey: "motivationTitle", labelEn: "Need extra motivation?", labelFr: "Besoin de motivation ?", url: "#motivation" },
+  { page: "home", section: "links", labelKey: "benefits_link", labelEn: "Benefits", labelFr: "Bienfaits", url: "/benefits" },
+  { page: "home", section: "links", labelKey: "recipes_link", labelEn: "Recipes", labelFr: "Recettes", url: "/recipes" },
+  { page: "home", section: "links", labelKey: "timer_link", labelEn: "Ketosis Timer", labelFr: "Minuterie Cétose", url: "/timer" },
+  { page: "home", section: "links", labelKey: "ingredients_link", labelEn: "Ingredients", labelFr: "Ingrédients", url: "/ingredients" },
+  { page: "home", section: "links", labelKey: "exercise_link", labelEn: "Exercise", labelFr: "Exercice", url: "/exercise" },
+  { page: "home", section: "links", labelKey: "cravings_link", labelEn: "Cravings", labelFr: "Envies", url: "/cravings" },
+  { page: "home", section: "links", labelKey: "sustain_link", labelEn: "Sustain Results", labelFr: "Maintenir les résultats", url: "/sustain" },
+  { page: "home", section: "links", labelKey: "myths_link", labelEn: "Myths Busted", labelFr: "Mythes démystifiés", url: "/myths" },
+  { page: "home", section: "links", labelKey: "guide_link", labelEn: "Complete Guide", labelFr: "Guide complet", url: "/guide" },
+  { page: "home", section: "links", labelKey: "getting_started_link", labelEn: "First 30 Days", labelFr: "30 premiers jours", url: "/getting-started" },
+  { page: "home", section: "links", labelKey: "budget_link", labelEn: "Budget Eating", labelFr: "Manger petit budget", url: "/budget" },
+  { page: "home", section: "links", labelKey: "athletic_link", labelEn: "Athletic Fuel", labelFr: "Carburant athlétique", url: "/athletic" },
+  { page: "recipes", section: "links", labelKey: "shopping_bag_link", labelEn: "Shopping Bag", labelFr: "Panier", url: "/shopping-bag" },
+  { page: "recipes", section: "links", labelKey: "create_recipe_link", labelEn: "Create Recipe", labelFr: "Créer une recette", url: "/create-recipe" },
+  { page: "recipes", section: "links", labelKey: "recipe_coach_link", labelEn: "Recipe Coach", labelFr: "Coach Recettes", url: "/recipe-coach" },
+  { page: "shopping", section: "links", labelKey: "browse_ingredients_link", labelEn: "Browse Ingredients", labelFr: "Parcourir ingrédients", url: "/ingredients" },
+  { page: "progress", section: "links", labelKey: "health_sync_link", labelEn: "Health Sync", labelFr: "Sync Santé", url: "/progress/sync" },
+  { page: "progress", section: "links", labelKey: "sign_in_link", labelEn: "Sign In", labelFr: "Se connecter", url: "/auth" },
+  { page: "community", section: "links", labelKey: "stories_link", labelEn: "Success Stories", labelFr: "Témoignages", url: "/stories" },
+  { page: "nav", section: "links", labelKey: "home_link", labelEn: "Home", labelFr: "Accueil", url: "/" },
+  { page: "nav", section: "links", labelKey: "recipes_link", labelEn: "Recipes", labelFr: "Recettes", url: "/recipes" },
+  { page: "nav", section: "links", labelKey: "plan_link", labelEn: "Plan", labelFr: "Plan", url: "/meal-plan" },
+  { page: "nav", section: "links", labelKey: "progress_link", labelEn: "Progress", labelFr: "Progrès", url: "/progress" },
+  { page: "nav", section: "links", labelKey: "profile_link", labelEn: "Profile", labelFr: "Profil", url: "/profile" },
+];
 
 function humanize(str: string): string {
   return str
@@ -114,6 +144,12 @@ function TypeIcon({ type }: { type: string }) {
   return <Type className="h-3 w-3 text-muted-foreground" />;
 }
 
+function isValidUrl(str: string): boolean {
+  if (!str.trim()) return true; // allow empty
+  if (str.startsWith("/") || str.startsWith("#")) return true; // relative / anchor
+  try { new URL(str.trim()); return true; } catch { return false; }
+}
+
 export default function CmsContentEditor() {
   const [dbBlocks, setDbBlocks] = useState<ContentBlock[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,6 +159,9 @@ export default function CmsContentEditor() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [sectionStatus, setSectionStatus] = useState<Record<string, "success" | "error" | null>>({});
   const { toast } = useToast();
+
+  // Link pair edits: keyed by `page|section|labelKey|field|locale`
+  const [linkEdits, setLinkEdits] = useState<Record<string, string>>({});
 
   const allContent = useMemo(() => {
     const map = new Map<string, { en: string; fr: string; type: string }>();
@@ -151,6 +190,27 @@ export default function CmsContentEditor() {
     return map;
   }, [dbBlocks]);
 
+  // Build link pairs from DB + defaults
+  const linkPairsByPage = useMemo(() => {
+    const result: Record<string, Array<{ labelKey: string; labelEn: string; labelFr: string; urlEn: string; urlFr: string }>> = {};
+    for (const lp of LINK_PAIRS) {
+      if (!result[lp.page]) result[lp.page] = [];
+      // Check DB overrides
+      const labelEnDb = dbBlocks.find(b => b.page === lp.page && b.section === "links" && b.key === `${lp.labelKey}_label` && b.locale === "en");
+      const labelFrDb = dbBlocks.find(b => b.page === lp.page && b.section === "links" && b.key === `${lp.labelKey}_label` && b.locale === "fr");
+      const urlEnDb = dbBlocks.find(b => b.page === lp.page && b.section === "links" && b.key === `${lp.labelKey}_url` && b.locale === "en");
+      const urlFrDb = dbBlocks.find(b => b.page === lp.page && b.section === "links" && b.key === `${lp.labelKey}_url` && b.locale === "fr");
+      result[lp.page].push({
+        labelKey: lp.labelKey,
+        labelEn: labelEnDb?.value ?? lp.labelEn,
+        labelFr: labelFrDb?.value ?? lp.labelFr,
+        urlEn: urlEnDb?.value ?? lp.url,
+        urlFr: urlFrDb?.value ?? lp.url,
+      });
+    }
+    return result;
+  }, [dbBlocks]);
+
   const grouped = useMemo(() => {
     const result: Record<string, Record<string, Array<{ key: string; en: string; fr: string; type: string; mapKey: string }>>> = {};
     const searchLower = search.toLowerCase();
@@ -161,8 +221,12 @@ export default function CmsContentEditor() {
       if (!result[page][section]) result[page][section] = [];
       result[page][section].push({ key, en: data.en, fr: data.fr, type: data.type, mapKey });
     }
+    // Ensure pages with link pairs appear even if they have no i18n fields matching search
+    for (const page of Object.keys(linkPairsByPage)) {
+      if (!result[page]) result[page] = {};
+    }
     return result;
-  }, [allContent, search]);
+  }, [allContent, search, linkPairsByPage]);
 
   const pages = useMemo(() => Object.keys(grouped).sort((a, b) => pageName(a).localeCompare(pageName(b))), [grouped]);
 
@@ -186,6 +250,88 @@ export default function CmsContentEditor() {
   };
   const handleEdit = (mapKey: string, locale: string, value: string) => {
     setEdits(prev => ({ ...prev, [getEditKey(mapKey, locale)]: value }));
+  };
+
+  const getLinkEditKey = (page: string, labelKey: string, field: string, locale: string) =>
+    `${page}|links|${labelKey}|${field}|${locale}`;
+
+  const getLinkDisplayValue = (page: string, labelKey: string, field: string, locale: string, original: string) => {
+    const ek = getLinkEditKey(page, labelKey, field, locale);
+    return ek in linkEdits ? linkEdits[ek] : original;
+  };
+
+  const handleLinkEdit = (page: string, labelKey: string, field: string, locale: string, value: string) => {
+    setLinkEdits(prev => ({ ...prev, [getLinkEditKey(page, labelKey, field, locale)]: value }));
+  };
+
+  const hasUnsavedLinks = (page: string) => {
+    return Object.keys(linkEdits).some(ek => ek.startsWith(`${page}|links|`));
+  };
+
+  const saveLinkSection = async (page: string) => {
+    const sectionKey = `${page}|links`;
+    setSaving(sectionKey);
+    let hasError = false;
+
+    const relevantKeys = Object.keys(linkEdits).filter(ek => ek.startsWith(`${page}|links|`));
+
+    // Validate URLs first
+    for (const ek of relevantKeys) {
+      const parts = ek.split("|");
+      const field = parts[3]; // "label" or "url"
+      if (field === "url") {
+        const val = linkEdits[ek];
+        if (!isValidUrl(val)) {
+          toast({ title: "Invalid URL", description: `URL must be valid (e.g. /path or https://...)`, variant: "destructive" });
+          hasError = true;
+          break;
+        }
+      }
+    }
+
+    if (!hasError) {
+      // Group by labelKey and save label+url together
+      const pairEdits = new Map<string, { field: string; locale: string; value: string }[]>();
+      for (const ek of relevantKeys) {
+        const parts = ek.split("|");
+        const labelKey = parts[2];
+        const field = parts[3];
+        const locale = parts[4];
+        if (!pairEdits.has(labelKey)) pairEdits.set(labelKey, []);
+        pairEdits.get(labelKey)!.push({ field, locale, value: linkEdits[ek] });
+      }
+
+      for (const [labelKey, fieldEdits] of pairEdits) {
+        for (const { field, locale, value } of fieldEdits) {
+          const dbKey = `${labelKey}_${field}`;
+          const existing = dbBlocks.find(b => b.page === page && b.section === "links" && b.key === dbKey && b.locale === locale);
+          const type = field === "url" ? "link" : "text";
+
+          const result = existing
+            ? await (supabase as any).from("content_blocks").update({ value, type, updated_at: new Date().toISOString() }).eq("id", existing.id)
+            : await (supabase as any).from("content_blocks").insert({ page, section: "links", key: dbKey, type, locale, value });
+
+          if (result.error) {
+            hasError = true;
+            toast({ title: "Save failed", description: result.error.message, variant: "destructive" });
+          }
+        }
+      }
+    }
+
+    if (!hasError) {
+      const clean = { ...linkEdits };
+      relevantKeys.forEach(ek => delete clean[ek]);
+      setLinkEdits(clean);
+      await fetchBlocks();
+      await reloadContentOverrides();
+      setSectionStatus(prev => ({ ...prev, [sectionKey]: "success" }));
+      setTimeout(() => setSectionStatus(prev => ({ ...prev, [sectionKey]: null })), 3000);
+    } else {
+      setSectionStatus(prev => ({ ...prev, [sectionKey]: "error" }));
+      setTimeout(() => setSectionStatus(prev => ({ ...prev, [sectionKey]: null })), 3000);
+    }
+    setSaving(null);
   };
 
   const saveSection = async (page: string, section: string) => {
@@ -251,7 +397,11 @@ export default function CmsContentEditor() {
     return <div className="flex items-center justify-center h-full"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
-  const currentSections = selectedPage && grouped[selectedPage] ? Object.keys(grouped[selectedPage]).sort((a, b) => sectionName(a).localeCompare(sectionName(b))) : [];
+  const currentSections = selectedPage && grouped[selectedPage]
+    ? Object.keys(grouped[selectedPage]).filter(s => s !== "links").sort((a, b) => sectionName(a).localeCompare(sectionName(b)))
+    : [];
+
+  const currentLinkPairs = selectedPage ? (linkPairsByPage[selectedPage] || []) : [];
 
   return (
     <div className="flex h-full">
@@ -267,7 +417,8 @@ export default function CmsContentEditor() {
           <div className="p-1.5 space-y-0.5">
             {pages.map(page => {
               const sections = Object.keys(grouped[page]);
-              const fieldCount = sections.reduce((s, sec) => s + grouped[page][sec].length, 0);
+              const fieldCount = sections.reduce((s, sec) => s + (grouped[page][sec]?.length || 0), 0);
+              const linkCount = (linkPairsByPage[page] || []).length;
               return (
                 <button
                   key={page}
@@ -277,7 +428,9 @@ export default function CmsContentEditor() {
                   }`}
                 >
                   <div className="font-medium">{pageName(page)}</div>
-                  <div className="text-[10px] text-muted-foreground">{fieldCount} fields</div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {fieldCount} fields{linkCount > 0 ? ` · ${linkCount} links` : ""}
+                  </div>
                 </button>
               );
             })}
@@ -291,12 +444,95 @@ export default function CmsContentEditor() {
           <>
             <div className="px-5 py-3 border-b border-border bg-card/50">
               <h2 className="text-sm font-bold text-foreground">{pageName(selectedPage)}</h2>
-              <p className="text-[10px] text-muted-foreground">{currentSections.length} sections · Edit content for English and French</p>
+              <p className="text-[10px] text-muted-foreground">
+                {currentSections.length} sections{currentLinkPairs.length > 0 ? ` · ${currentLinkPairs.length} link pairs` : ""} · Edit content for English and French
+              </p>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-4">
+                {/* Link pairs section */}
+                {currentLinkPairs.length > 0 && (
+                  <div className="border border-blue-500/30 rounded-lg bg-card overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-blue-500/5 border-b border-blue-500/20">
+                      <div className="flex items-center gap-2">
+                        <LinkIcon className="h-3.5 w-3.5 text-blue-400" />
+                        <div>
+                          <h3 className="text-xs font-bold text-foreground">Links & Buttons</h3>
+                          <p className="text-[10px] text-muted-foreground">{currentLinkPairs.length} link pairs — label + URL</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {sectionStatus[`${selectedPage}|links`] === "success" && <span className="flex items-center gap-1 text-[10px] text-green-500 font-medium"><CheckCircle2 className="h-3 w-3" /> Saved</span>}
+                        {sectionStatus[`${selectedPage}|links`] === "error" && <span className="flex items-center gap-1 text-[10px] text-destructive font-medium"><XCircle className="h-3 w-3" /> Error</span>}
+                        {hasUnsavedLinks(selectedPage) && (
+                          <Button size="sm" className="h-7 text-[10px] px-3 gap-1" onClick={() => saveLinkSection(selectedPage)} disabled={saving === `${selectedPage}|links`}>
+                            {saving === `${selectedPage}|links` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                            Save All Links
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-border">
+                      {currentLinkPairs.map(pair => {
+                        const labelEn = getLinkDisplayValue(selectedPage, pair.labelKey, "label", "en", pair.labelEn);
+                        const labelFr = getLinkDisplayValue(selectedPage, pair.labelKey, "label", "fr", pair.labelFr);
+                        const urlEn = getLinkDisplayValue(selectedPage, pair.labelKey, "url", "en", pair.urlEn);
+                        const urlFr = getLinkDisplayValue(selectedPage, pair.labelKey, "url", "fr", pair.urlFr);
+                        const labelEnDirty = getLinkEditKey(selectedPage, pair.labelKey, "label", "en") in linkEdits;
+                        const labelFrDirty = getLinkEditKey(selectedPage, pair.labelKey, "label", "fr") in linkEdits;
+                        const urlEnDirty = getLinkEditKey(selectedPage, pair.labelKey, "url", "en") in linkEdits;
+                        const urlFrDirty = getLinkEditKey(selectedPage, pair.labelKey, "url", "fr") in linkEdits;
+                        const urlEnValid = isValidUrl(urlEn);
+                        const urlFrValid = isValidUrl(urlFr);
+
+                        return (
+                          <div key={pair.labelKey} className="px-4 py-3 space-y-2">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <LinkIcon className="h-3 w-3 text-blue-400" />
+                              <span className="text-[11px] font-semibold text-foreground">{humanize(pair.labelKey)}</span>
+                            </div>
+
+                            {/* Label row */}
+                            <div>
+                              <span className="text-[10px] font-medium text-muted-foreground block mb-0.5">Button Label</span>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <span className="text-[9px] text-muted-foreground uppercase mb-0.5 block flex items-center gap-1"><Globe className="h-2 w-2" /> EN</span>
+                                  <Input value={labelEn} onChange={e => handleLinkEdit(selectedPage, pair.labelKey, "label", "en", e.target.value)} className={`h-8 text-[11px] ${labelEnDirty ? "ring-1 ring-primary" : ""}`} />
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-muted-foreground uppercase mb-0.5 block flex items-center gap-1"><Globe className="h-2 w-2" /> FR</span>
+                                  <Input value={labelFr} onChange={e => handleLinkEdit(selectedPage, pair.labelKey, "label", "fr", e.target.value)} className={`h-8 text-[11px] ${labelFrDirty ? "ring-1 ring-primary" : ""}`} />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* URL row */}
+                            <div>
+                              <span className="text-[10px] font-medium text-muted-foreground block mb-0.5">URL / Route</span>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Input type="url" value={urlEn} onChange={e => handleLinkEdit(selectedPage, pair.labelKey, "url", "en", e.target.value)} className={`h-8 text-[11px] ${urlEnDirty ? "ring-1 ring-primary" : ""} ${!urlEnValid ? "border-destructive ring-1 ring-destructive" : ""}`} placeholder="/path or https://..." />
+                                  {!urlEnValid && <p className="text-[9px] text-destructive mt-0.5">Invalid URL format</p>}
+                                </div>
+                                <div>
+                                  <Input type="url" value={urlFr} onChange={e => handleLinkEdit(selectedPage, pair.labelKey, "url", "fr", e.target.value)} className={`h-8 text-[11px] ${urlFrDirty ? "ring-1 ring-primary" : ""} ${!urlFrValid ? "border-destructive ring-1 ring-destructive" : ""}`} placeholder="/path or https://..." />
+                                  {!urlFrValid && <p className="text-[9px] text-destructive mt-0.5">Invalid URL format</p>}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Regular content sections */}
                 {currentSections.map(section => {
                   const items = grouped[selectedPage][section];
+                  if (!items || items.length === 0) return null;
                   const sectionKey = `${selectedPage}|${section}`;
                   const hasUnsaved = hasUnsavedInSection(selectedPage, section);
                   const status = sectionStatus[sectionKey];
@@ -304,7 +540,6 @@ export default function CmsContentEditor() {
 
                   return (
                     <div key={section} className="border border-border rounded-lg bg-card overflow-hidden">
-                      {/* Section header */}
                       <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 border-b border-border">
                         <div>
                           <h3 className="text-xs font-bold text-foreground">{sectionName(section)}</h3>
@@ -322,9 +557,7 @@ export default function CmsContentEditor() {
                         </div>
                       </div>
 
-                      {/* Fields */}
                       <div className="divide-y divide-border">
-                        {/* Column headers */}
                         <div className="grid grid-cols-[180px_1fr_1fr] gap-3 px-4 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                           <span>Field</span>
                           <span className="flex items-center gap-1"><Globe className="h-2.5 w-2.5" /> English</span>
@@ -361,7 +594,6 @@ export default function CmsContentEditor() {
                                 )}
                               </div>
 
-                              {/* Image preview */}
                               {item.type === "image_url" && (enVal || frVal) && (
                                 <div className="mt-2 ml-[192px] flex gap-3">
                                   {enVal && <img src={enVal} alt="EN" className="h-16 rounded border border-border object-cover" onError={e => (e.currentTarget.style.display = "none")} />}
