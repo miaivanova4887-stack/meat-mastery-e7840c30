@@ -112,9 +112,9 @@ const Recipes = () => {
 
     return {
       custom: filter(customRecipes) as CustomRecipe[],
-      builtIn: filter(recipes),
+      builtIn: showMyRecipesOnly ? [] : filter(recipes),
     };
-  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, isFavorite, activeTag, isFrench]);
+  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, showMyRecipesOnly, isFavorite, activeTag, isFrench]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
