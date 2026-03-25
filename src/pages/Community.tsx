@@ -98,12 +98,14 @@ const Community = () => {
         </button>
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">Community</h1>
         {user && (
-          <button
-            onClick={() => navigate("/create-recipe?share=true")}
-            className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
-          >
-            <Plus size={16} />
-          </button>
+          <TeaserGate requiredTier="pro" featureName="Community Posting">
+            <button
+              onClick={() => navigate("/create-recipe?share=true")}
+              className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center"
+            >
+              <Plus size={16} />
+            </button>
+          </TeaserGate>
         )}
       </div>
 

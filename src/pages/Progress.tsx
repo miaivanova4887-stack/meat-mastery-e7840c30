@@ -101,6 +101,7 @@ const Progress = () => {
 
         {/* Category content */}
         <CategoryView category={category} />
+        </TeaserGate>
 
         {/* Health sync banner — changes based on connection status */}
         {isHealthConnected ? (
