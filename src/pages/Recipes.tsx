@@ -414,6 +414,12 @@ const Recipes = () => {
             <Heart size={11} className={showFavoritesOnly ? "fill-destructive" : ""} />
             {t("recipes.favorites")}
           </button>
+          <button onClick={() => setShowMyRecipesOnly(!showMyRecipesOnly)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 ${showMyRecipesOnly ? "bg-primary/15 text-primary border border-primary/30" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
+          >
+            <ChefHat size={11} />
+            {t("recipes.myRecipes")}
+          </button>
           {(["all", "snack", "sweets", "seafood", "bakery", "comfort", "quick", "organs", "cheesy", "crispy", "grilling"] as const).map((key) => (
             <button key={key} onClick={() => setActiveFilter(key)}
               className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${activeFilter === key ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
