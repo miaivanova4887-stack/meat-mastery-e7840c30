@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "apk:fresh:debug": "bash scripts/build-android-fresh.sh",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
