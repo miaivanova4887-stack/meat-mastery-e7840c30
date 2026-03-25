@@ -10,6 +10,7 @@ import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
 import { MealImage } from "@/hooks/useMealImage";
 import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
+import TeaserGate from "@/components/TeaserGate";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
 import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
