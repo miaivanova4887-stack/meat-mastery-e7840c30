@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { Flame, BookOpen, CalendarDays, User, TrendingUp } from "lucide-react";
+import { Flame, BookOpen, CalendarDays, User, TrendingUp, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 
@@ -13,6 +13,7 @@ const BottomNav = () => {
     { path: "/", icon: Flame, label: t("nav.home") },
     { path: "/recipes", icon: BookOpen, label: t("nav.recipes") },
     { path: "/meal-plan", icon: CalendarDays, label: t("nav.plan") },
+    { path: "/community", icon: Users, label: "Community" },
     { path: "/progress", icon: TrendingUp, label: t("nav.progress") },
   ];
 

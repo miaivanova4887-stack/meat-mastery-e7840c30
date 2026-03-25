@@ -1,4 +1,4 @@
-import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe, Crosshair } from "lucide-react";
+import { ArrowLeft, Heart, ChefHat, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe, Crosshair, Crown } from "lucide-react";
 import { useFavorites } from "@/hooks/useFavorites";
 import { recipes } from "@/data/recipes";
 import { Switch } from "@/components/ui/switch";
@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -29,6 +30,42 @@ interface CommunityRecipe {
   fat: string;
   likes_count: number;
   created_at: string;
+}
+
+function SubscriptionBadge() {
+  const { tier, subscriptionEnd } = useSubscription();
+  const navigate = useNavigate();
+
+  const tierConfig = {
+    free: { label: "Free Plan", color: "bg-secondary text-muted-foreground", icon: Zap },
+    pro: { label: "Pro Plan", color: "bg-primary/15 text-primary", icon: Zap },
+    elite: { label: "Elite Plan", color: "bg-[hsl(var(--gold))]/15 text-[hsl(var(--gold))]", icon: Crown },
+  };
+
+  const config = tierConfig[tier];
+  const Icon = config.icon;
+
+  return (
+    <div className="px-4 pb-2">
+      <button
+        onClick={() => navigate("/pricing")}
+        className="w-full ios-card p-3 flex items-center gap-3 hover:bg-secondary/60 transition-colors"
+      >
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.color}`}>
+          <Icon size={14} />
+        </div>
+        <div className="flex-1 text-left">
+          <p className="text-xs font-semibold text-foreground">{config.label}</p>
+          {subscriptionEnd && (
+            <p className="text-[10px] text-muted-foreground">
+              Renews {new Date(subscriptionEnd).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+        <ChevronRight size={14} className="text-muted-foreground" />
+      </button>
+    </div>
+  );
 }
 
 const Profile = () => {
@@ -349,6 +386,9 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Subscription badge */}
+      <SubscriptionBadge />
 
       {/* Tabs */}
       <div className="px-4 flex gap-2 mb-3">

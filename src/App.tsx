@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { ShoppingBagProvider } from "./contexts/ShoppingBagContext";
 import { UserProfileProvider } from "./contexts/UserProfileContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import BottomNav from "./components/BottomNav";
 import SplashScreen from "./components/SplashScreen";
 import Index from "./pages/Index";
@@ -40,6 +41,8 @@ import HealthSync from "./pages/HealthSync";
 import NewsFeed from "./pages/NewsFeed";
 import AdminNotifications from "./pages/AdminNotifications";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import Pricing from "./pages/Pricing";
+import Coaching from "./pages/Coaching";
 import { usePageViewTracker } from "./hooks/useAnalytics";
 import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 import { App as CapApp } from "@capacitor/app";
@@ -100,6 +103,7 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
+          <SubscriptionProvider>
           <ShoppingBagProvider>
           <UserProfileProvider>
           <HealthConnectProvider>
@@ -141,6 +145,8 @@ const App = () => {
                 <Route path="/news" element={<NewsFeed />} />
                 <Route path="/admin/notifications" element={<AdminNotifications />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/coaching" element={<Coaching />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav />
@@ -149,6 +155,7 @@ const App = () => {
           </HealthConnectProvider>
           </UserProfileProvider>
           </ShoppingBagProvider>
+          </SubscriptionProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>

@@ -1,4 +1,5 @@
 import { ArrowLeft, Plus, X, Trash2, ShoppingCart, ShoppingBag, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
+import TeaserGate from "@/components/TeaserGate";
 import { useNavigate } from "react-router-dom";
 import { useState, useMemo, useCallback, useRef } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
@@ -413,19 +414,21 @@ const MealPlan = () => {
 
       <div className="px-4 pt-4 space-y-4">
         {/* AI Generator Banner */}
-        <button
-          onClick={() => setShowAI(true)}
-          className="w-full ios-card p-3.5 flex items-center gap-3 hover:bg-secondary/60 transition-colors"
-        >
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Sparkles size={20} className="text-primary" />
-          </div>
-          <div className="text-left flex-1">
-            <p className="text-[13px] font-semibold text-foreground">{t("mealPlan.aiPlanner")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("mealPlan.aiPlannerDesc")}</p>
-          </div>
-          <ArrowLeft size={14} className="text-muted-foreground rotate-180" />
-        </button>
+        <TeaserGate requiredTier="elite" featureName="AI Meal Planner">
+          <button
+            onClick={() => setShowAI(true)}
+            className="w-full ios-card p-3.5 flex items-center gap-3 hover:bg-secondary/60 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Sparkles size={20} className="text-primary" />
+            </div>
+            <div className="text-left flex-1">
+              <p className="text-[13px] font-semibold text-foreground">{t("mealPlan.aiPlanner")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("mealPlan.aiPlannerDesc")}</p>
+            </div>
+            <ArrowLeft size={14} className="text-muted-foreground rotate-180" />
+          </button>
+        </TeaserGate>
 
         {/* Day Selector */}
         <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 scrollbar-hide">

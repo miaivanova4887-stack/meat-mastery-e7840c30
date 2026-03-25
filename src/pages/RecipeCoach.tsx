@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import ReactMarkdown from "react-markdown";
+import TeaserGate from "@/components/TeaserGate";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -18,6 +20,7 @@ const STARTERS = [
 const RecipeCoach = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
+  const { hasAccess } = useSubscription();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -172,7 +175,13 @@ const RecipeCoach = () => {
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 && (
+        {!hasAccess("pro") ? (
+          <div className="flex flex-col items-center justify-center h-full pb-8">
+            <TeaserGate requiredTier="pro" featureName="AI Carnivore Coach" mode="block">
+              <div />
+            </TeaserGate>
+          </div>
+        ) : messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-6 pb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
               <UtensilsCrossed size={28} className="text-primary-foreground" />
@@ -197,7 +206,7 @@ const RecipeCoach = () => {
           </div>
         )}
 
-        {messages.map((msg, i) => {
+        {hasAccess("pro") && messages.map((msg, i) => {
           const isLastAssistant = i === lastAssistantIdx;
           return (
             <div key={i}>
