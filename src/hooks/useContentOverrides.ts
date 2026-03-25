@@ -87,6 +87,8 @@ async function fetchAndApplyOverrides() {
     for (const [locale, overrides] of Object.entries(byLocale)) {
       i18n.addResourceBundle(locale, "translation", overrides, true, true);
     }
+    // Notify components to re-render with new resources
+    i18n.emit("languageChanged", i18n.language);
   } catch (err) {
     console.warn("Failed to load content overrides:", err);
   }
