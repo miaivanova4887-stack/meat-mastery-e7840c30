@@ -21,7 +21,6 @@ const RecipeCoach = () => {
   const navigate = useNavigate();
   const profile = useUserProfile();
   const { hasAccess } = useSubscription();
-  const profile = useUserProfile();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
