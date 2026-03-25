@@ -79,11 +79,65 @@ export default function CmsLayoutBuilder() {
 
   useEffect(() => { fetchLayouts(); }, [fetchLayouts]);
 
-  const selectPage = (slug: string) => {
+  const selectPage = async (slug: string) => {
     setSelectedSlug(slug);
-    const layout = layouts.find(l => l.page_slug === slug);
-    setCurrentBlocks(layout?.blocks || []);
     setInsertIndex(null);
+
+    // Load blocks from content_blocks table grouped by section
+    const { data: cbData } = await (supabase as any)
+      .from("content_blocks")
+      .select("section, key, type, locale, value")
+      .eq("page", slug)
+      .order("section");
+
+    const layout = layouts.find(l => l.page_slug === slug);
+    const layoutBlocks: LayoutBlock[] = layout?.blocks || [];
+
+    if (cbData && cbData.length > 0) {
+      // Group by section
+      const sectionMap: Record<string, { fields: Map<string, { type: string; en: string; fr: string }>; }> = {};
+      for (const row of cbData) {
+        if (!sectionMap[row.section]) sectionMap[row.section] = { fields: new Map() };
+        const sec = sectionMap[row.section];
+        if (!sec.fields.has(row.key)) sec.fields.set(row.key, { type: row.type, en: "", fr: "" });
+        const f = sec.fields.get(row.key)!;
+        if (row.locale === "en") f.en = row.value;
+        else if (row.locale === "fr") f.fr = row.value;
+      }
+
+      // Build blocks from content_blocks, merging with any existing layout blocks
+      const existingIds = new Set(layoutBlocks.map(b => b.name));
+      const contentBlocks: LayoutBlock[] = [];
+
+      for (const [section, data] of Object.entries(sectionMap)) {
+        // Check if layout already has this block
+        const existing = layoutBlocks.find(b => b.name === section);
+        const fields: BlockField[] = [];
+        const content: Record<string, { en: string; fr: string }> = {};
+
+        for (const [key, val] of data.fields.entries()) {
+          const label = key.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+          fields.push({ key, label, type: val.type as any });
+          content[key] = { en: val.en, fr: val.fr };
+        }
+
+        contentBlocks.push({
+          id: existing?.id || `cb_${section}`,
+          name: section,
+          fields,
+          content,
+        });
+      }
+
+      // Add any layout-only blocks that aren't in content_blocks
+      for (const lb of layoutBlocks) {
+        if (!sectionMap[lb.name]) contentBlocks.push(lb);
+      }
+
+      setCurrentBlocks(contentBlocks);
+    } else {
+      setCurrentBlocks(layoutBlocks);
+    }
   };
 
   const allPages = useMemo(() => [
