@@ -27,6 +27,17 @@ if [[ -f "$PLUGIN_SRC" ]]; then
   cp "$PLUGIN_SRC" "$PLUGIN_DEST_DIR/HealthConnectPlugin.kt"
 fi
 
+echo "🎨 Copying app launcher icons..."
+ICON_SRC="$ROOT_DIR/public/android-icons"
+if [[ -d "$ICON_SRC" ]]; then
+  for folder in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+    dest="$ANDROID_DIR/app/src/main/res/$folder"
+    mkdir -p "$dest"
+    cp "$ICON_SRC/$folder/"*.png "$dest/"
+  done
+  echo "✅ Icons copied"
+fi
+
 echo "🏗️ Assembling fresh debug APK (no cache)..."
 (cd "$ANDROID_DIR" && ./gradlew clean :app:assembleDebug --no-build-cache --rerun-tasks)
 
