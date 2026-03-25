@@ -121,6 +121,7 @@ export type Database = {
           diet_tiers: string[]
           fat: string
           id: string
+          image_url: string | null
           ingredients: Json
           likes_count: number
           meal_type: string
@@ -139,6 +140,7 @@ export type Database = {
           diet_tiers?: string[]
           fat?: string
           id?: string
+          image_url?: string | null
           ingredients?: Json
           likes_count?: number
           meal_type?: string
@@ -157,6 +159,7 @@ export type Database = {
           diet_tiers?: string[]
           fat?: string
           id?: string
+          image_url?: string | null
           ingredients?: Json
           likes_count?: number
           meal_type?: string
