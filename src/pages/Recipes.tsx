@@ -48,6 +48,7 @@ const Recipes = () => {
   const [activeCuisine, setActiveCuisine] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showMyRecipesOnly, setShowMyRecipesOnly] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
