@@ -155,6 +155,7 @@ const App = () => {
           </HealthConnectProvider>
           </UserProfileProvider>
           </ShoppingBagProvider>
+          </SubscriptionProvider>
           </AuthProvider>
         </TooltipProvider>
       </QueryClientProvider>
