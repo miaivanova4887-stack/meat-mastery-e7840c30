@@ -1,48 +1,44 @@
 
 
-## Combine Text Input + Voice into Single Native Component (No AI Credits)
+## Unify Visual Style Across Smart Log, Snap & Log, and Scan Barcode
 
-### Goal
-Replace the current AI-powered `VoiceRecognition` component with a unified **Smart Log** component that offers both text input and voice-to-text — all parsed locally on-device with zero AI credit cost.
+### Problem
+The three logging components have inconsistent idle-state UIs:
+- **Snap & Log** / **Scan Barcode**: Large card with centered icon circle + title + subtitle, dashed border, gradient overlay
+- **Smart Log (Voice/Text)**: Bare input row with mic/send buttons, no icon, no title, different padding
 
-### New File: `src/lib/parseHealthTranscript.ts`
+### Solution
+Give the Smart Log component the same card-style idle state as the other two, then reveal the input row on tap — creating a consistent "action card" pattern across all three.
 
-A pure client-side parser using keyword matching and regex. Takes a string, returns `{ summary, entries[] }` matching the current `ParsedVoiceResult` shape.
+### Changes (single file: `src/components/progress/VoiceRecognition.tsx`)
 
-**Parsing rules (from the edge function's prompt):**
-- **Food**: Match keywords — "ribeye"/"steak" 300g → 900 cal, 75g protein, 65g fat; "ground beef" 200g → 500/40/35; "eggs" 2 → 140/12/10; "bacon" 100g → 540/37/42; "salmon" 200g → 400/40/25; "chicken", "burger", "liver", "butter" with reasonable defaults
-- **Quantity extraction**: Regex for `(\d+)\s*(g|oz|kg|lb)?` before/after food keyword; scale proportionally from reference portions
-- **Weight**: "weight" or "weigh" + number → `body_measurements.weight`
-- **Blood pressure**: "bp" or "blood pressure" + two numbers → `vitals.bp_systolic/diastolic`
-- **Heart rate**: "heart rate"/"pulse"/"bpm" + number → `vitals.heart_rate`
-- **Mood/energy**: "mood"/"energy"/"sleep"/"clarity" + descriptor (great=4, good=3, okay=2, bad=1, terrible=0)
-- **Symptoms**: "headache"/"bloating"/"joint pain"/"fatigue"/"cravings" + severity words (0-4 scale)
-- **Ketones/glucose**: "ketones" + number → `vitals.ketones`; "glucose"/"blood sugar" + number → `vitals.blood_glucose`
+**Idle state** (when `!parsedResult` and no active input):
+- Add a new `expanded` state (`false` by default)
+- When `!expanded`: render a card matching PhotoRecognition/BarcodeScanner style:
+  - `rounded-xl border border-dashed border-primary/30 bg-card p-5` with centered layout
+  - `w-12 h-12 rounded-full bg-primary/10` icon circle containing a `Keyboard` icon (from lucide)
+  - Title: "Type or Speak" (use i18n key `progress.typeOrSpeak`)
+  - Subtitle: "Log food with text or voice — no AI credits" (i18n key `progress.typeOrSpeakDesc`)
+  - Subtle gradient overlay matching the other cards
+  - On click → set `expanded = true`
+- When `expanded`: show the existing input row (text field + mic + send) plus a collapse hint
+- Auto-collapse when `parsedResult` is dismissed
 
-### Modified: `src/components/progress/VoiceRecognition.tsx` → Unified Smart Log
+**Result state** (when `parsedResult` exists): unchanged — already matches the other components' result cards.
 
-Replace the current voice-only UI with a combined component:
-
-1. **Default state**: Show a text input field with a placeholder like "e.g. 300g ribeye, 2 eggs" and a submit button. Next to submit, a mic icon button to trigger voice input.
-
-2. **Text flow**: User types → taps submit → `parseHealthTranscript(text)` → show confirmation UI (same as current parsed result view) → Log All / Dismiss
-
-3. **Voice flow**: User taps mic → native speech recognition (existing `useVoiceCapture`) → transcript populates the text input → user can edit → taps submit → local parser → confirmation UI
-
-4. **Remove** the `supabase.functions.invoke("voice-log")` call entirely. Replace with synchronous `parseHealthTranscript()` call. No `processing` spinner needed (parsing is instant).
-
-5. **Keep** the confirmation UI (parsed entries list with Log All / Dismiss buttons) and `logEntries` function unchanged.
+### Visual Consistency Checklist
+| Property | Snap & Log | Scan Barcode | Smart Log (after) |
+|----------|-----------|-------------|------------------|
+| Border | dashed primary/30 | dashed primary/30 | dashed primary/30 |
+| Icon circle | 48px, primary/10 | 48px, primary/10 | 48px, primary/10 |
+| Gradient overlay | yes (0.04) | yes (0.04) | yes (0.04) |
+| Title size | text-sm font-semibold | text-sm font-semibold | text-sm font-semibold |
+| Subtitle | text-[11px] muted | text-[11px] muted | text-[11px] muted |
+| Padding | p-5 | p-5 | p-5 |
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/lib/parseHealthTranscript.ts` | New — client-side keyword/regex parser |
-| `src/components/progress/VoiceRecognition.tsx` | Replace AI call with local parser; add text input field; mic button fills text field with transcript |
-
-### What is NOT changed
-- `useVoiceCapture` hook — untouched (still handles native speech recognition)
-- `AddEntryDrawer` — untouched (manual metric-by-metric entry)
-- Edge function `voice-log` — left in place but no longer invoked
-- `logEntries` flow and database sync — unchanged
+| `src/components/progress/VoiceRecognition.tsx` | Add `expanded` state; render card-style idle UI matching other components; expand to input row on tap |
 
