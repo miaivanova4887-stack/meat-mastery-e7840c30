@@ -69,6 +69,9 @@ const Progress = () => {
         {/* Today's Nutrition Breakdown */}
         <NutrientBreakdown />
 
+        {/* Voice Recognition — Free (local on-device parser) */}
+        <VoiceRecognition />
+
         {/* Photo Recognition — Pro */}
         <TeaserGate requiredTier="pro" featureName="Snap & Log">
           <PhotoRecognition />
@@ -78,9 +81,6 @@ const Progress = () => {
         <TeaserGate requiredTier="pro" featureName="Scan Barcode">
           <BarcodeScanner />
         </TeaserGate>
-
-        {/* Voice Recognition — Free (local on-device parser) */}
-        <VoiceRecognition />
 
         {/* Category dropdown — always visible */}
         <Select value={category} onValueChange={(v) => setCategory(v as ProgressCategory)}>

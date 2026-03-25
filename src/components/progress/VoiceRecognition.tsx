@@ -215,7 +215,7 @@ const VoiceRecognition = () => {
 
   // Expanded input state
   return (
-    <div className="rounded-xl border border-dashed border-primary/30 bg-card p-4 relative overflow-hidden space-y-3">
+    <div className="rounded-xl border border-dashed border-primary/30 bg-card p-4 relative overflow-hidden space-y-3 min-h-[160px] flex flex-col justify-between">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] to-transparent pointer-events-none" />
       <div className="relative flex gap-2">
         <Input
