@@ -314,7 +314,7 @@ const Recipes = () => {
               key={tg}
               onClick={() => handleTagClick(tg)}
               className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-all active:scale-95 ${
-                activeTag === tg
+                activeTag?.toLowerCase() === tg.toLowerCase()
                   ? "bg-primary text-primary-foreground"
                   : "bg-primary/10 text-primary hover:bg-primary/20"
               }`}
