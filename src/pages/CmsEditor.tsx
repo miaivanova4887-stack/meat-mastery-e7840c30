@@ -126,7 +126,9 @@ export default function CmsEditor() {
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            {leftTab === "components" ? (
+            {leftTab === "content" ? (
+              <CmsContentEditor />
+            ) : leftTab === "components" ? (
               <CmsComponentLibrary onAddComponent={handleAddComponent} />
             ) : (
               <CmsPageManager
