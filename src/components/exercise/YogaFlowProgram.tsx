@@ -43,7 +43,7 @@ const YogaFlowProgram = () => {
     if (mutedRef.current || !text) return;
     try {
       await TextToSpeech.stop();
-      await TextToSpeech.speak({ text, lang: ttsLang });
+      await TextToSpeech.speak({ text, lang: ttsLang, rate: 0.85, pitch: 1.05, volume: 1.0 });
     } catch {
       // Fail silently on web / unsupported devices
     }
