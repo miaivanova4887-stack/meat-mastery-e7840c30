@@ -31,6 +31,8 @@ export interface CustomRecipe extends Recipe {
   steps: string[];
   createdAt: string;
   isCustom: true;
+  image_url?: string;
+  user_id?: string;
 }
 
 export const TIER_LABELS: Record<DietTier, string> = {
