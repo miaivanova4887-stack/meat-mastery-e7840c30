@@ -1,4 +1,5 @@
 import { ArrowLeft, Heart, Clock, Flame, Users, Plus, Loader2 } from "lucide-react";
+import TeaserGate from "@/components/TeaserGate";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
