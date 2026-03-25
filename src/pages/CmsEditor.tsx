@@ -104,7 +104,7 @@ export default function CmsEditor() {
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar with tabs */}
-        <div className="w-56 border-r border-border bg-card flex flex-col shrink-0">
+        <div className={`${leftTab === "content" ? "flex-1" : "w-56"} border-r border-border bg-card flex flex-col shrink-0 transition-all`}>
           <div className="flex border-b border-border">
             <button
               onClick={() => setLeftTab("content")}
@@ -141,22 +141,26 @@ export default function CmsEditor() {
           </div>
         </div>
 
-        <CmsCanvas
-          components={store.components}
-          selectedId={store.selectedId}
-          previewMode={previewMode}
-          onSelect={store.setSelectedId}
-          onMove={store.moveComponent}
-          onResize={store.resizeComponent}
-          onDelete={store.deleteComponent}
-          onDuplicate={store.duplicateComponent}
-        />
-        <CmsPropertiesPanel
-          component={store.selectedComponent}
-          onUpdateProps={store.updateProps}
-          onMove={store.moveComponent}
-          onResize={store.resizeComponent}
-        />
+        {leftTab !== "content" && (
+          <>
+            <CmsCanvas
+              components={store.components}
+              selectedId={store.selectedId}
+              previewMode={previewMode}
+              onSelect={store.setSelectedId}
+              onMove={store.moveComponent}
+              onResize={store.resizeComponent}
+              onDelete={store.deleteComponent}
+              onDuplicate={store.duplicateComponent}
+            />
+            <CmsPropertiesPanel
+              component={store.selectedComponent}
+              onUpdateProps={store.updateProps}
+              onMove={store.moveComponent}
+              onResize={store.resizeComponent}
+            />
+          </>
+        )}
       </div>
     </div>
   );
