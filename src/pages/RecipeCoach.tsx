@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import ReactMarkdown from "react-markdown";
+import TeaserGate from "@/components/TeaserGate";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
