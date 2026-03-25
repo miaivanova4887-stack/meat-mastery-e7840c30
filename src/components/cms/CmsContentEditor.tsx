@@ -66,6 +66,11 @@ const SECTION_NAMES: Record<string, string> = {
   mealDescs: "Meal Descriptions",
   quiz: "Quiz",
   links: "Links & Buttons",
+  phases: "Ketosis Phases",
+  science: "Science Descriptions",
+  tips: "Tips",
+  controls: "Controls & Labels",
+  coaching_cta: "Coaching CTA",
 };
 
 // Known link/button pairs per page: { page, section, label_key (i18n path), url }
