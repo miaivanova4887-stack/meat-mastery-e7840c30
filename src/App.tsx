@@ -145,6 +145,8 @@ const App = () => {
                 <Route path="/news" element={<NewsFeed />} />
                 <Route path="/admin/notifications" element={<AdminNotifications />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/coaching" element={<Coaching />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav />
