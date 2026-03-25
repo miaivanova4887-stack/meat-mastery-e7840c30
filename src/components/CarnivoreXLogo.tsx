@@ -1,6 +1,6 @@
 const CarnivoreXLogo = ({ className = "", size = "md" }: { className?: string; size?: "sm" | "md" | "lg" }) => {
   const styles = {
-    sm: "text-[10px]",
+    sm: "text-sm",
     md: "text-[12px]",
     lg: "text-[14px]",
   };
