@@ -44,7 +44,7 @@ import { usePageViewTracker } from "./hooks/useAnalytics";
 import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 import { App as CapApp } from "@capacitor/app";
 import { useScrollToTop } from "./hooks/useScrollToTop";
-import BuildStamp from "./components/BuildStamp";
+
 
 const queryClient = new QueryClient();
 
