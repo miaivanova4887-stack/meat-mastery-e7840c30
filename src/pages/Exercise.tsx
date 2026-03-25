@@ -188,6 +188,7 @@ const Exercise = () => {
               </div>
             );
           })}
+          <YogaFlowProgram />
         </div>
       </div>
     </div>
