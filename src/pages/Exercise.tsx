@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Dumbbell, Heart, Zap, Wind, Sparkles, Sun, Moon, ChevronRight, Activity, Music, Brain, Info } from "lucide-react";
+import YogaFlowProgram from "@/components/exercise/YogaFlowProgram";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -187,6 +188,7 @@ const Exercise = () => {
               </div>
             );
           })}
+          <YogaFlowProgram />
         </div>
       </div>
     </div>
