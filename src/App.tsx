@@ -8,6 +8,7 @@ import { ThemeProvider } from "next-themes";
 import { ShoppingBagProvider } from "./contexts/ShoppingBagContext";
 import { UserProfileProvider } from "./contexts/UserProfileContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import BottomNav from "./components/BottomNav";
 import SplashScreen from "./components/SplashScreen";
 import Index from "./pages/Index";
