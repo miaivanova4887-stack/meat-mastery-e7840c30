@@ -1,52 +1,48 @@
 
 
-## Two Changes: Remove Recipes Tab from Profile + Add "My Recipes" Filter to Recipes Page + Case-Insensitive Filters
+## Combine Text Input + Voice into Single Native Component (No AI Credits)
 
-### Change 1 — Profile.tsx: Remove `tab === "recipes"` block
+### Goal
+Replace the current AI-powered `VoiceRecognition` component with a unified **Smart Log** component that offers both text input and voice-to-text — all parsed locally on-device with zero AI credit cost.
 
-1. **Tab state** (line 80): Change type from `"feed" | "recipes" | "goals" | "settings"` to `"feed" | "goals" | "community" | "settings"`
+### New File: `src/lib/parseHealthTranscript.ts`
 
-2. **Tab bar** (lines 395-411): Replace `"recipes"` tab entry with `"community"` tab:
-   - `{ key: "community", label: "Community", icon: Users }`
+A pure client-side parser using keyword matching and regex. Takes a string, returns `{ summary, entries[] }` matching the current `ParsedVoiceResult` shape.
 
-3. **Delete lines 416-468** entirely (the `tab === "recipes"` block with My Recipes / Favorites / Liked sections)
+**Parsing rules (from the edge function's prompt):**
+- **Food**: Match keywords — "ribeye"/"steak" 300g → 900 cal, 75g protein, 65g fat; "ground beef" 200g → 500/40/35; "eggs" 2 → 140/12/10; "bacon" 100g → 540/37/42; "salmon" 200g → 400/40/25; "chicken", "burger", "liver", "butter" with reasonable defaults
+- **Quantity extraction**: Regex for `(\d+)\s*(g|oz|kg|lb)?` before/after food keyword; scale proportionally from reference portions
+- **Weight**: "weight" or "weigh" + number → `body_measurements.weight`
+- **Blood pressure**: "bp" or "blood pressure" + two numbers → `vitals.bp_systolic/diastolic`
+- **Heart rate**: "heart rate"/"pulse"/"bpm" + number → `vitals.heart_rate`
+- **Mood/energy**: "mood"/"energy"/"sleep"/"clarity" + descriptor (great=4, good=3, okay=2, bad=1, terrible=0)
+- **Symptoms**: "headache"/"bloating"/"joint pain"/"fatigue"/"cravings" + severity words (0-4 scale)
+- **Ketones/glucose**: "ketones" + number → `vitals.ketones`; "glucose"/"blood sugar" + number → `vitals.blood_glucose`
 
-4. **Add `tab === "community"` block**: Import and render `<CommunityFeed />` (new extracted component — per the approved plan)
+### Modified: `src/components/progress/VoiceRecognition.tsx` → Unified Smart Log
 
-5. Remove unused imports that were only used in the recipes tab block (e.g. `ChefHat` if not used elsewhere)
+Replace the current voice-only UI with a combined component:
 
-### Change 2 — Recipes.tsx: Add "My Recipes" as a filter option
+1. **Default state**: Show a text input field with a placeholder like "e.g. 300g ribeye, 2 eggs" and a submit button. Next to submit, a mic icon button to trigger voice input.
 
-Add a new filter button alongside the existing Favorites toggle in the combined filter row (line 409-421):
+2. **Text flow**: User types → taps submit → `parseHealthTranscript(text)` → show confirmation UI (same as current parsed result view) → Log All / Dismiss
 
-- A "My Recipes" toggle button (similar to the Favorites toggle) that when active, shows only `customRecipes` (user-created recipes)
-- New state: `const [showMyRecipesOnly, setShowMyRecipesOnly] = useState(false)`
-- In the `filtered` useMemo, add: `if (showMyRecipesOnly)` — for `builtIn`, return none; for `custom`, return all matching
-- This replaces the Profile "My Recipes" tab — users now filter their own recipes directly on the Recipes page
+3. **Voice flow**: User taps mic → native speech recognition (existing `useVoiceCapture`) → transcript populates the text input → user can edit → taps submit → local parser → confirmation UI
 
-### Change 3 — Case-insensitive filter comparisons in Recipes.tsx
+4. **Remove** the `supabase.functions.invoke("voice-log")` call entirely. Replace with synchronous `parseHealthTranscript()` call. No `processing` spinner needed (parsing is instant).
 
-Currently the tag filter comparison at line 89 is already case-insensitive (`t.toLowerCase() === activeTag.toLowerCase()`), but the `handleTagClick` comparison at line 132 (`activeTag === tag`) and the active tag highlight at line 316 (`activeTag === tg`) are case-sensitive.
-
-Fix:
-- Line 132: `if (activeTag?.toLowerCase() === tag.toLowerCase())`
-- Line 316: `activeTag?.toLowerCase() === tg.toLowerCase()`
-
-### New File: `src/components/CommunityFeed.tsx`
-
-Extract the feed body from `Community.tsx` into a reusable component (per the approved plan). Both the `/community` route and the Profile Community tab will render this component.
+5. **Keep** the confirmation UI (parsed entries list with Log All / Dismiss buttons) and `logEntries` function unchanged.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/Profile.tsx` | Remove "recipes" tab, add "community" tab, delete recipes block, render CommunityFeed |
-| `src/pages/Recipes.tsx` | Add "My Recipes" filter toggle, fix case-insensitive tag comparisons |
-| `src/components/CommunityFeed.tsx` | New — extracted feed from Community.tsx |
-| `src/pages/Community.tsx` | Refactor to use `<CommunityFeed />` |
+| `src/lib/parseHealthTranscript.ts` | New — client-side keyword/regex parser |
+| `src/components/progress/VoiceRecognition.tsx` | Replace AI call with local parser; add text input field; mic button fills text field with transcript |
 
 ### What is NOT changed
-- My Feed tab, My Goals tab, Settings tab
-- Recipe page layout/styling (only adding one filter button)
-- Bottom nav changes (separate from this plan — already covered in the approved plan)
+- `useVoiceCapture` hook — untouched (still handles native speech recognition)
+- `AddEntryDrawer` — untouched (manual metric-by-metric entry)
+- Edge function `voice-log` — left in place but no longer invoked
+- `logEntries` flow and database sync — unchanged
 
