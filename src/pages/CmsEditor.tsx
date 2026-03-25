@@ -107,10 +107,16 @@ export default function CmsEditor() {
         <div className="w-56 border-r border-border bg-card flex flex-col shrink-0">
           <div className="flex border-b border-border">
             <button
+              onClick={() => setLeftTab("content")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${leftTab === "content" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <PenLine className="h-3.5 w-3.5" /> Content
+            </button>
+            <button
               onClick={() => setLeftTab("components")}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${leftTab === "components" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
-              <Layers className="h-3.5 w-3.5" /> Components
+              <Layers className="h-3.5 w-3.5" /> Layout
             </button>
             <button
               onClick={() => setLeftTab("pages")}
