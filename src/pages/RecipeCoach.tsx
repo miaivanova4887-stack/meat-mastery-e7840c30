@@ -207,7 +207,8 @@ const RecipeCoach = () => {
           </div>
         )}
 
-        {messages.map((msg, i) => {
+        )}
+        {hasAccess("pro") && messages.map((msg, i) => {
           const isLastAssistant = i === lastAssistantIdx;
           return (
             <div key={i}>
