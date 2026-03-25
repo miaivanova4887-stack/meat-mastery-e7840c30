@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Sun, Play, Pause, SkipForward, RotateCcw, ChevronRight } from "lucide-react";
+import { Sun, Play, Pause, SkipForward, RotateCcw, ChevronRight, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useTranslation } from "react-i18next";
+import { TextToSpeech } from "@capacitor-community/text-to-speech";
 
 const POSES = [
   { key: 1, duration: 60, sides: 1 },
@@ -21,7 +22,7 @@ const formatTime = (s: number) => {
 };
 
 const YogaFlowProgram = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [active, setActive] = useState(false);
   const [poseIndex, setPoseIndex] = useState(0);
@@ -29,7 +30,24 @@ const YogaFlowProgram = () => {
   const [timeLeft, setTimeLeft] = useState(POSES[0].duration);
   const [paused, setPaused] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [muted, setMuted] = useState(false);
   const advancingRef = useRef(false);
+  const mutedRef = useRef(false);
+
+  // Keep ref in sync so callbacks always see latest muted state
+  useEffect(() => { mutedRef.current = muted; }, [muted]);
+
+  const ttsLang = i18n.language === "fr" ? "fr-FR" : "en-US";
+
+  const speak = useCallback(async (text: string) => {
+    if (mutedRef.current || !text) return;
+    try {
+      await TextToSpeech.stop();
+      await TextToSpeech.speak({ text, lang: ttsLang });
+    } catch {
+      // Fail silently on web / unsupported devices
+    }
+  }, [ttsLang]);
 
   const currentPose = POSES[poseIndex];
 
@@ -51,6 +69,37 @@ const YogaFlowProgram = () => {
 
     setTimeout(() => { advancingRef.current = false; }, 50);
   }, [poseIndex, sideIndex, currentPose]);
+
+  // TTS on pose/side transitions
+  useEffect(() => {
+    if (!active || completed) return;
+
+    const poseName = t(`exercise.yoga_flow.pose_${poseIndex + 1}_name`, `Pose ${poseIndex + 1}`);
+    const poseDesc = t(`exercise.yoga_flow.pose_${poseIndex + 1}_desc`, "");
+
+    if (currentPose.sides === 2) {
+      const sideLabel = sideIndex === 0
+        ? t("exercise.yoga_flow.left_side", "Left Side")
+        : t("exercise.yoga_flow.right_side", "Right Side");
+      if (sideIndex === 0) {
+        // New 2-sided pose: name + desc + side
+        speak(`${poseName}. ${poseDesc}. ${sideLabel}`);
+      } else {
+        // Switching to right side
+        speak(sideLabel);
+      }
+    } else {
+      speak(`${poseName}. ${poseDesc}`);
+    }
+  }, [active, poseIndex, sideIndex, completed]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // TTS on completion
+  useEffect(() => {
+    if (completed) {
+      const completeTitle = t("exercise.yoga_flow.complete_title", "Flow Complete");
+      speak(completeTitle);
+    }
+  }, [completed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!active || paused || completed) return;
@@ -160,12 +209,21 @@ const YogaFlowProgram = () => {
               .replace("{{total}}", String(POSES.length))}
           </span>
         </div>
-        <button
-          onClick={() => setActive(false)}
-          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMuted((m) => !m)}
+            className="text-muted-foreground hover:text-foreground transition-colors p-1"
+            aria-label={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
+          <button
+            onClick={() => setActive(false)}
+            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Overall progress */}
