@@ -308,6 +308,8 @@
     "highCarbsWarning": "⚠️ High carbs — may not be carnivore-friendly",
     "voiceLog": "Voice Log",
     "voiceLogDesc": "Speak to log meals, stats, vitals & more",
+    "typeOrSpeak": "Type or Speak",
+    "typeOrSpeakDesc": "Log food with text or voice — no AI credits",
     "stoppingMic": "Stopping microphone…",
     "parsingSpeech": "Parsing speech…",
     "tapToStop": "Tap to stop & process",
