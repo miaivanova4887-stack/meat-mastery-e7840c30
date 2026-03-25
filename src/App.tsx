@@ -103,6 +103,7 @@ const App = () => {
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <AuthProvider>
+          <SubscriptionProvider>
           <ShoppingBagProvider>
           <UserProfileProvider>
           <HealthConnectProvider>
