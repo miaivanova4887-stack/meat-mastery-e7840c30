@@ -130,7 +130,7 @@ const Recipes = () => {
 
   const handleTagClick = (tag: string) => {
     window.scrollTo({ top: 0, behavior: "auto" });
-    if (activeTag === tag) {
+    if (activeTag?.toLowerCase() === tag.toLowerCase()) {
       setActiveTag(null);
       navigate("/recipes", { replace: true });
     } else {
