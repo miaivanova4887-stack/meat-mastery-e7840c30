@@ -1,13 +1,23 @@
-import { ArrowLeft, Plus, Minus, ChefHat } from "lucide-react";
+import { ArrowLeft, Plus, Minus, ChefHat, Camera, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type Ingredient, type CustomRecipe } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
+import { useAuth } from "@/contexts/AuthContext";
 
 const CreateRecipe = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { addRecipe } = useCustomRecipes();
+
+  // Auth guard
+  useEffect(() => {
+    if (!user) {
+      toast.error("Sign in to create recipes");
+      navigate("/auth", { replace: true });
+    }
+  }, [user, navigate]);
 
   const [name, setName] = useState("");
   const [time, setTime] = useState("");
@@ -20,6 +30,34 @@ const CreateRecipe = () => {
   const [tags, setTags] = useState("");
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: "", amount: "" }]);
   const [steps, setSteps] = useState<string[]>([""]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreview) URL.revokeObjectURL(imagePreview);
+    };
+  }, [imagePreview]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be under 5MB");
+      return;
+    }
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+    setImageFile(null);
+    setImagePreview(null);
+  };
 
   const toggleTier = (tier: DietTier) => {
     setTiers((prev) => (prev.includes(tier) ? prev.filter((t) => t !== tier) : [...prev, tier]));
@@ -44,7 +82,12 @@ const CreateRecipe = () => {
     setSteps((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("Sign in to create recipes");
+      navigate("/auth");
+      return;
+    }
     if (!name.trim()) {
       toast.error("Recipe name is required");
       return;
@@ -79,7 +122,15 @@ const CreateRecipe = () => {
       isCustom: true,
     };
 
-    addRecipe(recipe);
+    setSaving(true);
+    const result = await addRecipe(recipe, imageFile);
+    setSaving(false);
+
+    if (result?.error) {
+      toast.error("Failed to save recipe");
+      return;
+    }
+
     toast.success("Recipe saved!");
     navigate("/recipes");
   };
@@ -87,6 +138,8 @@ const CreateRecipe = () => {
   const inputClass =
     "w-full bg-secondary rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30";
   const labelClass = "text-xs font-semibold text-foreground mb-1.5 block";
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
@@ -98,13 +151,42 @@ const CreateRecipe = () => {
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">Create Recipe</h1>
         <button
           onClick={handleSave}
-          className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold"
+          disabled={saving}
+          className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-50"
         >
-          Save
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
 
       <div className="px-4 pt-5 space-y-5">
+        {/* Image Upload */}
+        <div>
+          <label className={labelClass}>Recipe Photo</label>
+          {imagePreview ? (
+            <div className="relative w-full h-48 rounded-xl overflow-hidden border border-border/40">
+              <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={removeImage}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/80 text-foreground flex items-center justify-center"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-32 rounded-xl border-2 border-dashed border-border/60 cursor-pointer hover:border-primary/40 transition-colors">
+              <Camera size={28} className="text-muted-foreground mb-1.5" />
+              <span className="text-xs text-muted-foreground font-medium">Add Photo</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
+
         {/* Name */}
         <div>
           <label className={labelClass}>Recipe Name *</label>
@@ -277,9 +359,10 @@ const CreateRecipe = () => {
         {/* Save Button (bottom) */}
         <button
           onClick={handleSave}
-          className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-all"
+          disabled={saving}
+          className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm flex items-center justify-center gap-2 active:scale-[0.97] transition-all disabled:opacity-50"
         >
-          <ChefHat size={18} /> Save Recipe
+          <ChefHat size={18} /> {saving ? "Saving…" : "Save Recipe"}
         </button>
       </div>
     </div>

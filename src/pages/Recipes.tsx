@@ -159,7 +159,11 @@ const Recipes = () => {
     return (
       <div key={r.name + i} className="ios-card overflow-hidden animate-fade-in-up" style={{ animationDelay: `${Math.min(i, 10) * 0.03}s` }}>
         {/* Full-width hero image */}
-        <MealImage recipeName={r.name} tags={recipeTags} className="w-full h-40" />
+        {isCustom && (r as CustomRecipe).image_url ? (
+          <img src={(r as CustomRecipe).image_url} alt={r.name} className="w-full h-40 object-cover" loading="lazy" />
+        ) : (
+          <MealImage recipeName={r.name} tags={recipeTags} className="w-full h-40" />
+        )}
 
         <div className="p-5 pt-3">
         <div className="flex items-start justify-between gap-3">
