@@ -351,6 +351,9 @@ const Profile = () => {
         </div>
       </div>
 
+      {/* Subscription badge */}
+      <SubscriptionBadge />
+
       {/* Tabs */}
       <div className="px-4 flex gap-2 mb-3">
         {([
