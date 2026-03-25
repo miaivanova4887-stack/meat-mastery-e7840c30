@@ -19,7 +19,7 @@ export default function CmsEditor() {
   const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [previewMode, setPreviewMode] = useState("desktop");
-  const [leftTab, setLeftTab] = useState<"components" | "pages">("components");
+  const [leftTab, setLeftTab] = useState<"components" | "pages" | "content">("content");
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const store = useCmsStore();
 
