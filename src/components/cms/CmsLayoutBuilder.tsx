@@ -464,23 +464,22 @@ export default function CmsLayoutBuilder() {
               </ScrollArea>
 
               {/* Live preview panel — independently scrollable */}
-              <div className="w-[320px] border-l border-border bg-muted/30 flex flex-col shrink-0 h-full">
+              <div className="w-[400px] border-l border-border bg-muted/30 flex flex-col shrink-0" style={{ height: "calc(100vh - 88px)" }}>
                 <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2 shrink-0">
                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Live Preview</span>
                   <span className="text-[10px] text-muted-foreground ml-auto">375px mobile</span>
                 </div>
-                <div className="flex-1 overflow-y-scroll p-3">
+                <div className="flex-1 overflow-y-auto p-3">
                   {previewRoute && (
-                    <div className="w-[375px] h-[667px] rounded-xl border-2 border-border bg-background overflow-hidden shadow-lg relative mx-auto">
+                    <div className="w-[375px] rounded-xl border-2 border-border bg-background overflow-hidden shadow-lg relative mx-auto" style={{ height: "3000px" }}>
                       <iframe
                         key={previewKey}
                         src={`${window.location.origin}${previewRoute}`}
-                        className="w-full h-full border-0"
+                        className="w-full border-0"
                         title="Page Preview"
-                        style={{ pointerEvents: "none" }}
+                        style={{ pointerEvents: "none", height: "3000px" }}
                       />
-                      <div className="absolute inset-0 pointer-events-none" />
                     </div>
                   )}
                 </div>
