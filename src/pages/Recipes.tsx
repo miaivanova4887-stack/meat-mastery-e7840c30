@@ -10,6 +10,7 @@ import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
 import { MealImage } from "@/hooks/useMealImage";
 import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
+import TeaserGate from "@/components/TeaserGate";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
 import heroMealFemale from "@/assets/hero-meal-female.jpg";
 
@@ -363,19 +364,21 @@ const Recipes = () => {
       </div>
 
       <div className="px-4 pt-4 space-y-3">
-        <button onClick={() => navigate("/recipe-coach")} className="w-full relative overflow-hidden ios-card p-4 flex items-center gap-3.5 hover:bg-secondary/60 transition-all group active:scale-[0.98]">
-          <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/60 flex items-center justify-center flex-shrink-0 shadow-md ring-1 ring-primary/20">
-            <ChefHat size={22} className="text-primary-foreground drop-shadow-sm" />
-          </div>
-          <div className="text-left flex-1 relative z-10">
-            <p className="text-sm font-bold text-foreground tracking-tight">{t("recipes.aiCoach")}</p>
-            <p className="text-[11px] text-muted-foreground">{t("recipes.aiCoachDesc")}</p>
-          </div>
-          <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-            <ArrowLeft size={13} className="text-primary rotate-180" />
-          </div>
-        </button>
+        <TeaserGate requiredTier="pro" featureName="AI Recipe Coach" mode="overlay">
+          <button onClick={() => navigate("/recipe-coach")} className="w-full relative overflow-hidden ios-card p-4 flex items-center gap-3.5 hover:bg-secondary/60 transition-all group active:scale-[0.98]">
+            <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/60 flex items-center justify-center flex-shrink-0 shadow-md ring-1 ring-primary/20">
+              <ChefHat size={22} className="text-primary-foreground drop-shadow-sm" />
+            </div>
+            <div className="text-left flex-1 relative z-10">
+              <p className="text-sm font-bold text-foreground tracking-tight">{t("recipes.aiCoach")}</p>
+              <p className="text-[11px] text-muted-foreground">{t("recipes.aiCoachDesc")}</p>
+            </div>
+            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+              <ArrowLeft size={13} className="text-primary rotate-180" />
+            </div>
+          </button>
+        </TeaserGate>
 
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
