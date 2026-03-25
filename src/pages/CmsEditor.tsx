@@ -10,15 +10,16 @@ import CmsPropertiesPanel from "@/components/cms/CmsPropertiesPanel";
 import CmsPageManager from "@/components/cms/CmsPageManager";
 import { useCmsStore } from "@/components/cms/useCmsStore";
 import { PlacedComponent } from "@/components/cms/cmsTypes";
-import { Layers, FileText } from "lucide-react";
+import { Layers, FileText, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CmsContentEditor from "@/components/cms/CmsContentEditor";
 
 export default function CmsEditor() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [previewMode, setPreviewMode] = useState("desktop");
-  const [leftTab, setLeftTab] = useState<"components" | "pages">("components");
+  const [leftTab, setLeftTab] = useState<"components" | "pages" | "content">("content");
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const store = useCmsStore();
 
@@ -103,13 +104,19 @@ export default function CmsEditor() {
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Left sidebar with tabs */}
-        <div className="w-56 border-r border-border bg-card flex flex-col shrink-0">
+        <div className={`${leftTab === "content" ? "flex-1" : "w-56"} border-r border-border bg-card flex flex-col shrink-0 transition-all`}>
           <div className="flex border-b border-border">
+            <button
+              onClick={() => setLeftTab("content")}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${leftTab === "content" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              <PenLine className="h-3.5 w-3.5" /> Content
+            </button>
             <button
               onClick={() => setLeftTab("components")}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${leftTab === "components" ? "text-foreground border-b-2 border-primary" : "text-muted-foreground hover:text-foreground"}`}
             >
-              <Layers className="h-3.5 w-3.5" /> Components
+              <Layers className="h-3.5 w-3.5" /> Layout
             </button>
             <button
               onClick={() => setLeftTab("pages")}
@@ -119,7 +126,9 @@ export default function CmsEditor() {
             </button>
           </div>
           <div className="flex-1 overflow-hidden">
-            {leftTab === "components" ? (
+            {leftTab === "content" ? (
+              <CmsContentEditor />
+            ) : leftTab === "components" ? (
               <CmsComponentLibrary onAddComponent={handleAddComponent} />
             ) : (
               <CmsPageManager
@@ -132,22 +141,26 @@ export default function CmsEditor() {
           </div>
         </div>
 
-        <CmsCanvas
-          components={store.components}
-          selectedId={store.selectedId}
-          previewMode={previewMode}
-          onSelect={store.setSelectedId}
-          onMove={store.moveComponent}
-          onResize={store.resizeComponent}
-          onDelete={store.deleteComponent}
-          onDuplicate={store.duplicateComponent}
-        />
-        <CmsPropertiesPanel
-          component={store.selectedComponent}
-          onUpdateProps={store.updateProps}
-          onMove={store.moveComponent}
-          onResize={store.resizeComponent}
-        />
+        {leftTab !== "content" && (
+          <>
+            <CmsCanvas
+              components={store.components}
+              selectedId={store.selectedId}
+              previewMode={previewMode}
+              onSelect={store.setSelectedId}
+              onMove={store.moveComponent}
+              onResize={store.resizeComponent}
+              onDelete={store.deleteComponent}
+              onDuplicate={store.duplicateComponent}
+            />
+            <CmsPropertiesPanel
+              component={store.selectedComponent}
+              onUpdateProps={store.updateProps}
+              onMove={store.moveComponent}
+              onResize={store.resizeComponent}
+            />
+          </>
+        )}
       </div>
     </div>
   );

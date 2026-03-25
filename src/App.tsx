@@ -44,7 +44,7 @@ import { usePageViewTracker } from "./hooks/useAnalytics";
 import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 import { App as CapApp } from "@capacitor/app";
 import { useScrollToTop } from "./hooks/useScrollToTop";
-
+import { useContentOverrides } from "./hooks/useContentOverrides";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +55,11 @@ function PageViewTracker() {
 
 function ScrollToTopHandler() {
   useScrollToTop();
+  return null;
+}
+
+function ContentOverrideLoader() {
+  useContentOverrides();
   return null;
 }
 
@@ -102,6 +107,7 @@ const App = () => {
             <Toaster />
             <Sonner />
             <BrowserRouter>
+              <ContentOverrideLoader />
               <PageViewTracker />
               <ScrollToTopHandler />
               <BackButtonHandler />
