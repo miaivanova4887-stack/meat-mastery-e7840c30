@@ -69,17 +69,20 @@ const Progress = () => {
         {/* Today's Nutrition Breakdown */}
         <NutrientBreakdown />
 
-        {/* Photo Recognition */}
-        <PhotoRecognition />
+        {/* Photo Recognition — Pro */}
+        <TeaserGate requiredTier="pro" featureName="Snap & Log">
+          <PhotoRecognition />
+        </TeaserGate>
 
-        {/* Barcode Scanner */}
-        <BarcodeScanner />
+        {/* Barcode Scanner — Pro */}
+        <TeaserGate requiredTier="pro" featureName="Scan Barcode">
+          <BarcodeScanner />
+        </TeaserGate>
 
-        {/* Voice Recognition */}
+        {/* Voice Recognition — Free (local on-device parser) */}
         <VoiceRecognition />
 
-        {/* Category dropdown — Pro feature */}
-        <TeaserGate requiredTier="pro" featureName="Advanced Progress Charts">
+        {/* Category dropdown — always visible */}
         <Select value={category} onValueChange={(v) => setCategory(v as ProgressCategory)}>
           <SelectTrigger className="w-full bg-card border-border h-12 text-base font-semibold">
             <SelectValue>
@@ -99,9 +102,14 @@ const Progress = () => {
           </SelectContent>
         </Select>
 
-        {/* Category content */}
-        <CategoryView category={category} />
-        </TeaserGate>
+        {/* Diet Trends = free; other categories = Pro */}
+        {category === "diet_trends" ? (
+          <CategoryView category={category} />
+        ) : (
+          <TeaserGate requiredTier="pro" featureName="Advanced Progress Charts">
+            <CategoryView category={category} />
+          </TeaserGate>
+        )}
 
         {/* Health sync banner — changes based on connection status */}
         {isHealthConnected ? (
