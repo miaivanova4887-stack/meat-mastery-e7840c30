@@ -32,6 +32,42 @@ interface CommunityRecipe {
   created_at: string;
 }
 
+function SubscriptionBadge() {
+  const { tier, subscriptionEnd } = useSubscription();
+  const navigate = useNavigate();
+
+  const tierConfig = {
+    free: { label: "Free Plan", color: "bg-secondary text-muted-foreground", icon: Zap },
+    pro: { label: "Pro Plan", color: "bg-primary/15 text-primary", icon: Zap },
+    elite: { label: "Elite Plan", color: "bg-[hsl(var(--gold))]/15 text-[hsl(var(--gold))]", icon: Crown },
+  };
+
+  const config = tierConfig[tier];
+  const Icon = config.icon;
+
+  return (
+    <div className="px-4 pb-2">
+      <button
+        onClick={() => navigate("/pricing")}
+        className="w-full ios-card p-3 flex items-center gap-3 hover:bg-secondary/60 transition-colors"
+      >
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${config.color}`}>
+          <Icon size={14} />
+        </div>
+        <div className="flex-1 text-left">
+          <p className="text-xs font-semibold text-foreground">{config.label}</p>
+          {subscriptionEnd && (
+            <p className="text-[10px] text-muted-foreground">
+              Renews {new Date(subscriptionEnd).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+        <ChevronRight size={14} className="text-muted-foreground" />
+      </button>
+    </div>
+  );
+}
+
 const Profile = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
