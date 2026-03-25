@@ -1,0 +1,18 @@
+import { Capacitor } from "@capacitor/core";
+
+const BuildStamp = () => {
+  const platform = Capacitor.getPlatform();
+  const stamp = __BUILD_TIMESTAMP__ ?? "dev";
+
+  return (
+    <div
+      className="pointer-events-none fixed left-2 z-50 rounded-md border border-border/60 bg-card/80 px-2 py-1 text-[10px] font-medium text-muted-foreground backdrop-blur"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.6rem)" }}
+      aria-label="build-version"
+    >
+      Build {stamp} · {platform}
+    </div>
+  );
+};
+
+export default BuildStamp;
