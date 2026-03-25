@@ -211,7 +211,12 @@ const YogaFlowProgram = () => {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setMuted((m) => !m)}
+            onClick={async () => {
+              if (!muted) {
+                try { await TextToSpeech.stop(); } catch {}
+              }
+              setMuted((m) => !m);
+            }}
             className="text-muted-foreground hover:text-foreground transition-colors p-1"
             aria-label={muted ? "Unmute" : "Mute"}
           >
