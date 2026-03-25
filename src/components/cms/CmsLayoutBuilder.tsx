@@ -463,16 +463,16 @@ export default function CmsLayoutBuilder() {
                 </div>
               </ScrollArea>
 
-              {/* Live preview panel */}
-              <div className="w-[320px] border-l border-border bg-muted/30 flex flex-col shrink-0">
-                <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2">
+              {/* Live preview panel — independently scrollable */}
+              <div className="w-[320px] border-l border-border bg-muted/30 flex flex-col shrink-0 h-full">
+                <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2 shrink-0">
                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Live Preview</span>
                   <span className="text-[10px] text-muted-foreground ml-auto">375px mobile</span>
                 </div>
-                <div className="flex-1 flex items-start justify-center p-3 overflow-auto">
+                <div className="flex-1 overflow-y-scroll p-3">
                   {previewRoute && (
-                    <div className="w-[375px] h-[667px] rounded-xl border-2 border-border bg-background overflow-hidden shadow-lg relative">
+                    <div className="w-[375px] h-[667px] rounded-xl border-2 border-border bg-background overflow-hidden shadow-lg relative mx-auto">
                       <iframe
                         key={previewKey}
                         src={`${window.location.origin}${previewRoute}`}
