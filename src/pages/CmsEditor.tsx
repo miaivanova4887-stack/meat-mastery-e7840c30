@@ -10,8 +10,9 @@ import CmsPropertiesPanel from "@/components/cms/CmsPropertiesPanel";
 import CmsPageManager from "@/components/cms/CmsPageManager";
 import { useCmsStore } from "@/components/cms/useCmsStore";
 import { PlacedComponent } from "@/components/cms/cmsTypes";
-import { Layers, FileText } from "lucide-react";
+import { Layers, FileText, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import CmsContentEditor from "@/components/cms/CmsContentEditor";
 
 export default function CmsEditor() {
   const navigate = useNavigate();
