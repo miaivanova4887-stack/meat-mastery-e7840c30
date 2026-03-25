@@ -40,6 +40,7 @@ const PAGE_NAMES: Record<string, string> = {
   exercise: "Exercise",
   ingredients: "Ingredients",
   ketosis: "Ketosis Timer",
+  timer: "Ketosis Timer",
   stories: "Success Stories",
   community: "Community",
   shopping: "Shopping Bag",
