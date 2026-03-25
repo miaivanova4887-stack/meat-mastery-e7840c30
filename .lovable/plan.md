@@ -1,18 +1,21 @@
 
 
-## Update TTS Voice Parameters
+## Fix Mute Toggle to Stop Ongoing Speech
 
 **File:** `src/components/exercise/YogaFlowProgram.tsx`
 
-**Change:** On line 46, add `rate`, `pitch`, and `volume` parameters to the single `TextToSpeech.speak()` call inside the `speak` callback:
+Two changes:
+
+### 1. Update mute toggle handler (line 214)
+Replace the inline `onClick={() => setMuted((m) => !m)}` with an async handler that calls `TextToSpeech.stop()` when muting:
 
 ```typescript
-// Before
-await TextToSpeech.speak({ text, lang: ttsLang });
-
-// After
-await TextToSpeech.speak({ text, lang: ttsLang, rate: 0.85, pitch: 1.05, volume: 1.0 });
+onClick={async () => {
+  if (!muted) {
+    try { await TextToSpeech.stop(); } catch {}
+  }
+  setMuted((m) => !m);
+}}
 ```
 
-This is the only `speak()` invocation — all pose announcements, side switches, and completion messages flow through this one callback. No other changes.
-
+### 2. Add `muted` to `speak` dependency array (line 42-50
