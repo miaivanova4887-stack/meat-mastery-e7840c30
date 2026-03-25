@@ -150,7 +150,9 @@ export default function CmsPageManager({ currentPageId, onSelectPage, onNewPage,
       )}
 
       <ScrollArea className="flex-1">
+        {/* CMS Pages */}
         <div className="p-2 space-y-0.5">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-1 pb-1">CMS Pages</p>
           {loading && <p className="text-xs text-muted-foreground p-2">Loading…</p>}
           {!loading && pages.length === 0 && <p className="text-xs text-muted-foreground p-2">No pages yet</p>}
           {pages.map(page => (
@@ -171,6 +173,26 @@ export default function CmsPageManager({ currentPageId, onSelectPage, onNewPage,
                 <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
               </button>
             </div>
+          ))}
+        </div>
+
+        {/* App Pages */}
+        <div className="p-2 space-y-0.5 border-t border-border">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-1 pb-1">App Pages</p>
+          {APP_PAGES.map(page => (
+            <a
+              key={page.path}
+              href={page.path}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors hover:bg-accent/50"
+            >
+              <Layout className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <div className="truncate font-medium">{page.title}</div>
+                <div className="text-[10px] text-muted-foreground truncate">{page.path}</div>
+              </div>
+            </a>
           ))}
         </div>
       </ScrollArea>
