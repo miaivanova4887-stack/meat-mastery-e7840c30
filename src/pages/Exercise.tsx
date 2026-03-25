@@ -167,6 +167,7 @@ const Exercise = () => {
         {/* Training Programs */}
         <div>
           <h2 className="font-display font-bold text-foreground mb-3">{t("exercise.trainingPrograms")}</h2>
+          <YogaFlowProgram />
           {categoryKeys.map((key, i) => {
             const Icon = categoryIcons[key];
             const items = t(`exercise.categories.${key}.items`, { returnObjects: true }) as string[];
@@ -188,7 +189,6 @@ const Exercise = () => {
               </div>
             );
           })}
-          <YogaFlowProgram />
         </div>
       </div>
     </div>
