@@ -176,7 +176,13 @@ const RecipeCoach = () => {
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {messages.length === 0 && (
+        {!hasAccess("pro") ? (
+          <div className="flex flex-col items-center justify-center h-full pb-8">
+            <TeaserGate requiredTier="pro" featureName="AI Carnivore Coach" mode="block">
+              <div />
+            </TeaserGate>
+          </div>
+        ) : messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-6 pb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg">
               <UtensilsCrossed size={28} className="text-primary-foreground" />
