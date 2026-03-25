@@ -78,7 +78,8 @@ const Progress = () => {
         {/* Voice Recognition */}
         <VoiceRecognition />
 
-        {/* Category dropdown */}
+        {/* Category dropdown — Pro feature */}
+        <TeaserGate requiredTier="pro" featureName="Advanced Progress Charts">
         <Select value={category} onValueChange={(v) => setCategory(v as ProgressCategory)}>
           <SelectTrigger className="w-full bg-card border-border h-12 text-base font-semibold">
             <SelectValue>
