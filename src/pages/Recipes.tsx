@@ -48,6 +48,7 @@ const Recipes = () => {
   const [activeCuisine, setActiveCuisine] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [showMyRecipesOnly, setShowMyRecipesOnly] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -111,9 +112,9 @@ const Recipes = () => {
 
     return {
       custom: filter(customRecipes) as CustomRecipe[],
-      builtIn: filter(recipes),
+      builtIn: showMyRecipesOnly ? [] : filter(recipes),
     };
-  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, isFavorite, activeTag, isFrench]);
+  }, [activeTier, activeFilter, activeCuisine, search, customRecipes, profile.cuisines, showFavoritesOnly, showMyRecipesOnly, isFavorite, activeTag, isFrench]);
 
   const totalCount = filtered.custom.length + filtered.builtIn.length;
 
@@ -129,7 +130,7 @@ const Recipes = () => {
 
   const handleTagClick = (tag: string) => {
     window.scrollTo({ top: 0, behavior: "auto" });
-    if (activeTag === tag) {
+    if (activeTag?.toLowerCase() === tag.toLowerCase()) {
       setActiveTag(null);
       navigate("/recipes", { replace: true });
     } else {
@@ -313,7 +314,7 @@ const Recipes = () => {
               key={tg}
               onClick={() => handleTagClick(tg)}
               className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-all active:scale-95 ${
-                activeTag === tg
+                activeTag?.toLowerCase() === tg.toLowerCase()
                   ? "bg-primary text-primary-foreground"
                   : "bg-primary/10 text-primary hover:bg-primary/20"
               }`}
@@ -412,6 +413,12 @@ const Recipes = () => {
           >
             <Heart size={11} className={showFavoritesOnly ? "fill-destructive" : ""} />
             {t("recipes.favorites")}
+          </button>
+          <button onClick={() => setShowMyRecipesOnly(!showMyRecipesOnly)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium transition-all flex items-center gap-1 ${showMyRecipesOnly ? "bg-primary/15 text-primary border border-primary/30" : "bg-secondary/60 text-muted-foreground hover:text-foreground"}`}
+          >
+            <ChefHat size={11} />
+            {t("recipes.myRecipes")}
           </button>
           {(["all", "snack", "sweets", "seafood", "bakery", "comfort", "quick", "organs", "cheesy", "crispy", "grilling"] as const).map((key) => (
             <button key={key} onClick={() => setActiveFilter(key)}
