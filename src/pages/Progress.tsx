@@ -1,4 +1,5 @@
 import { useState } from "react";
+import TeaserGate from "@/components/TeaserGate";
 import { ArrowLeft, Watch, Footprints, Heart, Weight, CheckCircle2, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
