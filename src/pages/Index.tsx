@@ -112,7 +112,7 @@ const Index = () => {
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-32 rounded-full blur-[80px] opacity-20"
           style={{ background: "linear-gradient(90deg, hsl(var(--flame)), hsl(var(--gold)))" }}
         />
-        <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between"
+        <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between"
           style={{ paddingTop: "calc(env(safe-area-inset-top, 12px) + 8px)", paddingLeft: "24px", paddingRight: "16px" }}
         >
           <CarnivoreXLogo size="sm" className="animate-fade-in" />
