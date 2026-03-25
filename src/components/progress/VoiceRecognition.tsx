@@ -261,7 +261,7 @@ const VoiceRecognition = () => {
         className="relative flex items-center justify-center w-full gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronUp size={12} />
-        {t("progress.smartLogHint", "Type or tap mic — parsed locally, no AI credits")}
+        {t("progress.smartLogHint", "Type or tap mic to log your meal")}
       </button>
     </div>
   );
