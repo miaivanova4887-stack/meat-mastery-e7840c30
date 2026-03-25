@@ -177,7 +177,7 @@ const VoiceRecognition = () => {
             {t("progress.typeOrSpeak", "Type or Speak")}
           </p>
           <p className="text-[11px] text-muted-foreground">
-            {t("progress.typeOrSpeakDesc", "Log food with text or voice — no AI credits")}
+            {t("progress.typeOrSpeakDesc", "Tap mic to voice log your meal")}
           </p>
         </div>
       </button>
