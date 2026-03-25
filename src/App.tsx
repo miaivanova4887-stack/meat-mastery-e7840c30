@@ -41,6 +41,8 @@ import HealthSync from "./pages/HealthSync";
 import NewsFeed from "./pages/NewsFeed";
 import AdminNotifications from "./pages/AdminNotifications";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import Pricing from "./pages/Pricing";
+import Coaching from "./pages/Coaching";
 import { usePageViewTracker } from "./hooks/useAnalytics";
 import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 import { App as CapApp } from "@capacitor/app";
