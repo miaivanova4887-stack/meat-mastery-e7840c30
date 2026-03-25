@@ -395,8 +395,8 @@ const Profile = () => {
       <div className="px-4 flex gap-2 mb-3">
         {([
           { key: "feed", label: t("profile.yourFeed"), icon: Newspaper },
-          { key: "recipes", label: t("profile.myRecipes"), icon: ChefHat },
           { key: "goals", label: "My Goals", icon: Crosshair },
+          { key: "community", label: "Community", icon: Users },
           { key: "settings", label: t("profile.settings"), icon: Settings },
         ] as const).map(({ key, label, icon: Icon }) => (
           <button
