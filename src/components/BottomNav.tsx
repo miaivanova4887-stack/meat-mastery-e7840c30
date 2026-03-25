@@ -13,6 +13,7 @@ const BottomNav = () => {
     { path: "/", icon: Flame, label: t("nav.home") },
     { path: "/recipes", icon: BookOpen, label: t("nav.recipes") },
     { path: "/meal-plan", icon: CalendarDays, label: t("nav.plan") },
+    { path: "/community", icon: Users, label: "Community" },
     { path: "/progress", icon: TrendingUp, label: t("nav.progress") },
   ];
 

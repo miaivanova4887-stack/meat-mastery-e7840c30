@@ -144,32 +144,44 @@ const Index = () => {
 
         {/* Feature Grid */}
         <div className="grid grid-cols-2 gap-3">
-          {sorted.map(({ icon, path, tags }) => {
+          {sorted.map(({ icon, path, tags, requiredTier }) => {
             const highlighted = tags.some((tg) => profile.interests.includes(tg as any));
             const label = t(featureLabelKeys[path] || path);
+            const locked = requiredTier && !hasAccess(requiredTier);
             return (
               <button
                 key={path}
-                onClick={() => navigate(path)}
+                onClick={() => locked ? navigate("/pricing") : navigate(path)}
                 className={`ios-card overflow-hidden text-left transition-all active:scale-[0.97] group ${
                   highlighted ? "ring-1 ring-primary/30" : ""
-                }`}
+                } ${locked ? "opacity-60" : ""}`}
               >
                 <div className="relative h-24 w-full">
                   <img src={icon} alt={label} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
-                  {highlighted && (
+                  {highlighted && !locked && (
                     <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
+                  )}
+                  {locked && requiredTier && (
+                    <div className={`absolute top-2 right-2 text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                      requiredTier === "elite" ? "bg-[hsl(var(--gold))]/20 text-[hsl(var(--gold))]" : "bg-primary/15 text-primary"
+                    }`}>
+                      {requiredTier.toUpperCase()}
+                    </div>
                   )}
                 </div>
                 <div className="px-3 pb-3 pt-1.5 flex items-center justify-between">
                   <div>
                     <span className="text-[13px] font-semibold text-foreground block leading-tight">{label}</span>
-                    {highlighted && (
+                    {highlighted && !locked && (
                       <span className="text-[9px] text-primary mt-0.5 font-semibold uppercase tracking-wider block">{t("home.recommendedForYou")}</span>
                     )}
                   </div>
-                  <ChevronRight size={13} className="text-muted-foreground/60 shrink-0 group-hover:text-primary transition-colors" />
+                  {locked ? (
+                    <Lock size={13} className="text-muted-foreground/60 shrink-0" />
+                  ) : (
+                    <ChevronRight size={13} className="text-muted-foreground/60 shrink-0 group-hover:text-primary transition-colors" />
+                  )}
                 </div>
               </button>
             );
