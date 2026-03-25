@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
 import { useAddEntry } from "@/hooks/useProgress";
 import { toast } from "sonner";
 import { openAppSettings } from "@/lib/openAppSettings";
 import { useVoiceCapture } from "@/hooks/useVoiceCapture";
 import { useTranslation } from "react-i18next";
+import { parseHealthTranscript } from "@/lib/parseHealthTranscript";
 
 interface ParsedEntry {
   category: string;
@@ -22,9 +23,9 @@ interface ParsedVoiceResult {
 }
 
 const VoiceRecognition = () => {
-  const [processing, setProcessing] = useState(false);
-  const [isStopping, setIsStopping] = useState(false);
+  const [textInput, setTextInput] = useState("");
   const [parsedResult, setParsedResult] = useState<ParsedVoiceResult | null>(null);
+  const [isStopping, setIsStopping] = useState(false);
   const autoProcessPendingRef = useRef(false);
   const stopInProgressRef = useRef(false);
   const hasEnteredListeningRef = useRef(false);
@@ -34,9 +35,7 @@ const VoiceRecognition = () => {
   const openMicrophoneSettings = useCallback(async () => {
     const opened = await openAppSettings();
     if (!opened) {
-      toast.error("Couldn't open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", {
-        duration: 6000,
-      });
+      toast.error("Couldn't open Settings automatically. Go to Settings → Apps → Carnivore Coach → Permissions.", { duration: 6000 });
     }
   }, []);
 
@@ -55,6 +54,27 @@ const VoiceRecognition = () => {
     onError: (message) => toast.error(message),
   });
 
+  // When voice transcript updates, populate text input
+  useEffect(() => {
+    if (transcript) {
+      setTextInput(transcript);
+    }
+  }, [transcript]);
+
+  const handleSubmit = useCallback(() => {
+    const input = textInput.trim();
+    if (!input) {
+      toast.error("Please type or speak something first.");
+      return;
+    }
+    const result = parseHealthTranscript(input);
+    if (result.entries.length === 0) {
+      toast.error(result.summary);
+      return;
+    }
+    setParsedResult(result);
+  }, [textInput]);
+
   const handleStartListening = useCallback(async () => {
     setParsedResult(null);
     setIsStopping(false);
@@ -65,9 +85,8 @@ const VoiceRecognition = () => {
     autoProcessPendingRef.current = Boolean(started);
   }, [resetTranscript, startListening]);
 
-  const stopAndProcess = useCallback(async () => {
-    if (stopInProgressRef.current || processing) return;
-
+  const stopVoice = useCallback(async () => {
+    if (stopInProgressRef.current) return;
     stopInProgressRef.current = true;
     setIsStopping(true);
     autoProcessPendingRef.current = false;
@@ -76,37 +95,15 @@ const VoiceRecognition = () => {
     if (listening) {
       await stopListening();
     }
-
     await new Promise((resolve) => setTimeout(resolve, 250));
 
-    const capturedTranscript = (getTranscript().trim() || transcriptBeforeStop).trim();
-
-    if (!capturedTranscript) {
-      toast.error("I couldn't recognize speech. Please speak clearly and try again.");
-      setIsStopping(false);
-      stopInProgressRef.current = false;
-      return;
+    const captured = (getTranscript().trim() || transcriptBeforeStop).trim();
+    if (captured) {
+      setTextInput(captured);
     }
-
     setIsStopping(false);
-    setProcessing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("voice-log", {
-        body: { transcript: capturedTranscript },
-      });
-
-      if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
-
-      setParsedResult(data as ParsedVoiceResult);
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to parse speech");
-    } finally {
-      setProcessing(false);
-      setIsStopping(false);
-      stopInProgressRef.current = false;
-    }
-  }, [getTranscript, listening, processing, stopListening]);
+    stopInProgressRef.current = false;
+  }, [getTranscript, listening, stopListening]);
 
   useEffect(() => {
     if (listening) {
@@ -114,17 +111,22 @@ const VoiceRecognition = () => {
     }
   }, [listening]);
 
+  // Auto-stop voice when native recognition ends
   useEffect(() => {
     if (listening || !autoProcessPendingRef.current) return;
     if (!hasEnteredListeningRef.current) return;
 
     const timer = window.setTimeout(() => {
       if (!autoProcessPendingRef.current || !hasEnteredListeningRef.current) return;
-      void stopAndProcess();
+      autoProcessPendingRef.current = false;
+      const captured = getTranscript().trim();
+      if (captured) {
+        setTextInput(captured);
+      }
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [listening, stopAndProcess]);
+  }, [listening, getTranscript]);
 
   const logEntries = useCallback(async () => {
     if (!parsedResult?.entries?.length) return;
@@ -137,59 +139,66 @@ const VoiceRecognition = () => {
             metric: e.metric,
             value: e.value,
             unit: e.unit,
-            notes: e.notes || `[voice] ${getTranscript().slice(0, 80)}`,
+            notes: e.notes || textInput.slice(0, 80),
             recorded_at: now,
           })
         )
       );
       toast.success("All entries logged!");
       setParsedResult(null);
+      setTextInput("");
       resetTranscript();
     } catch {
       toast.error("Failed to log entries");
     }
-  }, [parsedResult, addEntry, getTranscript, resetTranscript]);
+  }, [parsedResult, addEntry, textInput, resetTranscript]);
 
   return (
     <div className="space-y-3">
       {!parsedResult ? (
-        <button
-          onClick={listening ? () => void stopAndProcess() : () => void handleStartListening()}
-          disabled={processing || isStopping}
-          className="w-full relative overflow-hidden rounded-xl border border-dashed border-primary/30 bg-card p-5 flex flex-col items-center gap-2 hover:border-primary/60 transition-colors"
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--gold))] opacity-[0.04]" />
-          <div className="relative flex flex-col items-center gap-2">
-            {processing || isStopping ? (
-              <>
-                <Loader2 size={28} className="text-primary animate-spin" />
-                <p className="text-sm font-medium text-foreground">
-                  {isStopping && !processing ? t("progress.stoppingMic") : t("progress.parsingSpeech")}
-                </p>
-              </>
-            ) : listening ? (
-              <>
-                <div className="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center animate-pulse">
-                  <MicOff size={22} className="text-destructive" />
-                </div>
-                <p className="text-sm font-semibold text-foreground">{t("progress.tapToStop")}</p>
-                <p className="text-[11px] text-muted-foreground max-w-[240px] text-center truncate">
-                  {transcript || t("progress.listening")}
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Mic size={22} className="text-primary" />
-                </div>
-                <p className="text-sm font-semibold text-foreground">{t("progress.voiceLog")}</p>
-                <p className="text-[11px] text-muted-foreground">
-                  {t("progress.voiceLogDesc")}
-                </p>
-              </>
-            )}
+        <div className="rounded-xl border border-dashed border-primary/30 bg-card p-4 space-y-3">
+          <div className="flex gap-2">
+            <Input
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              placeholder={t("progress.smartLogPlaceholder", "e.g. 300g ribeye, 2 eggs")}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+              disabled={listening || isStopping}
+              className="flex-1"
+            />
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={listening ? () => void stopVoice() : () => void handleStartListening()}
+              disabled={isStopping}
+              className="shrink-0"
+            >
+              {isStopping ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : listening ? (
+                <MicOff size={18} className="text-destructive animate-pulse" />
+              ) : (
+                <Mic size={18} className="text-primary" />
+              )}
+            </Button>
+            <Button
+              size="icon"
+              onClick={handleSubmit}
+              disabled={!textInput.trim() || listening || isStopping}
+              className="shrink-0"
+            >
+              <Send size={18} />
+            </Button>
           </div>
-        </button>
+          {listening && (
+            <p className="text-[11px] text-muted-foreground text-center animate-pulse">
+              {transcript || t("progress.listening")}
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground text-center">
+            {t("progress.smartLogHint", "Type or tap mic — parsed locally, no AI credits")}
+          </p>
+        </div>
       ) : (
         <div className="bg-card rounded-xl border border-border p-4 space-y-3">
           <p className="text-sm font-bold text-foreground">{parsedResult.summary}</p>
@@ -209,7 +218,7 @@ const VoiceRecognition = () => {
             <Button onClick={logEntries} className="flex-1" disabled={addEntry.isPending}>
               {addEntry.isPending ? t("progress.logging") : t("progress.logAll")}
             </Button>
-            <Button variant="outline" onClick={() => { setParsedResult(null); resetTranscript(); }}>
+            <Button variant="outline" onClick={() => { setParsedResult(null); setTextInput(""); resetTranscript(); }}>
               {t("progress.dismiss")}
             </Button>
           </div>
