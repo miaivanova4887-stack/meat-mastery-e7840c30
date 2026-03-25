@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   define: {
-    __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString().slice(5, 16).replace('T', ' ')),
+    __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString().replace("T", " ").replace("Z", " UTC")),
   },
   resolve: {
     alias: {
