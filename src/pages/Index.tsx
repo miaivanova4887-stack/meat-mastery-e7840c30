@@ -52,7 +52,7 @@ const featureLabelKeys: Record<string, string> = {
   "/athletic": "home.features.athleticFuel",
 };
 
-const getFeatures = (isFemale: boolean) => [
+const getFeatures = (isFemale: boolean): { icon: string; path: string; tags: string[]; requiredTier?: SubscriptionTier }[] => [
   { icon: iconBenefits, path: "/benefits", tags: [] as string[] },
   { icon: iconRecipes, path: "/recipes", tags: ["recipes"] },
   { icon: iconTimer, path: "/timer", tags: ["ketosis"] },
