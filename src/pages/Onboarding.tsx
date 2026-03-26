@@ -399,7 +399,11 @@ const Onboarding = () => {
             <Icon size={24} strokeWidth={1.8} className="text-primary" />
           </div>
           <h1 className="text-2xl font-display font-bold text-foreground leading-tight tracking-tight">{current.title}</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">{current.subtitle}</p>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            {isStep4 && healthTargetLabels.get("subtitle")
+              ? healthTargetLabels.get("subtitle")
+              : current.subtitle}
+          </p>
         </div>
 
         {/* Options or Inputs */}
