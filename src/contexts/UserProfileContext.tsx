@@ -116,6 +116,13 @@ function parseProfile(): UserProfile {
       if (cuisineRaw) cuisines = JSON.parse(cuisineRaw);
     } catch { /* ignore */ }
 
+    // Parse health targets
+    let healthTargets: string[] = [];
+    try {
+      const htRaw = localStorage.getItem("carnivore-health-targets");
+      if (htRaw) healthTargets = JSON.parse(htRaw);
+    } catch { /* ignore */ }
+
     return {
       goal,
       experience: EXP_MAP[answers[1] as number] ?? "beginner",
@@ -126,6 +133,7 @@ function parseProfile(): UserProfile {
       mealsPerDay,
       nutritionTargets: computeTargets(goal, activityLevel, body),
       cuisines,
+      healthTargets,
       isComplete: true,
     };
   } catch {
