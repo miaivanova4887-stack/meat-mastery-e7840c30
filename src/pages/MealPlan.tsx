@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useMealSync } from "@/hooks/useMealSync";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import heroPlan from "@/assets/hero-plan.jpg";
 
 type AIMode = "single" | "daily" | "weekly";
@@ -47,6 +48,8 @@ const MealPlan = () => {
   const { addItem, hasItem, count: bagCount } = useShoppingBag();
   const profile = useUserProfile();
   const { syncMealToProgress } = useMealSync();
+  const { hasAccess } = useSubscription();
+  const canSnap = hasAccess("pro");
   const userSlots = useMemo(() => activeSlots(profile.mealsPerDay), [profile.mealsPerDay]);
   const { nutritionTargets } = profile;
 
@@ -645,22 +648,30 @@ const MealPlan = () => {
                         </div>
                       </div>
                       <label
-                        onClick={(e) => e.stopPropagation()}
-                        className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-secondary transition-colors cursor-pointer ${photoLoading && photoSlot === slot ? "opacity-50 pointer-events-none" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!canSnap) {
+                            e.preventDefault();
+                            toast("Snap & Log is a Pro feature", { action: { label: "Upgrade", onClick: () => navigate("/pricing") } });
+                          }
+                        }}
+                        className={`mt-0.5 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-secondary transition-colors cursor-pointer ${!canSnap ? "opacity-40" : ""} ${photoLoading && photoSlot === slot ? "opacity-50 pointer-events-none" : ""}`}
                         title="Re-snap photo"
                       >
                         {photoLoading && photoSlot === slot ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handlePhotoRecognize(file, slot);
-                            e.target.value = "";
-                          }}
-                        />
+                        {canSnap && (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handlePhotoRecognize(file, slot);
+                              e.target.value = "";
+                            }}
+                          />
+                        )}
                       </label>
                     </div>
                   ) : (
@@ -672,22 +683,30 @@ const MealPlan = () => {
                         <Plus size={14} /> Pick Recipe
                       </button>
                       <label
-                        onClick={(e) => e.stopPropagation()}
-                        className={`px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium cursor-pointer flex items-center justify-center ${photoLoading && photoSlot === slot ? "opacity-50 pointer-events-none" : ""}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!canSnap) {
+                            e.preventDefault();
+                            toast("Snap & Log is a Pro feature", { action: { label: "Upgrade", onClick: () => navigate("/pricing") } });
+                          }
+                        }}
+                        className={`px-3 py-3 rounded-xl border-2 border-dashed border-border/60 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors text-xs font-medium cursor-pointer flex items-center justify-center ${!canSnap ? "opacity-40" : ""} ${photoLoading && photoSlot === slot ? "opacity-50 pointer-events-none" : ""}`}
                         title="Snap food photo"
                       >
                         {photoLoading && photoSlot === slot ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handlePhotoRecognize(file, slot);
-                            e.target.value = "";
-                          }}
-                        />
+                        {canSnap && (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handlePhotoRecognize(file, slot);
+                              e.target.value = "";
+                            }}
+                          />
+                        )}
                       </label>
                       <button
                         onClick={(e) => { e.stopPropagation(); setQuickSlot(slot); setShowQuickAdd(true); }}
