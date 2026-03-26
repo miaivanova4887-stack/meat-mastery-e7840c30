@@ -50,13 +50,13 @@ const HEALTH_TARGET_CATEGORIES = [
   { catKey: "cat_hormonal", targets: ["hormone_balance", "thyroid", "testosterone", "fertility"] },
 ];
 
-const CATEGORY_ICONS: Record<string, typeof Heart> = {
-  cat_metabolic: Heart,
-  cat_inflammation: Flame,
-  cat_gut: Leaf,
-  cat_mental: Brain,
-  cat_energy: Zap,
-  cat_hormonal: Scale,
+const CATEGORY_STYLES: Record<string, { emoji: string; gradient: string; border: string; glow: string }> = {
+  cat_metabolic:     { emoji: "🫀", gradient: "from-red-500/15 to-orange-500/15", border: "border-red-500/30", glow: "shadow-[0_0_12px_rgba(239,68,68,0.3)]" },
+  cat_inflammation:  { emoji: "🔥", gradient: "from-orange-500/15 to-amber-500/15", border: "border-orange-500/30", glow: "shadow-[0_0_12px_rgba(249,115,22,0.3)]" },
+  cat_gut:           { emoji: "🌿", gradient: "from-green-500/15 to-emerald-500/15", border: "border-green-500/30", glow: "shadow-[0_0_12px_rgba(34,197,94,0.3)]" },
+  cat_mental:        { emoji: "🧠", gradient: "from-blue-500/15 to-purple-500/15", border: "border-blue-500/30", glow: "shadow-[0_0_12px_rgba(59,130,246,0.3)]" },
+  cat_energy:        { emoji: "⚡", gradient: "from-yellow-500/15 to-orange-500/15", border: "border-yellow-500/30", glow: "shadow-[0_0_12px_rgba(234,179,8,0.3)]" },
+  cat_hormonal:      { emoji: "⚖️", gradient: "from-purple-500/15 to-pink-500/15", border: "border-purple-500/30", glow: "shadow-[0_0_12px_rgba(168,85,247,0.3)]" },
 };
 
 const steps: OnboardingStep[] = [
