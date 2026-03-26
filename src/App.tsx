@@ -17,6 +17,7 @@ import Recipes from "./pages/Recipes";
 import KetosisTimer from "./pages/KetosisTimer";
 import RecipeCoach from "./pages/RecipeCoach";
 import CreateRecipe from "./pages/CreateRecipe";
+import EditRecipe from "./pages/EditRecipe";
 import MealPlan from "./pages/MealPlan";
 import Ingredients from "./pages/Ingredients";
 import Exercise from "./pages/Exercise";
@@ -123,6 +124,7 @@ const App = () => {
                 <Route path="/timer" element={<KetosisTimer />} />
                 <Route path="/recipe-coach" element={<RecipeCoach />} />
                 <Route path="/create-recipe" element={<CreateRecipe />} />
+                <Route path="/edit-recipe/:id" element={<EditRecipe />} />
                 <Route path="/meal-plan" element={<MealPlan />} />
                 <Route path="/ingredients" element={<Ingredients />} />
                 <Route path="/exercise" element={<Exercise />} />

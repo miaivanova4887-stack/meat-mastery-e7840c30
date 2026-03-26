@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart, Check } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart, Check, Pencil } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { recipes, TIER_LABELS, CUISINE_LABELS, type DietTier, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
@@ -210,6 +210,29 @@ const Recipes = () => {
           {!isCustom && isFrench && recipeTranslationsFr[r.name]?.desc ? recipeTranslationsFr[r.name].desc : r.desc}
         </p>
 
+        {/* Edit / Delete actions for custom recipes */}
+        {isCustom && custom && (
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              onClick={() => navigate(`/edit-recipe/${custom.id}`)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all active:scale-95"
+            >
+              <Pencil size={13} /> {t("recipes.editRecipe")}
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm(t("recipes.confirmDelete"))) {
+                  deleteRecipe(custom.id);
+                  toast.success(t("recipes.deleteRecipe"));
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold hover:bg-destructive/20 transition-all active:scale-95"
+            >
+              <Trash2 size={13} /> {t("recipes.deleteRecipe")}
+            </button>
+          </div>
+        )}
+
         {/* Structured cooking steps for built-in recipes */}
         {!isCustom && r.desc && (
           <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
@@ -297,13 +320,6 @@ const Recipes = () => {
                   </div>
                 )}
 
-                {custom && (
-                  <button onClick={() => deleteRecipe(custom.id)}
-                    className="flex items-center gap-1.5 text-xs text-destructive font-medium mt-1 min-h-[36px]"
-                  >
-                    <Trash2 size={14} /> {t("recipes.deleteRecipe")}
-                  </button>
-                )}
               </div>
             )}
           </>

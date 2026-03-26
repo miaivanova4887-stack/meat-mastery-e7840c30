@@ -209,6 +209,8 @@
     "addAllToBag": "Ajouter à la liste de courses",
     "steps": "Étapes",
     "deleteRecipe": "Supprimer la recette",
+    "editRecipe": "Modifier",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette recette ?",
     "myRecipes": "Mes recettes",
     "allRecipes": "Toutes les recettes",
     "noRecipes": "Aucune recette trouvée. Essayez d'ajuster vos filtres.",
