@@ -1,35 +1,26 @@
 
 
-## Match Meal Quantity Selector Style to Day Tabs
+## Gate "Snap & Log" Photo Recognition for Pro+ Users
 
-The day tabs use `rounded-xl` with `gap-1` between individual rounded buttons. The meal selector uses `rounded-lg overflow-hidden gap-px` on a wrapper, making individual buttons rectangular with no rounding.
+### Current state
+- **Progress page**: Already gated with `<TeaserGate requiredTier="pro">` (line 76)
+- **Meal Plan page**: Two camera buttons (lines 647-664 for re-snap, lines 674-691 for empty slot snap) are **ungated** — any user can use them
 
-### Change in `src/pages/MealPlan.tsx` (lines 470-487)
+### Changes
 
-Remove the shared background wrapper approach and instead style each button individually, matching the day tabs pattern:
+**File: `src/pages/MealPlan.tsx`**
 
-- Change container from `flex bg-secondary rounded-lg overflow-hidden gap-px` to `flex gap-1`
-- Add `rounded-xl` to each button
-- Add `bg-secondary/60` for inactive state (matching day tab inactive style)
-- Keep `flex-1` for even distribution
+1. **Import `useSubscription`** from `@/contexts/SubscriptionContext`
+2. **Add access check**: `const { hasAccess } = useSubscription()` and derive `const canSnap = hasAccess("pro")`
+3. **Gate both camera buttons**: When `canSnap` is false, disable the camera labels (add `pointer-events-none opacity-40`) and intercept clicks to show an upgrade toast or redirect to `/pricing` instead of opening the file picker
+4. Alternatively, wrap both camera `<label>` elements so that clicking them when ungated shows a toast like `"Snap & Log is a Pro feature"` with a link to upgrade, matching the existing teaser pattern
 
-```tsx
-<div className="flex gap-1">
-  {[1, 2, 3, 4].map((n) => (
-    <button
-      key={n}
-      onClick={...}
-      className={`flex-1 py-1.5 text-[11px] font-semibold transition-all rounded-xl ${
-        profile.mealsPerDay === n
-          ? "bg-foreground text-background"
-          : "bg-secondary/60 text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {n} {n === 1 ? "meal" : "meals"}
-    </button>
-  ))}
-</div>
-```
+This ensures the photo recognition feature on Meal Plan matches the same Pro-tier gating already applied on the Progress page.
 
-One file changed: `src/pages/MealPlan.tsx`
+### Technical detail
+
+- Add `useSubscription` hook call alongside existing hooks (~line 50)
+- For the re-snap button (line 647-664): conditionally render or gate the `<label>`
+- For the empty-slot snap button (line 674-691): same treatment
+- Use `toast` + `navigate("/pricing")` on click when not subscribed, consistent with other gated features
 
