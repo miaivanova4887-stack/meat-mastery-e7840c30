@@ -209,6 +209,8 @@
     "addAllToBag": "Add to the shopping list",
     "steps": "Steps",
     "deleteRecipe": "Delete recipe",
+    "editRecipe": "Edit",
+    "confirmDelete": "Are you sure you want to delete this recipe?",
     "myRecipes": "My Recipes",
     "allRecipes": "All Recipes",
     "noRecipes": "No recipes found. Try adjusting your filters.",

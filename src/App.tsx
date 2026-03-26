@@ -124,6 +124,7 @@ const App = () => {
                 <Route path="/timer" element={<KetosisTimer />} />
                 <Route path="/recipe-coach" element={<RecipeCoach />} />
                 <Route path="/create-recipe" element={<CreateRecipe />} />
+                <Route path="/edit-recipe/:id" element={<EditRecipe />} />
                 <Route path="/meal-plan" element={<MealPlan />} />
                 <Route path="/ingredients" element={<Ingredients />} />
                 <Route path="/exercise" element={<Exercise />} />
