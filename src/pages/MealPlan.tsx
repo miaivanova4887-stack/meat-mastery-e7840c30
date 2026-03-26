@@ -431,7 +431,7 @@ const MealPlan = () => {
         </TeaserGate>
 
         {/* Day Selector */}
-        <div className="flex gap-1.5 overflow-x-auto -mx-4 px-4 scrollbar-hide">
+        <div className="grid grid-cols-7 gap-1">
           {DAYS.map((day) => {
             const dt = dayTotals(day);
             const isActive = activeDay === day;
@@ -441,14 +441,14 @@ const MealPlan = () => {
               <button
                 key={day}
                 onClick={() => setActiveDay(day)}
-                className={`flex-shrink-0 flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[52px] relative ${
+                className={`flex flex-col items-center px-1 py-2 rounded-xl transition-all relative ${
                   isActive
                     ? "bg-foreground text-background"
                     : "bg-secondary/60 text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {isTodayDay && (
-                  <span className={`absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary`} />
+                  <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
                 )}
                 <span className="text-xs font-bold">{day}</span>
                 {dt.count > 0 && (
@@ -464,8 +464,8 @@ const MealPlan = () => {
         {/* Day Summary with targets */}
         <div className="ios-card p-3.5">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-foreground">{activeDay}</span>
+            <span className="text-sm font-bold text-foreground">{activeDay}</span>
+            <div className="flex items-center gap-2">
               <div className="flex bg-secondary rounded-lg overflow-hidden">
                 {[1, 2, 3, 4].map((n) => (
                   <button
@@ -474,7 +474,7 @@ const MealPlan = () => {
                       localStorage.setItem("carnivore-meals-per-day", String(n));
                       window.dispatchEvent(new Event("profile-update"));
                     }}
-                    className={`px-2 py-0.5 text-[10px] font-semibold transition-all ${
+                    className={`px-3 py-1 text-[11px] font-semibold transition-all ${
                       profile.mealsPerDay === n ? "bg-foreground text-background" : "text-muted-foreground"
                     }`}
                   >
