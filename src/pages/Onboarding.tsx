@@ -92,17 +92,16 @@ const steps: OnboardingStep[] = [
       { key: "age", label: "Age", placeholder: "e.g. 30", unit: "years", type: "number" },
       { key: "height", label: "Height", placeholder: "e.g. 175", unit: "cm", type: "number" },
       { key: "weight", label: "Current weight", placeholder: "e.g. 80", unit: "kg", type: "number" },
+      { key: "goalWeight", label: "Goal weight", placeholder: "e.g. 72", unit: "kg", type: "number" },
     ],
   },
   {
-    // Step 4 (index 3) — goal weight + health targets multi-select
+    // Step 4 (index 3) — health targets multi-select only
     type: "input",
     title: "What's your target?",
-    subtitle: "A goal gives you direction — leave blank if unsure",
+    subtitle: "Select everything that applies — we'll personalize your plan around it",
     icon: Crosshair,
-    fields: [
-      { key: "goalWeight", label: "Goal weight", placeholder: "e.g. 72", unit: "kg", type: "number" },
-    ],
+    fields: [],
   },
   {
     type: "options",
