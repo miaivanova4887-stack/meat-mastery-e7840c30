@@ -1,26 +1,31 @@
 
 
-## Gate "Snap & Log" Photo Recognition for Pro+ Users
+## Polish Flame Icon as App Icon
 
-### Current state
-- **Progress page**: Already gated with `<TeaserGate requiredTier="pro">` (line 76)
-- **Meal Plan page**: Two camera buttons (lines 647-664 for re-snap, lines 674-691 for empty slot snap) are **ungated** — any user can use them
+### What we have
+- Uploaded flame icon: minimal single-stroke amber flame on black background (small, ~56x56px)
+- Current `app-icon.png`: multi-color orange-yellow flame on dark gray (used for Android build)
+- Current `app-icon-512.png`: metallic steak shape (used as favicon and apple-touch-icon)
+- Brand colors: `--flame: 25 85% 52%` (amber), `--gold: 38 75% 52%`, background pure black in dark mode
 
-### Changes
+### Plan
 
-**File: `src/pages/MealPlan.tsx`**
+**Generate a polished 1024x1024 app icon** via Python script using the uploaded flame as reference:
+- Pure black (`#000000`) background with subtle radial gradient toward dark charcoal edges
+- Recreate the flame stroke in SVG at high resolution, using the brand amber color (`hsl(25, 85%, 52%)` / `#E07020`) with a subtle gradient toward gold (`hsl(38, 75%, 52%)`)
+- Thin, clean single-line flame matching the uploaded icon's proportions
+- No rounded-rect masking (iOS/Android apply their own masks)
+- Subtle outer glow in amber at low opacity for depth
 
-1. **Import `useSubscription`** from `@/contexts/SubscriptionContext`
-2. **Add access check**: `const { hasAccess } = useSubscription()` and derive `const canSnap = hasAccess("pro")`
-3. **Gate both camera buttons**: When `canSnap` is false, disable the camera labels (add `pointer-events-none opacity-40`) and intercept clicks to show an upgrade toast or redirect to `/pricing` instead of opening the file picker
-4. Alternatively, wrap both camera `<label>` elements so that clicking them when ungated shows a toast like `"Snap & Log is a Pro feature"` with a link to upgrade, matching the existing teaser pattern
+**Generate all required sizes from the 1024 source:**
+- `public/icon-1024.png` — source
+- `public/app-icon-512.png` — favicon + apple-touch-icon
+- `public/app-icon.png` — Capacitor/Android source icon
+- Android mipmap PNGs (48, 72, 96, 144, 192px) in `public/android-icons/`
 
-This ensures the photo recognition feature on Meal Plan matches the same Pro-tier gating already applied on the Progress page.
+**No changes to CarnivoreXLogo or SplashScreen** — flame is app icon only per your preference.
 
 ### Technical detail
 
-- Add `useSubscription` hook call alongside existing hooks (~line 50)
-- For the re-snap button (line 647-664): conditionally render or gate the `<label>`
-- For the empty-slot snap button (line 674-691): same treatment
-- Use `toast` + `navigate("/pricing")` on click when not subscribed, consistent with other gated features
+A Python script will draw the flame path as an SVG, render to 1024px PNG with Pillow/CairoSVG, then resize for all targets. The flame shape will be traced from the uploaded reference to maintain the exact contour style.
 
