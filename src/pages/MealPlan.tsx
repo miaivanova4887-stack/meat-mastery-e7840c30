@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useMealSync } from "@/hooks/useMealSync";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 import heroPlan from "@/assets/hero-plan.jpg";
 
 type AIMode = "single" | "daily" | "weekly";
