@@ -1,48 +1,44 @@
 
 
-## Redesign Step 4 Health Targets Visual Style
+## Add Edit & Delete Actions to My Recipes Cards
 
-UI-only changes to the health targets rendering block (lines 458-497 in `src/pages/Onboarding.tsx`). No data, state, or save logic changes.
+### What changes
 
-### Changes in `src/pages/Onboarding.tsx`
+Currently, the delete button is hidden inside the expanded ingredients section. There is no edit functionality. This plan adds visible Edit and Delete action buttons on every custom recipe card, and creates an edit route that reuses the CreateRecipe form pre-filled with existing data.
 
-**1. Replace `CATEGORY_ICONS` with emoji + style config map:**
+### Plan
 
-```typescript
-const CATEGORY_STYLES: Record<string, { emoji: string; gradient: string; border: string; glow: string }> = {
-  cat_metabolic:     { emoji: "🫀", gradient: "from-red-500/15 to-orange-500/15", border: "border-red-500/30", glow: "shadow-[0_0_12px_rgba(239,68,68,0.3)]" },
-  cat_inflammation:  { emoji: "🔥", gradient: "from-orange-500/15 to-amber-500/15", border: "border-orange-500/30", glow: "shadow-[0_0_12px_rgba(249,115,22,0.3)]" },
-  cat_gut:           { emoji: "🌿", gradient: "from-green-500/15 to-emerald-500/15", border: "border-green-500/30", glow: "shadow-[0_0_12px_rgba(34,197,94,0.3)]" },
-  cat_mental:        { emoji: "🧠", gradient: "from-blue-500/15 to-purple-500/15", border: "border-blue-500/30", glow: "shadow-[0_0_12px_rgba(59,130,246,0.3)]" },
-  cat_energy:        { emoji: "⚡", gradient: "from-yellow-500/15 to-orange-500/15", border: "border-yellow-500/30", glow: "shadow-[0_0_12px_rgba(234,179,8,0.3)]" },
-  cat_hormonal:      { emoji: "⚖️", gradient: "from-purple-500/15 to-pink-500/15", border: "border-purple-500/30", glow: "shadow-[0_0_12px_rgba(168,85,247,0.3)]" },
-};
-```
+**1. Add Edit/Delete buttons to RecipeCard (Recipes.tsx)**
 
-**2. Replace category headers** (line 464-466) with gradient accent card rows:
+In the `RecipeCard` component, when `isCustom` is true, render a row of two compact action buttons (Edit with `Pencil` icon, Delete with `Trash2` icon) below the description, always visible without needing to expand ingredients. Remove the existing delete button from inside the expanded ingredients section.
 
-```tsx
-<div className={`flex items-center gap-2.5 ${catIdx === 0 ? "mt-6" : "mt-5"} mb-2`}>
-  <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${style.gradient} flex items-center justify-center`}>
-    <span className="text-[20px]">{style.emoji}</span>
-  </div>
-  <span className="text-xs font-bold uppercase tracking-wider text-foreground">
-    {healthTargetLabels.get(cat.catKey) || cat.catKey}
-  </span>
-</div>
-<div className={`border-b ${style.border} opacity-30 mb-2`} />
-```
+Add a confirmation dialog before delete using `window.confirm()` or a simple inline confirmation.
 
-**3. Replace target card rendering** (lines 468-492) with emoji cards + category-specific selected state:
+**2. Create Edit Recipe route and page**
 
-- Unselected: `bg-card border-border/40` with emoji and foreground text
-- Selected: `bg-gradient-to-r ${style.gradient}` at higher opacity, `${style.border}` at 50%, white text, checkmark in category accent
-- Active tap: `active:scale-[0.97]` with `transition-all duration-150`
-- Checkmark: wrap in a div with `transition-transform duration-100` and `scale-0`/`scale-100`
-- Selected cards get the category glow shadow
+- Add `/edit-recipe/:id` route in `App.tsx`
+- Create `src/pages/EditRecipe.tsx` that reuses the same form layout as `CreateRecipe.tsx` but:
+  - Loads existing recipe data from `useCustomRecipes()` by ID
+  - Pre-fills all fields (name, time, cal, protein, fat, serving, tiers, meal, tags, ingredients, steps, image)
+  - On save, calls `updateRecipe(id, updates)` instead of `addRecipe`
+  - Navigates back to `/recipes` on success
 
-**4. Remove Lucide icon imports** that are no longer needed: `Heart, Flame, Leaf, Zap, Scale` (keep `Brain` and `Check` as they're used elsewhere). Remove the `CATEGORY_ICONS` constant.
+**3. Add i18n keys**
 
-### Single file changed
-`src/pages/Onboarding.tsx` — visual rendering of the health targets block only.
+- `en.json`: `"editRecipe": "Edit"` 
+- `fr.json`: `"editRecipe": "Modifier"`
+
+**4. Wire navigation**
+
+In `RecipeCard`, the Edit button navigates to `/edit-recipe/${custom.id}`.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `src/pages/Recipes.tsx` | Add Edit/Delete row on custom cards, remove buried delete |
+| `src/pages/EditRecipe.tsx` | New page — form pre-filled with recipe data, calls `updateRecipe` |
+| `src/App.tsx` | Add `/edit-recipe/:id` route |
+| `src/i18n/en.json` | Add `editRecipe` key |
+| `src/i18n/fr.json` | Add `editRecipe` key |
 
