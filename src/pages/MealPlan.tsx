@@ -463,26 +463,27 @@ const MealPlan = () => {
 
         {/* Day Summary with targets */}
         <div className="ios-card p-3.5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-foreground">{activeDay}</span>
-            <div className="flex items-center gap-2">
-              <div className="flex bg-secondary rounded-lg overflow-hidden">
-                {[1, 2, 3, 4].map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => {
-                      localStorage.setItem("carnivore-meals-per-day", String(n));
-                      window.dispatchEvent(new Event("profile-update"));
-                    }}
-                    className={`px-3 py-1 text-[11px] font-semibold transition-all ${
-                      profile.mealsPerDay === n ? "bg-foreground text-background" : "text-muted-foreground"
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <span className="text-[10px] text-muted-foreground">meals</span>
+          <div className="mb-2">
+            <span className="text-[11px] text-muted-foreground mb-1.5 block">
+              Meals planned for {activeDay}
+            </span>
+            <div className="flex bg-secondary rounded-lg overflow-hidden gap-px">
+              {[1, 2, 3, 4].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => {
+                    localStorage.setItem("carnivore-meals-per-day", String(n));
+                    window.dispatchEvent(new Event("profile-update"));
+                  }}
+                  className={`flex-1 py-1.5 text-[11px] font-semibold transition-all ${
+                    profile.mealsPerDay === n
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {n} {n === 1 ? "meal" : "meals"}
+                </button>
+              ))}
             </div>
           </div>
           {totals.count > 0 && (
