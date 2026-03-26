@@ -464,8 +464,8 @@ const MealPlan = () => {
         {/* Day Summary with targets */}
         <div className="ios-card p-3.5">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-foreground">{activeDay}</span>
+            <span className="text-sm font-bold text-foreground">{activeDay}</span>
+            <div className="flex items-center gap-2">
               <div className="flex bg-secondary rounded-lg overflow-hidden">
                 {[1, 2, 3, 4].map((n) => (
                   <button
@@ -474,7 +474,7 @@ const MealPlan = () => {
                       localStorage.setItem("carnivore-meals-per-day", String(n));
                       window.dispatchEvent(new Event("profile-update"));
                     }}
-                    className={`px-2 py-0.5 text-[10px] font-semibold transition-all ${
+                    className={`px-3 py-1 text-[11px] font-semibold transition-all ${
                       profile.mealsPerDay === n ? "bg-foreground text-background" : "text-muted-foreground"
                     }`}
                   >
