@@ -1,43 +1,43 @@
 
 
-## Fix Day Tabs & Meal Quantity Layout
+## Improve Meal Quantity Selector UX
 
-Two targeted UI tweaks in `src/pages/MealPlan.tsx`. No logic changes.
+### Current state
+The row shows `{activeDay}` on the left and `[1][2][3][4] meals` on the right. The "meals" label is vague — it doesn't tell the user what the numbers mean or confirm their selection.
 
-### 1. Day tabs fit in one screen width (line 434-462)
+### Proposed change (lines 466-487 of `MealPlan.tsx`)
 
-Remove `overflow-x-auto` scrolling and make tabs fill the width equally:
-- Change container from `flex gap-1.5 overflow-x-auto -mx-4 px-4 scrollbar-hide` to `grid grid-cols-7 gap-1`
-- Remove `flex-shrink-0` and `min-w-[52px]` from each button
-- Keep all existing styling, active states, today dot, and completion counts
+Replace the current layout with a more descriptive design:
 
-### 2. Harmonize meal quantity selector in day summary card (lines 466-486)
-
-Currently the row has the day name, a tiny 1-2-3-4 toggle, and "meals" label all crammed on the left with empty space on the right. Redesign:
-- Move the day name to be a standalone label
-- Make the meal count selector span the full width of the remaining space, with equal-width buttons inside a rounded container
-- Layout: `<day label>` left, `<1|2|3|4 meals>` right, with the selector buttons evenly spaced using `flex-1` on each button
+1. **Add a contextual label row** above the selector: `"Meals planned for {activeDay}"` as a small heading
+2. **Replace the bare number buttons + "meals" suffix** with labeled buttons that read `"1 meal"`, `"2 meals"`, `"3 meals"`, `"4 meals"` — each button gets `flex-1` so they fill the row evenly
+3. **Drop the separate "meals" text** since it's now embedded in each button
 
 ```tsx
-<div className="flex items-center justify-between mb-2">
-  <span className="text-sm font-bold text-foreground">{activeDay}</span>
-  <div className="flex items-center gap-2">
-    <div className="flex bg-secondary rounded-lg overflow-hidden">
-      {[1, 2, 3, 4].map((n) => (
-        <button key={n} ...same logic...
-          className={`px-3 py-1 text-[11px] font-semibold transition-all ${
-            profile.mealsPerDay === n ? "bg-foreground text-background" : "text-muted-foreground"
-          }`}
-        >{n}</button>
-      ))}
-    </div>
-    <span className="text-[10px] text-muted-foreground">meals</span>
+<div className="mb-2">
+  <span className="text-[11px] text-muted-foreground mb-1.5 block">
+    Meals planned for {activeDay}
+  </span>
+  <div className="flex bg-secondary rounded-lg overflow-hidden gap-px">
+    {[1, 2, 3, 4].map((n) => (
+      <button
+        key={n}
+        onClick={() => { /* same logic */ }}
+        className={`flex-1 py-1.5 text-[11px] font-semibold transition-all ${
+          profile.mealsPerDay === n
+            ? "bg-foreground text-background"
+            : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        {n} {n === 1 ? "meal" : "meals"}
+      </button>
+    ))}
   </div>
 </div>
 ```
 
-Increases button padding from `px-2 py-0.5 text-[10px]` to `px-3 py-1 text-[11px]` for better tap targets, and moves the selector to the right side for balanced layout.
+This makes the selector self-explanatory: the label tells users what they're choosing, and each button clearly states the option. The full-width layout eliminates the cramped-left / empty-right imbalance.
 
 ### File changed
-`src/pages/MealPlan.tsx` — lines 434-486 only
+`src/pages/MealPlan.tsx` — lines 466-487 only
 
