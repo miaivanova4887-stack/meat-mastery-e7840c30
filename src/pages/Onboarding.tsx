@@ -457,13 +457,19 @@ const Onboarding = () => {
           {/* Health targets multi-select on Step 4 */}
           {isStep4 && healthTargetLabels.size > 0 && (
             <div className="space-y-0">
-              {HEALTH_TARGET_CATEGORIES.map((cat) => {
-                const CatIcon = CATEGORY_ICONS[cat.catKey];
+              {HEALTH_TARGET_CATEGORIES.map((cat, catIdx) => {
+                const style = CATEGORY_STYLES[cat.catKey] || CATEGORY_STYLES.cat_metabolic;
                 return (
                   <div key={cat.catKey}>
-                    <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-4 mb-1">
-                      {healthTargetLabels.get(cat.catKey) || cat.catKey}
-                    </h3>
+                    <div className={`flex items-center gap-2.5 ${catIdx === 0 ? "mt-6" : "mt-5"} mb-2`}>
+                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${style.gradient} flex items-center justify-center`}>
+                        <span className="text-[20px]">{style.emoji}</span>
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        {healthTargetLabels.get(cat.catKey) || cat.catKey}
+                      </span>
+                    </div>
+                    <div className={`border-b ${style.border} opacity-30 mb-2`} />
                     <div className="space-y-1">
                       {cat.targets.map((targetKey) => {
                         const selected = healthTargets.includes(targetKey);
@@ -472,21 +478,21 @@ const Onboarding = () => {
                             key={targetKey}
                             type="button"
                             onClick={() => toggleHealthTarget(targetKey)}
-                            className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl border transition-all duration-200 active:scale-[0.98] ${
+                            className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl border transition-all duration-150 active:scale-[0.97] ${
                               selected
-                                ? "bg-primary/10 border-primary/40"
-                                : "bg-card border-border/50"
+                                ? `bg-gradient-to-r ${style.gradient} ${style.border.replace('/30', '/50')} ${style.glow}`
+                                : "bg-card border-border/40"
                             }`}
                           >
-                            {CatIcon && <CatIcon size={16} className={selected ? "text-primary" : "text-muted-foreground"} />}
-                            <span className={`flex-1 text-sm font-medium text-left ${selected ? "text-primary" : "text-foreground"}`}>
+                            <span className="text-[20px]">{style.emoji}</span>
+                            <span className={`flex-1 text-sm font-medium text-left ${selected ? "text-foreground" : "text-foreground"}`}>
                               {healthTargetLabels.get(targetKey) || targetKey}
                             </span>
-                            {selected && (
-                              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                                <Check size={12} className="text-primary-foreground" />
-                              </div>
-                            )}
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-transform duration-100 ${
+                              selected ? "scale-100 bg-primary" : "scale-0"
+                            }`}>
+                              <Check size={12} className="text-primary-foreground" />
+                            </div>
                           </button>
                         );
                       })}
