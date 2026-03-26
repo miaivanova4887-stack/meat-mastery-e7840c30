@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair } from "lucide-react";
+import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair, Heart, Flame, Leaf, Zap, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -50,6 +50,15 @@ const HEALTH_TARGET_CATEGORIES = [
   { catKey: "cat_hormonal", targets: ["hormone_balance", "thyroid", "testosterone", "fertility"] },
 ];
 
+const CATEGORY_ICONS: Record<string, typeof Heart> = {
+  cat_metabolic: Heart,
+  cat_inflammation: Flame,
+  cat_gut: Leaf,
+  cat_mental: Brain,
+  cat_energy: Zap,
+  cat_hormonal: Scale,
+};
+
 const steps: OnboardingStep[] = [
   {
     type: "options",
@@ -83,17 +92,16 @@ const steps: OnboardingStep[] = [
       { key: "age", label: "Age", placeholder: "e.g. 30", unit: "years", type: "number" },
       { key: "height", label: "Height", placeholder: "e.g. 175", unit: "cm", type: "number" },
       { key: "weight", label: "Current weight", placeholder: "e.g. 80", unit: "kg", type: "number" },
+      { key: "goalWeight", label: "Goal weight", placeholder: "e.g. 72", unit: "kg", type: "number" },
     ],
   },
   {
-    // Step 4 (index 3) — goal weight + health targets multi-select
+    // Step 4 (index 3) — health targets multi-select only
     type: "input",
     title: "What's your target?",
-    subtitle: "A goal gives you direction — leave blank if unsure",
+    subtitle: "Select everything that applies — we'll personalize your plan around it",
     icon: Crosshair,
-    fields: [
-      { key: "goalWeight", label: "Goal weight", placeholder: "e.g. 72", unit: "kg", type: "number" },
-    ],
+    fields: [],
   },
   {
     type: "options",
@@ -391,7 +399,11 @@ const Onboarding = () => {
             <Icon size={24} strokeWidth={1.8} className="text-primary" />
           </div>
           <h1 className="text-2xl font-display font-bold text-foreground leading-tight tracking-tight">{current.title}</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">{current.subtitle}</p>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            {isStep4 && healthTargetLabels.get("subtitle")
+              ? healthTargetLabels.get("subtitle")
+              : current.subtitle}
+          </p>
         </div>
 
         {/* Options or Inputs */}
@@ -444,36 +456,44 @@ const Onboarding = () => {
 
           {/* Health targets multi-select on Step 4 */}
           {isStep4 && healthTargetLabels.size > 0 && (
-            <div className="mt-4 space-y-4">
-              {HEALTH_TARGET_CATEGORIES.map((cat) => (
-                <div key={cat.catKey}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                    {healthTargetLabels.get(cat.catKey) || cat.catKey}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {cat.targets.map((targetKey) => {
-                      const selected = healthTargets.includes(targetKey);
-                      return (
-                        <button
-                          key={targetKey}
-                          type="button"
-                          onClick={() => toggleHealthTarget(targetKey)}
-                          className={`px-3 py-2 rounded-xl border text-xs font-medium transition-all duration-200 active:scale-[0.97] ${
-                            selected
-                              ? "bg-primary/10 border-primary/40 text-primary"
-                              : "bg-card border-border/50 text-foreground"
-                          }`}
-                        >
-                          {healthTargetLabels.get(targetKey) || targetKey}
-                          {selected && (
-                            <Check size={12} className="inline ml-1.5 -mt-0.5" />
-                          )}
-                        </button>
-                      );
-                    })}
+            <div className="space-y-0">
+              {HEALTH_TARGET_CATEGORIES.map((cat) => {
+                const CatIcon = CATEGORY_ICONS[cat.catKey];
+                return (
+                  <div key={cat.catKey}>
+                    <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-4 mb-1">
+                      {healthTargetLabels.get(cat.catKey) || cat.catKey}
+                    </h3>
+                    <div className="space-y-1">
+                      {cat.targets.map((targetKey) => {
+                        const selected = healthTargets.includes(targetKey);
+                        return (
+                          <button
+                            key={targetKey}
+                            type="button"
+                            onClick={() => toggleHealthTarget(targetKey)}
+                            className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl border transition-all duration-200 active:scale-[0.98] ${
+                              selected
+                                ? "bg-primary/10 border-primary/40"
+                                : "bg-card border-border/50"
+                            }`}
+                          >
+                            {CatIcon && <CatIcon size={16} className={selected ? "text-primary" : "text-muted-foreground"} />}
+                            <span className={`flex-1 text-sm font-medium text-left ${selected ? "text-primary" : "text-foreground"}`}>
+                              {healthTargetLabels.get(targetKey) || targetKey}
+                            </span>
+                            {selected && (
+                              <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                                <Check size={12} className="text-primary-foreground" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
