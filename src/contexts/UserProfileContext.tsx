@@ -33,6 +33,7 @@ export interface UserProfile {
   mealsPerDay: number;
   nutritionTargets: NutritionTargets;
   cuisines: CuisineType[];
+  healthTargets: string[];
   isComplete: boolean;
 }
 
