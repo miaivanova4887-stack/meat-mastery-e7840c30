@@ -296,10 +296,21 @@ const Onboarding = () => {
         localStorage.setItem("carnivore-health-targets", JSON.stringify(healthTargets));
 
         // Build CDP user_attributes
-        const userAttributes: Record<string, boolean> = {};
+        const userAttributes: Record<string, any> = {};
         ALL_HEALTH_TARGET_KEYS.forEach((k) => {
           userAttributes[`health_target_${k}`] = healthTargets.includes(k);
         });
+
+        // Include custom cuisines in user_attributes
+        const storedCustomCuisines = localStorage.getItem("carnivore-custom-cuisines");
+        if (storedCustomCuisines) {
+          try {
+            const customCuisines = JSON.parse(storedCustomCuisines);
+            if (Array.isArray(customCuisines) && customCuisines.length > 0) {
+              userAttributes["custom_cuisines"] = customCuisines;
+            }
+          } catch {}
+        }
 
         // Save to profile if authenticated
         supabase.auth.getUser().then(({ data: { user } }) => {
