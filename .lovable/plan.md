@@ -1,44 +1,43 @@
 
 
-## Add Edit & Delete Actions to My Recipes Cards
+## Fix Day Tabs & Meal Quantity Layout
 
-### What changes
+Two targeted UI tweaks in `src/pages/MealPlan.tsx`. No logic changes.
 
-Currently, the delete button is hidden inside the expanded ingredients section. There is no edit functionality. This plan adds visible Edit and Delete action buttons on every custom recipe card, and creates an edit route that reuses the CreateRecipe form pre-filled with existing data.
+### 1. Day tabs fit in one screen width (line 434-462)
 
-### Plan
+Remove `overflow-x-auto` scrolling and make tabs fill the width equally:
+- Change container from `flex gap-1.5 overflow-x-auto -mx-4 px-4 scrollbar-hide` to `grid grid-cols-7 gap-1`
+- Remove `flex-shrink-0` and `min-w-[52px]` from each button
+- Keep all existing styling, active states, today dot, and completion counts
 
-**1. Add Edit/Delete buttons to RecipeCard (Recipes.tsx)**
+### 2. Harmonize meal quantity selector in day summary card (lines 466-486)
 
-In the `RecipeCard` component, when `isCustom` is true, render a row of two compact action buttons (Edit with `Pencil` icon, Delete with `Trash2` icon) below the description, always visible without needing to expand ingredients. Remove the existing delete button from inside the expanded ingredients section.
+Currently the row has the day name, a tiny 1-2-3-4 toggle, and "meals" label all crammed on the left with empty space on the right. Redesign:
+- Move the day name to be a standalone label
+- Make the meal count selector span the full width of the remaining space, with equal-width buttons inside a rounded container
+- Layout: `<day label>` left, `<1|2|3|4 meals>` right, with the selector buttons evenly spaced using `flex-1` on each button
 
-Add a confirmation dialog before delete using `window.confirm()` or a simple inline confirmation.
+```tsx
+<div className="flex items-center justify-between mb-2">
+  <span className="text-sm font-bold text-foreground">{activeDay}</span>
+  <div className="flex items-center gap-2">
+    <div className="flex bg-secondary rounded-lg overflow-hidden">
+      {[1, 2, 3, 4].map((n) => (
+        <button key={n} ...same logic...
+          className={`px-3 py-1 text-[11px] font-semibold transition-all ${
+            profile.mealsPerDay === n ? "bg-foreground text-background" : "text-muted-foreground"
+          }`}
+        >{n}</button>
+      ))}
+    </div>
+    <span className="text-[10px] text-muted-foreground">meals</span>
+  </div>
+</div>
+```
 
-**2. Create Edit Recipe route and page**
+Increases button padding from `px-2 py-0.5 text-[10px]` to `px-3 py-1 text-[11px]` for better tap targets, and moves the selector to the right side for balanced layout.
 
-- Add `/edit-recipe/:id` route in `App.tsx`
-- Create `src/pages/EditRecipe.tsx` that reuses the same form layout as `CreateRecipe.tsx` but:
-  - Loads existing recipe data from `useCustomRecipes()` by ID
-  - Pre-fills all fields (name, time, cal, protein, fat, serving, tiers, meal, tags, ingredients, steps, image)
-  - On save, calls `updateRecipe(id, updates)` instead of `addRecipe`
-  - Navigates back to `/recipes` on success
-
-**3. Add i18n keys**
-
-- `en.json`: `"editRecipe": "Edit"` 
-- `fr.json`: `"editRecipe": "Modifier"`
-
-**4. Wire navigation**
-
-In `RecipeCard`, the Edit button navigates to `/edit-recipe/${custom.id}`.
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `src/pages/Recipes.tsx` | Add Edit/Delete row on custom cards, remove buried delete |
-| `src/pages/EditRecipe.tsx` | New page — form pre-filled with recipe data, calls `updateRecipe` |
-| `src/App.tsx` | Add `/edit-recipe/:id` route |
-| `src/i18n/en.json` | Add `editRecipe` key |
-| `src/i18n/fr.json` | Add `editRecipe` key |
+### File changed
+`src/pages/MealPlan.tsx` — lines 434-486 only
 
