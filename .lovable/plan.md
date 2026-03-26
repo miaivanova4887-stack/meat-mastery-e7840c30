@@ -1,43 +1,35 @@
 
 
-## Improve Meal Quantity Selector UX
+## Match Meal Quantity Selector Style to Day Tabs
 
-### Current state
-The row shows `{activeDay}` on the left and `[1][2][3][4] meals` on the right. The "meals" label is vague — it doesn't tell the user what the numbers mean or confirm their selection.
+The day tabs use `rounded-xl` with `gap-1` between individual rounded buttons. The meal selector uses `rounded-lg overflow-hidden gap-px` on a wrapper, making individual buttons rectangular with no rounding.
 
-### Proposed change (lines 466-487 of `MealPlan.tsx`)
+### Change in `src/pages/MealPlan.tsx` (lines 470-487)
 
-Replace the current layout with a more descriptive design:
+Remove the shared background wrapper approach and instead style each button individually, matching the day tabs pattern:
 
-1. **Add a contextual label row** above the selector: `"Meals planned for {activeDay}"` as a small heading
-2. **Replace the bare number buttons + "meals" suffix** with labeled buttons that read `"1 meal"`, `"2 meals"`, `"3 meals"`, `"4 meals"` — each button gets `flex-1` so they fill the row evenly
-3. **Drop the separate "meals" text** since it's now embedded in each button
+- Change container from `flex bg-secondary rounded-lg overflow-hidden gap-px` to `flex gap-1`
+- Add `rounded-xl` to each button
+- Add `bg-secondary/60` for inactive state (matching day tab inactive style)
+- Keep `flex-1` for even distribution
 
 ```tsx
-<div className="mb-2">
-  <span className="text-[11px] text-muted-foreground mb-1.5 block">
-    Meals planned for {activeDay}
-  </span>
-  <div className="flex bg-secondary rounded-lg overflow-hidden gap-px">
-    {[1, 2, 3, 4].map((n) => (
-      <button
-        key={n}
-        onClick={() => { /* same logic */ }}
-        className={`flex-1 py-1.5 text-[11px] font-semibold transition-all ${
-          profile.mealsPerDay === n
-            ? "bg-foreground text-background"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        {n} {n === 1 ? "meal" : "meals"}
-      </button>
-    ))}
-  </div>
+<div className="flex gap-1">
+  {[1, 2, 3, 4].map((n) => (
+    <button
+      key={n}
+      onClick={...}
+      className={`flex-1 py-1.5 text-[11px] font-semibold transition-all rounded-xl ${
+        profile.mealsPerDay === n
+          ? "bg-foreground text-background"
+          : "bg-secondary/60 text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {n} {n === 1 ? "meal" : "meals"}
+    </button>
+  ))}
 </div>
 ```
 
-This makes the selector self-explanatory: the label tells users what they're choosing, and each button clearly states the option. The full-width layout eliminates the cramped-left / empty-right imbalance.
-
-### File changed
-`src/pages/MealPlan.tsx` — lines 466-487 only
+One file changed: `src/pages/MealPlan.tsx`
 
