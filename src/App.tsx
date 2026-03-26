@@ -17,6 +17,7 @@ import Recipes from "./pages/Recipes";
 import KetosisTimer from "./pages/KetosisTimer";
 import RecipeCoach from "./pages/RecipeCoach";
 import CreateRecipe from "./pages/CreateRecipe";
+import EditRecipe from "./pages/EditRecipe";
 import MealPlan from "./pages/MealPlan";
 import Ingredients from "./pages/Ingredients";
 import Exercise from "./pages/Exercise";
