@@ -467,7 +467,7 @@ const MealPlan = () => {
             <span className="text-[11px] text-muted-foreground mb-1.5 block">
               Meals planned for {activeDay}
             </span>
-            <div className="flex bg-secondary rounded-lg overflow-hidden gap-px">
+            <div className="flex gap-1">
               {[1, 2, 3, 4].map((n) => (
                 <button
                   key={n}
@@ -475,10 +475,10 @@ const MealPlan = () => {
                     localStorage.setItem("carnivore-meals-per-day", String(n));
                     window.dispatchEvent(new Event("profile-update"));
                   }}
-                  className={`flex-1 py-1.5 text-[11px] font-semibold transition-all ${
+                  className={`flex-1 py-1.5 text-[11px] font-semibold transition-all rounded-xl ${
                     profile.mealsPerDay === n
                       ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "bg-secondary/60 text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {n} {n === 1 ? "meal" : "meals"}
