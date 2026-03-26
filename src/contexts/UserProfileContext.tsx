@@ -80,7 +80,7 @@ function parseProfile(): UserProfile {
   const defaults: UserProfile = {
     goal: "improve_health", experience: "beginner", struggles: [],
     activityLevel: "light", interests: [], body: defaultBody, mealsPerDay: storedMeals,
-    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, cuisines: [], isComplete: false,
+    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, cuisines: [], healthTargets: [], isComplete: false,
   };
   try {
     const raw = localStorage.getItem("carnivore-onboarding-answers");
