@@ -50,6 +50,15 @@ const HEALTH_TARGET_CATEGORIES = [
   { catKey: "cat_hormonal", targets: ["hormone_balance", "thyroid", "testosterone", "fertility"] },
 ];
 
+const CATEGORY_ICONS: Record<string, typeof Heart> = {
+  cat_metabolic: Heart,
+  cat_inflammation: Flame,
+  cat_gut: Leaf,
+  cat_mental: Brain,
+  cat_energy: Zap,
+  cat_hormonal: Scale,
+};
+
 const steps: OnboardingStep[] = [
   {
     type: "options",
