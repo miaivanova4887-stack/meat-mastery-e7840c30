@@ -243,8 +243,10 @@ export type Database = {
           created_at: string
           diet_tier: string | null
           display_name: string | null
+          health_targets: string[]
           id: string
           updated_at: string
+          user_attributes: Json
           username: string | null
         }
         Insert: {
@@ -253,8 +255,10 @@ export type Database = {
           created_at?: string
           diet_tier?: string | null
           display_name?: string | null
+          health_targets?: string[]
           id: string
           updated_at?: string
+          user_attributes?: Json
           username?: string | null
         }
         Update: {
@@ -263,8 +267,10 @@ export type Database = {
           created_at?: string
           diet_tier?: string | null
           display_name?: string | null
+          health_targets?: string[]
           id?: string
           updated_at?: string
+          user_attributes?: Json
           username?: string | null
         }
         Relationships: []

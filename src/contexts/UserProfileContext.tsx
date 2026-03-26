@@ -33,6 +33,7 @@ export interface UserProfile {
   mealsPerDay: number;
   nutritionTargets: NutritionTargets;
   cuisines: CuisineType[];
+  healthTargets: string[];
   isComplete: boolean;
 }
 
@@ -79,7 +80,7 @@ function parseProfile(): UserProfile {
   const defaults: UserProfile = {
     goal: "improve_health", experience: "beginner", struggles: [],
     activityLevel: "light", interests: [], body: defaultBody, mealsPerDay: storedMeals,
-    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, cuisines: [], isComplete: false,
+    nutritionTargets: { calories: 2000, protein: 175, fat: 145 }, cuisines: [], healthTargets: [], isComplete: false,
   };
   try {
     const raw = localStorage.getItem("carnivore-onboarding-answers");
@@ -115,6 +116,13 @@ function parseProfile(): UserProfile {
       if (cuisineRaw) cuisines = JSON.parse(cuisineRaw);
     } catch { /* ignore */ }
 
+    // Parse health targets
+    let healthTargets: string[] = [];
+    try {
+      const htRaw = localStorage.getItem("carnivore-health-targets");
+      if (htRaw) healthTargets = JSON.parse(htRaw);
+    } catch { /* ignore */ }
+
     return {
       goal,
       experience: EXP_MAP[answers[1] as number] ?? "beginner",
@@ -125,6 +133,7 @@ function parseProfile(): UserProfile {
       mealsPerDay,
       nutritionTargets: computeTargets(goal, activityLevel, body),
       cuisines,
+      healthTargets,
       isComplete: true,
     };
   } catch {

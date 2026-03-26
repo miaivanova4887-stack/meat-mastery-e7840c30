@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import i18n from "@/i18n/index";
 
 interface StepOption {
   label: string;
@@ -30,6 +32,23 @@ interface InputStep {
 }
 
 type OnboardingStep = OptionStep | InputStep;
+
+// Health target constants
+const ALL_HEALTH_TARGET_KEYS = [
+  "blood_pressure", "insulin_sensitivity", "chronic_inflammation", "joint_pain",
+  "autoimmune", "skin_issues", "bloating", "food_sensitivities", "mental_clarity",
+  "brain_fog", "mood", "sleep", "sustained_energy", "athletic_performance",
+  "recovery", "muscle_mass", "hormone_balance", "thyroid", "testosterone", "fertility"
+] as const;
+
+const HEALTH_TARGET_CATEGORIES = [
+  { catKey: "cat_metabolic", targets: ["blood_pressure", "insulin_sensitivity"] },
+  { catKey: "cat_inflammation", targets: ["chronic_inflammation", "joint_pain", "autoimmune", "skin_issues"] },
+  { catKey: "cat_gut", targets: ["bloating", "food_sensitivities"] },
+  { catKey: "cat_mental", targets: ["mental_clarity", "brain_fog", "mood", "sleep"] },
+  { catKey: "cat_energy", targets: ["sustained_energy", "athletic_performance", "recovery", "muscle_mass"] },
+  { catKey: "cat_hormonal", targets: ["hormone_balance", "thyroid", "testosterone", "fertility"] },
+];
 
 const steps: OnboardingStep[] = [
   {
@@ -67,13 +86,13 @@ const steps: OnboardingStep[] = [
     ],
   },
   {
+    // Step 4 (index 3) — goal weight + health targets multi-select
     type: "input",
     title: "What's your target?",
     subtitle: "A goal gives you direction — leave blank if unsure",
     icon: Crosshair,
     fields: [
       { key: "goalWeight", label: "Goal weight", placeholder: "e.g. 72", unit: "kg", type: "number" },
-      { key: "healthTarget", label: "Health target (optional)", placeholder: "e.g. Lower blood pressure", type: "text" },
     ],
   },
   {
@@ -186,6 +205,34 @@ const Onboarding = () => {
   const [customCuisine, setCustomCuisine] = useState("");
   const [transitioning, setTransitioning] = useState(false);
 
+  // Health targets state (step 3)
+  const [healthTargets, setHealthTargets] = useState<string[]>([]);
+  const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(new Map());
+
+  // Fetch health target labels from content_blocks
+  useEffect(() => {
+    const locale = i18n.language?.startsWith("fr") ? "fr" : "en";
+    (supabase as any)
+      .from("content_blocks")
+      .select("key, value")
+      .eq("page", "onboarding")
+      .eq("section", "health_targets")
+      .eq("locale", locale)
+      .then(({ data }: { data: { key: string; value: string }[] | null }) => {
+        if (data) {
+          const map = new Map<string, string>();
+          data.forEach((row) => map.set(row.key, row.value));
+          setHealthTargetLabels(map);
+        }
+      });
+  }, []);
+
+  const toggleHealthTarget = (key: string) => {
+    setHealthTargets((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
   const current = steps[step];
   const totalSteps = steps.length;
   const isLastStep = step === totalSteps - 1;
@@ -233,9 +280,32 @@ const Onboarding = () => {
           height: inputValues.height || "",
           weight: inputValues.weight || "",
           goalWeight: inputValues.goalWeight || "",
-          healthTarget: inputValues.healthTarget || "",
+          healthTarget: "",
         };
         localStorage.setItem("carnivore-onboarding-body", JSON.stringify(bodyData));
+
+        // Save health targets
+        localStorage.setItem("carnivore-health-targets", JSON.stringify(healthTargets));
+
+        // Build CDP user_attributes
+        const userAttributes: Record<string, boolean> = {};
+        ALL_HEALTH_TARGET_KEYS.forEach((k) => {
+          userAttributes[`health_target_${k}`] = healthTargets.includes(k);
+        });
+
+        // Save to profile if authenticated
+        supabase.auth.getUser().then(({ data: { user } }) => {
+          if (user) {
+            (supabase as any)
+              .from("profiles")
+              .update({
+                health_targets: healthTargets,
+                user_attributes: userAttributes,
+              })
+              .eq("id", user.id)
+              .then(() => {});
+          }
+        });
 
         const CUISINE_MAP_1 = ["american", "european", "indian", "mexican"];
         const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
@@ -294,6 +364,7 @@ const Onboarding = () => {
   };
 
   const Icon = current.icon;
+  const isStep4 = step === 3;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -370,6 +441,41 @@ const Onboarding = () => {
               </div>
             </div>
           ))}
+
+          {/* Health targets multi-select on Step 4 */}
+          {isStep4 && healthTargetLabels.size > 0 && (
+            <div className="mt-4 space-y-4">
+              {HEALTH_TARGET_CATEGORIES.map((cat) => (
+                <div key={cat.catKey}>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    {healthTargetLabels.get(cat.catKey) || cat.catKey}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {cat.targets.map((targetKey) => {
+                      const selected = healthTargets.includes(targetKey);
+                      return (
+                        <button
+                          key={targetKey}
+                          type="button"
+                          onClick={() => toggleHealthTarget(targetKey)}
+                          className={`px-3 py-2 rounded-xl border text-xs font-medium transition-all duration-200 active:scale-[0.97] ${
+                            selected
+                              ? "bg-primary/10 border-primary/40 text-primary"
+                              : "bg-card border-border/50 text-foreground"
+                          }`}
+                        >
+                          {healthTargetLabels.get(targetKey) || targetKey}
+                          {selected && (
+                            <Check size={12} className="inline ml-1.5 -mt-0.5" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Custom cuisine input */}
           {showCustomInput && (
