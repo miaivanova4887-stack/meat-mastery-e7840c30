@@ -1,43 +1,40 @@
 
 
-## Replace CmsEditor Admin Guard with Local State Machine
+## Fix Missing "Terms of Service" in CMS Content Tab
 
-### What changes
-Replace the `useIsAdmin` hook + redirect pattern with a self-contained `adminStatus` state machine (`'checking' | 'admin' | 'denied'`). No navigation — just conditional rendering.
+### Root cause
+The `PAGE_NAMES` dictionary in `CmsContentEditor.tsx` doesn't include `privacy` or `terms`, so these pages only appear if search matches them — and without human-readable labels. Privacy happens to show because of existing DB rows with matching fields, but terms is effectively invisible.
 
-### Change — `src/pages/CmsEditor.tsx`
+### Change 1 — Add `privacy` and `terms` to `PAGE_NAMES` (line 23-48 of `CmsContentEditor.tsx`)
 
-**Imports:**
-- Remove `useIsAdmin` import
-- Remove `useNavigate` import
-- Remove `Loader2`, `ShieldAlert` from lucide imports (no longer used in same way)
-- Add `supabase` import from `@/integrations/supabase/client`
+Add two entries to the `PAGE_NAMES` object:
+```
+privacy: "Privacy Policy",
+terms: "Terms of Service",
+```
 
-**Component body:**
-- Remove `const navigate = useNavigate()`
-- Remove `const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id)`
-- Add `const [adminStatus, setAdminStatus] = useState<'checking' | 'admin' | 'denied'>('checking')`
-- Replace the existing `useEffect` + redirect with:
-  ```tsx
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) { setAdminStatus('denied'); return; }
-    const checkAdmin = async () => {
-      const { data, error } = await supabase
-        .from("user_roles").select("role")
-        .eq("user_id", user.id).eq("role", "admin")
-        .maybeSingle();
-      setAdminStatus(!!data && !error ? 'admin' : 'denied');
-    };
-    checkAdmin();
-  }, [user, authLoading]);
-  ```
-- Replace loading guard: show spinner when `adminStatus === 'checking'`
-- Replace denied guard: show "Access denied." text when `adminStatus === 'denied'`
-- Keep the existing `console.log` debug line, updated to reflect new variables
-- Keep `activeTab` state and entire CMS tab UI unchanged — only renders when `adminStatus === 'admin'`
-- Keep the "← Back to App" button (it uses `navigate`, so keep `useNavigate` for that one usage)
+Also add `main` to `SECTION_NAMES` if not already present (it is not — line 50-74):
+```
+main: "Main",
+```
+
+### Change 2 — Insert missing `content_blocks` rows for terms
+
+The DB already has `terms|main|body` for en/fr but is missing `title` and `last_updated`. Run a migration:
+
+```sql
+INSERT INTO content_blocks (page, section, key, type, locale, value)
+VALUES
+  ('terms', 'main', 'title', 'text', 'en', 'Terms of Service'),
+  ('terms', 'main', 'title', 'text', 'fr', 'Conditions d''utilisation'),
+  ('terms', 'main', 'last_updated', 'text', 'en', 'Last updated: March 2026'),
+  ('terms', 'main', 'last_updated', 'text', 'fr', 'Dernière mise à jour : mars 2026')
+ON CONFLICT DO NOTHING;
+```
+
+(The `body` rows already exist — skip those.)
 
 ### Files modified
-- `src/pages/CmsEditor.tsx` — replace admin guard logic
+- `src/components/cms/CmsContentEditor.tsx` — add `privacy` and `terms` to `PAGE_NAMES`, add `main` to `SECTION_NAMES`
+- New migration SQL — insert 4 missing content_blocks rows
 
