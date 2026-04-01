@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, ShieldAlert, PenLine, Layers, FileText } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Button } from "@/components/ui/button";
 import CmsContentEditor from "@/components/cms/CmsContentEditor";
 import CmsLayoutBuilder from "@/components/cms/CmsLayoutBuilder";
@@ -13,20 +13,16 @@ type Tab = "content" | "layout" | "pages";
 export default function CmsEditor() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
   const [activeTab, setActiveTab] = useState<Tab>("content");
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || roleLoading) return;
     if (!user) { navigate("/", { replace: true }); return; }
-    (supabase as any).from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
-      .then(({ data }: any) => {
-        if (!data) navigate("/", { replace: true });
-        else setIsAdmin(true);
-      });
-  }, [user, authLoading, navigate]);
+    if (!isAdmin) { navigate("/", { replace: true }); return; }
+  }, [authLoading, roleLoading, user, isAdmin, navigate]);
 
-  if (authLoading || isAdmin === null) {
+  if (authLoading || roleLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -57,7 +53,6 @@ export default function CmsEditor() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Top tab bar */}
       <div className="flex items-center border-b border-border bg-card px-4 shrink-0">
         <span className="text-sm font-bold text-foreground mr-6 py-3">CMS</span>
         {tabs.map(tab => (
@@ -81,7 +76,6 @@ export default function CmsEditor() {
         </div>
       </div>
 
-      {/* Tab content */}
       <div className="flex-1 overflow-hidden">
         {activeTab === "content" && <CmsContentEditor />}
         {activeTab === "layout" && <CmsLayoutBuilder />}
