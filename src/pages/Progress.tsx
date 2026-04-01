@@ -11,6 +11,7 @@ import NutrientBreakdown from "@/components/progress/NutrientBreakdown";
 import PhotoRecognition from "@/components/progress/PhotoRecognition";
 import BarcodeScanner from "@/components/progress/BarcodeScanner";
 import VoiceRecognition from "@/components/progress/VoiceRecognition";
+import ConsentBanner from "@/components/ConsentBanner";
 import {
   Select,
   SelectContent,
