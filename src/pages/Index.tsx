@@ -1,7 +1,8 @@
 import { HealthDashboard } from '@/components/HealthDashboard';
 import MotivationCTA from '@/components/MotivationCTA';
 import { useState } from "react";
-import { useNavigate, Navigate, Link } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { ChevronRight, RotateCcw, Lock } from "lucide-react";
 import CarnivoreXLogo from "@/components/CarnivoreXLogo";
 import { useTranslation } from "react-i18next";
