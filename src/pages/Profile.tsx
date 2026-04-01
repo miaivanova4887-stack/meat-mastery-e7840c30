@@ -359,6 +359,8 @@ const Profile = () => {
         <h1 className="text-lg font-display font-bold tracking-tight">{t("profile.title")}</h1>
       </div>
 
+      <ConsentBanner />
+
       {/* Profile header */}
       <div className="px-4 pt-5 pb-3">
         <div className="flex items-center gap-4">
