@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, ShieldAlert, PenLine, Layers, FileText } from "lucide-react";
+import { PenLine, Layers, FileText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import CmsContentEditor from "@/components/cms/CmsContentEditor";
 import CmsLayoutBuilder from "@/components/cms/CmsLayoutBuilder";
@@ -13,42 +13,43 @@ type Tab = "content" | "layout" | "pages";
 export default function CmsEditor() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
+  const [adminStatus, setAdminStatus] = useState<'checking' | 'admin' | 'denied'>('checking');
   const [activeTab, setActiveTab] = useState<Tab>("content");
 
   console.log('CmsEditor state:', {
     authLoading,
-    roleLoading,
+    adminStatus,
     userEmail: user?.email,
     userId: user?.id,
-    isAdmin,
   });
 
   useEffect(() => {
-    if (authLoading || roleLoading) return;
-    if (!user) { navigate("/", { replace: true }); return; }
-    if (!isAdmin) { navigate("/", { replace: true }); return; }
-  }, [authLoading, roleLoading, user, isAdmin, navigate]);
+    if (authLoading) return;
+    if (!user) { setAdminStatus('denied'); return; }
+    const checkAdmin = async () => {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      setAdminStatus(!!data && !error ? 'admin' : 'denied');
+    };
+    checkAdmin();
+  }, [user, authLoading]);
 
-  if (authLoading || roleLoading) {
+  if (adminStatus === 'checking') {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
-  if (!isAdmin) {
+  if (adminStatus === 'denied') {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background gap-4 px-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
-          <ShieldAlert size={32} className="text-destructive" />
-        </div>
-        <h1 className="text-xl font-display font-bold text-foreground">Admin Access Required</h1>
-        <p className="text-sm text-muted-foreground max-w-sm">
-          The CMS Editor is restricted to administrators.
-        </p>
-        <Button variant="outline" onClick={() => navigate("/")}>Go Home</Button>
+      <div className="h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Access denied.</p>
       </div>
     );
   }
