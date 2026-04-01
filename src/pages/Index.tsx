@@ -217,8 +217,8 @@ const Index = () => {
         </div>
         {/* Health Data */}
         <HealthDashboard />
-        {/* Motivation CTA — navigates to goal-relevant page */}
-        <MotivationCTA />
+        {/* Motivation CTA — opens coaching booking modal */}
+        <MotivationCTA onClick={() => { setCoachingInitialScreen("info"); setCoachingOpen(true); }} />
 
         {/* Update preferences */}
         <button
