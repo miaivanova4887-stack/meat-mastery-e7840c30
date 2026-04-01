@@ -211,13 +211,28 @@ const Index = () => {
           {t("home.updatePreferences")}
         </button>
 
-        <div className="text-center pb-4 pt-2">
-          <span className="text-xs text-muted-foreground">
-            <Link to="/privacy" className="hover:underline">{t("home.footer_legal.privacy_label")}</Link>
-            <span className="mx-2">·</span>
-            <Link to="/terms" className="hover:underline">{t("home.footer_legal.terms_label")}</Link>
-          </span>
-        </div>
+        <Accordion type="single" collapsible className="pb-6 pt-2 px-0">
+          <AccordionItem value="privacy" className="border-b border-border/30">
+            <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
+              {t("home.footer_legal.privacy_label")}
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="max-h-64 overflow-y-auto text-xs text-muted-foreground/80 leading-relaxed whitespace-pre-line">
+                {t("privacy.main.body")}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="terms" className="border-b-0">
+            <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
+              {t("home.footer_legal.terms_label")}
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="max-h-64 overflow-y-auto text-xs text-muted-foreground/80 leading-relaxed whitespace-pre-line">
+                {t("terms.main.body")}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
       {/* Drawer */}
