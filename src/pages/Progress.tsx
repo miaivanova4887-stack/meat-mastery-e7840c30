@@ -66,6 +66,8 @@ const Progress = () => {
         </div>
       </div>
 
+      <ConsentBanner />
+
       <div className="px-4 pt-4 space-y-5">
         {/* Today's Nutrition Breakdown */}
         <NutrientBreakdown />
