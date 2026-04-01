@@ -45,6 +45,8 @@ const PAGE_NAMES: Record<string, string> = {
   community: "Community",
   shopping: "Shopping Bag",
   quotes: "Quotes",
+  privacy: "Privacy Policy",
+  terms: "Terms of Service",
 };
 
 const SECTION_NAMES: Record<string, string> = {
@@ -71,6 +73,7 @@ const SECTION_NAMES: Record<string, string> = {
   controls: "Controls & Labels",
   coaching_cta: "Coaching CTA",
   footer_legal: "Footer / Legal",
+  main: "Main",
 };
 
 // Known link/button pairs per page: { page, section, label_key (i18n path), url }
