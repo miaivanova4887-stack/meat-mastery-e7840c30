@@ -113,6 +113,33 @@ export type Database = {
         }
         Relationships: []
       }
+      coaching_sessions: {
+        Row: {
+          booked_at: string | null
+          id: string
+          session_month: string
+          session_type: string
+          stripe_payment_intent: string | null
+          user_id: string
+        }
+        Insert: {
+          booked_at?: string | null
+          id?: string
+          session_month: string
+          session_type: string
+          stripe_payment_intent?: string | null
+          user_id: string
+        }
+        Update: {
+          booked_at?: string | null
+          id?: string
+          session_month?: string
+          session_type?: string
+          stripe_payment_intent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_recipes: {
         Row: {
           cal: string
