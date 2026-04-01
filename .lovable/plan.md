@@ -1,42 +1,90 @@
 
 
-## Add One-Time Consent Banner to Progress & Profile Pages
+## Connect Home Page Coaching Block to Cal.com + Stripe Payment Flow
 
-### New file: `src/components/ConsentBanner.tsx`
+### Overview
+Wire the "Need extra motivation?" MotivationCTA on the Home page to open a multi-step coaching booking modal with Stripe payment gate and Cal.com scheduling. The existing Coaching page and MotivationCTA on other pages remain unchanged.
 
-A self-contained component that:
-- On mount, checks visibility: queries `profiles.user_attributes` for `consent_given === true`, then falls back to localStorage keys `carnivore-consent-given` or `carnivore-consent-dismissed`. If any is truthy, stays hidden.
-- Fetches banner text from `content_blocks` (page=`consent`, section=`banner`, keys `body` and `accept_button`) for the current i18n locale.
-- Renders a dismissible card banner with slide-down animation (`animate-fade-in` on appear, transition to hidden on dismiss).
-- **"I Accept" button**: Updates `profiles.user_attributes` via Supabase (merge `consent_given: true` into existing JSONB), sets `localStorage carnivore-consent-given = "true"`, dismisses.
-- **X close button**: Sets `localStorage carnivore-consent-dismissed = "true"` only, dismisses without DB write.
-- Inline "Privacy Policy" text links to `/privacy` via `useNavigate`.
-- Styling: `bg-card border border-border/50 rounded-xl mx-4 mt-4 p-4`, orange accent button (`bg-orange-500 hover:bg-orange-600 text-white w-full rounded-lg`), `text-sm text-foreground` body, `text-muted-foreground` X button top-right.
-
-### Change: `src/pages/Progress.tsx`
-
-Import `ConsentBanner` and render `<ConsentBanner />` as the first child inside the main `<div>`, right after the sticky header block (before `<div className="px-4 pt-4 space-y-5">`). No other changes.
-
-### Change: `src/pages/Profile.tsx`
-
-Import `ConsentBanner` and render `<ConsentBanner />` right after the sticky header block (line ~354, before the profile content). No other changes.
-
-### Database: Seed 4 content_blocks rows
-
-Insert via the insert tool:
+### Database: `coaching_sessions` table (migration)
 ```sql
-INSERT INTO content_blocks (page, section, key, type, locale, value)
-VALUES
-  ('consent', 'banner', 'body', 'richtext', 'en', 'By creating an account, you agree to our Privacy Policy and consent to the collection and use of your personal and health information so we can deliver a personalized, high-quality experience tailored to you.'),
-  ('consent', 'banner', 'body', 'richtext', 'fr', 'En créant un compte, vous acceptez notre Politique de confidentialité et consentez à la collecte et à l''utilisation de vos renseignements personnels et de santé afin que nous puissions vous offrir une expérience personnalisée et de haute qualité.'),
-  ('consent', 'banner', 'accept_button', 'text', 'en', 'I Accept'),
-  ('consent', 'banner', 'accept_button', 'text', 'fr', 'J''accepte')
-ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS public.coaching_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  session_type text NOT NULL,
+  stripe_payment_intent text,
+  booked_at timestamptz DEFAULT now(),
+  session_month text NOT NULL
+);
+ALTER TABLE public.coaching_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can read own sessions" ON public.coaching_sessions
+  FOR SELECT TO authenticated USING (user_id = auth.uid());
+CREATE POLICY "Users can insert own sessions" ON public.coaching_sessions
+  FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 ```
+No foreign key to `auth.users` per project guidelines.
+
+### Database: Seed 16 content_blocks rows (insert tool)
+Page `coaching`, section `booking`, keys: `title`, `description`, `included_label`, `paid_label`, `book_free_button`, `pay_button`, `payment_confirmed`, `success_title` — each in `en` and `fr` with the exact text from the request.
+
+### Edge Function: `supabase/functions/create-coaching-checkout/index.ts`
+- Authenticates user from Authorization header
+- Creates Stripe Checkout session with:
+  - `price: 'price_1TFm5RBCKK2x5xtVzSHn0acA'`
+  - `mode: 'payment'`
+  - `success_url` / `cancel_url` using origin + `?coaching_payment=success|cancelled`
+  - `metadata: { userId, type: 'coaching_session' }`
+- Reuses existing Stripe customer if found
+- Returns `{ url }` — same pattern as existing `create-checkout`
+
+### New Component: `src/components/CoachingBooking.tsx`
+A dialog/modal with 4 internal screens managed by local state:
+
+**Screen A (Info):** Fetches content from `content_blocks` for current locale. Checks `coaching_sessions` for a row matching current user + current `YYYY-MM` with `session_type = 'included'`. Checks subscription tier via `useSubscription`.
+- Elite + no used session → shows "Included" label + "Book Free Session" button
+- All others → shows "CA$99" label + "Proceed to Payment" button
+
+**Screen B (Payment):** Calls `create-coaching-checkout` edge function, opens Stripe URL via `window.open`, shows "Opening secure payment..." state.
+
+**Screen C (Cal.com):** Shows "Payment confirmed!" text, opens `https://cal.com/carnivorex/coaching-session` via `window.open`, has "Done" button that inserts a row into `coaching_sessions` (type `paid` or `included`) and advances to Screen D.
+
+**Screen D (Success):** Shows confirmation message + "Back to Home" button that closes the modal.
+
+Props: `open`, `onOpenChange`, `initialScreen` (defaults to 'info').
+
+### Change: `src/pages/Index.tsx`
+- Import `CoachingBooking` and add state: `coachingOpen`, `coachingInitialScreen`
+- Replace `<MotivationCTA />` on Index only: wrap it so `onClick` opens the `CoachingBooking` modal instead of navigating. Done by passing an `onClick` prop to MotivationCTA or wrapping it in a div that intercepts the click.
+- On mount, check URL params `?coaching_payment=success` → open modal at Screen C; `?coaching_payment=cancelled` → toast "Payment cancelled" and clear param.
+
+### Change: `src/components/MotivationCTA.tsx`
+Add an optional `onClick` prop. When provided, use it instead of the default `navigate(route.path)`. This keeps all other pages using MotivationCTA unaffected.
+
+### Config: `supabase/config.toml`
+Add `[functions.create-coaching-checkout]` with `verify_jwt = false` (matches existing pattern — JWT validated in code).
 
 ### Files modified
-- `src/components/ConsentBanner.tsx` — new file
-- `src/pages/Progress.tsx` — add `<ConsentBanner />` import + render
-- `src/pages/Profile.tsx` — add `<ConsentBanner />` import + render
-- Database insert: 4 rows into `content_blocks`
+- `src/components/CoachingBooking.tsx` — new
+- `supabase/functions/create-coaching-checkout/index.ts` — new
+- `src/components/MotivationCTA.tsx` — add optional `onClick` prop
+- `src/pages/Index.tsx` — wire modal + URL param handling
+- `supabase/config.toml` — add function config
+- Migration: `coaching_sessions` table
+- Insert: 16 content_blocks rows
+
+### Technical details
+
+The `coaching_sessions` query to check Elite monthly usage:
+```typescript
+const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+const { data } = await supabase
+  .from("coaching_sessions")
+  .select("id")
+  .eq("user_id", user.id)
+  .eq("session_type", "included")
+  .eq("session_month", currentMonth)
+  .limit(1);
+const usedFreeSession = (data?.length ?? 0) > 0;
+```
+
+Edge function uses `price_1TFm5RBCKK2x5xtVzSHn0acA` (the price ID from the request, not the old `COACHING_PRICE_ID` from Coaching.tsx). STRIPE_SECRET_KEY is already in secrets.
 
