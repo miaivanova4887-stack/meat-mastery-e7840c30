@@ -278,6 +278,8 @@ const Index = () => {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+
+      <CoachingBooking open={coachingOpen} onOpenChange={setCoachingOpen} initialScreen={coachingInitialScreen} />
     </div>
   );
 };
