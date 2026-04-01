@@ -16,6 +16,14 @@ export default function CmsEditor() {
   const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
   const [activeTab, setActiveTab] = useState<Tab>("content");
 
+  console.log('CmsEditor state:', {
+    authLoading,
+    roleLoading,
+    userEmail: user?.email,
+    userId: user?.id,
+    isAdmin,
+  });
+
   useEffect(() => {
     if (authLoading || roleLoading) return;
     if (!user) { navigate("/", { replace: true }); return; }
