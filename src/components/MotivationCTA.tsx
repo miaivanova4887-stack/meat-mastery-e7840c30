@@ -11,7 +11,11 @@ const MOTIVATION_ROUTES: Record<string, { path: string }> = {
   mental_clarity: { path: "/benefits" },
 };
 
-const MotivationCTA = () => {
+interface MotivationCTAProps {
+  onClick?: () => void;
+}
+
+const MotivationCTA = ({ onClick }: MotivationCTAProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const profile = useUserProfile();
@@ -20,7 +24,7 @@ const MotivationCTA = () => {
 
   return (
     <button
-      onClick={() => navigate(route.path)}
+      onClick={() => (onClick ? onClick() : navigate(route.path))}
       className="block w-full text-left relative overflow-hidden rounded-2xl border border-white/15 dark:border-white/10 bg-white/40 dark:bg-white/5 backdrop-blur-xl backdrop-saturate-150 shadow-[0_8px_32px_-8px_hsl(var(--primary)/0.15)] p-4 active:scale-[0.98] transition-all group hover:shadow-[0_8px_32px_-4px_hsl(var(--primary)/0.25)] hover:border-primary/20"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-primary/[0.02] pointer-events-none rounded-2xl" />
