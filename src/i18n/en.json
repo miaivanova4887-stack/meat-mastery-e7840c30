@@ -690,5 +690,15 @@
     },
     "feedbackYes": "Yes",
     "feedbackNo": "Not really"
+  },
+  "privacy": {
+    "main": {
+      "body": "Privacy Policy\n\nLast updated: April 2026\n\nWe respect your privacy. This app collects only the data necessary to provide its features, including your profile preferences, progress entries, and meal plans.\n\nYour data is stored securely and is never sold to third parties. You can request deletion of your account and all associated data at any time by contacting us.\n\nWe use analytics to improve the app experience. No personally identifiable information is shared with advertisers."
+    }
+  },
+  "terms": {
+    "main": {
+      "body": "Terms of Service\n\nLast updated: April 2026\n\nBy using this app, you agree to these terms. The content provided is for informational purposes only and does not constitute medical advice.\n\nConsult a healthcare professional before making dietary changes. We are not liable for any health outcomes resulting from following the information in this app.\n\nWe reserve the right to modify or discontinue the service at any time. Continued use after changes constitutes acceptance of the new terms."
+    }
   }
 }
