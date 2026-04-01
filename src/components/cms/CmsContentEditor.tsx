@@ -45,6 +45,8 @@ const PAGE_NAMES: Record<string, string> = {
   community: "Community",
   shopping: "Shopping Bag",
   quotes: "Quotes",
+  privacy: "Privacy Policy",
+  terms: "Terms of Service",
 };
 
 const SECTION_NAMES: Record<string, string> = {
