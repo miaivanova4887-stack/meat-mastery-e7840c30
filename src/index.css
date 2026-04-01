@@ -188,3 +188,14 @@
     -webkit-backdrop-filter: saturate(200%) blur(24px);
   }
 }
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

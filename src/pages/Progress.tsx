@@ -11,6 +11,7 @@ import NutrientBreakdown from "@/components/progress/NutrientBreakdown";
 import PhotoRecognition from "@/components/progress/PhotoRecognition";
 import BarcodeScanner from "@/components/progress/BarcodeScanner";
 import VoiceRecognition from "@/components/progress/VoiceRecognition";
+import ConsentBanner from "@/components/ConsentBanner";
 import {
   Select,
   SelectContent,
@@ -64,6 +65,8 @@ const Progress = () => {
           </button>
         </div>
       </div>
+
+      <ConsentBanner />
 
       <div className="px-4 pt-4 space-y-5">
         {/* Today's Nutrition Breakdown */}
