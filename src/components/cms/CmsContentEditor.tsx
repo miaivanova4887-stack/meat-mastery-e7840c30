@@ -73,6 +73,7 @@ const SECTION_NAMES: Record<string, string> = {
   controls: "Controls & Labels",
   coaching_cta: "Coaching CTA",
   footer_legal: "Footer / Legal",
+  main: "Main",
 };
 
 // Known link/button pairs per page: { page, section, label_key (i18n path), url }
