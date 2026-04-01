@@ -17,6 +17,10 @@
     "resetDesc": "This will restart the onboarding quiz. Your personalized content will update based on your new answers.",
     "cancel": "Cancel",
     "resetRedo": "Reset & Redo",
+    "footer_legal": {
+      "privacy_label": "Privacy Policy",
+      "terms_label": "Terms of Service"
+    },
     "motivationTitle": "Need extra motivation?",
     "motivationDesc": "Talk to seasoned carnivores — book a coaching call.",
     "features": {
