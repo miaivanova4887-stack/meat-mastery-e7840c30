@@ -1,31 +1,43 @@
 
 
-## Polish Flame Icon as App Icon
+## Add Privacy Policy & Terms of Service Footer to Home Page
 
-### What we have
-- Uploaded flame icon: minimal single-stroke amber flame on black background (small, ~56x56px)
-- Current `app-icon.png`: multi-color orange-yellow flame on dark gray (used for Android build)
-- Current `app-icon-512.png`: metallic steak shape (used as favicon and apple-touch-icon)
-- Brand colors: `--flame: 25 85% 52%` (amber), `--gold: 38 75% 52%`, background pure black in dark mode
+### Change 1 — Footer in `src/pages/Index.tsx`
 
-### Plan
+Add a centered footer below the "Update preferences" button (before the Drawer), inside the `px-4` content div:
 
-**Generate a polished 1024x1024 app icon** via Python script using the uploaded flame as reference:
-- Pure black (`#000000`) background with subtle radial gradient toward dark charcoal edges
-- Recreate the flame stroke in SVG at high resolution, using the brand amber color (`hsl(25, 85%, 52%)` / `#E07020`) with a subtle gradient toward gold (`hsl(38, 75%, 52%)`)
-- Thin, clean single-line flame matching the uploaded icon's proportions
-- No rounded-rect masking (iOS/Android apply their own masks)
-- Subtle outer glow in amber at low opacity for depth
+```tsx
+<div className="text-center pb-4 pt-2">
+  <span className="text-xs text-muted-foreground">
+    <Link to="/privacy" className="hover:underline">{t("home.footer_legal.privacy_label")}</Link>
+    <span className="mx-2">·</span>
+    <Link to="/terms" className="hover:underline">{t("home.footer_legal.terms_label")}</Link>
+  </span>
+</div>
+```
 
-**Generate all required sizes from the 1024 source:**
-- `public/icon-1024.png` — source
-- `public/app-icon-512.png` — favicon + apple-touch-icon
-- `public/app-icon.png` — Capacitor/Android source icon
-- Android mipmap PNGs (48, 72, 96, 144, 192px) in `public/android-icons/`
+Add `Link` to the existing `react-router-dom` import.
 
-**No changes to CarnivoreXLogo or SplashScreen** — flame is app icon only per your preference.
+### Change 2 — Seed `content_blocks` via migration
 
-### Technical detail
+Run a database migration inserting 4 rows (with `ON CONFLICT DO NOTHING` if a unique constraint exists, otherwise guarded by `NOT EXISTS`):
 
-A Python script will draw the flame path as an SVG, render to 1024px PNG with Pillow/CairoSVG, then resize for all targets. The flame shape will be traced from the uploaded reference to maintain the exact contour style.
+| page | section | key | locale | type | value |
+|------|---------|-----|--------|------|-------|
+| home | footer_legal | privacy_label | en | text | Privacy Policy |
+| home | footer_legal | privacy_label | fr | text | Politique de confidentialité |
+| home | footer_legal | terms_label | en | text | Terms of Service |
+| home | footer_legal | terms_label | fr | text | Conditions d'utilisation |
+
+### Change 3 — Register in CMS Content tab
+
+In `src/components/cms/CmsContentEditor.tsx`:
+
+1. Add `"footer_legal": "Footer / Legal"` to `SECTION_NAMES` dict
+2. No other CMS changes needed — the existing content editor auto-discovers keys from `content_blocks` and renders them with EN/FR side-by-side inputs. The seed data is sufficient for the section to appear under Home.
+
+### Files modified
+- `src/pages/Index.tsx` — add footer with i18n links
+- `src/components/cms/CmsContentEditor.tsx` — add section label
+- New migration SQL — seed 4 content_blocks rows
 
