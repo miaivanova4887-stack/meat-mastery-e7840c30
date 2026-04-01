@@ -1,7 +1,7 @@
 import { HealthDashboard } from '@/components/HealthDashboard';
 import MotivationCTA from '@/components/MotivationCTA';
 import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 import { ChevronRight, RotateCcw, Lock } from "lucide-react";
 import CarnivoreXLogo from "@/components/CarnivoreXLogo";
 import { useTranslation } from "react-i18next";
@@ -209,6 +209,14 @@ const Index = () => {
           <RotateCcw size={13} />
           {t("home.updatePreferences")}
         </button>
+
+        <div className="text-center pb-4 pt-2">
+          <span className="text-xs text-muted-foreground">
+            <Link to="/privacy" className="hover:underline">{t("home.footer_legal.privacy_label")}</Link>
+            <span className="mx-2">·</span>
+            <Link to="/terms" className="hover:underline">{t("home.footer_legal.terms_label")}</Link>
+          </span>
+        </div>
       </div>
 
       {/* Drawer */}

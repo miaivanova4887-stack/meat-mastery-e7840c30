@@ -17,6 +17,10 @@
     "resetDesc": "Cela relancera le quiz d'intégration. Votre contenu personnalisé sera mis à jour en fonction de vos nouvelles réponses.",
     "cancel": "Annuler",
     "resetRedo": "Réinitialiser",
+    "footer_legal": {
+      "privacy_label": "Politique de confidentialité",
+      "terms_label": "Conditions d'utilisation"
+    },
     "motivationTitle": "Besoin de motivation ?",
     "motivationDesc": "Échangez avec des carnivores expérimentés — réservez un appel coaching.",
     "features": {
