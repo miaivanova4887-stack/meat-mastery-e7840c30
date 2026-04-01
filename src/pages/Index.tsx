@@ -1,7 +1,9 @@
 import { HealthDashboard } from '@/components/HealthDashboard';
 import MotivationCTA from '@/components/MotivationCTA';
-import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
+import CoachingBooking from '@/components/CoachingBooking';
+import { useState, useEffect } from "react";
+import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { ChevronRight, RotateCcw, Lock } from "lucide-react";
 import CarnivoreXLogo from "@/components/CarnivoreXLogo";
@@ -70,10 +72,26 @@ const getFeatures = (isFemale: boolean): { icon: string; path: string; tags: str
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const profile = useUserProfile();
   const [showResetDrawer, setShowResetDrawer] = useState(false);
+  const [coachingOpen, setCoachingOpen] = useState(false);
+  const [coachingInitialScreen, setCoachingInitialScreen] = useState<"info" | "calcom">("info");
   const { t } = useTranslation();
   const { hasAccess } = useSubscription();
+
+  // Handle coaching payment return URL params
+  useEffect(() => {
+    const payment = searchParams.get("coaching_payment");
+    if (payment === "success") {
+      setCoachingInitialScreen("calcom");
+      setCoachingOpen(true);
+      setSearchParams({}, { replace: true });
+    } else if (payment === "cancelled") {
+      toast("Payment cancelled");
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   if (!isOnboardingComplete()) {
     return <Navigate to="/onboarding" replace />;
@@ -199,8 +217,8 @@ const Index = () => {
         </div>
         {/* Health Data */}
         <HealthDashboard />
-        {/* Motivation CTA — navigates to goal-relevant page */}
-        <MotivationCTA />
+        {/* Motivation CTA — opens coaching booking modal */}
+        <MotivationCTA onClick={() => { setCoachingInitialScreen("info"); setCoachingOpen(true); }} />
 
         {/* Update preferences */}
         <button
@@ -260,6 +278,8 @@ const Index = () => {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+
+      <CoachingBooking open={coachingOpen} onOpenChange={setCoachingOpen} initialScreen={coachingInitialScreen} />
     </div>
   );
 };
