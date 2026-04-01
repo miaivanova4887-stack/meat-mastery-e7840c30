@@ -70,6 +70,7 @@ const SECTION_NAMES: Record<string, string> = {
   science: "Science Descriptions",
   controls: "Controls & Labels",
   coaching_cta: "Coaching CTA",
+  footer_legal: "Footer / Legal",
 };
 
 // Known link/button pairs per page: { page, section, label_key (i18n path), url }

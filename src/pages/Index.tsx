@@ -209,6 +209,14 @@ const Index = () => {
           <RotateCcw size={13} />
           {t("home.updatePreferences")}
         </button>
+
+        <div className="text-center pb-4 pt-2">
+          <span className="text-xs text-muted-foreground">
+            <Link to="/privacy" className="hover:underline">{t("home.footer_legal.privacy_label")}</Link>
+            <span className="mx-2">·</span>
+            <Link to="/terms" className="hover:underline">{t("home.footer_legal.terms_label")}</Link>
+          </span>
+        </div>
       </div>
 
       {/* Drawer */}
