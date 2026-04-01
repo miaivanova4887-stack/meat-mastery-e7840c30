@@ -72,10 +72,26 @@ const getFeatures = (isFemale: boolean): { icon: string; path: string; tags: str
 
 const Index = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const profile = useUserProfile();
   const [showResetDrawer, setShowResetDrawer] = useState(false);
+  const [coachingOpen, setCoachingOpen] = useState(false);
+  const [coachingInitialScreen, setCoachingInitialScreen] = useState<"info" | "calcom">("info");
   const { t } = useTranslation();
   const { hasAccess } = useSubscription();
+
+  // Handle coaching payment return URL params
+  useEffect(() => {
+    const payment = searchParams.get("coaching_payment");
+    if (payment === "success") {
+      setCoachingInitialScreen("calcom");
+      setCoachingOpen(true);
+      setSearchParams({}, { replace: true });
+    } else if (payment === "cancelled") {
+      toast("Payment cancelled");
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   if (!isOnboardingComplete()) {
     return <Navigate to="/onboarding" replace />;
