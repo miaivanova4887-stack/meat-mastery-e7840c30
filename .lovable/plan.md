@@ -1,43 +1,61 @@
 
 
-## Add Privacy Policy & Terms of Service Footer to Home Page
+## Replace Footer Links with Inline Accordion Panels
 
-### Change 1 — Footer in `src/pages/Index.tsx`
+### Overview
+Replace the two footer `<Link>` elements with a Radix Accordion that expands policy text inline. Content loads from `content_blocks` via the existing i18n override system.
 
-Add a centered footer below the "Update preferences" button (before the Drawer), inside the `px-4` content div:
+### Change 1 — Update `src/pages/Index.tsx`
+
+Replace lines 213-219 (the footer `<div>` with Links) with:
 
 ```tsx
-<div className="text-center pb-4 pt-2">
-  <span className="text-xs text-muted-foreground">
-    <Link to="/privacy" className="hover:underline">{t("home.footer_legal.privacy_label")}</Link>
-    <span className="mx-2">·</span>
-    <Link to="/terms" className="hover:underline">{t("home.footer_legal.terms_label")}</Link>
-  </span>
-</div>
+<Accordion type="single" collapsible className="pb-6 pt-2 px-0">
+  <AccordionItem value="privacy" className="border-b border-border/30">
+    <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
+      {t("home.footer_legal.privacy_label")}
+    </AccordionTrigger>
+    <AccordionContent>
+      <div className="max-h-64 overflow-y-auto text-xs text-muted-foreground/80 leading-relaxed whitespace-pre-line">
+        {t("privacy.main.body")}
+      </div>
+    </AccordionContent>
+  </AccordionItem>
+  <AccordionItem value="terms" className="border-b-0">
+    <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
+      {t("home.footer_legal.terms_label")}
+    </AccordionTrigger>
+    <AccordionContent>
+      <div className="max-h-64 overflow-y-auto text-xs text-muted-foreground/80 leading-relaxed whitespace-pre-line">
+        {t("terms.main.body")}
+      </div>
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
 ```
 
-Add `Link` to the existing `react-router-dom` import.
+- Import `Accordion, AccordionItem, AccordionTrigger, AccordionContent` from `@/components/ui/accordion`
+- Remove `Link` from react-router-dom import (check if used elsewhere first — it is not used elsewhere in this file, so remove it)
+- `type="single" collapsible` ensures only one open at a time
 
-### Change 2 — Seed `content_blocks` via migration
+### Change 2 — Seed content_blocks for policy body text
 
-Run a database migration inserting 4 rows (with `ON CONFLICT DO NOTHING` if a unique constraint exists, otherwise guarded by `NOT EXISTS`):
+Database migration to insert body text rows (with `WHERE NOT EXISTS` guard):
 
 | page | section | key | locale | type | value |
 |------|---------|-----|--------|------|-------|
-| home | footer_legal | privacy_label | en | text | Privacy Policy |
-| home | footer_legal | privacy_label | fr | text | Politique de confidentialité |
-| home | footer_legal | terms_label | en | text | Terms of Service |
-| home | footer_legal | terms_label | fr | text | Conditions d'utilisation |
+| privacy | main | body | en | text | *(Privacy policy placeholder text)* |
+| privacy | main | body | fr | text | *(French privacy policy placeholder)* |
+| terms | main | body | en | text | *(Terms of service placeholder text)* |
+| terms | main | body | fr | text | *(French terms placeholder)* |
 
-### Change 3 — Register in CMS Content tab
+### Change 3 — Add i18n fallback keys
 
-In `src/components/cms/CmsContentEditor.tsx`:
-
-1. Add `"footer_legal": "Footer / Legal"` to `SECTION_NAMES` dict
-2. No other CMS changes needed — the existing content editor auto-discovers keys from `content_blocks` and renders them with EN/FR side-by-side inputs. The seed data is sufficient for the section to appear under Home.
+Add `privacy.main.body` and `terms.main.body` keys to `src/i18n/en.json` and `src/i18n/fr.json` as fallback text before content_blocks load.
 
 ### Files modified
-- `src/pages/Index.tsx` — add footer with i18n links
-- `src/components/cms/CmsContentEditor.tsx` — add section label
+- `src/pages/Index.tsx` — replace links with accordion
+- `src/i18n/en.json` — add fallback body text
+- `src/i18n/fr.json` — add fallback body text
 - New migration SQL — seed 4 content_blocks rows
 
