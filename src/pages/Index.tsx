@@ -1,8 +1,9 @@
 import { HealthDashboard } from '@/components/HealthDashboard';
 import MotivationCTA from '@/components/MotivationCTA';
-import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
+import CoachingBooking from '@/components/CoachingBooking';
+import { useState, useEffect } from "react";
+import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { ChevronRight, RotateCcw, Lock } from "lucide-react";
 import CarnivoreXLogo from "@/components/CarnivoreXLogo";
 import { useTranslation } from "react-i18next";
