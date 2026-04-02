@@ -1,38 +1,22 @@
 
 
-## Create High-Resolution Version of Uploaded Icon
+## Fix: Re-upscale Icon with Black Background Preserved
 
-### What
-Take the user's uploaded flame icon (`CarnivoreX_icon-3.png`) and upscale it to a crisp 1024x1024 master icon using AI image editing, then regenerate all Android density assets from it.
+### Problem
+The AI upscaling changed the icon background from black to white, ignoring the explicit black background in the original image.
 
-### Steps
-
-**1. Upscale the uploaded icon**
-
-Use AI image editing (`google/gemini-3-pro-image-preview`) with the uploaded image as input. Prompt: "Upscale this icon to 1024x1024 pixels. Keep the exact same design — amber/gold flame outline on pure black background. Make lines crisp and smooth, no changes to the shape or style. No text, no watermarks."
-
-Save as `public/icon-1024.png`.
-
-**2. Regenerate Android density assets**
-
-Use ImageMagick to resize from the 1024px master into all required sizes:
-- `ic_launcher.png` — 48, 72, 96, 144, 192px
-- `ic_launcher_round.png` — circle-cropped versions
-- `ic_launcher_foreground.png` — 108, 162, 216, 324, 432px (66% safe zone)
-
-**3. Update 512px web icon**
-
-Resize to `public/app-icon-512.png`.
-
-**4. Re-upload to cloud storage**
-
-Upload the new icons to the `app-assets` bucket, replacing the previous versions.
+### Fix
+1. **Re-run the upscale** using `google/gemini-3-pro-image-preview` with stronger prompting: "Upscale this image to 1024x1024. Do NOT change anything. Keep the pure black (#000000) background exactly as-is. Keep the amber/gold flame exactly as-is. No modifications whatsoever."
+2. **Post-process with ImageMagick** as a safety net — force any near-white pixels back to black if the model still misbehaves: `convert icon-1024.png -fill black -fuzz 10% -opaque white icon-1024.png`
+3. **Regenerate all Android density assets** from the corrected 1024px master (15 PNGs)
+4. **Regenerate `app-icon-512.png`**
+5. **Re-upload to cloud storage**
 
 ### Files changed
 
 | File | Action |
 |------|--------|
-| `public/icon-1024.png` | Replaced with upscaled version |
+| `public/icon-1024.png` | Re-upscaled with black background |
 | `public/app-icon-512.png` | Regenerated |
 | `public/android-icons/mipmap-*/ic_launcher*.png` | Regenerated (15 files) |
 
