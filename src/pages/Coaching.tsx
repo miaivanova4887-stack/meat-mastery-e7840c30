@@ -1,4 +1,4 @@
-import { ArrowLeft, Crown, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Crown, ExternalLink, Loader2, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
-
-const COACHING_PRICE_ID = "price_1TEtnMBqDvgi4jU7ozhwwm9i";
 
 const Coaching = () => {
   const navigate = useNavigate();
@@ -17,16 +15,10 @@ const Coaching = () => {
   const isElite = hasAccess("elite");
 
   const handleBookPaid = async () => {
-    if (!user) {
-      toast("Please sign in first");
-      navigate("/auth");
-      return;
-    }
+    if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId: COACHING_PRICE_ID },
-      });
+      const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch (e: any) {
