@@ -24,7 +24,11 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const liveKey = Deno.env.get("STRIPE_LIVE_SECRET_KEY") || "";
+    if (!liveKey || liveKey.startsWith("sk_test_")) {
+      throw new Error("Live Stripe key is missing or a test key was provided");
+    }
+    const stripe = new Stripe(liveKey, {
       apiVersion: "2025-08-27.basil",
     });
 
