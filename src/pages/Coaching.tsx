@@ -1,4 +1,4 @@
-import { ArrowLeft, Crown, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Crown, ExternalLink, Loader2, LogIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
-
-const COACHING_PRICE_ID = "price_1TEtnMBqDvgi4jU7ozhwwm9i";
 
 const Coaching = () => {
   const navigate = useNavigate();
@@ -17,16 +15,10 @@ const Coaching = () => {
   const isElite = hasAccess("elite");
 
   const handleBookPaid = async () => {
-    if (!user) {
-      toast("Please sign in first");
-      navigate("/auth");
-      return;
-    }
+    if (!user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { priceId: COACHING_PRICE_ID },
-      });
+      const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch (e: any) {
@@ -98,13 +90,28 @@ const Coaching = () => {
               <p className="text-2xl font-bold text-foreground">$99.99</p>
               <p className="text-xs text-muted-foreground">per 1-hour session</p>
             </div>
-            <Button
-              className="w-full"
-              onClick={handleBookPaid}
-              disabled={loading}
-            >
-              {loading ? <Loader2 size={14} className="animate-spin" /> : "Book & Pay"}
-            </Button>
+            {!user ? (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2 text-center">
+                <p className="text-sm font-medium text-foreground">
+                  Please sign in or create your account before booking a coaching call.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Booking and payment for coaching calls require an account so we can link your session and payment correctly.
+                </p>
+                <Button className="w-full gap-2 mt-2" onClick={() => navigate("/auth")}>
+                  <LogIn size={14} />
+                  Sign In / Create Account
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="w-full"
+                onClick={handleBookPaid}
+                disabled={loading}
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : "Book & Pay"}
+              </Button>
+            )}
             <p className="text-[10px] text-muted-foreground text-center mt-2">
               Elite members get 1 call/month included.{" "}
               <button onClick={() => navigate("/pricing")} className="text-primary underline">
