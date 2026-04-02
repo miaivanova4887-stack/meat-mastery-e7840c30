@@ -1,43 +1,76 @@
 
 
-## Switch Coaching Checkout to Live Stripe Key
+## Redesign App Icon and Generate Android Assets
 
-### What changes
+### Concept
 
-**One file only:** `supabase/functions/create-coaching-checkout/index.ts`
+Use AI image generation to create a higher-quality "dual meaning" icon -- a shape that reads as both a flame and a steak/cut of meat simultaneously. The uploaded draft is a simple amber flame outline on black; the new version will be richer, with more detail and the dual visual illusion.
 
-1. Change Stripe initialization from `STRIPE_SECRET_KEY` to `STRIPE_LIVE_SECRET_KEY`
-2. Add a defensive guard that throws if the resolved key starts with `sk_test_` (prevents accidental test-mode usage in production)
-3. Price ID `price_1TFm5RBCKK2x5xtVzSHn0acA` stays as-is (confirmed live)
+### Steps
 
-### What does NOT change
-- Frontend (`CoachingBooking.tsx`, `Index.tsx`) — no Stripe publishable key is used client-side; the flow calls `supabase.functions.invoke()` and receives a URL. No changes needed.
-- `create-checkout` (subscription flow) and `check-subscription` — out of scope per request.
-- Success/cancel URLs remain `/?coaching_payment=success|cancelled` — these are relative to origin and work in any mode.
-- No webhooks exist for this flow — nothing to update.
+**1. Generate the master icon (1024x1024)**
 
-### Edge function diff (line 27)
+Use the AI image generation endpoint (`google/gemini-3-pro-image-preview`) with the uploaded draft as input, prompting for:
+- A refined, premium app icon on pure black background
+- Dual-meaning silhouette: flame shape whose negative space / interior suggests a ribeye or T-bone cut
+- Amber-to-gold gradient strokes with subtle glow, matching the existing CarnivoreX brand palette
+- Clean vector-style rendering, no text, no watermarks
+- Centered with enough padding for Android adaptive icon safe zone (~18% margin)
 
-```typescript
-// Before
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+Save the result as `public/icon-1024.png` (replacing the current one).
 
-// After
-const liveKey = Deno.env.get("STRIPE_LIVE_SECRET_KEY") || "";
-if (!liveKey || liveKey.startsWith("sk_test_")) {
-  throw new Error("Live Stripe key is missing or a test key was provided");
-}
-const stripe = new Stripe(liveKey, {
+**2. Generate all Android density assets**
+
+Using ImageMagick, resize from the 1024px master:
+
+| Asset | Sizes (mdpi -> xxxhdpi) |
+|-------|------------------------|
+| `ic_launcher.png` | 48, 72, 96, 144, 192 |
+| `ic_launcher_round.png` | 48, 72, 96, 144, 192 (circle-cropped) |
+| `ic_launcher_foreground.png` | 108, 162, 216, 324, 432 (logo in inner 66% safe zone) |
+
+**3. Add adaptive icon XML definitions** (currently missing -- this is why the APK shows a blank icon on Android 8+)
+
+Create `public/android-icons/mipmap-anydpi-v26/ic_launcher.xml` and `ic_launcher_round.xml`:
+```xml
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background"/>
+    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+</adaptive-icon>
 ```
 
-### Env vars required
-- `STRIPE_LIVE_SECRET_KEY` — already present in secrets (confirmed from project config)
+Create `public/android-icons/values/colors.xml`:
+```xml
+<resources>
+    <color name="ic_launcher_background">#000000</color>
+</resources>
+```
 
-### Change report
-| Item | Status |
+**4. Update build script**
+
+Add to `scripts/build-android-fresh.sh`:
+- Copy `mipmap-anydpi-v26/` XML files to Android `res/`
+- Copy `values/colors.xml` to Android `res/values/`
+- Build-time validation: abort if `ic_launcher.xml` or `colors.xml` is missing after copy
+
+**5. Update web favicon**
+
+Copy the new 1024px master to also serve as the web favicon/PWA icon.
+
+### Files changed
+
+| File | Action |
 |------|--------|
-| Files changed | `supabase/functions/create-coaching-checkout/index.ts` |
-| Env vars required | `STRIPE_LIVE_SECRET_KEY` (already set) |
-| Live Stripe IDs needed | None — price ID confirmed live |
-| Manual verification | Make a real CA$99 test purchase to confirm Stripe processes in live mode; verify the checkout page shows your live business name (not "Test mode" banner) |
+| `public/icon-1024.png` | Replaced with AI-generated dual-meaning icon |
+| `public/android-icons/mipmap-*/ic_launcher.png` | Regenerated (5 densities) |
+| `public/android-icons/mipmap-*/ic_launcher_round.png` | Regenerated (5 densities) |
+| `public/android-icons/mipmap-*/ic_launcher_foreground.png` | Regenerated with safe-zone padding (5 densities) |
+| `public/android-icons/mipmap-anydpi-v26/ic_launcher.xml` | New |
+| `public/android-icons/mipmap-anydpi-v26/ic_launcher_round.xml` | New |
+| `public/android-icons/values/colors.xml` | New |
+| `scripts/build-android-fresh.sh` | Updated with XML copy + validation |
+
+### After implementation
+- Rebuild APK with `bash scripts/build-android-fresh.sh`
+- No manifest changes needed (Capacitor default already uses `@mipmap/ic_launcher`)
 
