@@ -1,76 +1,55 @@
 
 
-## Redesign App Icon and Generate Android Assets
+## Upload App Icon to Cloud Storage
 
-### Concept
-
-Use AI image generation to create a higher-quality "dual meaning" icon -- a shape that reads as both a flame and a steak/cut of meat simultaneously. The uploaded draft is a simple amber flame outline on black; the new version will be richer, with more detail and the dual visual illusion.
+### What
+Upload the generated `public/icon-1024.png` (and optionally the 512px variant) to a cloud storage bucket so it can be served via a public URL.
 
 ### Steps
 
-**1. Generate the master icon (1024x1024)**
+**1. Create a storage bucket** via migration
 
-Use the AI image generation endpoint (`google/gemini-3-pro-image-preview`) with the uploaded draft as input, prompting for:
-- A refined, premium app icon on pure black background
-- Dual-meaning silhouette: flame shape whose negative space / interior suggests a ribeye or T-bone cut
-- Amber-to-gold gradient strokes with subtle glow, matching the existing CarnivoreX brand palette
-- Clean vector-style rendering, no text, no watermarks
-- Centered with enough padding for Android adaptive icon safe zone (~18% margin)
+Create a public `app-assets` bucket for storing brand assets like icons.
 
-Save the result as `public/icon-1024.png` (replacing the current one).
-
-**2. Generate all Android density assets**
-
-Using ImageMagick, resize from the 1024px master:
-
-| Asset | Sizes (mdpi -> xxxhdpi) |
-|-------|------------------------|
-| `ic_launcher.png` | 48, 72, 96, 144, 192 |
-| `ic_launcher_round.png` | 48, 72, 96, 144, 192 (circle-cropped) |
-| `ic_launcher_foreground.png` | 108, 162, 216, 324, 432 (logo in inner 66% safe zone) |
-
-**3. Add adaptive icon XML definitions** (currently missing -- this is why the APK shows a blank icon on Android 8+)
-
-Create `public/android-icons/mipmap-anydpi-v26/ic_launcher.xml` and `ic_launcher_round.xml`:
-```xml
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
-</adaptive-icon>
+```sql
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('app-assets', 'app-assets', true);
 ```
 
-Create `public/android-icons/values/colors.xml`:
-```xml
-<resources>
-    <color name="ic_launcher_background">#000000</color>
-</resources>
+Add an RLS policy so anyone can read (public bucket) and only admins can upload:
+
+```sql
+CREATE POLICY "Public read access" ON storage.objects
+  FOR SELECT TO public USING (bucket_id = 'app-assets');
+
+CREATE POLICY "Admins can upload" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'app-assets' AND public.has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Admins can update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (bucket_id = 'app-assets' AND public.has_role(auth.uid(), 'admin'));
+
+CREATE POLICY "Admins can delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'app-assets' AND public.has_role(auth.uid(), 'admin'));
 ```
 
-**4. Update build script**
+**2. Upload icons via script**
 
-Add to `scripts/build-android-fresh.sh`:
-- Copy `mipmap-anydpi-v26/` XML files to Android `res/`
-- Copy `values/colors.xml` to Android `res/values/`
-- Build-time validation: abort if `ic_launcher.xml` or `colors.xml` is missing after copy
+Use a one-time script to upload `public/icon-1024.png` and `public/app-icon-512.png` to the `app-assets` bucket under paths like `icons/icon-1024.png` and `icons/app-icon-512.png`.
 
-**5. Update web favicon**
+**3. Result**
 
-Copy the new 1024px master to also serve as the web favicon/PWA icon.
+The icons will be publicly accessible at:
+```
+https://gueosugzlebbaijzcxgh.supabase.co/storage/v1/object/public/app-assets/icons/icon-1024.png
+```
 
 ### Files changed
 
-| File | Action |
+| Item | Action |
 |------|--------|
-| `public/icon-1024.png` | Replaced with AI-generated dual-meaning icon |
-| `public/android-icons/mipmap-*/ic_launcher.png` | Regenerated (5 densities) |
-| `public/android-icons/mipmap-*/ic_launcher_round.png` | Regenerated (5 densities) |
-| `public/android-icons/mipmap-*/ic_launcher_foreground.png` | Regenerated with safe-zone padding (5 densities) |
-| `public/android-icons/mipmap-anydpi-v26/ic_launcher.xml` | New |
-| `public/android-icons/mipmap-anydpi-v26/ic_launcher_round.xml` | New |
-| `public/android-icons/values/colors.xml` | New |
-| `scripts/build-android-fresh.sh` | Updated with XML copy + validation |
-
-### After implementation
-- Rebuild APK with `bash scripts/build-android-fresh.sh`
-- No manifest changes needed (Capacitor default already uses `@mipmap/ic_launcher`)
+| Migration | Create `app-assets` bucket + RLS policies |
+| Script (one-time) | Upload 2 icon PNGs to storage |
 
