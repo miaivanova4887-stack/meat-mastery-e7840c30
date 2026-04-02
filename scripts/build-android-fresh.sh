@@ -29,13 +29,42 @@ fi
 
 echo "🎨 Copying app launcher icons..."
 ICON_SRC="$ROOT_DIR/public/android-icons"
+RES_DIR="$ANDROID_DIR/app/src/main/res"
 if [[ -d "$ICON_SRC" ]]; then
   for folder in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
-    dest="$ANDROID_DIR/app/src/main/res/$folder"
+    dest="$RES_DIR/$folder"
     mkdir -p "$dest"
     cp "$ICON_SRC/$folder/"*.png "$dest/"
   done
-  echo "✅ Icons copied"
+
+  # Copy adaptive icon XMLs
+  ANYDPI_SRC="$ICON_SRC/mipmap-anydpi-v26"
+  ANYDPI_DEST="$RES_DIR/mipmap-anydpi-v26"
+  if [[ -d "$ANYDPI_SRC" ]]; then
+    mkdir -p "$ANYDPI_DEST"
+    cp "$ANYDPI_SRC/"*.xml "$ANYDPI_DEST/"
+  fi
+
+  # Copy color resource for adaptive icon background
+  VALUES_SRC="$ICON_SRC/values"
+  VALUES_DEST="$RES_DIR/values"
+  if [[ -d "$VALUES_SRC" ]]; then
+    mkdir -p "$VALUES_DEST"
+    cp "$VALUES_SRC/colors.xml" "$VALUES_DEST/"
+  fi
+
+  echo "✅ Icons + adaptive XMLs copied"
+
+  # Build-time validation: ensure adaptive icon resources exist
+  if [[ ! -f "$ANYDPI_DEST/ic_launcher.xml" ]]; then
+    echo "❌ Missing adaptive icon XML: $ANYDPI_DEST/ic_launcher.xml"
+    exit 1
+  fi
+  if [[ ! -f "$VALUES_DEST/colors.xml" ]]; then
+    echo "❌ Missing icon background color: $VALUES_DEST/colors.xml"
+    exit 1
+  fi
+  echo "✅ Adaptive icon validation passed"
 fi
 
 echo "🏗️ Assembling fresh debug APK (no cache)..."
