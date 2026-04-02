@@ -90,13 +90,28 @@ const Coaching = () => {
               <p className="text-2xl font-bold text-foreground">$99.99</p>
               <p className="text-xs text-muted-foreground">per 1-hour session</p>
             </div>
-            <Button
-              className="w-full"
-              onClick={handleBookPaid}
-              disabled={loading}
-            >
-              {loading ? <Loader2 size={14} className="animate-spin" /> : "Book & Pay"}
-            </Button>
+            {!user ? (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2 text-center">
+                <p className="text-sm font-medium text-foreground">
+                  Please sign in or create your account before booking a coaching call.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Booking and payment for coaching calls require an account so we can link your session and payment correctly.
+                </p>
+                <Button className="w-full gap-2 mt-2" onClick={() => navigate("/auth")}>
+                  <LogIn size={14} />
+                  Sign In / Create Account
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="w-full"
+                onClick={handleBookPaid}
+                disabled={loading}
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : "Book & Pay"}
+              </Button>
+            )}
             <p className="text-[10px] text-muted-foreground text-center mt-2">
               Elite members get 1 call/month included.{" "}
               <button onClick={() => navigate("/pricing")} className="text-primary underline">
