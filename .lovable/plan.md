@@ -1,55 +1,38 @@
 
 
-## Upload App Icon to Cloud Storage
+## Create High-Resolution Version of Uploaded Icon
 
 ### What
-Upload the generated `public/icon-1024.png` (and optionally the 512px variant) to a cloud storage bucket so it can be served via a public URL.
+Take the user's uploaded flame icon (`CarnivoreX_icon-3.png`) and upscale it to a crisp 1024x1024 master icon using AI image editing, then regenerate all Android density assets from it.
 
 ### Steps
 
-**1. Create a storage bucket** via migration
+**1. Upscale the uploaded icon**
 
-Create a public `app-assets` bucket for storing brand assets like icons.
+Use AI image editing (`google/gemini-3-pro-image-preview`) with the uploaded image as input. Prompt: "Upscale this icon to 1024x1024 pixels. Keep the exact same design — amber/gold flame outline on pure black background. Make lines crisp and smooth, no changes to the shape or style. No text, no watermarks."
 
-```sql
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('app-assets', 'app-assets', true);
-```
+Save as `public/icon-1024.png`.
 
-Add an RLS policy so anyone can read (public bucket) and only admins can upload:
+**2. Regenerate Android density assets**
 
-```sql
-CREATE POLICY "Public read access" ON storage.objects
-  FOR SELECT TO public USING (bucket_id = 'app-assets');
+Use ImageMagick to resize from the 1024px master into all required sizes:
+- `ic_launcher.png` — 48, 72, 96, 144, 192px
+- `ic_launcher_round.png` — circle-cropped versions
+- `ic_launcher_foreground.png` — 108, 162, 216, 324, 432px (66% safe zone)
 
-CREATE POLICY "Admins can upload" ON storage.objects
-  FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'app-assets' AND public.has_role(auth.uid(), 'admin'));
+**3. Update 512px web icon**
 
-CREATE POLICY "Admins can update" ON storage.objects
-  FOR UPDATE TO authenticated
-  USING (bucket_id = 'app-assets' AND public.has_role(auth.uid(), 'admin'));
+Resize to `public/app-icon-512.png`.
 
-CREATE POLICY "Admins can delete" ON storage.objects
-  FOR DELETE TO authenticated
-  USING (bucket_id = 'app-assets' AND public.has_role(auth.uid(), 'admin'));
-```
+**4. Re-upload to cloud storage**
 
-**2. Upload icons via script**
-
-Use a one-time script to upload `public/icon-1024.png` and `public/app-icon-512.png` to the `app-assets` bucket under paths like `icons/icon-1024.png` and `icons/app-icon-512.png`.
-
-**3. Result**
-
-The icons will be publicly accessible at:
-```
-https://gueosugzlebbaijzcxgh.supabase.co/storage/v1/object/public/app-assets/icons/icon-1024.png
-```
+Upload the new icons to the `app-assets` bucket, replacing the previous versions.
 
 ### Files changed
 
-| Item | Action |
+| File | Action |
 |------|--------|
-| Migration | Create `app-assets` bucket + RLS policies |
-| Script (one-time) | Upload 2 icon PNGs to storage |
+| `public/icon-1024.png` | Replaced with upscaled version |
+| `public/app-icon-512.png` | Regenerated |
+| `public/android-icons/mipmap-*/ic_launcher*.png` | Regenerated (15 files) |
 
