@@ -1,43 +1,34 @@
 
 
-## Add Debug Toasts Before Auth Redirects
+## Replace Dynamic returnTo with Fixed "/coaching" Route
 
 ### Changes
 
 **1. `src/pages/Coaching.tsx`** — 2 locations
 
-**Line 21** (inside `handleBookPaid`), add debug toast before the navigate:
+**Line 22** (`handleBookPaid`):
 ```tsx
-// line 20-22 becomes:
-    if (!session) {
-      toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
-      navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
-      return;
-    }
+navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
 ```
 
-**Line 106** (sign-in button), wrap the onClick to add debug toast before navigate:
+**Line 109** (sign-in button onClick):
 ```tsx
-<Button className="w-full gap-2 mt-2" onClick={() => {
-  toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
-  navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
-}}>
+navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
 ```
+
+Keep both DEBUG toasts as-is (they still show the raw `location` values for comparison).
 
 **2. `src/components/CoachingBooking.tsx`** — 1 location
 
-**Line 79** (inside `handlePayment`), add debug toast before navigate:
+**Line 81** (`handlePayment`):
 ```tsx
-    if (!session) {
-      onOpenChange(false);
-      toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
-      navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
-      return;
-    }
+navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
 ```
 
+Keep the DEBUG toast as-is.
+
 ### Not changed
-- `Auth.tsx` — untouched
-- `App.tsx` — untouched
-- All existing navigate calls — unchanged, debug toasts added immediately before each
+- `Auth.tsx`, `App.tsx` — untouched
+- All DEBUG toasts — preserved
+- All other logic — unchanged
 
