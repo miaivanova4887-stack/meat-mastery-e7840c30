@@ -90,7 +90,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [navigate, onOpenChange]);
 
   const handleFreeBook = useCallback(() => {
     window.open(CAL_URL, "_blank");
