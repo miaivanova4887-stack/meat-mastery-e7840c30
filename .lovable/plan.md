@@ -1,34 +1,35 @@
 
 
-## Replace Dynamic returnTo with Fixed "/coaching" Route
+## Remove All DEBUG Toasts
 
-### Changes
+### 1. `src/pages/Auth.tsx` — lines 56, 59
 
-**1. `src/pages/Coaching.tsx`** — 2 locations
+Remove two DEBUG toast lines:
+- Line 56: `toast.success(\`DEBUG signup returnTo=...\`)`
+- Line 59: `toast.success(\`DEBUG login returnTo=...\`)`
 
-**Line 22** (`handleBookPaid`):
+Result:
 ```tsx
-navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
+    } else if (mode === "signup") {
+      toast.success(t("auth.checkEmail"));
+    } else {
+      toast.success(t("auth.welcomeBackToast"));
+      navigate(returnTo, { replace: true });
+    }
 ```
 
-**Line 109** (sign-in button onClick):
-```tsx
-navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
-```
+### 2. `src/pages/Coaching.tsx` — lines 21, 108
 
-Keep both DEBUG toasts as-is (they still show the raw `location` values for comparison).
+Remove two DEBUG toast lines:
+- Line 21 in `handleBookPaid`
+- Line 108 in sign-in button onClick
 
-**2. `src/components/CoachingBooking.tsx`** — 1 location
+### 3. `src/components/CoachingBooking.tsx` — line 80
 
-**Line 81** (`handlePayment`):
-```tsx
-navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
-```
-
-Keep the DEBUG toast as-is.
+Remove one DEBUG toast line in `handlePayment`.
 
 ### Not changed
-- `Auth.tsx`, `App.tsx` — untouched
-- All DEBUG toasts — preserved
-- All other logic — unchanged
+- Fixed `"/coaching"` returnTo redirects — preserved
+- Auth.tsx sanitization logic — preserved
+- App.tsx — untouched
 
