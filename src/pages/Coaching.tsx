@@ -19,7 +19,7 @@ const Coaching = () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
-      navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
+      navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
       return;
     }
     setLoading(true);
