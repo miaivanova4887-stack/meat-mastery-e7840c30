@@ -53,8 +53,10 @@ const Auth = () => {
       }
     } else if (mode === "signup") {
       toast.success(t("auth.checkEmail"));
+      toast.success(`DEBUG signup returnTo=${returnTo} href=${window.location.href}`);
     } else {
       toast.success(t("auth.welcomeBackToast"));
+      toast.success(`DEBUG login returnTo=${returnTo} href=${window.location.href}`);
       navigate(returnTo, { replace: true });
     }
   };
