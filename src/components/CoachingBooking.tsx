@@ -22,6 +22,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const { user } = useAuth();
   const { tier } = useSubscription();
   const { i18n } = useTranslation();
+  const navigate = useNavigate();
 
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
