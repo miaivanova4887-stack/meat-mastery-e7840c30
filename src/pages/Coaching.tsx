@@ -15,7 +15,11 @@ const Coaching = () => {
   const isElite = hasAccess("elite");
 
   const handleBookPaid = async () => {
-    if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      navigate("/auth");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
