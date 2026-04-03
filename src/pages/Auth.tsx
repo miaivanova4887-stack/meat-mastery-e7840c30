@@ -1,5 +1,5 @@
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
