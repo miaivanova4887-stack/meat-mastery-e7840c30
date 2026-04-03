@@ -18,7 +18,7 @@ const Coaching = () => {
   const handleBookPaid = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      navigate("/auth", { state: { from: location } });
+      navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
       return;
     }
     setLoading(true);
