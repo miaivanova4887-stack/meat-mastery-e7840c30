@@ -106,7 +106,7 @@ const Coaching = () => {
                 </p>
                 <Button className="w-full gap-2 mt-2" onClick={() => {
                   toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
-                  navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
+                  navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
                 }}>
                   <LogIn size={14} />
                   Sign In / Create Account
