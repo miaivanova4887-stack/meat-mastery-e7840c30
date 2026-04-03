@@ -9,6 +9,7 @@ import { useState } from "react";
 
 const Coaching = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { hasAccess } = useSubscription();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
