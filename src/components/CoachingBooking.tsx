@@ -72,7 +72,12 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   }, [open, user, i18n.language]);
 
   const handlePayment = useCallback(async () => {
-    if (!user) return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      onOpenChange(false);
+      navigate("/auth");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
