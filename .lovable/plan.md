@@ -1,30 +1,43 @@
 
 
-## Add Debug Toasts to Auth Success Branches
+## Add Debug Toasts Before Auth Redirects
 
-### Change: `src/pages/Auth.tsx` lines 54–59
+### Changes
 
-Replace:
+**1. `src/pages/Coaching.tsx`** — 2 locations
+
+**Line 21** (inside `handleBookPaid`), add debug toast before the navigate:
 ```tsx
-    } else if (mode === "signup") {
-      toast.success(t("auth.checkEmail"));
-    } else {
-      toast.success(t("auth.welcomeBackToast"));
-      navigate(returnTo, { replace: true });
+// line 20-22 becomes:
+    if (!session) {
+      toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
+      navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
+      return;
     }
 ```
 
-With:
+**Line 106** (sign-in button), wrap the onClick to add debug toast before navigate:
 ```tsx
-    } else if (mode === "signup") {
-      toast.success(t("auth.checkEmail"));
-      toast.success(`DEBUG signup returnTo=${returnTo} href=${window.location.href}`);
-    } else {
-      toast.success(t("auth.welcomeBackToast"));
-      toast.success(`DEBUG login returnTo=${returnTo} href=${window.location.href}`);
-      navigate(returnTo, { replace: true });
+<Button className="w-full gap-2 mt-2" onClick={() => {
+  toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
+  navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
+}}>
+```
+
+**2. `src/components/CoachingBooking.tsx`** — 1 location
+
+**Line 79** (inside `handlePayment`), add debug toast before navigate:
+```tsx
+    if (!session) {
+      onOpenChange(false);
+      toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
+      navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
+      return;
     }
 ```
 
-**Nothing else changes.** All imports, sanitization logic, and navigation remain intact. `App.tsx` untouched.
+### Not changed
+- `Auth.tsx` — untouched
+- `App.tsx` — untouched
+- All existing navigate calls — unchanged, debug toasts added immediately before each
 
