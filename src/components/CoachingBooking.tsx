@@ -76,6 +76,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       onOpenChange(false);
+      toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
       navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
       return;
     }
