@@ -18,7 +18,7 @@ const Coaching = () => {
   const handleBookPaid = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      navigate("/auth", { state: { from: location } });
+      navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`);
       return;
     }
     setLoading(true);
@@ -103,7 +103,7 @@ const Coaching = () => {
                 <p className="text-xs text-muted-foreground">
                   Booking and payment for coaching calls require an account so we can link your session and payment correctly.
                 </p>
-                <Button className="w-full gap-2 mt-2" onClick={() => navigate("/auth", { state: { from: location } })}>
+                <Button className="w-full gap-2 mt-2" onClick={() => navigate(`/auth?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`)}>
                   <LogIn size={14} />
                   Sign In / Create Account
                 </Button>

@@ -1,5 +1,5 @@
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -7,7 +7,8 @@ import { useTranslation } from "react-i18next";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const returnTo = searchParams.get("returnTo") || "/";
   const { signIn, signUp } = useAuth();
   const { t } = useTranslation();
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -53,10 +54,7 @@ const Auth = () => {
       toast.success(t("auth.checkEmail"));
     } else {
       toast.success(t("auth.welcomeBackToast"));
-      const from = location.state?.from
-        ? `${location.state.from.pathname || ""}${location.state.from.search || ""}${location.state.from.hash || ""}`
-        : "/";
-      navigate(from, { replace: true });
+      navigate(returnTo, { replace: true });
     }
   };
 
