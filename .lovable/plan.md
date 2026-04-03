@@ -1,79 +1,35 @@
 
 
-## Fix Coaching Payment Flow — Auth Session Guard + Stripe Timeout
+## Post-Login Redirect Back to Coaching
 
 ### Changes
 
-**1. `src/pages/Coaching.tsx`** — Add `getSession()` check in `handleBookPaid`
+**1. `src/pages/Coaching.tsx`**
+- Import `useLocation`
+- Pass current location as state when redirecting to `/auth` — both in `handleBookPaid` (line 20) and the sign-in card button (line 105)
 
-Before setting loading state, call `supabase.auth.getSession()`. If no session, navigate to `/auth` and return early.
+**2. `src/components/CoachingBooking.tsx`**
+- Import `useLocation`
+- Pass current location as state when redirecting to `/auth` in `handlePayment` (line 78)
+- Add `location` to `useCallback` deps (line 93)
 
-```typescript
-const handleBookPaid = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    navigate("/auth");
-    return;
-  }
-  setLoading(true);
-  // ... rest unchanged
-};
-```
+**3. `src/pages/Auth.tsx`**
+- Import `useLocation`
+- On successful login (line 54-55), reconstruct the full return URL from `location.state?.from` preserving pathname + search + hash:
+  ```typescript
+  const from = location.state?.from
+    ? `${location.state.from.pathname || ""}${location.state.from.search || ""}${location.state.from.hash || ""}`
+    : "/";
+  navigate(from, { replace: true });
+  ```
 
-The existing `!user` UI guard (lines 93-105) already shows the sign-in card — this adds a runtime safety net.
-
-**2. `src/components/CoachingBooking.tsx`** — Add same guard in `handlePayment`
-
-Add `useNavigate` import and call. Before `setLoading(true)`, check session. If missing, close dialog and redirect.
-
-```typescript
-const navigate = useNavigate();
-
-const handlePayment = useCallback(async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    onOpenChange(false);
-    navigate("/auth");
-    return;
-  }
-  setLoading(true);
-  // ... rest unchanged
-}, [navigate, onOpenChange]);
-```
-
-**3. `supabase/functions/create-coaching-checkout/index.ts`** — Add 8s Stripe timeout
-
-Wrap `stripe.checkout.sessions.create(...)` in `Promise.race` with an 8-second timeout. On timeout, return 504. Auth checks and Stripe params stay unchanged.
-
-```typescript
-const timeoutPromise = new Promise<never>((_, reject) =>
-  setTimeout(() => reject(new Error("Stripe checkout timed out after 8 seconds")), 8000)
-);
-
-const session = await Promise.race([
-  stripe.checkout.sessions.create({ /* existing params unchanged */ }),
-  timeoutPromise,
-]);
-```
-
-In the catch block, detect timeout and return 504:
-
-```typescript
-} catch (error) {
-  const msg = (error as Error).message;
-  const status = msg.includes("timed out") ? 504 : 500;
-  return new Response(JSON.stringify({ error: msg }), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-    status,
-  });
-}
-```
+All existing UI and logic remains unchanged.
 
 ### Files changed
 
-| File | What changes |
-|------|-------------|
-| `src/pages/Coaching.tsx` | Add `getSession()` guard before loading in `handleBookPaid` |
-| `src/components/CoachingBooking.tsx` | Add `useNavigate` + `getSession()` guard before loading in `handlePayment` |
-| `supabase/functions/create-coaching-checkout/index.ts` | Wrap Stripe create in 8s `Promise.race`; return 504 on timeout |
+| File | Change |
+|------|--------|
+| `src/pages/Coaching.tsx` | Add `useLocation`; pass `{ state: { from: location } }` in both redirect points |
+| `src/components/CoachingBooking.tsx` | Add `useLocation`; pass `{ state: { from: location } }` in `handlePayment`; update deps |
+| `src/pages/Auth.tsx` | Add `useLocation`; redirect to full preserved location after login |
 
