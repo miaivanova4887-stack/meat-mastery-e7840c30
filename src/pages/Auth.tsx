@@ -8,7 +8,8 @@ import { useTranslation } from "react-i18next";
 const Auth = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo") || "/";
+  const rawReturnTo = searchParams.get("returnTo") || "/";
+  const returnTo = rawReturnTo.startsWith("/") ? rawReturnTo : "/";
   const { signIn, signUp } = useAuth();
   const { t } = useTranslation();
   const [mode, setMode] = useState<"login" | "signup">("login");
