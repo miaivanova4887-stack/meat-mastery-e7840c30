@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -23,6 +23,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const { tier } = useSubscription();
   const { i18n } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
@@ -75,7 +76,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       onOpenChange(false);
-      navigate("/auth");
+      navigate("/auth", { state: { from: location } });
       return;
     }
     setLoading(true);
@@ -90,7 +91,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
     } finally {
       setLoading(false);
     }
-  }, [navigate, onOpenChange]);
+  }, [navigate, onOpenChange, location]);
 
   const handleFreeBook = useCallback(() => {
     window.open(CAL_URL, "_blank");
