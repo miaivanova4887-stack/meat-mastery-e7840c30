@@ -1,5 +1,5 @@
 import { ArrowLeft, Crown, ExternalLink, Loader2, LogIn } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +9,7 @@ import { useState } from "react";
 
 const Coaching = () => {
   const navigate = useNavigate();
-  const location = useLocation();
+  
   const { hasAccess } = useSubscription();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,6 @@ const Coaching = () => {
   const handleBookPaid = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
       navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
       return;
     }
@@ -105,7 +104,6 @@ const Coaching = () => {
                   Booking and payment for coaching calls require an account so we can link your session and payment correctly.
                 </p>
                 <Button className="w-full gap-2 mt-2" onClick={() => {
-                  toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
                   navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
                 }}>
                   <LogIn size={14} />
