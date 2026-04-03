@@ -1,35 +1,31 @@
 
 
-## Post-Login Redirect Back to Coaching
+## Switch Post-Login Redirect from Router State to URL Query Param
+
+### Why
+`location.state` is lost in the Android APK auth flow. Using a `returnTo` query param persists through any navigation context.
 
 ### Changes
 
 **1. `src/pages/Coaching.tsx`**
-- Import `useLocation`
-- Pass current location as state when redirecting to `/auth` — both in `handleBookPaid` (line 20) and the sign-in card button (line 105)
+- Line 21: Change `navigate("/auth", { state: { from: location } })` → `navigate(\`/auth?returnTo=\${encodeURIComponent(location.pathname + location.search + location.hash)}\`)`
+- Line 106: Same change for the sign-in card button
 
 **2. `src/components/CoachingBooking.tsx`**
-- Import `useLocation`
-- Pass current location as state when redirecting to `/auth` in `handlePayment` (line 78)
-- Add `location` to `useCallback` deps (line 93)
+- Line 79: Change `navigate("/auth", { state: { from: location } })` → `navigate(\`/auth?returnTo=\${encodeURIComponent(location.pathname + location.search + location.hash)}\`)`
 
 **3. `src/pages/Auth.tsx`**
-- Import `useLocation`
-- On successful login (line 54-55), reconstruct the full return URL from `location.state?.from` preserving pathname + search + hash:
-  ```typescript
-  const from = location.state?.from
-    ? `${location.state.from.pathname || ""}${location.state.from.search || ""}${location.state.from.hash || ""}`
-    : "/";
-  navigate(from, { replace: true });
-  ```
-
-All existing UI and logic remains unchanged.
+- Import `useSearchParams` from `react-router-dom`
+- Add `const [searchParams] = useSearchParams()`
+- Read `const returnTo = searchParams.get("returnTo") || "/"`
+- Line 56-59: Replace the `location.state.from` reconstruction with just `navigate(returnTo, { replace: true })`
+- Remove `useLocation` import (no longer needed)
 
 ### Files changed
 
 | File | Change |
 |------|--------|
-| `src/pages/Coaching.tsx` | Add `useLocation`; pass `{ state: { from: location } }` in both redirect points |
-| `src/components/CoachingBooking.tsx` | Add `useLocation`; pass `{ state: { from: location } }` in `handlePayment`; update deps |
-| `src/pages/Auth.tsx` | Add `useLocation`; redirect to full preserved location after login |
+| `src/pages/Coaching.tsx` | Use `returnTo` query param in both auth redirects |
+| `src/components/CoachingBooking.tsx` | Use `returnTo` query param in `handlePayment` redirect |
+| `src/pages/Auth.tsx` | Read `returnTo` from `useSearchParams`; remove `location.state.from` logic |
 
