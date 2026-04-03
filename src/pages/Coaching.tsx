@@ -104,7 +104,6 @@ const Coaching = () => {
                   Booking and payment for coaching calls require an account so we can link your session and payment correctly.
                 </p>
                 <Button className="w-full gap-2 mt-2" onClick={() => {
-                  toast.success(`DEBUG pre-auth path=${location.pathname} search=${location.search} hash=${location.hash}`, { duration: Infinity, closeButton: true });
                   navigate(`/auth?returnTo=${encodeURIComponent("/coaching")}`);
                 }}>
                   <LogIn size={14} />
