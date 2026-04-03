@@ -1,29 +1,37 @@
 
-Verified current source in `src/pages/Auth.tsx`:
-- `useSearchParams` is already imported.
-- The success branch already uses `navigate(returnTo, { replace: true })`.
-- The remaining missing piece from your requested fix is sanitizing the query param before using it.
+Goal: make the coaching login redirect durable in the APK using the `returnTo` query-param flow, without touching `App.tsx` back-button logic or unrelated auth redirects.
 
-Plan:
-1. In `src/pages/Auth.tsx`, keep the existing `useSearchParams` import.
-2. Replace the current query-param setup:
-```ts
-const [searchParams] = useSearchParams();
-const returnTo = searchParams.get("returnTo") || "/";
-```
-with:
-```ts
-const [searchParams] = useSearchParams();
-const rawReturnTo = searchParams.get("returnTo") || "/";
-const returnTo = rawReturnTo.startsWith("/") ? rawReturnTo : "/";
-```
-3. Keep the successful login redirect as:
-```ts
-navigate(returnTo, { replace: true });
-```
-4. Do not change `App.tsx` back-button logic.
+What I verified in the current repo
+- `src/pages/Auth.tsx` already imports `useSearchParams`, sanitizes `returnTo`, and the login success branch currently uses `navigate(returnTo, { replace: true })`.
+- `src/pages/Coaching.tsx` already redirects unauthenticated coaching users to `/auth?returnTo=...` in both the paid-booking check and the sign-in CTA.
+- `src/components/CoachingBooking.tsx` already uses the same query-param redirect pattern for the coaching modal flow.
+- No `navigate("/")` remains in the current `Auth.tsx` login success flow.
 
-Exact target `Auth.tsx` snippet around the login success block:
+Implementation plan
+1. Keep the current `Auth.tsx` query-param redirect pattern as the source of truth:
+   - `useSearchParams`
+   - `rawReturnTo`
+   - sanitized `returnTo`
+   - `navigate(returnTo, { replace: true })` on successful login
+2. Keep coaching redirects URL-based only:
+   - `src/pages/Coaching.tsx`
+   - `src/components/CoachingBooking.tsx`
+3. Preserve the most specific coaching destination:
+   - keep the current exact-location form (`location.pathname + location.search + location.hash`) rather than downgrading to hardcoded `"/coaching"`, because it restores the full coaching URL if search/hash is present
+4. Do not modify `App.tsx` or unrelated `/auth` redirects elsewhere yet.
+5. On delivery, provide:
+   - the exact `Auth.tsx` snippet around `searchParams` setup and login success redirect
+   - the exact `Coaching.tsx` sign-in button snippet
+   - confirmation that no `navigate("/")` remains in the `Auth.tsx` login success flow
+
+Files in scope
+- `src/pages/Auth.tsx`
+- `src/pages/Coaching.tsx`
+- `src/components/CoachingBooking.tsx`
+
+Verified current snippets to preserve/normalize
+
+`src/pages/Auth.tsx`
 ```tsx
 const navigate = useNavigate();
 const [searchParams] = useSearchParams();
@@ -42,5 +50,19 @@ const { t } = useTranslation();
     }
 ```
 
-Exact file to change:
-- `src/pages/Auth.tsx`
+`src/pages/Coaching.tsx`
+```tsx
+<Button
+  className="w-full gap-2 mt-2"
+  onClick={() =>
+    navigate(
+      `/auth?returnTo=${encodeURIComponent(
+        location.pathname + location.search + location.hash
+      )}`
+    )
+  }
+>
+  <LogIn size={14} />
+  Sign In / Create Account
+</Button>
+```
