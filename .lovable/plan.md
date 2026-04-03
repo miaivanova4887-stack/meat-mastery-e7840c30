@@ -1,31 +1,46 @@
 
+Verified current source in `src/pages/Auth.tsx`:
+- `useSearchParams` is already imported.
+- The success branch already uses `navigate(returnTo, { replace: true })`.
+- The remaining missing piece from your requested fix is sanitizing the query param before using it.
 
-## Switch Post-Login Redirect from Router State to URL Query Param
+Plan:
+1. In `src/pages/Auth.tsx`, keep the existing `useSearchParams` import.
+2. Replace the current query-param setup:
+```ts
+const [searchParams] = useSearchParams();
+const returnTo = searchParams.get("returnTo") || "/";
+```
+with:
+```ts
+const [searchParams] = useSearchParams();
+const rawReturnTo = searchParams.get("returnTo") || "/";
+const returnTo = rawReturnTo.startsWith("/") ? rawReturnTo : "/";
+```
+3. Keep the successful login redirect as:
+```ts
+navigate(returnTo, { replace: true });
+```
+4. Do not change `App.tsx` back-button logic.
 
-### Why
-`location.state` is lost in the Android APK auth flow. Using a `returnTo` query param persists through any navigation context.
+Exact target `Auth.tsx` snippet around the login success block:
+```tsx
+const navigate = useNavigate();
+const [searchParams] = useSearchParams();
+const rawReturnTo = searchParams.get("returnTo") || "/";
+const returnTo = rawReturnTo.startsWith("/") ? rawReturnTo : "/";
+const { signIn, signUp } = useAuth();
+const { t } = useTranslation();
 
-### Changes
+...
 
-**1. `src/pages/Coaching.tsx`**
-- Line 21: Change `navigate("/auth", { state: { from: location } })` → `navigate(\`/auth?returnTo=\${encodeURIComponent(location.pathname + location.search + location.hash)}\`)`
-- Line 106: Same change for the sign-in card button
+    } else if (mode === "signup") {
+      toast.success(t("auth.checkEmail"));
+    } else {
+      toast.success(t("auth.welcomeBackToast"));
+      navigate(returnTo, { replace: true });
+    }
+```
 
-**2. `src/components/CoachingBooking.tsx`**
-- Line 79: Change `navigate("/auth", { state: { from: location } })` → `navigate(\`/auth?returnTo=\${encodeURIComponent(location.pathname + location.search + location.hash)}\`)`
-
-**3. `src/pages/Auth.tsx`**
-- Import `useSearchParams` from `react-router-dom`
-- Add `const [searchParams] = useSearchParams()`
-- Read `const returnTo = searchParams.get("returnTo") || "/"`
-- Line 56-59: Replace the `location.state.from` reconstruction with just `navigate(returnTo, { replace: true })`
-- Remove `useLocation` import (no longer needed)
-
-### Files changed
-
-| File | Change |
-|------|--------|
-| `src/pages/Coaching.tsx` | Use `returnTo` query param in both auth redirects |
-| `src/components/CoachingBooking.tsx` | Use `returnTo` query param in `handlePayment` redirect |
-| `src/pages/Auth.tsx` | Read `returnTo` from `useSearchParams`; remove `location.state.from` logic |
-
+Exact file to change:
+- `src/pages/Auth.tsx`
