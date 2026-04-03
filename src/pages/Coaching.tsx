@@ -103,7 +103,7 @@ const Coaching = () => {
                 <p className="text-xs text-muted-foreground">
                   Booking and payment for coaching calls require an account so we can link your session and payment correctly.
                 </p>
-                <Button className="w-full gap-2 mt-2" onClick={() => navigate("/auth")}>
+                <Button className="w-full gap-2 mt-2" onClick={() => navigate("/auth", { state: { from: location } })}>
                   <LogIn size={14} />
                   Sign In / Create Account
                 </Button>

@@ -91,7 +91,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
     } finally {
       setLoading(false);
     }
-  }, [navigate, onOpenChange]);
+  }, [navigate, onOpenChange, location]);
 
   const handleFreeBook = useCallback(() => {
     window.open(CAL_URL, "_blank");

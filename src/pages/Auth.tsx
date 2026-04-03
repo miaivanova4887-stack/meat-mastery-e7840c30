@@ -53,7 +53,10 @@ const Auth = () => {
       toast.success(t("auth.checkEmail"));
     } else {
       toast.success(t("auth.welcomeBackToast"));
-      navigate("/");
+      const from = location.state?.from
+        ? `${location.state.from.pathname || ""}${location.state.from.search || ""}${location.state.from.hash || ""}`
+        : "/";
+      navigate(from, { replace: true });
     }
   };
 
