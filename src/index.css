@@ -189,6 +189,77 @@
   }
 }
 
+/* Editorial luxury onboarding utilities */
+@layer utilities {
+  .font-editorial {
+    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  }
+
+  .onboarding-category-line {
+    height: 1px;
+    background: linear-gradient(90deg, hsl(var(--primary) / 0.4), transparent 60%);
+  }
+
+  .onboarding-card-selected {
+    background: linear-gradient(135deg, hsl(var(--primary) / 0.06), hsl(var(--primary) / 0.03));
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow: 0 0 0 1px hsl(var(--primary) / 0.08), 0 2px 12px -4px hsl(var(--primary) / 0.15), inset 0 1px 0 hsl(var(--primary) / 0.06);
+  }
+
+  .onboarding-card-idle {
+    background: hsl(var(--card));
+    border-color: hsl(var(--border) / 0.4);
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.04);
+  }
+
+  .onboarding-pill-selected {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+    box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.4);
+  }
+
+  .onboarding-pill-idle {
+    background: hsl(var(--card));
+    border-color: hsl(var(--border) / 0.5);
+  }
+
+  .onboarding-medallion {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    transition: all 0.2s ease;
+  }
+
+  .onboarding-medallion-active {
+    background: hsl(var(--primary) / 0.12);
+    color: hsl(var(--primary));
+  }
+
+  .onboarding-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid hsl(var(--border) / 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .onboarding-check-active {
+    background: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 8px -2px hsl(var(--primary) / 0.4);
+  }
+}
+
 @keyframes slideDown {
   from {
     opacity: 0;
@@ -198,4 +269,9 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes onb-stagger {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
