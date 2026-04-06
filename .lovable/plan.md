@@ -1,70 +1,85 @@
-## Fix CMS Internal Linking — Plan
 
-### Root Cause
+Goal: make custom pages a real, hydrated editor target across Pages, Content, and Layout. A visible row/title is not enough.
 
-The CMS has **two separate page storage systems** that don't talk to each other:
+What’s actually broken
+- CMS page state is fragmented: each tab fetches/builds pages differently, and only a loose slug is shared.
+- App page definitions are duplicated and inconsistent across tabs (`mealPlan` vs `meal-plan`, `gettingStarted` vs `getting-started`, etc.), so page resolution is unreliable.
+- `CmsPagesTab` is only a table/actions view; it does not hydrate a selected page into a settings editor.
+- `CmsContentEditor` synthesizes custom-page fields from `page_layouts.blocks`, but keys them by `page|section|field`. That collapses duplicate blocks and leaves zero-block pages with a blank body.
+- `CmsLayoutBuilder` can load blocks, but it does not treat page metadata/settings + empty state as first-class editor state.
 
-1. `**page_layouts` table** — used by Layout Builder to store block-based pages with EN/FR content
-2. `**cms_pages` table** — used by `CmsPageView.tsx` (the `/p/:slug` route) to render published custom pages
+Implementation plan
 
-When you create a custom page in Layout Builder, it saves to `page_layouts`. But when a visitor hits `/p/my-page`, `CmsPageView` queries `cms_pages` — which has nothing in it. Custom pages are invisible to end users.
+1. Create one shared CMS page model
+- Add a shared helper/config used by all CMS tabs.
+- Normalize every page into one shape:
+  - `source: "app" | "custom"`
+  - `slug`
+  - `route`
+  - `title`
+  - `contentKey` for app-page `content_blocks`
+  - `layout` / `pageLayoutId`
+  - `isPublished`
+  - `parentSlug`
+- Build all sidebars, tables, and link pickers from this single registry.
 
-The internal link picker already works correctly (it lists app pages + custom pages from `page_layouts`). The hierarchy support also works. The missing piece is **rendering**.
+2. Lift page selection into `CmsEditor`
+- Replace “shared slug only” with one shared active page record/identity.
+- Fetch `page_layouts` once in the CMS shell and pass `pages`, `activePage`, `onSelectPage`, and `refreshPages` to all tabs.
+- This makes every tab hydrate from the same resolved page, not its own lookup rules.
 
-### Changes
+3. Turn Pages into a real metadata/settings editor
+- Keep the page list/table, but make row selection drive the shared active page.
+- Add a right-side editor panel for the selected page:
+  - title
+  - slug/path
+  - type
+  - publish state
+  - parent grouping if custom
+- Custom pages save back to `page_layouts`.
+- App pages get a read-only settings summary plus layout status.
+- If no page is selected, show a clear placeholder.
 
-#### 1. Fix `CmsPageView.tsx` to read from `page_layouts` and render blocks
+4. Fix Content tab hydration for custom pages
+- Stop keying custom-page edits by section name only.
+- Use block-instance keys instead, e.g. `page|blockId|fieldKey|locale`, so repeated block types hydrate/save correctly.
+- Render a page summary/settings card at the top so the editor never appears “empty” without context.
+- If a custom page has no editable fields yet, show:
+  `This page has no editable content yet. Create layout/content or open page settings.`
+- Keep app-page content editing on `content_blocks`, but resolve through the shared `contentKey`.
 
-**File: `src/pages/CmsPageView.tsx**`
+5. Fix Layout Builder hydration and empty states
+- Hydrate directly from the shared active page record.
+- For custom pages, use `page_layouts.blocks` as the source of truth.
+- Show page metadata/settings summary in the builder header/body.
+- If there are zero blocks, show an explicit empty-state card plus “Add Block”, not a silent blank editor area.
+- Keep preview routing driven by the shared page model.
 
-Replace the current `cms_pages` query with a `page_layouts` query:
+6. Unify internal page pickers
+- Make all link pickers read from the same shared page registry.
+- This ensures app pages, custom pages, and future child pages appear consistently everywhere.
 
-- Query `page_layouts` where `page_slug = slug` and `is_published = true`
-- Read the `blocks` JSON array (which contains `LayoutBlock[]` with field content)
-- Render each block based on its `blockType` using a simple block renderer
+7. Keep hierarchy secondary
+- Do not expand hierarchy behavior until core hydration is solid.
+- Keep `parent_slug` as CMS-only organizational metadata for now.
+- No route nesting.
 
-Add a `LayoutBlockRenderer` component that maps `blockType` to styled output:
+Files to update
+- `src/pages/CmsEditor.tsx`
+- `src/components/cms/CmsPagesTab.tsx`
+- `src/components/cms/CmsContentEditor.tsx`
+- `src/components/cms/CmsLayoutBuilder.tsx`
+- Add one shared CMS page config/helper module for normalized page definitions
 
-- `rich_text` → renders body as paragraph text
-- `title_body` → renders title as heading + body as paragraph
-- `cta_button` → renders a styled button/link using the `link` field value
-- `notice` → renders a notice card with title + body
-- `image_block` → renders an `<img>` with alt text
-- `spacer` → renders a `<div>` with fixed height
+Technical notes
+- No database migration is needed for this fix; `parent_slug` already exists.
+- The most important fix is block-instance hydration in Content. Without that, custom pages with repeated blocks cannot ever load/edit reliably.
+- The shared page model should map route slugs and content namespaces so app/custom pages behave consistently across tabs.
 
-Use the current locale (from `i18n`) to pick `content[field.key].en` or `.fr`.
-
-#### 2. Ensure the link picker includes all custom pages
-
-**File: `src/components/cms/CmsLayoutBuilder.tsx**`
-
-The `linkOptions` memo (line 153) already combines `APP_PAGES` + `customPages`. This works correctly — no change needed here.
-
-#### 3. Ensure custom pages always show in sidebar and Pages tab
-
-The sidebar (line 353) shows custom pages only when `customPages.length > 0`. The `customPages` memo (line 144) correctly filters `layouts` for non-app-page slugs. The Pages tab (`CmsPagesTab.tsx`) also queries `page_layouts` and shows all entries.
-
-**No change needed** — both already work. The issue was only that `/p/:slug` couldn't render the pages.
-
-### What stays unchanged
-
-- Layout Builder block templates, save flow, sidebar, publish toggle
-- Pages tab table view and hierarchy display
-- `cms_pages` table (kept for backward compatibility with any drag-drop canvas pages)
-- `page_layouts` table schema, RLS policies
-- Internal link picker logic
-- Parent-child hierarchy support
-
-### Files to edit
-
-1. `**src/pages/CmsPageView.tsx**` — rewrite to query `page_layouts` instead of `cms_pages`, add block renderer with locale support
-
-- Query `page_layouts` by `page_slug = slug` and `is_published = true`.
-- Use `maybeSingle()` or equivalent safe handling for missing pages.
-- Treat `page_layouts` as the source of truth for block-based custom pages.
-- For locale selection, use current locale first, then fall back to `en` if the localized field is empty.
-
-For CTA blocks, prefer semantic links:
-
-- internal links render with router navigation if possible,
-- external links use normal anchors.
+Acceptance criteria
+- Selecting a custom page in Pages opens a usable metadata/settings editor.
+- Selecting the same custom page in Content shows editable fields or the explicit empty-state message.
+- Selecting the same custom page in Layout shows saved blocks or the explicit empty-state message.
+- Switching tabs keeps the same page selected.
+- A custom page with multiple similar blocks hydrates and saves each block independently.
+- Internal page pickers list app + custom pages from the same source.
