@@ -42,6 +42,7 @@ function isToday(day: DayKey): boolean {
 
 const MealPlan = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals, toggleCompleted, isCompleted, dayCompletionCount } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
