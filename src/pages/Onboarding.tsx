@@ -30,7 +30,14 @@ interface InputStep {
   fields: { key: string; label: string; placeholder: string; unit?: string; type?: string }[];
 }
 
-type OnboardingStep = OptionStep | InputStep;
+interface ConsentStep {
+  type: "consent";
+  title: string;
+  body: string;
+  icon: typeof Shield;
+}
+
+type OnboardingStep = OptionStep | InputStep | ConsentStep;
 
 // Health target constants
 const ALL_HEALTH_TARGET_KEYS = [
