@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,11 +25,23 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
   const [editSlug, setEditSlug] = useState("");
   const [editPublished, setEditPublished] = useState(false);
   const [editParent, setEditParent] = useState("");
-  const [settingsInitSlug, setSettingsInitSlug] = useState<string | null>(null);
+
+  // Hydrate settings form via useEffect when activePage changes
+  useEffect(() => {
+    if (activePage) {
+      setEditTitle(activePage.title);
+      setEditSlug(activePage.slug);
+      setEditPublished(activePage.isPublished);
+      setEditParent(activePage.parentSlug || "");
+    }
+  }, [activePage?.slug, activePage?.updatedAt]);
 
   const customPages = pages.filter(p => p.source === "custom");
   const parents = customPages.filter(p => !p.parentSlug);
   const children = customPages.filter(p => !!p.parentSlug);
+
+  // All pages available as parent options (exclude self)
+  const parentOptions = pages.filter(p => p.slug !== activePage?.slug);
 
   // Build rows
   type Row = CmsPageRecord & { isChild: boolean };
@@ -43,23 +55,11 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
       rows.push({ ...c, isChild: true });
     }
   }
-  // Orphans
+  // Orphans — custom pages whose parent doesn't exist in custom parents
   for (const c of children.filter(ch => !parents.some(p => p.slug === ch.parentSlug))) {
-    rows.push({ ...c, isChild: false });
-  }
-
-  const selectForSettings = (page: CmsPageRecord) => {
-    onSelectPage(page);
-    setEditTitle(page.title);
-    setEditSlug(page.slug);
-    setEditPublished(page.isPublished);
-    setEditParent(page.parentSlug || "");
-    setSettingsInitSlug(page.slug);
-  };
-
-  // Auto-load settings when activePage changes from outside
-  if (activePage && settingsInitSlug !== activePage.slug) {
-    selectForSettings(activePage);
+    // Check if parent is an app page
+    const parentPage = pages.find(p => p.slug === c.parentSlug);
+    rows.push({ ...c, isChild: !!parentPage });
   }
 
   const togglePublish = async (page: CmsPageRecord) => {
@@ -117,7 +117,7 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                 {rows.map(page => (
                   <tr
                     key={page.slug}
-                    onClick={() => selectForSettings(page)}
+                    onClick={() => onSelectPage(page)}
                     className={`cursor-pointer transition-colors ${activePage?.slug === page.slug ? "bg-primary/5" : "hover:bg-accent/30"}`}
                   >
                     <td className="py-2.5 pl-2">
@@ -221,8 +221,8 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                   </div>
                 )}
 
-                {/* Parent (custom only) */}
-                {activePage.source === "custom" && customPages.length > 1 && (
+                {/* Parent (custom only) — full page registry */}
+                {activePage.source === "custom" && (
                   <div>
                     <label className="text-[10px] font-semibold text-muted-foreground uppercase block mb-1">Parent Page</label>
                     <Select value={editParent || "__none__"} onValueChange={v => setEditParent(v === "__none__" ? "" : v)}>
@@ -231,8 +231,10 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">No parent</SelectItem>
-                        {customPages.filter(p => p.slug !== activePage.slug).map(p => (
-                          <SelectItem key={p.slug} value={p.slug}>{p.title}</SelectItem>
+                        {parentOptions.map(p => (
+                          <SelectItem key={p.slug} value={p.slug}>
+                            {p.title} {p.source === "app" ? "(App)" : "(Custom)"}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -245,7 +247,7 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                   <p className="text-xs text-muted-foreground">{activePage.blocks.length} block{activePage.blocks.length !== 1 ? "s" : ""}</p>
                 </div>
 
-                {/* Save button (custom pages with layout) */}
+                {/* Save button (pages with layout) */}
                 {activePage.pageLayoutId && (
                   <Button size="sm" className="w-full h-8 text-xs gap-1" onClick={saveSettings} disabled={saving}>
                     {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}

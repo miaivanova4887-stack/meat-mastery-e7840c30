@@ -78,6 +78,8 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
   const customPages = useMemo(() => pages.filter(p => p.source === "custom"), [pages]);
   const customParents = useMemo(() => customPages.filter(p => !p.parentSlug), [customPages]);
   const customChildren = useMemo(() => customPages.filter(p => !!p.parentSlug), [customPages]);
+  // All pages available as parent options for create-page form
+  const parentOptions = useMemo(() => pages, [pages]);
 
   const linkOptions = useMemo(() => [
     ...APP_PAGE_DEFS.map(p => ({ label: p.title, value: p.route })),
@@ -173,8 +175,8 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
     if (!newPageTitle.trim() || !newPageSlug.trim()) return;
     const slug = newPageSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-");
     const insertData: any = { page_slug: slug, title: newPageTitle.trim(), blocks: [], is_published: false };
-    if (newPageParent) insertData.parent_slug = newPageParent;
-    const { error } = await (supabase as any).from("page_layouts").insert(insertData);
+    if (newPageParent && newPageParent !== "__none__") insertData.parent_slug = newPageParent;
+    const { data, error } = await (supabase as any).from("page_layouts").insert(insertData).select().single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -184,6 +186,21 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
       setNewPageSlug("");
       setNewPageParent("");
       await refreshPages();
+      // Auto-select the newly created page
+      if (data) {
+        onSelectPage({
+          source: "custom",
+          slug: data.page_slug,
+          route: `/p/${data.page_slug}`,
+          title: data.title,
+          contentKey: data.page_slug,
+          pageLayoutId: data.id,
+          isPublished: data.is_published,
+          parentSlug: data.parent_slug || null,
+          blocks: data.blocks || [],
+          updatedAt: data.updated_at,
+        });
+      }
     }
   };
 
@@ -227,19 +244,19 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
               <span>/p/</span>
               <Input placeholder="slug" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="h-6 text-[10px] flex-1" />
             </div>
-            {customPages.length > 0 && (
-              <Select value={newPageParent} onValueChange={setNewPageParent}>
-                <SelectTrigger className="h-7 text-[10px]">
-                  <SelectValue placeholder="Parent page (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No parent</SelectItem>
-                  {customPages.map(p => (
-                    <SelectItem key={p.slug} value={p.slug}>{p.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={newPageParent || "__none__"} onValueChange={setNewPageParent}>
+              <SelectTrigger className="h-7 text-[10px]">
+                <SelectValue placeholder="Parent page (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No parent</SelectItem>
+                {parentOptions.map(p => (
+                  <SelectItem key={p.slug} value={p.slug}>
+                    {p.title} {p.source === "app" ? "(App)" : "(Custom)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button size="sm" className="w-full h-7 text-xs" onClick={createPage}>Create Page</Button>
           </div>
         )}
