@@ -275,6 +275,9 @@ export type Database = {
           updated_at: string
           user_attributes: Json
           username: string | null
+          wellness_disclaimer_consented: boolean
+          wellness_disclaimer_consented_at: string | null
+          wellness_disclaimer_version: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -287,6 +290,9 @@ export type Database = {
           updated_at?: string
           user_attributes?: Json
           username?: string | null
+          wellness_disclaimer_consented?: boolean
+          wellness_disclaimer_consented_at?: string | null
+          wellness_disclaimer_version?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -299,6 +305,9 @@ export type Database = {
           updated_at?: string
           user_attributes?: Json
           username?: string | null
+          wellness_disclaimer_consented?: boolean
+          wellness_disclaimer_consented_at?: string | null
+          wellness_disclaimer_version?: string | null
         }
         Relationships: []
       }
