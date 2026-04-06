@@ -247,19 +247,69 @@ export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsConte
     for (const page of Object.keys(linkPairsByPage)) {
       if (!result[page]) result[page] = {};
     }
+    // Add custom pages from page_layouts that aren't already in i18n
+    const APP_SLUGS = Object.keys(PAGE_NAMES);
+    for (const layout of customLayouts) {
+      const slug = layout.page_slug;
+      if (APP_SLUGS.includes(slug)) continue;
+      if (searchLower && !slug.toLowerCase().includes(searchLower) && !layout.title.toLowerCase().includes(searchLower)) continue;
+      if (!result[slug]) result[slug] = {};
+      // Add block fields as editable content sections
+      if (layout.blocks && layout.blocks.length > 0) {
+        for (const block of layout.blocks) {
+          const sectionKey = block.name || block.blockType || "main";
+          if (!result[slug][sectionKey]) result[slug][sectionKey] = [];
+          for (const field of (block.fields || [])) {
+            const content = block.content?.[field.key] || { en: "", fr: "" };
+            const mapKey = `${slug}|${sectionKey}|${field.key}`;
+            // Only add if not already present
+            if (!result[slug][sectionKey].some((i: any) => i.mapKey === mapKey)) {
+              result[slug][sectionKey].push({ key: field.key, en: content.en || "", fr: content.fr || "", type: field.type || "text", mapKey });
+            }
+          }
+        }
+      }
+    }
     return result;
-  }, [allContent, search, linkPairsByPage]);
+  }, [allContent, search, linkPairsByPage, customLayouts]);
 
-  const pages = useMemo(() => Object.keys(grouped).sort((a, b) => pageName(a).localeCompare(pageName(b))), [grouped]);
+  // Extend PAGE_NAMES for custom pages
+  const extendedPageName = useCallback((key: string) => {
+    const custom = customLayouts.find(l => l.page_slug === key);
+    if (custom) return custom.title;
+    return pageName(key);
+  }, [customLayouts]);
+
+  const pages = useMemo(() => Object.keys(grouped).sort((a, b) => extendedPageName(a).localeCompare(extendedPageName(b))), [grouped, extendedPageName]);
 
   useEffect(() => {
     if (pages.length > 0 && !selectedPage) setSelectedPage(pages[0]);
   }, [pages, selectedPage]);
 
+  // Sync with shared slug from parent
+  useEffect(() => {
+    if (initialSlug && pages.includes(initialSlug) && selectedPage !== initialSlug) {
+      setSelectedPage(initialSlug);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSlug, pages]);
+
+  const handleSelectPage = (page: string) => {
+    setSelectedPage(page);
+    onSlugChange?.(page);
+  };
+
   const fetchBlocks = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any).from("content_blocks").select("*").order("page");
-    if (!error && data) setDbBlocks(data);
+    const [blocksResult, layoutsResult] = await Promise.all([
+      (supabase as any).from("content_blocks").select("*").order("page"),
+      (supabase as any).from("page_layouts").select("page_slug, title, blocks, is_published").order("title"),
+    ]);
+    if (!blocksResult.error && blocksResult.data) setDbBlocks(blocksResult.data);
+    if (!layoutsResult.error && layoutsResult.data) {
+      const APP_SLUGS = Object.keys(PAGE_NAMES);
+      setCustomLayouts(layoutsResult.data.filter((l: any) => !APP_SLUGS.includes(l.page_slug)).map((l: any) => ({ ...l, blocks: l.blocks || [] })));
+    }
     setLoading(false);
   }, []);
 
