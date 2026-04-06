@@ -175,7 +175,7 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
     if (!newPageTitle.trim() || !newPageSlug.trim()) return;
     const slug = newPageSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-");
     const insertData: any = { page_slug: slug, title: newPageTitle.trim(), blocks: [], is_published: false };
-    if (newPageParent) insertData.parent_slug = newPageParent;
+    if (newPageParent && newPageParent !== "__none__") insertData.parent_slug = newPageParent;
     const { error } = await (supabase as any).from("page_layouts").insert(insertData);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });

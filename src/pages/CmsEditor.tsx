@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PenLine, Layers, FileText, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -17,10 +17,9 @@ export default function CmsEditor() {
   const [adminStatus, setAdminStatus] = useState<'checking' | 'admin' | 'denied'>('checking');
   const [activeTab, setActiveTab] = useState<Tab>("content");
 
-  // Unified page state
+  // Canonical slug-based selection
+  const [activeSlug, setActiveSlug] = useState<string | null>(null);
   const [layouts, setLayouts] = useState<PageLayoutRow[]>([]);
-  const [pages, setPages] = useState<CmsPageRecord[]>([]);
-  const [activePage, setActivePage] = useState<CmsPageRecord | null>(null);
   const [layoutsLoading, setLayoutsLoading] = useState(true);
 
   useEffect(() => {
@@ -43,31 +42,29 @@ export default function CmsEditor() {
     const { data, error } = await (supabase as any).from("page_layouts").select("*").order("title");
     if (!error && data) {
       setLayouts(data);
-      const registry = buildPageRegistry(data);
-      setPages(registry);
-      // Keep active page in sync
-      if (activePage) {
-        const updated = registry.find(p => p.slug === activePage.slug);
-        if (updated) setActivePage(updated);
-      }
     }
     setLayoutsLoading(false);
-  }, [activePage]);
+  }, []);
+
+  // Derive pages from layouts
+  const pages = useMemo(() => buildPageRegistry(layouts), [layouts]);
+
+  // Derive activePage from activeSlug + pages
+  const activePage = useMemo(() => {
+    if (!activeSlug) return null;
+    return pages.find(p => p.slug === activeSlug) || null;
+  }, [pages, activeSlug]);
 
   useEffect(() => {
     if (adminStatus === 'admin') refreshPages();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminStatus]);
+  }, [adminStatus, refreshPages]);
 
   const handleSelectPage = useCallback((page: CmsPageRecord) => {
-    setActivePage(page);
+    setActiveSlug(page.slug);
   }, []);
 
   const navigateToTab = (tab: Tab, slug?: string) => {
-    if (slug) {
-      const page = pages.find(p => p.slug === slug);
-      if (page) setActivePage(page);
-    }
+    if (slug) setActiveSlug(slug);
     setActiveTab(tab);
   };
 
