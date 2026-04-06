@@ -443,6 +443,24 @@ const MealPlan = () => {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+        {/* Placement mode banner */}
+        {assignRecipe && (
+          <div className="ios-card p-3.5 flex items-center gap-3 border-2 border-primary/40 bg-primary/5">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <CalendarPlus size={18} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-foreground truncate">Placing: {assignRecipe.recipeName}</p>
+              <p className="text-[11px] text-muted-foreground">Tap a meal slot below to place it</p>
+            </div>
+            <button
+              onClick={() => setAssignRecipe(null)}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {/* AI Generator Banner */}
         <TeaserGate requiredTier="elite" featureName="AI Meal Planner">
           <button
