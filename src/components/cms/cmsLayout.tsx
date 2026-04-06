@@ -15,14 +15,14 @@ export interface CmsLayoutBlock {
   name: string;
   blockType?: string;
   fields?: CmsLayoutField[];
-  content?: Record<string, Record<string, string>>;
+  content?: Record<string, { en: string; fr: string }>;
 }
 
 function makeFallbackBlockId(seed: string, index: number) {
   return `cms-block-${seed}-${index}`;
 }
 
-function normalizeFieldLocales(value: unknown): Record<string, string> {
+function normalizeFieldLocales(value: unknown): { en: string; fr: string } {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const record = value as Record<string, unknown>;
     return {
