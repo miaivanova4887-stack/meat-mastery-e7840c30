@@ -1,47 +1,41 @@
 
 
-## Performance Clinic Onboarding Redesign
+## Refine Onboarding: Premium Sans-Serif Typography + Warmer Styling
 
-Replace the current Editorial Luxury direction with a clinical, sports-science premium aesthetic.
+Roll back the clinical Performance Clinic hardness while keeping its structural improvements (cleaner grouping, segmented dots, better rhythm).
 
-### Key Visual Changes
+### What changes
 
-**Typography**: Replace serif `font-editorial` headers with bold condensed uppercase Inter. Step titles become `text-[22px] font-bold uppercase tracking-[0.04em]` in sans-serif. Subtitles stay light but tighter.
+**1. `src/pages/Onboarding.tsx` — Typography & card warmth**
 
-**Progress bar**: Replace continuous track with **segmented step dots** — small circles for each step, filled/active with primary color, connected by thin lines.
+- **Page title** (line 429): Replace `text-[22px] font-bold uppercase tracking-[0.04em]` with `text-[26px] font-extrabold tracking-[-0.02em] leading-[1.15]` — large, confident, sentence-case sans-serif. No uppercase, no condensed. Matches the rest of the app.
+- **Subtitle** (line 432): Bump to `text-[13px]` with `tracking-normal` instead of `tracking-wide`. Warmer, more readable.
+- **Option cards**: Increase row height from `h-[44px]` to `h-[52px]`. Add `rounded-xl` to the container (from `rounded-lg`). This restores breathing room without losing the grouped structure.
+- **Option label text**: Bump from `text-[13px]` to `text-[14px]`. Description text from `text-[10.5px]` to `text-[11px]`.
+- **Selected state**: Replace hard solid amber fill with a warmer treatment — `bg-primary/10 border-l-2 border-l-primary` instead of full `onboarding-segment-selected`. Text stays `text-foreground` (not inverted). This feels premium without the high-contrast clinical inversion.
+- **Category headers** (health targets, line 525): Keep uppercase small-caps style but soften — `text-[11px] font-semibold tracking-[0.08em]` instead of `font-bold tracking-[0.12em]`. Keep the accent rule but make it `bg-primary/20` and `w-6`.
+- **Input field labels**: Same softening — `text-[11px] font-semibold tracking-[0.06em]`.
+- **Continue button**: Sentence-case instead of uppercase. `text-[14px] font-semibold tracking-normal rounded-xl h-[50px]`.
+- **Step counter**: Keep dots but soften — active dots `w-2.5 h-2.5`, connector lines `w-3`.
+- **"Skip for now"**: `text-[11px]` with normal tracking instead of ultra-wide uppercase.
 
-**Category headers (health targets step)**: Remove rounded medallion icons. Use bold condensed uppercase labels with a thin 2px primary accent rule beneath — no icon circles, just the label and underline.
+**2. `src/index.css` — Updated utility classes**
 
-**Option cards (all steps)**: Replace individual floating rounded cards with **segmented control blocks** — all options in a category grouped into one bordered container with internal hairline dividers. Tight 44px row height. No emoji medallions — emoji rendered inline at 14px before label text. Sharp `rounded-lg` corners.
+- Replace `.onboarding-segment-selected` with a warm tint: `background: hsl(var(--primary) / 0.08); border-left: 2.5px solid hsl(var(--primary));`
+- `.onboarding-segment-idle`: keep `background: hsl(var(--card))` but add subtle hover warmth.
+- `.onboarding-check-active`: keep as-is (solid primary circle with check).
+- Keep `.font-editorial` class definition (other parts of app may use it) but it won't be used in onboarding.
 
-**Selected state**: Replace warm glow/gradient with **solid amber fill** (`bg-primary text-primary-foreground`). Crisp, decisive, high-contrast. No shadows or glows on selection.
+### What stays the same
+- Segmented dot progress indicator (good improvement, keeping it)
+- Grouped category containers with divide-y (cleaner than individual floating cards)
+- Health target category organization
+- All onboarding logic, data flow, step order
+- Color palette, tailwind config
 
-**Health target pills (2-item categories)**: Same segmented-control treatment — grouped in a single bordered block with divider, not separate floating pills.
-
-**Spacing**: Tighter gaps — `space-y-0` within segmented blocks, `gap-5` between category sections (down from `space-y-6`). Overall feel is dense and clinical.
-
-**Motion**: Faster transitions (150ms), no staggered reveals. Sharp and immediate.
-
-### Files to Change
-
-1. **`src/pages/Onboarding.tsx`**
-   - Replace header typography classes: remove `font-editorial`, use `font-bold uppercase tracking-[0.04em]` on Inter
-   - Replace progress bar with segmented dot indicator
-   - Wrap each step's options in a single bordered container with `divide-y` instead of individual cards
-   - Remove emoji medallion wrapper — render emoji inline before label
-   - Remove `onboarding-card-selected/idle` classes, use conditional `bg-primary text-primary-foreground` directly
-   - Health targets: unify pill and tile treatments into one segmented-control style per category
-   - Category headers: remove icon circle, use uppercase label + thin accent rule only
-   - Tighten all spacing values
-
-2. **`src/index.css`**
-   - Remove or replace `.onboarding-card-selected`, `.onboarding-card-idle`, `.onboarding-pill-selected`, `.onboarding-pill-idle`, `.onboarding-medallion*` classes
-   - Add new `.onboarding-segment-selected` (solid primary fill) and `.onboarding-segment-idle` (card bg) utilities
-   - Remove `onb-stagger` keyframe (no staggered animations)
-   - Keep `slideDown` keyframe
-
-### No Changes To
-- Onboarding logic, step order, data persistence, navigation
-- Tailwind config or color palette
-- Any other pages or components
+### What this achieves
+- Title feels like the rest of the app: bold, modern sans-serif, not editorial or clinical
+- Cards have warmth and breathing room, not dense utility rows
+- Selected state is refined (warm tint + accent border) not aggressive (solid fill inversion)
+- Overall feel: premium wellness product, consistent with existing app pages
 
