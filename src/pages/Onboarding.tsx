@@ -427,10 +427,10 @@ const Onboarding = () => {
       >
         {/* Editorial header */}
         <div className="mb-8">
-          <h1 className="text-[26px] font-black text-foreground leading-[1.15] tracking-[-0.02em]">
+          <h1 className="text-[26px] font-extrabold text-foreground leading-[1.15] tracking-[-0.02em]">
             {current.title}
           </h1>
-          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-wide">
+          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-normal">
             {isStep4 && healthTargetLabels.get("subtitle")
               ? healthTargetLabels.get("subtitle")
               : current.subtitle}
@@ -447,7 +447,7 @@ const Onboarding = () => {
                   key={`${step}-${i}`}
                   onClick={() => handleSelect(i)}
                   style={{ animationDelay: `${i * 60}ms` }}
-                  className={`w-full flex items-center gap-3.5 py-3.5 px-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.98]
+                  className={`w-full flex items-center gap-3.5 h-[52px] px-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.98]
                     ${selected ? "onboarding-card-selected" : "onboarding-card-idle"}
                   `}
                 >
@@ -460,7 +460,7 @@ const Onboarding = () => {
 
                   <div className="flex-1 min-w-0">
                     <span
-                      className={`text-[13.5px] font-medium block leading-tight ${
+                      className={`text-[14px] font-medium block leading-tight ${
                         selected ? "text-foreground" : "text-foreground"
                       }`}
                     >
@@ -491,7 +491,7 @@ const Onboarding = () => {
                 className="space-y-1.5"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
                   {field.label}
                 </label>
                 <div className="flex items-center gap-2">
@@ -537,16 +537,16 @@ const Onboarding = () => {
                       >
                         <CatIcon size={14} strokeWidth={1.5} />
                       </div>
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                         {healthTargetLabels.get(cat.catKey) || cat.catKey}
                       </span>
                     </div>
 
                     {/* Accent rule */}
                     <div
-                      className={`h-[1px] mb-3 transition-all duration-500 ${
+                      className={`h-[1px] w-6 mb-3 transition-all duration-500 ${
                         hasAnySelected
-                          ? "onboarding-category-line"
+                          ? "bg-primary/20"
                           : "bg-border/20"
                       }`}
                     />
@@ -562,7 +562,7 @@ const Onboarding = () => {
                               key={targetKey}
                               type="button"
                               onClick={() => toggleHealthTarget(targetKey)}
-                              className={`flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                              className={`flex-1 flex items-center justify-center gap-2 h-[52px] px-3 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
                                 selected
                                   ? "onboarding-pill-selected"
                                   : "onboarding-pill-idle"
@@ -572,8 +572,8 @@ const Onboarding = () => {
                                 <Check size={12} strokeWidth={2.5} className="flex-shrink-0" />
                               )}
                               <span
-                                className={`text-[12.5px] font-medium leading-tight ${
-                                  selected ? "" : "text-foreground"
+                                className={`text-[14px] font-medium leading-tight ${
+                                  selected ? "text-foreground" : "text-foreground"
                                 }`}
                               >
                                 {healthTargetLabels.get(targetKey) || targetKey}
@@ -592,14 +592,14 @@ const Onboarding = () => {
                               key={targetKey}
                               type="button"
                               onClick={() => toggleHealthTarget(targetKey)}
-                              className={`w-full flex items-center gap-3 py-3 px-4 transition-all duration-200 active:scale-[0.98] ${
+                              className={`w-full flex items-center gap-3 h-[52px] px-4 transition-all duration-200 active:scale-[0.98] ${
                                 selected
                                   ? "bg-primary/[0.05]"
                                   : "bg-card hover:bg-muted/30"
                               }`}
                             >
                               <span
-                                className={`flex-1 text-[13px] font-medium text-left ${
+                                className={`flex-1 text-[14px] font-medium text-left ${
                                   selected ? "text-foreground" : "text-foreground/80"
                                 }`}
                               >
@@ -652,7 +652,7 @@ const Onboarding = () => {
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
           <div className="pt-5">
             <Button
-              className="w-full gap-2 h-[52px] text-[15px] font-semibold rounded-xl tracking-wide transition-all duration-300"
+              className="w-full gap-2 h-[50px] text-[14px] font-semibold rounded-xl tracking-normal transition-all duration-300"
               disabled={
                 !canSkip &&
                 (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
@@ -683,7 +683,7 @@ const Onboarding = () => {
             localStorage.setItem(STORAGE_KEY, "true");
             navigate("/", { replace: true });
           }}
-          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-wide"
+          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-normal"
         >
           Skip for now
         </button>
