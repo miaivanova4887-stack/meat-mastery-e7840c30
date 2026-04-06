@@ -723,21 +723,23 @@ const Onboarding = () => {
         )}
       </div>
 
-      {/* Skip */}
-      <div
-        className="px-6 pb-6 text-center"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 24px) + 8px)" }}
-      >
-        <button
-          onClick={() => {
-            localStorage.setItem(STORAGE_KEY, "true");
-            navigate("/", { replace: true });
-          }}
-          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-normal"
+      {/* Skip — hidden on consent step */}
+      {current.type !== "consent" && (
+        <div
+          className="px-6 pb-6 text-center"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 24px) + 8px)" }}
         >
-          Skip for now
-        </button>
-      </div>
+          <button
+            onClick={() => {
+              localStorage.setItem(STORAGE_KEY, "true");
+              navigate("/", { replace: true });
+            }}
+            className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-normal"
+          >
+            Skip for now
+          </button>
+        </div>
+      )}
     </div>
   );
 };
