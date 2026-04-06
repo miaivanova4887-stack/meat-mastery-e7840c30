@@ -14,6 +14,12 @@ export default {
     },
     extend: {
       fontFamily: {
+        editorial: [
+          '"Playfair Display"',
+          'Georgia',
+          '"Times New Roman"',
+          'serif'
+        ],
         display: [
           '-apple-system',
           'BlinkMacSystemFont',
