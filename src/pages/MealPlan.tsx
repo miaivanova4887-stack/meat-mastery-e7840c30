@@ -635,7 +635,10 @@ const MealPlan = () => {
                     }
                   }}
                   onClick={() => {
-                    if (meal && !swipedSlot) {
+                    if (assignRecipe && meal) {
+                      // In placement mode, tapping occupied slot replaces it
+                      handlePlacementPick(slot);
+                    } else if (meal && !swipedSlot) {
                       setDetailMeal({ day: activeDay, slot, meal });
                     } else if (swipedSlot) {
                       setSwipedSlot(null);
