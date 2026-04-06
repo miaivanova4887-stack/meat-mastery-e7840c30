@@ -592,7 +592,7 @@ const Onboarding = () => {
                               key={targetKey}
                               type="button"
                               onClick={() => toggleHealthTarget(targetKey)}
-                              className={`w-full flex items-center gap-3 py-3 px-4 transition-all duration-200 active:scale-[0.98] ${
+                              className={`w-full flex items-center gap-3 h-[52px] px-4 transition-all duration-200 active:scale-[0.98] ${
                                 selected
                                   ? "bg-primary/[0.05]"
                                   : "bg-card hover:bg-muted/30"
