@@ -357,6 +357,14 @@ const Recipes = () => {
             </button>
           ))}
         </div>
+
+        {/* Place in Plan visual action */}
+        <button
+          onClick={() => navigate("/meal-plan", { state: { assignRecipe: { name: r.name, cal: r.cal, protein: r.protein, fat: r.fat, time: r.time, serving: r.serving } } })}
+          className="flex items-center gap-1.5 mt-3 text-xs text-primary font-medium hover:text-primary/80 transition-colors min-h-[32px]"
+        >
+          <CalendarPlus size={13} /> Place in Plan →
+        </button>
         </div>
       </div>
     );
