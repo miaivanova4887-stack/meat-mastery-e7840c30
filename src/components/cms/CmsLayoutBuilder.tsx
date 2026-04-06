@@ -355,7 +355,7 @@ export default function CmsLayoutBuilder({ initialSlug, onSlugChange }: CmsLayou
             {allPages.filter(p => p.isApp).map(page => (
               <button
                 key={page.slug}
-                onClick={() => selectPage(page.slug)}
+                onClick={() => handleSelectPage(page.slug)}
                 className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                   selectedSlug === page.slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                 }`}
@@ -374,7 +374,7 @@ export default function CmsLayoutBuilder({ initialSlug, onSlugChange }: CmsLayou
                 {customParents.map(page => (
                   <div key={page.page_slug}>
                     <button
-                      onClick={() => selectPage(page.page_slug)}
+                      onClick={() => handleSelectPage(page.page_slug)}
                       className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                         selectedSlug === page.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                       }`}
@@ -388,7 +388,7 @@ export default function CmsLayoutBuilder({ initialSlug, onSlugChange }: CmsLayou
                     {customChildren.filter(c => c.parent_slug === page.page_slug).map(child => (
                       <button
                         key={child.page_slug}
-                        onClick={() => selectPage(child.page_slug)}
+                        onClick={() => handleSelectPage(child.page_slug)}
                         className={`w-full text-left pl-7 pr-3 py-1.5 rounded-md text-xs transition-colors ${
                           selectedSlug === child.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                         }`}
@@ -406,7 +406,7 @@ export default function CmsLayoutBuilder({ initialSlug, onSlugChange }: CmsLayou
                 {customChildren.filter(c => !customParents.some(p => p.page_slug === c.parent_slug)).map(page => (
                   <button
                     key={page.page_slug}
-                    onClick={() => selectPage(page.page_slug)}
+                    onClick={() => handleSelectPage(page.page_slug)}
                     className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                       selectedSlug === page.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                     }`}
