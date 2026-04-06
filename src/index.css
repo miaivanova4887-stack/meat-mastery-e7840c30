@@ -179,37 +179,63 @@
 
   /* Light-mode specific refinements */
   :root .ios-card {
-    box-shadow: 0 1px 3px -1px hsl(25 20% 20% / 0.08), 0 2px 8px -2px hsl(25 20% 20% / 0.10);
+    box-shadow: 0 1px 3px -1px hsl(20 10% 10% / 0.10), 0 4px 12px -4px hsl(20 10% 10% / 0.08);
+    border-color: hsl(25 8% 88% / 0.8);
   }
-  
+
   :root .ios-blur {
     backdrop-filter: saturate(200%) blur(24px);
     -webkit-backdrop-filter: saturate(200%) blur(24px);
   }
 
-  /* Logo bar — translucent backing strip for light mode */
-  :root .logo-bar-surface {
-    background: linear-gradient(to bottom, hsl(0 0% 100% / 0.82), hsl(0 0% 100% / 0.45) 70%, transparent);
-    backdrop-filter: saturate(120%) blur(12px);
-    -webkit-backdrop-filter: saturate(120%) blur(12px);
+  /* Bottom nav light-mode polish */
+  :root nav.bottom-nav {
+    border-color: hsl(25 10% 88%);
+    box-shadow: 0 -1px 3px hsl(20 10% 10% / 0.06);
   }
 
-  /* Logo wordmark — dark and crisp in light mode */
-  :root .logo-wordmark {
-    color: hsl(20 20% 8%);
-    text-shadow: 0 0 1px hsl(0 0% 100% / 0.6);
+  /* Hero gradient — light mode: dark top, clean fade to background */
+  :root .hero-gradient {
+    background: linear-gradient(to top,
+      hsl(var(--background)) 0%,
+      hsl(var(--background)) 8%,
+      hsl(var(--background) / 0.95) 15%,
+      hsl(var(--background) / 0.6) 35%,
+      transparent 55%,
+      hsl(0 0% 0% / 0.15) 100%
+    );
   }
 
-  /* Dark mode: logo bar stays transparent, wordmark stays light */
-  .dark .logo-bar-surface {
-    background: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+  /* Hero gradient — dark mode */
+  .dark .hero-gradient {
+    background: linear-gradient(to top,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.6) 30%,
+      hsl(0 0% 0% / 0.3) 100%
+    );
   }
 
-  .dark .logo-wordmark {
-    color: hsl(var(--foreground));
-    text-shadow: none;
+  /* Logo over hero — always light since hero top is dark image */
+  .hero-logo .logo-wordmark {
+    color: hsl(0 0% 100%);
+    text-shadow: 0 1px 3px hsl(0 0% 0% / 0.3);
+  }
+
+  /* Hero text overlay — force light text over dark image */
+  :root .hero-text-overlay {
+    color: hsl(0 0% 100%);
+  }
+
+  :root .hero-text-overlay .text-foreground {
+    color: hsl(0 0% 100%);
+  }
+
+  :root .hero-text-overlay .text-muted-foreground {
+    color: hsl(0 0% 100% / 0.7);
+  }
+
+  :root .hero-text-overlay .text-primary {
+    color: hsl(var(--primary));
   }
 }
 
