@@ -494,7 +494,7 @@ export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsConte
               return (
                 <button
                   key={page}
-                  onClick={() => setSelectedPage(page)}
+                  onClick={() => handleSelectPage(page)}
                   className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors ${
                     selectedPage === page ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50 text-foreground"
                   }`}
