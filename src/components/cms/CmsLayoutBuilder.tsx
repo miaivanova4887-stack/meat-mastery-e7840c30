@@ -101,6 +101,19 @@ export default function CmsLayoutBuilder({ initialSlug, onSlugChange }: CmsLayou
 
   useEffect(() => { fetchLayouts(); }, [fetchLayouts]);
 
+  // Sync with shared slug from parent
+  useEffect(() => {
+    if (initialSlug && !loading && layouts.length > 0 && selectedSlug !== initialSlug) {
+      selectPage(initialSlug);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSlug, loading, layouts.length]);
+
+  const handleSelectPage = (slug: string) => {
+    selectPage(slug);
+    onSlugChange?.(slug);
+  };
+
   const selectPage = async (slug: string) => {
     setSelectedSlug(slug);
     setInsertIndex(null);
