@@ -19,7 +19,7 @@ const BottomNav = () => {
 
   if (location.pathname === "/onboarding") return null;
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/30 bg-card/90 ios-blur shadow-lg"
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 ios-blur shadow-lg"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
     >
       <div className="flex items-center justify-around py-2 px-1">

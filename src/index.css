@@ -6,23 +6,22 @@
 
 @layer base {
   :root {
-    --background: 30 15% 95%;
-    --foreground: 20 10% 8%;
+    --background: 30 10% 98%;
+    --foreground: 20 15% 5%;
 
-    --card: 30 20% 99%;
-    --card-foreground: 20 10% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 20 15% 5%;
 
-    --popover: 30 20% 99%;
-    --popover-foreground: 20 10% 8%;
-
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 15% 5%;
     --primary: 22 85% 48%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 25 12% 92%;
+    --secondary: 25 8% 94%;
     --secondary-foreground: 20 8% 22%;
 
-    --muted: 25 10% 93%;
-    --muted-foreground: 20 5% 40%;
+    --muted: 25 6% 94%;
+    --muted-foreground: 20 8% 35%;
 
     --accent: 25 12% 92%;
     --accent-foreground: 22 85% 48%;
@@ -30,21 +29,21 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 25 10% 86%;
-    --input: 25 10% 88%;
+    --border: 25 8% 88%;
+    --input: 25 6% 90%;
     --ring: 22 85% 48%;
 
     --radius: 0.75rem;
 
     --flame: 22 85% 48%;
     --ember: 12 55% 38%;
-    --smoke: 20 5% 50%;
+    --smoke: 20 8% 38%;
     --charcoal: 20 8% 12%;
-    --bone: 30 20% 96%;
+    --bone: 30 10% 97%;
     --gold: 38 70% 48%;
 
-    --sidebar-background: 30 15% 95%;
-    --sidebar-foreground: 20 10% 8%;
+    --sidebar-background: 30 10% 98%;
+    --sidebar-foreground: 20 15% 5%;
     --sidebar-primary: 22 85% 48%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 25 12% 92%;
@@ -56,16 +55,16 @@
     --chart-3: 12 55% 38%;
     --chart-4: 20 5% 40%;
     --chart-5: 25 10% 75%;
-    --sidebar: 30 20% 99%;
+    --sidebar: 0 0% 100%;
 
-    --shadow-2xs: 0 1px 2px 0 hsl(20 10% 10% / 0.04);
-    --shadow-xs: 0 1px 3px 0 hsl(20 10% 10% / 0.06);
-    --shadow-sm: 0 2px 4px -1px hsl(20 10% 10% / 0.08), 0 1px 2px -1px hsl(20 10% 10% / 0.06);
-    --shadow: 0 3px 10px -3px hsl(20 10% 10% / 0.1);
-    --shadow-md: 0 6px 16px -6px hsl(20 10% 10% / 0.12);
-    --shadow-lg: 0 10px 28px -8px hsl(20 10% 10% / 0.14);
-    --shadow-xl: 0 18px 44px -12px hsl(20 10% 10% / 0.16);
-    --shadow-2xl: 0 28px 56px -16px hsl(20 10% 10% / 0.22);
+    --shadow-2xs: 0 1px 2px 0 hsl(20 10% 10% / 0.06);
+    --shadow-xs: 0 1px 3px 0 hsl(20 10% 10% / 0.08);
+    --shadow-sm: 0 2px 4px -1px hsl(20 10% 10% / 0.10), 0 1px 2px -1px hsl(20 10% 10% / 0.08);
+    --shadow: 0 3px 10px -3px hsl(20 10% 10% / 0.12);
+    --shadow-md: 0 6px 16px -6px hsl(20 10% 10% / 0.14);
+    --shadow-lg: 0 10px 28px -8px hsl(20 10% 10% / 0.16);
+    --shadow-xl: 0 18px 44px -12px hsl(20 10% 10% / 0.18);
+    --shadow-2xl: 0 28px 56px -16px hsl(20 10% 10% / 0.24);
   }
 
   .dark {
@@ -180,7 +179,7 @@
 
   /* Light-mode specific refinements */
   :root .ios-card {
-    box-shadow: 0 1px 3px -1px hsl(25 20% 20% / 0.06), 0 2px 8px -2px hsl(25 20% 20% / 0.08);
+    box-shadow: 0 1px 3px -1px hsl(25 20% 20% / 0.08), 0 2px 8px -2px hsl(25 20% 20% / 0.10);
   }
   
   :root .ios-blur {
