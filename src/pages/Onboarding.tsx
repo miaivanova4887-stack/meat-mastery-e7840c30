@@ -226,6 +226,7 @@ const Onboarding = () => {
   const [multiSelected, setMultiSelected] = useState<number[]>([]);
   const [customCuisine, setCustomCuisine] = useState("");
   const [transitioning, setTransitioning] = useState(false);
+  const [consentSaving, setConsentSaving] = useState(false);
 
   // Health targets state (step 3)
   const [healthTargets, setHealthTargets] = useState<string[]>([]);
