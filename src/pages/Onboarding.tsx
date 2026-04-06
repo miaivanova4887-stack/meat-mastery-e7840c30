@@ -463,8 +463,32 @@ const Onboarding = () => {
           )}
         </div>
 
+        {/* Consent screen */}
+        {current.type === "consent" && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-2">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+              <Shield size={28} strokeWidth={1.5} className="text-primary" />
+            </div>
+            <p className="text-[14px] text-muted-foreground leading-relaxed max-w-sm">
+              {current.body}
+            </p>
+            <div className="w-full pt-8">
+              <Button
+                className="w-full h-[50px] text-[14px] font-semibold rounded-xl tracking-normal transition-all duration-300"
+                disabled={consentSaving}
+                onClick={() => {
+                  setConsentSaving(true);
+                  advance();
+                }}
+              >
+                {consentSaving ? "Saving…" : "I Agree"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Options */}
-        <div className="space-y-2 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className={`space-y-2 flex-1 overflow-y-auto ${current.type === "consent" ? "hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
           {current.type === "options" &&
             current.options.map((opt, i) => {
               const selected = current.multiSelect ? multiSelected.includes(i) : false;
