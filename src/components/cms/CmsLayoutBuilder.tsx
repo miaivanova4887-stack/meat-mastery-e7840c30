@@ -229,19 +229,19 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
               <span>/p/</span>
               <Input placeholder="slug" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="h-6 text-[10px] flex-1" />
             </div>
-            {customPages.length > 0 && (
-              <Select value={newPageParent} onValueChange={setNewPageParent}>
-                <SelectTrigger className="h-7 text-[10px]">
-                  <SelectValue placeholder="Parent page (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No parent</SelectItem>
-                  {customPages.map(p => (
-                    <SelectItem key={p.slug} value={p.slug}>{p.title}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <Select value={newPageParent || "__none__"} onValueChange={setNewPageParent}>
+              <SelectTrigger className="h-7 text-[10px]">
+                <SelectValue placeholder="Parent page (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">No parent</SelectItem>
+                {parentOptions.map(p => (
+                  <SelectItem key={p.slug} value={p.slug}>
+                    {p.title} {p.source === "app" ? "(App)" : "(Custom)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button size="sm" className="w-full h-7 text-xs" onClick={createPage}>Create Page</Button>
           </div>
         )}
