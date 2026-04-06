@@ -544,9 +544,9 @@ const Onboarding = () => {
 
                     {/* Accent rule */}
                     <div
-                      className={`h-[1px] mb-3 transition-all duration-500 ${
+                      className={`h-[1px] w-6 mb-3 transition-all duration-500 ${
                         hasAnySelected
-                          ? "onboarding-category-line"
+                          ? "bg-primary/20"
                           : "bg-border/20"
                       }`}
                     />
