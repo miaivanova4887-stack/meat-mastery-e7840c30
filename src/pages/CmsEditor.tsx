@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { PenLine, Layers, FileText } from "lucide-react";
+import { PenLine, Layers, FileText, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import CmsContentEditor from "@/components/cms/CmsContentEditor";
 import CmsLayoutBuilder from "@/components/cms/CmsLayoutBuilder";
 import CmsPagesTab from "@/components/cms/CmsPagesTab";
+import { buildPageRegistry, type CmsPageRecord, type PageLayoutRow } from "@/components/cms/cmsPages";
 
 type Tab = "content" | "layout" | "pages";
 
@@ -15,7 +16,12 @@ export default function CmsEditor() {
   const { user, loading: authLoading } = useAuth();
   const [adminStatus, setAdminStatus] = useState<'checking' | 'admin' | 'denied'>('checking');
   const [activeTab, setActiveTab] = useState<Tab>("content");
-  const [sharedSlug, setSharedSlug] = useState<string | null>(null);
+
+  // Unified page state
+  const [layouts, setLayouts] = useState<PageLayoutRow[]>([]);
+  const [pages, setPages] = useState<CmsPageRecord[]>([]);
+  const [activePage, setActivePage] = useState<CmsPageRecord | null>(null);
+  const [layoutsLoading, setLayoutsLoading] = useState(true);
 
   useEffect(() => {
     if (authLoading) return;
@@ -31,6 +37,39 @@ export default function CmsEditor() {
     };
     checkAdmin();
   }, [user, authLoading]);
+
+  const refreshPages = useCallback(async () => {
+    setLayoutsLoading(true);
+    const { data, error } = await (supabase as any).from("page_layouts").select("*").order("title");
+    if (!error && data) {
+      setLayouts(data);
+      const registry = buildPageRegistry(data);
+      setPages(registry);
+      // Keep active page in sync
+      if (activePage) {
+        const updated = registry.find(p => p.slug === activePage.slug);
+        if (updated) setActivePage(updated);
+      }
+    }
+    setLayoutsLoading(false);
+  }, [activePage]);
+
+  useEffect(() => {
+    if (adminStatus === 'admin') refreshPages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminStatus]);
+
+  const handleSelectPage = useCallback((page: CmsPageRecord) => {
+    setActivePage(page);
+  }, []);
+
+  const navigateToTab = (tab: Tab, slug?: string) => {
+    if (slug) {
+      const page = pages.find(p => p.slug === slug);
+      if (page) setActivePage(page);
+    }
+    setActiveTab(tab);
+  };
 
   if (adminStatus === 'checking') {
     return (
@@ -53,11 +92,6 @@ export default function CmsEditor() {
     { key: "layout", label: "Layout Builder", icon: <Layers className="h-4 w-4" /> },
     { key: "pages", label: "Pages", icon: <FileText className="h-4 w-4" /> },
   ];
-
-  const navigateToTab = (tab: Tab, slug?: string) => {
-    if (slug) setSharedSlug(slug);
-    setActiveTab(tab);
-  };
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
@@ -85,10 +119,39 @@ export default function CmsEditor() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {activeTab === "content" && <CmsContentEditor initialSlug={sharedSlug} onSlugChange={setSharedSlug} />}
-        {activeTab === "layout" && <CmsLayoutBuilder initialSlug={sharedSlug} onSlugChange={setSharedSlug} />}
-        {activeTab === "pages" && (
-          <CmsPagesTab onNavigateToLayout={(slug) => navigateToTab("layout", slug)} onNavigateToContent={(slug) => navigateToTab("content", slug)} />
+        {layoutsLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {activeTab === "content" && (
+              <CmsContentEditor
+                pages={pages}
+                activePage={activePage}
+                onSelectPage={handleSelectPage}
+                refreshPages={refreshPages}
+              />
+            )}
+            {activeTab === "layout" && (
+              <CmsLayoutBuilder
+                pages={pages}
+                activePage={activePage}
+                onSelectPage={handleSelectPage}
+                refreshPages={refreshPages}
+              />
+            )}
+            {activeTab === "pages" && (
+              <CmsPagesTab
+                pages={pages}
+                activePage={activePage}
+                onSelectPage={handleSelectPage}
+                refreshPages={refreshPages}
+                onNavigateToLayout={(slug) => navigateToTab("layout", slug)}
+                onNavigateToContent={(slug) => navigateToTab("content", slug)}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
