@@ -347,7 +347,7 @@ const Recipes = () => {
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
-      <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3"
+      <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3 page-header"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
       >
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
@@ -372,7 +372,7 @@ const Recipes = () => {
           alt="Carnivore meal"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute inset-0 mini-hero-overlay" />
         <div className="absolute bottom-3 left-4">
           <p className="text-xs text-muted-foreground font-medium">{t("recipes.fuelYourBody")}</p>
           <p className="text-lg font-display font-bold text-foreground">{t("recipes.readyToCook")}</p>
