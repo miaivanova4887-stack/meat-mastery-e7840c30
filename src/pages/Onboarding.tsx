@@ -501,7 +501,7 @@ const Onboarding = () => {
                     placeholder={field.placeholder}
                     value={inputValues[field.key] || ""}
                     onChange={(e) => handleInputChange(field.key, e.target.value)}
-                    className="flex-1 h-[44px] rounded-lg border border-border/40 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30 transition-all duration-150"
+                    className="flex-1 h-[50px] rounded-xl border border-border/40 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30 transition-all duration-150"
                     maxLength={field.type === "number" ? 6 : 200}
                   />
                   {field.unit && (
