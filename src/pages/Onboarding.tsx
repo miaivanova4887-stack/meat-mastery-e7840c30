@@ -683,7 +683,7 @@ const Onboarding = () => {
             localStorage.setItem(STORAGE_KEY, "true");
             navigate("/", { replace: true });
           }}
-          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-wide"
+          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-normal"
         >
           Skip for now
         </button>

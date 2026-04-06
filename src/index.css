@@ -213,15 +213,24 @@
   }
 
   .onboarding-pill-selected {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    border-color: hsl(var(--primary));
-    box-shadow: 0 2px 8px -2px hsl(var(--primary) / 0.4);
+    background: hsl(var(--primary) / 0.08);
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--primary) / 0.35);
+    border-left: 3px solid hsl(var(--primary));
+    box-shadow: 0 1px 4px -1px hsl(var(--primary) / 0.1);
   }
 
   .onboarding-pill-idle {
     background: hsl(var(--card));
-    border-color: hsl(var(--border) / 0.5);
+    border-color: hsl(var(--border) / 0.4);
+  }
+
+  .onboarding-pill-idle:hover {
+    background: hsl(var(--muted) / 0.5);
+  }
+
+  .onboarding-card-idle:hover {
+    background: hsl(var(--muted) / 0.4);
   }
 
   .onboarding-medallion {
