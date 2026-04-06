@@ -4,8 +4,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, Loader2, GripVertical, Layout, FileText, Globe, CheckCircle2, Eye } from "lucide-react";
+import {
+  Plus, Trash2, ArrowUp, ArrowDown, Save, Loader2, GripVertical, Layout, FileText,
+  Globe, CheckCircle2, Eye, Type, AlignLeft, MousePointerClick, ShieldAlert, Image, Minus, Wrench
+} from "lucide-react";
 
 interface BlockField {
   key: string;
@@ -16,6 +20,7 @@ interface BlockField {
 interface LayoutBlock {
   id: string;
   name: string;
+  blockType?: string;
   fields: BlockField[];
   content?: Record<string, { en: string; fr: string }>;
 }
@@ -26,6 +31,7 @@ interface PageLayout {
   title: string;
   blocks: LayoutBlock[];
   is_published: boolean;
+  parent_slug?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -51,6 +57,15 @@ const APP_PAGES = [
   { title: "Profile", slug: "profile", route: "/profile" },
 ];
 
+const BLOCK_TEMPLATES = [
+  { type: "rich_text", label: "Rich Text", icon: AlignLeft, fields: [{ key: "body", label: "Body", type: "text" as const }] },
+  { type: "title_body", label: "Title + Body", icon: Type, fields: [{ key: "title", label: "Title", type: "text" as const }, { key: "body", label: "Body", type: "text" as const }] },
+  { type: "cta_button", label: "CTA / Button", icon: MousePointerClick, fields: [{ key: "label", label: "Label", type: "text" as const }, { key: "link", label: "Link", type: "link" as const }] },
+  { type: "notice", label: "Notice / Disclaimer", icon: ShieldAlert, fields: [{ key: "title", label: "Title", type: "text" as const }, { key: "body", label: "Body", type: "text" as const }] },
+  { type: "image_block", label: "Image", icon: Image, fields: [{ key: "src", label: "Image URL", type: "image_url" as const }, { key: "alt", label: "Alt Text", type: "text" as const }] },
+  { type: "spacer", label: "Spacer", icon: Minus, fields: [] },
+];
+
 let blockIdCounter = 0;
 function newBlockId() { return `block_${Date.now()}_${blockIdCounter++}`; }
 
@@ -63,7 +78,9 @@ export default function CmsLayoutBuilder() {
   const [showNewPage, setShowNewPage] = useState(false);
   const [newPageTitle, setNewPageTitle] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
-  const [showAddBlock, setShowAddBlock] = useState(false);
+  const [newPageParent, setNewPageParent] = useState<string>("");
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showCustomBlock, setShowCustomBlock] = useState(false);
   const [newBlockName, setNewBlockName] = useState("");
   const [newBlockFields, setNewBlockFields] = useState<BlockField[]>([{ key: "title", label: "Title", type: "text" }]);
   const [saved, setSaved] = useState(false);
@@ -83,7 +100,6 @@ export default function CmsLayoutBuilder() {
     setSelectedSlug(slug);
     setInsertIndex(null);
 
-    // Load blocks from content_blocks table grouped by section
     const { data: cbData } = await (supabase as any)
       .from("content_blocks")
       .select("section, key, type, locale, value")
@@ -94,7 +110,6 @@ export default function CmsLayoutBuilder() {
     const layoutBlocks: LayoutBlock[] = layout?.blocks || [];
 
     if (cbData && cbData.length > 0) {
-      // Group by section
       const sectionMap: Record<string, { fields: Map<string, { type: string; en: string; fr: string }>; }> = {};
       for (const row of cbData) {
         if (!sectionMap[row.section]) sectionMap[row.section] = { fields: new Map() };
@@ -105,45 +120,40 @@ export default function CmsLayoutBuilder() {
         else if (row.locale === "fr") f.fr = row.value;
       }
 
-      // Build blocks from content_blocks, merging with any existing layout blocks
-      const existingIds = new Set(layoutBlocks.map(b => b.name));
       const contentBlocks: LayoutBlock[] = [];
-
       for (const [section, data] of Object.entries(sectionMap)) {
-        // Check if layout already has this block
         const existing = layoutBlocks.find(b => b.name === section);
         const fields: BlockField[] = [];
         const content: Record<string, { en: string; fr: string }> = {};
-
         for (const [key, val] of data.fields.entries()) {
           const label = key.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
           fields.push({ key, label, type: val.type as any });
           content[key] = { en: val.en, fr: val.fr };
         }
-
-        contentBlocks.push({
-          id: existing?.id || `cb_${section}`,
-          name: section,
-          fields,
-          content,
-        });
+        contentBlocks.push({ id: existing?.id || `cb_${section}`, name: section, blockType: existing?.blockType, fields, content });
       }
-
-      // Add any layout-only blocks that aren't in content_blocks
       for (const lb of layoutBlocks) {
         if (!sectionMap[lb.name]) contentBlocks.push(lb);
       }
-
       setCurrentBlocks(contentBlocks);
     } else {
       setCurrentBlocks(layoutBlocks);
     }
   };
 
-  const allPages = useMemo(() => [
-    ...APP_PAGES.map(p => ({ ...p, isApp: true, layout: layouts.find(l => l.page_slug === p.slug) })),
-    ...layouts.filter(l => !APP_PAGES.some(ap => ap.slug === l.page_slug)).map(l => ({ title: l.title, slug: l.page_slug, route: `/p/${l.page_slug}`, isApp: false, layout: l })),
-  ], [layouts]);
+  const customPages = useMemo(() => layouts.filter(l => !APP_PAGES.some(ap => ap.slug === l.page_slug)), [layouts]);
+
+  const allPages = useMemo(() => {
+    const appEntries = APP_PAGES.map(p => ({ ...p, isApp: true, layout: layouts.find(l => l.page_slug === p.slug), parentSlug: null as string | null }));
+    const customEntries = customPages.map(l => ({ title: l.title, slug: l.page_slug, route: `/p/${l.page_slug}`, isApp: false, layout: l, parentSlug: l.parent_slug || null }));
+    return [...appEntries, ...customEntries];
+  }, [layouts, customPages]);
+
+  // Link picker options
+  const linkOptions = useMemo(() => [
+    ...APP_PAGES.map(p => ({ label: `${p.title}`, value: p.route })),
+    ...customPages.map(l => ({ label: `${l.title} (custom)`, value: `/p/${l.page_slug}` })),
+  ], [customPages]);
 
   const previewRoute = useMemo(() => {
     if (!selectedSlug) return null;
@@ -151,7 +161,6 @@ export default function CmsLayoutBuilder() {
     return page?.route || `/p/${selectedSlug}`;
   }, [selectedSlug, allPages]);
 
-  // Build a key that changes when blocks change to force iframe reload
   const previewKey = useMemo(() => {
     return `${selectedSlug}-${currentBlocks.length}-${currentBlocks.map(b => b.id).join(",")}`;
   }, [selectedSlug, currentBlocks]);
@@ -169,17 +178,34 @@ export default function CmsLayoutBuilder() {
     setInsertIndex(null);
   };
 
-  const addBlock = () => {
+  const insertTemplateBlock = (template: typeof BLOCK_TEMPLATES[number]) => {
+    const block: LayoutBlock = {
+      id: newBlockId(),
+      name: template.label,
+      blockType: template.type,
+      fields: template.fields.map(f => ({ ...f })),
+      content: {},
+    };
+    template.fields.forEach(f => { block.content![f.key] = { en: "", fr: "" }; });
+    if (insertIndex !== null && insertIndex <= currentBlocks.length) {
+      setCurrentBlocks(prev => [...prev.slice(0, insertIndex), block, ...prev.slice(insertIndex)]);
+    } else {
+      setCurrentBlocks(prev => [...prev, block]);
+    }
+    setShowTemplatePicker(false);
+    setInsertIndex(null);
+  };
+
+  const addCustomBlock = () => {
     if (!newBlockName.trim() || newBlockFields.length === 0) return;
     const block: LayoutBlock = {
       id: newBlockId(),
       name: newBlockName.trim(),
+      blockType: "custom",
       fields: newBlockFields.map(f => ({ ...f, key: f.key || f.label.toLowerCase().replace(/\s+/g, "_") })),
       content: {},
     };
-    newBlockFields.forEach(f => {
-      block.content![f.key] = { en: "", fr: "" };
-    });
+    newBlockFields.forEach(f => { block.content![f.key] = { en: "", fr: "" }; });
     if (insertIndex !== null && insertIndex <= currentBlocks.length) {
       setCurrentBlocks(prev => [...prev.slice(0, insertIndex), block, ...prev.slice(insertIndex)]);
     } else {
@@ -187,7 +213,8 @@ export default function CmsLayoutBuilder() {
     }
     setNewBlockName("");
     setNewBlockFields([{ key: "title", label: "Title", type: "text" }]);
-    setShowAddBlock(false);
+    setShowCustomBlock(false);
+    setShowTemplatePicker(false);
     setInsertIndex(null);
   };
 
@@ -205,7 +232,6 @@ export default function CmsLayoutBuilder() {
     if (!selectedSlug) return;
     setSaving(true);
     const existing = layouts.find(l => l.page_slug === selectedSlug);
-
     if (existing) {
       const { error } = await (supabase as any).from("page_layouts")
         .update({ blocks: currentBlocks, updated_at: new Date().toISOString() })
@@ -226,8 +252,9 @@ export default function CmsLayoutBuilder() {
   const createPage = async () => {
     if (!newPageTitle.trim() || !newPageSlug.trim()) return;
     const slug = newPageSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-");
-    const { error } = await (supabase as any).from("page_layouts")
-      .insert({ page_slug: slug, title: newPageTitle.trim(), blocks: [], is_published: false });
+    const insertData: any = { page_slug: slug, title: newPageTitle.trim(), blocks: [], is_published: false };
+    if (newPageParent) insertData.parent_slug = newPageParent;
+    const { error } = await (supabase as any).from("page_layouts").insert(insertData);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -235,6 +262,7 @@ export default function CmsLayoutBuilder() {
       setShowNewPage(false);
       setNewPageTitle("");
       setNewPageSlug("");
+      setNewPageParent("");
       await fetchLayouts();
       setSelectedSlug(slug);
       setCurrentBlocks([]);
@@ -251,13 +279,21 @@ export default function CmsLayoutBuilder() {
   const addFieldToNewBlock = () => {
     setNewBlockFields(prev => [...prev, { key: "", label: "", type: "text" }]);
   };
-
   const updateNewBlockField = (index: number, field: Partial<BlockField>) => {
     setNewBlockFields(prev => prev.map((f, i) => i === index ? { ...f, ...field, key: field.label ? field.label.toLowerCase().replace(/\s+/g, "_") : f.key } : f));
   };
-
   const removeNewBlockField = (index: number) => {
     setNewBlockFields(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Build sidebar hierarchy for custom pages
+  const customParents = useMemo(() => customPages.filter(p => !p.parent_slug), [customPages]);
+  const customChildren = useMemo(() => customPages.filter(p => !!p.parent_slug), [customPages]);
+
+  const blockTypeLabel = (b: LayoutBlock) => {
+    if (!b.blockType) return null;
+    const tpl = BLOCK_TEMPLATES.find(t => t.type === b.blockType);
+    return tpl?.label || b.blockType;
   };
 
   return (
@@ -278,6 +314,19 @@ export default function CmsLayoutBuilder() {
               <span>/p/</span>
               <Input placeholder="slug" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="h-6 text-[10px] flex-1" />
             </div>
+            {customPages.length > 0 && (
+              <Select value={newPageParent} onValueChange={setNewPageParent}>
+                <SelectTrigger className="h-7 text-[10px]">
+                  <SelectValue placeholder="Parent page (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No parent</SelectItem>
+                  {customPages.map(p => (
+                    <SelectItem key={p.page_slug} value={p.page_slug}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Button size="sm" className="w-full h-7 text-xs" onClick={createPage}>Create Page</Button>
           </div>
         )}
@@ -301,21 +350,53 @@ export default function CmsLayoutBuilder() {
               </button>
             ))}
 
-            {allPages.some(p => !p.isApp) && (
+            {customPages.length > 0 && (
               <>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 pt-3 pb-1">Custom Pages</p>
-                {allPages.filter(p => !p.isApp).map(page => (
+                {customParents.map(page => (
+                  <div key={page.page_slug}>
+                    <button
+                      onClick={() => selectPage(page.page_slug)}
+                      className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
+                        selectedSlug === page.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{page.title}</span>
+                        {page.is_published && <Globe className="h-2.5 w-2.5 text-green-500 ml-auto shrink-0" />}
+                      </div>
+                    </button>
+                    {customChildren.filter(c => c.parent_slug === page.page_slug).map(child => (
+                      <button
+                        key={child.page_slug}
+                        onClick={() => selectPage(child.page_slug)}
+                        className={`w-full text-left pl-7 pr-3 py-1.5 rounded-md text-xs transition-colors ${
+                          selectedSlug === child.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <FileText className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{child.title}</span>
+                          {child.is_published && <Globe className="h-2.5 w-2.5 text-green-500 ml-auto shrink-0" />}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ))}
+                {/* Orphan children (parent removed) */}
+                {customChildren.filter(c => !customParents.some(p => p.page_slug === c.parent_slug)).map(page => (
                   <button
-                    key={page.slug}
-                    onClick={() => selectPage(page.slug)}
+                    key={page.page_slug}
+                    onClick={() => selectPage(page.page_slug)}
                     className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
-                      selectedSlug === page.slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
+                      selectedSlug === page.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                     }`}
                   >
                     <div className="flex items-center gap-1.5">
                       <FileText className="h-3 w-3 shrink-0" />
                       <span className="truncate">{page.title}</span>
-                      {page.layout?.is_published && <Globe className="h-2.5 w-2.5 text-green-500 ml-auto shrink-0" />}
+                      {page.is_published && <Globe className="h-2.5 w-2.5 text-green-500 ml-auto shrink-0" />}
                     </div>
                   </button>
                 ))}
@@ -356,7 +437,6 @@ export default function CmsLayoutBuilder() {
                 <div className="p-3 space-y-2">
                   {currentBlocks.map((block, index) => (
                     <div key={block.id}>
-                      {/* Insert indicator above */}
                       {insertIndex === index && (
                         <div className="h-1 bg-primary rounded-full mb-2 animate-pulse" />
                       )}
@@ -364,6 +444,9 @@ export default function CmsLayoutBuilder() {
                         <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
                           <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
                           <span className="text-xs font-bold text-foreground flex-1">{block.name}</span>
+                          {blockTypeLabel(block) && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium">{blockTypeLabel(block)}</span>
+                          )}
                           <span className="text-[10px] text-muted-foreground">{block.fields.length}f</span>
                           <div className="flex items-center gap-0.5">
                             <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveBlock(index, -1)} disabled={index === 0}>
@@ -382,17 +465,43 @@ export default function CmsLayoutBuilder() {
                           {block.fields.map(field => {
                             const content = block.content?.[field.key] || { en: "", fr: "" };
                             const isLong = field.type === "text" && (content.en.length > 80 || content.fr.length > 80);
+                            const isLink = field.type === "link";
 
                             return (
                               <div key={field.key}>
                                 <label className="text-[10px] font-medium text-foreground mb-0.5 block">{field.label}</label>
+
+                                {isLink && (
+                                  <div className="mb-1">
+                                    <Select
+                                      value={linkOptions.some(o => o.value === content.en) ? content.en : "__manual__"}
+                                      onValueChange={(val) => {
+                                        if (val !== "__manual__") {
+                                          updateBlockContent(index, field.key, "en", val);
+                                          updateBlockContent(index, field.key, "fr", val);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger className="h-7 text-[10px]">
+                                        <SelectValue placeholder="Select a page…" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="__manual__">Manual URL</SelectItem>
+                                        {linkOptions.map(o => (
+                                          <SelectItem key={o.value} value={o.value}>{o.label} — {o.value}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                )}
+
                                 <div className="grid grid-cols-2 gap-1.5">
                                   <div>
                                     <span className="text-[8px] text-muted-foreground uppercase block">EN</span>
                                     {isLong ? (
                                       <Textarea value={content.en} onChange={e => updateBlockContent(index, field.key, "en", e.target.value)} className="text-[10px] min-h-[40px] resize-y" placeholder="English..." />
                                     ) : (
-                                      <Input type={field.type === "link" || field.type === "image_url" ? "url" : "text"} value={content.en} onChange={e => updateBlockContent(index, field.key, "en", e.target.value)} className="h-7 text-[10px]" placeholder="EN..." />
+                                      <Input type={isLink || field.type === "image_url" ? "url" : "text"} value={content.en} onChange={e => updateBlockContent(index, field.key, "en", e.target.value)} className="h-7 text-[10px]" placeholder="EN..." />
                                     )}
                                   </div>
                                   <div>
@@ -400,7 +509,7 @@ export default function CmsLayoutBuilder() {
                                     {isLong ? (
                                       <Textarea value={content.fr} onChange={e => updateBlockContent(index, field.key, "fr", e.target.value)} className="text-[10px] min-h-[40px] resize-y" placeholder="French..." />
                                     ) : (
-                                      <Input type={field.type === "link" || field.type === "image_url" ? "url" : "text"} value={content.fr} onChange={e => updateBlockContent(index, field.key, "fr", e.target.value)} className="h-7 text-[10px]" placeholder="FR..." />
+                                      <Input type={isLink || field.type === "image_url" ? "url" : "text"} value={content.fr} onChange={e => updateBlockContent(index, field.key, "fr", e.target.value)} className="h-7 text-[10px]" placeholder="FR..." />
                                     )}
                                   </div>
                                 </div>
@@ -415,21 +524,44 @@ export default function CmsLayoutBuilder() {
                     </div>
                   ))}
 
-                  {/* Insert indicator at end */}
                   {insertIndex === currentBlocks.length && (
                     <div className="h-1 bg-primary rounded-full animate-pulse" />
                   )}
 
-                  {/* Add block */}
-                  {!showAddBlock ? (
-                    <Button variant="outline" className="w-full h-9 text-xs gap-1.5 border-dashed" onClick={() => { setShowAddBlock(true); setInsertIndex(currentBlocks.length); }}>
+                  {/* Add block — template picker */}
+                  {!showTemplatePicker ? (
+                    <Button variant="outline" className="w-full h-9 text-xs gap-1.5 border-dashed" onClick={() => { setShowTemplatePicker(true); setInsertIndex(currentBlocks.length); }}>
                       <Plus className="h-3.5 w-3.5" /> Add Block
                     </Button>
+                  ) : !showCustomBlock ? (
+                    <div className="border border-primary/30 rounded-lg p-3 bg-card space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-foreground">Choose Block Type</h4>
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { setShowTemplatePicker(false); setInsertIndex(null); }}>Cancel</Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {BLOCK_TEMPLATES.map(tpl => {
+                          const Icon = tpl.icon;
+                          return (
+                            <button
+                              key={tpl.type}
+                              onClick={() => insertTemplateBlock(tpl)}
+                              className="flex flex-col items-center gap-1 p-2.5 rounded-md border border-border hover:border-primary hover:bg-primary/5 transition-colors text-center"
+                            >
+                              <Icon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-[10px] font-medium text-foreground leading-tight">{tpl.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <Button variant="ghost" size="sm" className="w-full h-7 text-[10px] gap-1 text-muted-foreground" onClick={() => setShowCustomBlock(true)}>
+                        <Wrench className="h-3 w-3" /> Custom Block…
+                      </Button>
+                    </div>
                   ) : (
                     <div className="border border-primary/30 rounded-lg p-3 bg-card space-y-2">
-                      <h4 className="text-xs font-bold text-foreground">Create New Block</h4>
+                      <h4 className="text-xs font-bold text-foreground">Custom Block</h4>
                       <Input placeholder="Block name (e.g. Hero Section)" value={newBlockName} onChange={e => setNewBlockName(e.target.value)} className="h-7 text-xs" />
-
                       <div className="space-y-1.5">
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase">Fields</p>
                         {newBlockFields.map((field, i) => (
@@ -449,21 +581,16 @@ export default function CmsLayoutBuilder() {
                           <Plus className="h-2.5 w-2.5" /> Add Field
                         </Button>
                       </div>
-
                       <div className="flex gap-2">
-                        <Button size="sm" className="h-7 text-xs flex-1" onClick={addBlock} disabled={!newBlockName.trim()}>
-                          Add Block
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowAddBlock(false); setInsertIndex(null); }}>
-                          Cancel
-                        </Button>
+                        <Button size="sm" className="h-7 text-xs flex-1" onClick={addCustomBlock} disabled={!newBlockName.trim()}>Add Block</Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowCustomBlock(false); }}>Back</Button>
                       </div>
                     </div>
                   )}
                 </div>
               </ScrollArea>
 
-              {/* Live preview panel — independently scrollable */}
+              {/* Live preview panel */}
               <div className="w-[400px] border-l border-border bg-muted/30 flex flex-col shrink-0" style={{ height: "calc(100vh - 88px)" }}>
                 <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2 shrink-0">
                   <Eye className="h-3.5 w-3.5 text-muted-foreground" />
