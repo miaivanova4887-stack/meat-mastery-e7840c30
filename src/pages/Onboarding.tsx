@@ -207,6 +207,12 @@ const steps: OnboardingStep[] = [
       { label: "Mental clarity tips", emoji: "🧠", desc: "Focus, brain fog, cognition" },
     ],
   },
+  {
+    type: "consent",
+    title: "Before you continue",
+    body: "CarnivoreX is a wellness tracking tool, not a medical service. Nothing in this app constitutes medical advice — consult your physician before making any dietary changes.",
+    icon: Shield,
+  },
 ];
 
 const STORAGE_KEY = "carnivore-onboarding-complete";
