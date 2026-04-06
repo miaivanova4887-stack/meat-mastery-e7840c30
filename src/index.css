@@ -231,7 +231,7 @@
   }
 
   :root .hero-text-overlay .text-muted-foreground {
-    color: hsl(0 0% 100% / 0.85);
+    color: hsl(0 0% 100% / 0.95);
   }
 
   :root .hero-text-overlay .text-primary {
