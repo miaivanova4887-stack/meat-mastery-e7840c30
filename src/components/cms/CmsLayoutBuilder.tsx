@@ -78,6 +78,8 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
   const customPages = useMemo(() => pages.filter(p => p.source === "custom"), [pages]);
   const customParents = useMemo(() => customPages.filter(p => !p.parentSlug), [customPages]);
   const customChildren = useMemo(() => customPages.filter(p => !!p.parentSlug), [customPages]);
+  // All pages available as parent options for create-page form
+  const parentOptions = useMemo(() => pages, [pages]);
 
   const linkOptions = useMemo(() => [
     ...APP_PAGE_DEFS.map(p => ({ label: p.title, value: p.route })),
