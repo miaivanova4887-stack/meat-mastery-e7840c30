@@ -39,9 +39,10 @@ interface PageLayout {
 
 interface Props {
   onNavigateToLayout: (slug: string) => void;
+  onNavigateToContent?: (slug: string) => void;
 }
 
-export default function CmsPagesTab({ onNavigateToLayout }: Props) {
+export default function CmsPagesTab({ onNavigateToLayout, onNavigateToContent }: Props) {
   const [layouts, setLayouts] = useState<PageLayout[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
