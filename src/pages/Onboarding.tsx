@@ -591,7 +591,7 @@ const Onboarding = () => {
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
           <div className="pt-4">
             <Button
-              className="w-full gap-2 h-[48px] text-[13px] font-bold uppercase tracking-[0.06em] rounded-lg transition-all duration-150"
+              className="w-full gap-2 h-[50px] text-[14px] font-semibold tracking-normal rounded-xl transition-all duration-150"
               disabled={
                 !canSkip &&
                 (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
