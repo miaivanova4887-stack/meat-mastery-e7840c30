@@ -327,6 +327,17 @@ const Onboarding = () => {
           } catch {}
         }
 
+        const CUISINE_MAP_1 = ["american", "european", "indian", "mexican"];
+        const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
+        const selectedCuisines: string[] = [];
+        ((newAnswers[8] as number[]) || []).forEach(i => { if (CUISINE_MAP_1[i]) selectedCuisines.push(CUISINE_MAP_1[i]); });
+        ((newAnswers[9] as number[]) || []).forEach(i => { if (CUISINE_MAP_2[i]) selectedCuisines.push(CUISINE_MAP_2[i]); });
+        const storedCustom = localStorage.getItem("carnivore-custom-cuisines");
+        if (storedCustom) {
+          try { selectedCuisines.push(...JSON.parse(storedCustom)); } catch {}
+        }
+        localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
+
         // Save to profile if authenticated (including wellness consent)
         const saveProfile = async () => {
           const { data: { user } } = await supabase.auth.getUser();
@@ -344,7 +355,7 @@ const Onboarding = () => {
             if (error) {
               toast.error("Failed to save consent. Please try again.");
               setConsentSaving(false);
-              return; // Don't navigate
+              return;
             }
           }
 
@@ -353,21 +364,6 @@ const Onboarding = () => {
         };
 
         saveProfile();
-
-        const CUISINE_MAP_1 = ["american", "european", "indian", "mexican"];
-        const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
-        const selectedCuisines: string[] = [];
-        ((newAnswers[8] as number[]) || []).forEach(i => { if (CUISINE_MAP_1[i]) selectedCuisines.push(CUISINE_MAP_1[i]); });
-        ((newAnswers[9] as number[]) || []).forEach(i => { if (CUISINE_MAP_2[i]) selectedCuisines.push(CUISINE_MAP_2[i]); });
-        // Save custom cuisines
-        const storedCustom = localStorage.getItem("carnivore-custom-cuisines");
-        if (storedCustom) {
-          try { selectedCuisines.push(...JSON.parse(storedCustom)); } catch {}
-        }
-        localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
-
-        window.dispatchEvent(new Event("profile-update"));
-        navigate("/", { replace: true });
       }
       setTransitioning(false);
     }, 300);
