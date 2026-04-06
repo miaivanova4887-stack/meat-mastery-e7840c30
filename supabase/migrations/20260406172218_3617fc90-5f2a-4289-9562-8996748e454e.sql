@@ -1,0 +1,1 @@
+ALTER TABLE public.page_layouts ADD COLUMN parent_slug text;

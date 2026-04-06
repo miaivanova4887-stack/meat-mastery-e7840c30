@@ -240,6 +240,7 @@ export type Database = {
           id: string
           is_published: boolean
           page_slug: string
+          parent_slug: string | null
           title: string
           updated_at: string
         }
@@ -249,6 +250,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           page_slug: string
+          parent_slug?: string | null
           title?: string
           updated_at?: string
         }
@@ -258,6 +260,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           page_slug?: string
+          parent_slug?: string | null
           title?: string
           updated_at?: string
         }
