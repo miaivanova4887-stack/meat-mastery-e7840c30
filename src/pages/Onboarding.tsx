@@ -491,7 +491,7 @@ const Onboarding = () => {
                 className="space-y-1.5"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
                   {field.label}
                 </label>
                 <div className="flex items-center gap-2">
