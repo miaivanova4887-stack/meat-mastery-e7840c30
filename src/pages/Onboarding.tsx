@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair, Heart, Flame, Leaf, Zap, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import i18n from "@/i18n/index";
 
 interface StepOption {
@@ -30,7 +31,14 @@ interface InputStep {
   fields: { key: string; label: string; placeholder: string; unit?: string; type?: string }[];
 }
 
-type OnboardingStep = OptionStep | InputStep;
+interface ConsentStep {
+  type: "consent";
+  title: string;
+  body: string;
+  icon: typeof Shield;
+}
+
+type OnboardingStep = OptionStep | InputStep | ConsentStep;
 
 // Health target constants
 const ALL_HEALTH_TARGET_KEYS = [
@@ -200,6 +208,12 @@ const steps: OnboardingStep[] = [
       { label: "Mental clarity tips", emoji: "🧠", desc: "Focus, brain fog, cognition" },
     ],
   },
+  {
+    type: "consent",
+    title: "Before you continue",
+    body: "CarnivoreX is a wellness tracking tool, not a medical service. Nothing in this app constitutes medical advice — consult your physician before making any dietary changes.",
+    icon: Shield,
+  },
 ];
 
 const STORAGE_KEY = "carnivore-onboarding-complete";
@@ -212,6 +226,7 @@ const Onboarding = () => {
   const [multiSelected, setMultiSelected] = useState<number[]>([]);
   const [customCuisine, setCustomCuisine] = useState("");
   const [transitioning, setTransitioning] = useState(false);
+  const [consentSaving, setConsentSaving] = useState(false);
 
   // Health targets state (step 3)
   const [healthTargets, setHealthTargets] = useState<string[]>([]);
@@ -312,34 +327,43 @@ const Onboarding = () => {
           } catch {}
         }
 
-        // Save to profile if authenticated
-        supabase.auth.getUser().then(({ data: { user } }) => {
-          if (user) {
-            (supabase as any)
-              .from("profiles")
-              .update({
-                health_targets: healthTargets,
-                user_attributes: userAttributes,
-              })
-              .eq("id", user.id)
-              .then(() => {});
-          }
-        });
-
         const CUISINE_MAP_1 = ["american", "european", "indian", "mexican"];
         const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
         const selectedCuisines: string[] = [];
         ((newAnswers[8] as number[]) || []).forEach(i => { if (CUISINE_MAP_1[i]) selectedCuisines.push(CUISINE_MAP_1[i]); });
         ((newAnswers[9] as number[]) || []).forEach(i => { if (CUISINE_MAP_2[i]) selectedCuisines.push(CUISINE_MAP_2[i]); });
-        // Save custom cuisines
         const storedCustom = localStorage.getItem("carnivore-custom-cuisines");
         if (storedCustom) {
           try { selectedCuisines.push(...JSON.parse(storedCustom)); } catch {}
         }
         localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
 
-        window.dispatchEvent(new Event("profile-update"));
-        navigate("/", { replace: true });
+        // Save to profile if authenticated (including wellness consent)
+        const saveProfile = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { error } = await (supabase as any)
+              .from("profiles")
+              .update({
+                health_targets: healthTargets,
+                user_attributes: userAttributes,
+                wellness_disclaimer_consented: true,
+                wellness_disclaimer_consented_at: new Date().toISOString(),
+                wellness_disclaimer_version: "1.0",
+              })
+              .eq("id", user.id);
+            if (error) {
+              toast.error("Failed to save consent. Please try again.");
+              setConsentSaving(false);
+              return;
+            }
+          }
+
+          window.dispatchEvent(new Event("profile-update"));
+          navigate("/", { replace: true });
+        };
+
+        saveProfile();
       }
       setTransitioning(false);
     }, 300);
@@ -430,15 +454,41 @@ const Onboarding = () => {
           <h1 className="text-[26px] font-extrabold text-foreground leading-[1.15] tracking-[-0.02em]">
             {current.title}
           </h1>
-          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-normal">
-            {isStep4 && healthTargetLabels.get("subtitle")
-              ? healthTargetLabels.get("subtitle")
-              : current.subtitle}
-          </p>
+          {"subtitle" in current && current.subtitle && (
+            <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-normal">
+              {isStep4 && healthTargetLabels.get("subtitle")
+                ? healthTargetLabels.get("subtitle")
+                : current.subtitle}
+            </p>
+          )}
         </div>
 
+        {/* Consent screen */}
+        {current.type === "consent" && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-2">
+            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+              <Shield size={28} strokeWidth={1.5} className="text-primary" />
+            </div>
+            <p className="text-[14px] text-muted-foreground leading-relaxed max-w-sm">
+              {current.body}
+            </p>
+            <div className="w-full pt-8">
+              <Button
+                className="w-full h-[50px] text-[14px] font-semibold rounded-xl tracking-normal transition-all duration-300"
+                disabled={consentSaving}
+                onClick={() => {
+                  setConsentSaving(true);
+                  advance();
+                }}
+              >
+                {consentSaving ? "Saving…" : "I Agree"}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Options */}
-        <div className="space-y-2 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+        <div className={`space-y-2 flex-1 overflow-y-auto ${current.type === "consent" ? "hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
           {current.type === "options" &&
             current.options.map((opt, i) => {
               const selected = current.multiSelect ? multiSelected.includes(i) : false;
@@ -673,21 +723,23 @@ const Onboarding = () => {
         )}
       </div>
 
-      {/* Skip */}
-      <div
-        className="px-6 pb-6 text-center"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 24px) + 8px)" }}
-      >
-        <button
-          onClick={() => {
-            localStorage.setItem(STORAGE_KEY, "true");
-            navigate("/", { replace: true });
-          }}
-          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-normal"
+      {/* Skip — hidden on consent step */}
+      {current.type !== "consent" && (
+        <div
+          className="px-6 pb-6 text-center"
+          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 24px) + 8px)" }}
         >
-          Skip for now
-        </button>
-      </div>
+          <button
+            onClick={() => {
+              localStorage.setItem(STORAGE_KEY, "true");
+              navigate("/", { replace: true });
+            }}
+            className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-normal"
+          >
+            Skip for now
+          </button>
+        </div>
+      )}
     </div>
   );
 };
