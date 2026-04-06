@@ -443,8 +443,14 @@ const Onboarding = () => {
           <h1 className="text-[26px] font-extrabold text-foreground leading-[1.15] tracking-[-0.02em]">
             {current.title}
           </h1>
-          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-normal">
-            {isStep4 && healthTargetLabels.get("subtitle")
+          {"subtitle" in current && current.subtitle && (
+            <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-normal">
+              {isStep4 && healthTargetLabels.get("subtitle")
+                ? healthTargetLabels.get("subtitle")
+                : current.subtitle}
+            </p>
+          )}
+        </div>
               ? healthTargetLabels.get("subtitle")
               : current.subtitle}
           </p>
