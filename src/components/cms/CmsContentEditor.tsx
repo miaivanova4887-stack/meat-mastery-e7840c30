@@ -406,6 +406,10 @@ export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsConte
     setSaving(null);
   };
 
+  const isCustomPage = useCallback((page: string) => {
+    return customLayouts.some(l => l.page_slug === page);
+  }, [customLayouts]);
+
   const saveSection = async (page: string, section: string) => {
     const sectionKey = `${page}|${section}`;
     const prefix = `${page}|${section}|`;
@@ -415,33 +419,60 @@ export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsConte
     setSaving(sectionKey);
     let hasError = false;
 
-    for (const ek of relevantEdits) {
-      const parts = ek.split("|");
-      const locale = parts[3];
-      const [p, s, k] = [parts[0], parts[1], parts[2]];
-      const value = edits[ek];
-      if (value === undefined) continue;
-
-      const fieldType = allContent.get(`${p}|${s}|${k}`)?.type || "text";
-
-      if (fieldType === "link" || fieldType === "image_url") {
-        try {
-          if (value.trim()) new URL(value.trim());
-        } catch {
-          toast({ title: "Invalid URL", description: `"${fieldLabel(k)}" must be a valid URL.`, variant: "destructive" });
-          hasError = true;
-          continue;
+    if (isCustomPage(page)) {
+      // For custom pages, update blocks JSON in page_layouts
+      const layout = customLayouts.find(l => l.page_slug === page);
+      if (!layout) { setSaving(null); return; }
+      const updatedBlocks = [...layout.blocks];
+      for (const ek of relevantEdits) {
+        const parts = ek.split("|");
+        const locale = parts[3] as "en" | "fr";
+        const [, s, k] = [parts[0], parts[1], parts[2]];
+        const value = edits[ek];
+        if (value === undefined) continue;
+        const block = updatedBlocks.find((b: any) => (b.name === s || b.blockType === s));
+        if (block && block.content) {
+          if (!block.content[k]) block.content[k] = { en: "", fr: "" };
+          block.content[k][locale] = value;
         }
       }
-
-      const existing = dbBlocks.find(b => b.page === p && b.section === s && b.key === k && b.locale === locale);
-      const result = existing
-        ? await (supabase as any).from("content_blocks").update({ value, type: fieldType, updated_at: new Date().toISOString() }).eq("id", existing.id)
-        : await (supabase as any).from("content_blocks").insert({ page: p, section: s, key: k, type: fieldType, locale, value });
-
-      if (result.error) {
+      const { error } = await (supabase as any).from("page_layouts")
+        .update({ blocks: updatedBlocks, updated_at: new Date().toISOString() })
+        .eq("page_slug", page);
+      if (error) {
         hasError = true;
-        toast({ title: "Save failed", description: result.error.message, variant: "destructive" });
+        toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      }
+    } else {
+      // For app pages, save to content_blocks table
+      for (const ek of relevantEdits) {
+        const parts = ek.split("|");
+        const locale = parts[3];
+        const [p, s, k] = [parts[0], parts[1], parts[2]];
+        const value = edits[ek];
+        if (value === undefined) continue;
+
+        const fieldType = allContent.get(`${p}|${s}|${k}`)?.type || "text";
+
+        if (fieldType === "link" || fieldType === "image_url") {
+          try {
+            if (value.trim()) new URL(value.trim());
+          } catch {
+            toast({ title: "Invalid URL", description: `"${fieldLabel(k)}" must be a valid URL.`, variant: "destructive" });
+            hasError = true;
+            continue;
+          }
+        }
+
+        const existing = dbBlocks.find(b => b.page === p && b.section === s && b.key === k && b.locale === locale);
+        const result = existing
+          ? await (supabase as any).from("content_blocks").update({ value, type: fieldType, updated_at: new Date().toISOString() }).eq("id", existing.id)
+          : await (supabase as any).from("content_blocks").insert({ page: p, section: s, key: k, type: fieldType, locale, value });
+
+        if (result.error) {
+          hasError = true;
+          toast({ title: "Save failed", description: result.error.message, variant: "destructive" });
+        }
       }
     }
 
