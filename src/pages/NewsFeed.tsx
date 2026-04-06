@@ -129,7 +129,7 @@ const NewsFeed = () => {
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border/40" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+      <div className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border/40" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
         <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => navigate(-1)} className="p-1 text-muted-foreground">
             <ArrowLeft size={22} />
