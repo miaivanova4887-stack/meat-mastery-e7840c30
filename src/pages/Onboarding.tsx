@@ -599,7 +599,7 @@ const Onboarding = () => {
                               }`}
                             >
                               <span
-                                className={`flex-1 text-[13px] font-medium text-left ${
+                                className={`flex-1 text-[14px] font-medium text-left ${
                                   selected ? "text-foreground" : "text-foreground/80"
                                 }`}
                               >
