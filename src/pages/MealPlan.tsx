@@ -95,6 +95,32 @@ const MealPlan = () => {
 
   const allRecipes = useMemo(() => [...customRecipes, ...recipes], [customRecipes]);
 
+  // Visual placement mode — recipe passed via route state from Recipes page
+  const [assignRecipe, setAssignRecipe] = useState<PlannedMeal | null>(null);
+  useEffect(() => {
+    const state = location.state as { assignRecipe?: { name: string; cal: string; protein: string; fat: string; time: string; serving: string } } | null;
+    if (state?.assignRecipe) {
+      const r = state.assignRecipe;
+      setAssignRecipe({
+        recipeName: r.name,
+        cal: r.cal,
+        protein: r.protein,
+        fat: r.fat,
+        time: r.time,
+        serving: r.serving,
+      });
+      // Clear the state so refreshing doesn't re-enter placement mode
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
+
+  const handlePlacementPick = useCallback((slot: MealSlot) => {
+    if (!assignRecipe) return;
+    assignMeal(activeDay, slot, assignRecipe);
+    toast.success(`${assignRecipe.recipeName} → ${SLOT_LABELS[slot].replace(/^.*?\s/, "")} on ${activeDay}`);
+    setAssignRecipe(null);
+  }, [assignRecipe, activeDay, assignMeal]);
+
   // Recipe detail drawer
   const [detailMeal, setDetailMeal] = useState<{ day: DayKey; slot: MealSlot; meal: PlannedMeal } | null>(null);
   const detailRecipe = useMemo(() => {
