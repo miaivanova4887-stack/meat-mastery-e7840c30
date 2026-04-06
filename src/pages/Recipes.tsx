@@ -488,6 +488,12 @@ const Recipes = () => {
           {totalCount === 0 && <div className="text-center py-12 text-muted-foreground text-sm">{t("recipes.noRecipes")}</div>}
         </div>
       </div>
+
+      <AddToPlanSheet
+        open={!!planTarget}
+        onOpenChange={(open) => { if (!open) setPlanTarget(null); }}
+        recipe={planTarget}
+      />
     </div>
   );
 };
