@@ -196,12 +196,17 @@
   }
 
   .onboarding-segment-selected {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
+    background: hsl(var(--primary) / 0.08);
+    border-left: 2.5px solid hsl(var(--primary));
   }
 
   .onboarding-segment-idle {
     background: hsl(var(--card));
+    transition: background 0.15s ease;
+  }
+
+  .onboarding-segment-idle:hover {
+    background: hsl(var(--muted));
   }
 
   .onboarding-check {
