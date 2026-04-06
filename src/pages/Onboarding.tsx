@@ -491,7 +491,7 @@ const Onboarding = () => {
             !isStep4 &&
             current.fields.map((field, i) => (
               <div key={field.key} className="mb-3">
-                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-1 block">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1.5 block">
                   {field.label}
                 </label>
                 <div className="flex items-center gap-2">
