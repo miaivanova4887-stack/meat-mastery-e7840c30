@@ -176,7 +176,7 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
     const slug = newPageSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-");
     const insertData: any = { page_slug: slug, title: newPageTitle.trim(), blocks: [], is_published: false };
     if (newPageParent && newPageParent !== "__none__") insertData.parent_slug = newPageParent;
-    const { error } = await (supabase as any).from("page_layouts").insert(insertData);
+    const { data, error } = await (supabase as any).from("page_layouts").insert(insertData).select().single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -186,6 +186,21 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
       setNewPageSlug("");
       setNewPageParent("");
       await refreshPages();
+      // Auto-select the newly created page
+      if (data) {
+        onSelectPage({
+          source: "custom",
+          slug: data.page_slug,
+          route: `/p/${data.page_slug}`,
+          title: data.title,
+          contentKey: data.page_slug,
+          pageLayoutId: data.id,
+          isPublished: data.is_published,
+          parentSlug: data.parent_slug || null,
+          blocks: data.blocks || [],
+          updatedAt: data.updated_at,
+        });
+      }
     }
   };
 
