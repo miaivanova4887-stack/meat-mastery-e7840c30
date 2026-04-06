@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair } from "lucide-react";
+import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair, Heart, Flame, Leaf, Zap, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import i18n from "@/i18n/index";
 
@@ -50,13 +49,14 @@ const HEALTH_TARGET_CATEGORIES = [
   { catKey: "cat_hormonal", targets: ["hormone_balance", "thyroid", "testosterone", "fertility"] },
 ];
 
-const CATEGORY_STYLES: Record<string, { emoji: string; gradient: string; border: string; glow: string }> = {
-  cat_metabolic:     { emoji: "🫀", gradient: "from-red-500/15 to-orange-500/15", border: "border-red-500/30", glow: "shadow-[0_0_12px_rgba(239,68,68,0.3)]" },
-  cat_inflammation:  { emoji: "🔥", gradient: "from-orange-500/15 to-amber-500/15", border: "border-orange-500/30", glow: "shadow-[0_0_12px_rgba(249,115,22,0.3)]" },
-  cat_gut:           { emoji: "🌿", gradient: "from-green-500/15 to-emerald-500/15", border: "border-green-500/30", glow: "shadow-[0_0_12px_rgba(34,197,94,0.3)]" },
-  cat_mental:        { emoji: "🧠", gradient: "from-blue-500/15 to-purple-500/15", border: "border-blue-500/30", glow: "shadow-[0_0_12px_rgba(59,130,246,0.3)]" },
-  cat_energy:        { emoji: "⚡", gradient: "from-yellow-500/15 to-orange-500/15", border: "border-yellow-500/30", glow: "shadow-[0_0_12px_rgba(234,179,8,0.3)]" },
-  cat_hormonal:      { emoji: "⚖️", gradient: "from-purple-500/15 to-pink-500/15", border: "border-purple-500/30", glow: "shadow-[0_0_12px_rgba(168,85,247,0.3)]" },
+// Refined monochrome icon map per category (lucide icons)
+const CATEGORY_ICONS: Record<string, typeof Heart> = {
+  cat_metabolic: Heart,
+  cat_inflammation: Flame,
+  cat_gut: Leaf,
+  cat_mental: Brain,
+  cat_energy: Zap,
+  cat_hormonal: Scale,
 };
 
 const steps: OnboardingStep[] = [
@@ -378,136 +378,247 @@ const Onboarding = () => {
     existing.push(customCuisine.trim().toLowerCase());
     localStorage.setItem("carnivore-custom-cuisines", JSON.stringify(existing));
     setCustomCuisine("");
-    // Show confirmation
     import("sonner").then(({ toast }) => toast.success(`"${customCuisine.trim()}" added!`));
   };
 
-  const Icon = current.icon;
   const isStep4 = step === 3;
+
+  // Progress dots
+  const progressPercent = ((step + 1) / totalSteps) * 100;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
-      <div className="px-4 pt-4 pb-2 flex items-center gap-3"
+      {/* Premium top bar */}
+      <div
+        className="px-5 pt-4 pb-3 flex items-center gap-4"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 16px) + 8px)" }}
       >
         {step > 0 ? (
-          <button onClick={goBack} className="text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft size={20} />
+          <button
+            onClick={goBack}
+            className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+          >
+            <ArrowLeft size={18} strokeWidth={1.5} />
           </button>
         ) : (
-          <div className="w-5" />
+          <div className="w-[18px]" />
         )}
-        <Progress value={((step + 1) / totalSteps) * 100} className="h-1.5 flex-1 transition-all duration-500" />
-        <span className="text-[10px] text-muted-foreground w-10 text-right">{step + 1}/{totalSteps}</span>
+
+        {/* Refined progress track */}
+        <div className="flex-1 h-[3px] bg-border/30 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all duration-700 ease-out"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        <span className="text-[10px] font-medium text-muted-foreground tracking-wider tabular-nums">
+          {step + 1}/{totalSteps}
+        </span>
       </div>
 
       {/* Content */}
-      <div className={`flex-1 flex flex-col px-6 pt-6 pb-4 transition-all duration-300 ease-out ${transitioning ? "opacity-0 translate-y-3 scale-[0.98]" : "opacity-100 translate-y-0 scale-100"}`}>
-        {/* Icon + Title */}
-        <div className="mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <Icon size={24} strokeWidth={1.8} className="text-primary" />
-          </div>
-          <h1 className="text-2xl font-display font-bold text-foreground leading-tight tracking-tight">{current.title}</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
+      <div
+        className={`flex-1 flex flex-col px-6 pt-4 pb-4 transition-all duration-300 ease-out ${
+          transitioning
+            ? "opacity-0 translate-y-2 scale-[0.99]"
+            : "opacity-100 translate-y-0 scale-100"
+        }`}
+      >
+        {/* Editorial header */}
+        <div className="mb-8">
+          <h1 className="text-[26px] font-editorial font-semibold text-foreground leading-[1.15] tracking-[-0.01em]">
+            {current.title}
+          </h1>
+          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-wide">
             {isStep4 && healthTargetLabels.get("subtitle")
               ? healthTargetLabels.get("subtitle")
               : current.subtitle}
           </p>
         </div>
 
-        {/* Options or Inputs */}
-        <div className="space-y-2.5 flex-1 overflow-y-auto">
-          {current.type === "options" && current.options.map((opt, i) => {
-            const selected = current.multiSelect ? multiSelected.includes(i) : false;
-            return (
-              <button
-                key={`${step}-${i}`}
-                onClick={() => handleSelect(i)}
-                className={`w-full flex items-center gap-4 p-3.5 rounded-2xl border transition-all duration-200 text-left active:scale-[0.97] ${
-                  selected
-                    ? "bg-primary/8 border-primary/40 shadow-sm"
-                    : "bg-card border-border/50 shadow-xs"
-                }`}
-              >
-                <span className="text-2xl flex-shrink-0">{opt.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-semibold text-foreground block">{opt.label}</span>
-                  {opt.desc && <span className="text-[11px] text-muted-foreground">{opt.desc}</span>}
-                </div>
-                {selected && (
-                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                    <Check size={14} className="text-primary-foreground" />
+        {/* Options */}
+        <div className="space-y-2 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+          {current.type === "options" &&
+            current.options.map((opt, i) => {
+              const selected = current.multiSelect ? multiSelected.includes(i) : false;
+              return (
+                <button
+                  key={`${step}-${i}`}
+                  onClick={() => handleSelect(i)}
+                  style={{ animationDelay: `${i * 60}ms` }}
+                  className={`w-full flex items-center gap-3.5 py-3.5 px-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.98]
+                    ${selected ? "onboarding-card-selected" : "onboarding-card-idle"}
+                  `}
+                >
+                  {/* Medallion icon */}
+                  <div
+                    className={`onboarding-medallion ${selected ? "onboarding-medallion-active" : ""}`}
+                  >
+                    <span className="text-[15px] leading-none">{opt.emoji}</span>
                   </div>
-                )}
-              </button>
-            );
-          })}
 
-          {current.type === "input" && current.fields.map((field) => (
-            <div key={field.key} className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">{field.label}</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type={field.type || "text"}
-                  inputMode={field.type === "number" ? "numeric" : undefined}
-                  placeholder={field.placeholder}
-                  value={inputValues[field.key] || ""}
-                  onChange={(e) => handleInputChange(field.key, e.target.value)}
-                  className="flex-1 h-12 rounded-2xl border border-border/50 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all shadow-xs"
-                  maxLength={field.type === "number" ? 6 : 200}
-                />
-                {field.unit && (
-                  <span className="text-sm text-muted-foreground w-10">{field.unit}</span>
-                )}
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`text-[13.5px] font-medium block leading-tight ${
+                        selected ? "text-foreground" : "text-foreground"
+                      }`}
+                    >
+                      {opt.label}
+                    </span>
+                    {opt.desc && (
+                      <span className="text-[11px] text-muted-foreground font-light mt-0.5 block leading-snug">
+                        {opt.desc}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Check ring */}
+                  <div
+                    className={`onboarding-check ${selected ? "onboarding-check-active" : ""}`}
+                  >
+                    {selected && <Check size={10} strokeWidth={2.5} className="text-primary-foreground" />}
+                  </div>
+                </button>
+              );
+            })}
+
+          {/* Input fields */}
+          {current.type === "input" &&
+            current.fields.map((field, i) => (
+              <div
+                key={field.key}
+                className="space-y-1.5"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  {field.label}
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type={field.type || "text"}
+                    inputMode={field.type === "number" ? "numeric" : undefined}
+                    placeholder={field.placeholder}
+                    value={inputValues[field.key] || ""}
+                    onChange={(e) => handleInputChange(field.key, e.target.value)}
+                    className="flex-1 h-12 rounded-xl border border-border/40 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30 transition-all"
+                    maxLength={field.type === "number" ? 6 : 200}
+                  />
+                  {field.unit && (
+                    <span className="text-[11px] font-medium text-muted-foreground w-10 uppercase tracking-wider">
+                      {field.unit}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Health targets multi-select on Step 4 */}
+          {/* Health targets — editorial category groups */}
           {isStep4 && healthTargetLabels.size > 0 && (
-            <div className="space-y-0">
+            <div className="space-y-6">
               {HEALTH_TARGET_CATEGORIES.map((cat, catIdx) => {
-                const style = CATEGORY_STYLES[cat.catKey] || CATEGORY_STYLES.cat_metabolic;
+                const CatIcon = CATEGORY_ICONS[cat.catKey] || Heart;
+                const hasAnySelected = cat.targets.some((t) => healthTargets.includes(t));
+
                 return (
-                  <div key={cat.catKey}>
-                    <div className={`flex items-center gap-2.5 ${catIdx === 0 ? "mt-6" : "mt-5"} mb-2`}>
-                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-r ${style.gradient} flex items-center justify-center`}>
-                        <span className="text-[20px]">{style.emoji}</span>
+                  <div
+                    key={cat.catKey}
+                    style={{ animationDelay: `${catIdx * 80}ms` }}
+                    className="animate-[onb-stagger_0.35s_ease-out_both]"
+                  >
+                    {/* Editorial category header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-300 ${
+                          hasAnySelected
+                            ? "bg-primary/12 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        <CatIcon size={14} strokeWidth={1.5} />
                       </div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                         {healthTargetLabels.get(cat.catKey) || cat.catKey}
                       </span>
                     </div>
-                    <div className={`border-b ${style.border} opacity-30 mb-2`} />
-                    <div className="space-y-1">
-                      {cat.targets.map((targetKey) => {
-                        const selected = healthTargets.includes(targetKey);
-                        return (
-                          <button
-                            key={targetKey}
-                            type="button"
-                            onClick={() => toggleHealthTarget(targetKey)}
-                            className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl border transition-all duration-150 active:scale-[0.97] ${
-                              selected
-                                ? `bg-gradient-to-r ${style.gradient} ${style.border.replace('/30', '/50')} ${style.glow}`
-                                : "bg-card border-border/40"
-                            }`}
-                          >
-                            <span className="text-[20px]">{style.emoji}</span>
-                            <span className={`flex-1 text-sm font-medium text-left ${selected ? "text-foreground" : "text-foreground"}`}>
-                              {healthTargetLabels.get(targetKey) || targetKey}
-                            </span>
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-transform duration-100 ${
-                              selected ? "scale-100 bg-primary" : "scale-0"
-                            }`}>
-                              <Check size={12} className="text-primary-foreground" />
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+
+                    {/* Accent rule */}
+                    <div
+                      className={`h-[1px] mb-3 transition-all duration-500 ${
+                        hasAnySelected
+                          ? "onboarding-category-line"
+                          : "bg-border/20"
+                      }`}
+                    />
+
+                    {/* Pill-style target chips for small categories, tiles for larger */}
+                    {cat.targets.length <= 2 ? (
+                      /* Compact pill row for 2-item categories */
+                      <div className="flex gap-2">
+                        {cat.targets.map((targetKey) => {
+                          const selected = healthTargets.includes(targetKey);
+                          return (
+                            <button
+                              key={targetKey}
+                              type="button"
+                              onClick={() => toggleHealthTarget(targetKey)}
+                              className={`flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                                selected
+                                  ? "onboarding-pill-selected"
+                                  : "onboarding-pill-idle"
+                              }`}
+                            >
+                              {selected && (
+                                <Check size={12} strokeWidth={2.5} className="flex-shrink-0" />
+                              )}
+                              <span
+                                className={`text-[12.5px] font-medium leading-tight ${
+                                  selected ? "" : "text-foreground"
+                                }`}
+                              >
+                                {healthTargetLabels.get(targetKey) || targetKey}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* Segmented tile list for 3-4 item categories */
+                      <div className="rounded-xl border border-border/30 overflow-hidden divide-y divide-border/20">
+                        {cat.targets.map((targetKey, tIdx) => {
+                          const selected = healthTargets.includes(targetKey);
+                          return (
+                            <button
+                              key={targetKey}
+                              type="button"
+                              onClick={() => toggleHealthTarget(targetKey)}
+                              className={`w-full flex items-center gap-3 py-3 px-4 transition-all duration-200 active:scale-[0.98] ${
+                                selected
+                                  ? "bg-primary/[0.05]"
+                                  : "bg-card hover:bg-muted/30"
+                              }`}
+                            >
+                              <span
+                                className={`flex-1 text-[13px] font-medium text-left ${
+                                  selected ? "text-foreground" : "text-foreground/80"
+                                }`}
+                              >
+                                {healthTargetLabels.get(targetKey) || targetKey}
+                              </span>
+                              <div
+                                className={`onboarding-check ${
+                                  selected ? "onboarding-check-active" : ""
+                                }`}
+                              >
+                                {selected && (
+                                  <Check size={10} strokeWidth={2.5} className="text-primary-foreground" />
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -523,13 +634,13 @@ const Onboarding = () => {
                 value={customCuisine}
                 onChange={(e) => setCustomCuisine(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleAddCustomCuisine()}
-                className="flex-1 h-10 rounded-xl border border-border/50 bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                className="flex-1 h-10 rounded-xl border border-border/40 bg-card px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30"
                 maxLength={40}
               />
               <button
                 onClick={handleAddCustomCuisine}
                 disabled={!customCuisine.trim()}
-                className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40"
+                className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-40 transition-opacity"
               >
                 Add
               </button>
@@ -539,9 +650,9 @@ const Onboarding = () => {
 
         {/* Continue button for multi-select & input steps */}
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
-          <div className="pt-4">
+          <div className="pt-5">
             <Button
-              className="w-full gap-2 h-12 text-base font-semibold rounded-2xl"
+              className="w-full gap-2 h-[52px] text-[15px] font-semibold rounded-xl tracking-wide transition-all duration-300"
               disabled={
                 !canSkip &&
                 (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
@@ -556,14 +667,15 @@ const Onboarding = () => {
               }}
             >
               {isLastStep ? "Get Started" : multiSelected.length === 0 && canSkip ? "Skip" : "Continue"}
-              <ChevronRight size={18} />
+              <ChevronRight size={16} strokeWidth={2} />
             </Button>
           </div>
         )}
       </div>
 
-      {/* Skip option */}
-      <div className="px-6 pb-6 text-center"
+      {/* Skip */}
+      <div
+        className="px-6 pb-6 text-center"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 24px) + 8px)" }}
       >
         <button
@@ -571,7 +683,7 @@ const Onboarding = () => {
             localStorage.setItem(STORAGE_KEY, "true");
             navigate("/", { replace: true });
           }}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-300 tracking-wide"
         >
           Skip for now
         </button>
