@@ -562,7 +562,7 @@ const Onboarding = () => {
                               key={targetKey}
                               type="button"
                               onClick={() => toggleHealthTarget(targetKey)}
-                              className={`flex-1 flex items-center justify-center gap-2 py-3 px-3 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                              className={`flex-1 flex items-center justify-center gap-2 h-[52px] px-3 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
                                 selected
                                   ? "onboarding-pill-selected"
                                   : "onboarding-pill-idle"
