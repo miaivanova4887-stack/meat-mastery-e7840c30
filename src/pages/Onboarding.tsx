@@ -424,12 +424,12 @@ const Onboarding = () => {
             : "opacity-100 translate-y-0"
         }`}
       >
-        {/* Clinical header */}
-        <div className="mb-6">
-          <h1 className="text-[22px] font-bold uppercase tracking-[0.04em] text-foreground leading-[1.2]">
+        {/* Header */}
+        <div className="mb-7">
+          <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-foreground leading-[1.15]">
             {current.title}
           </h1>
-          <p className="text-[12px] text-muted-foreground mt-1.5 leading-relaxed tracking-wide">
+          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed tracking-normal">
             {isStep4 && healthTargetLabels.get("subtitle")
               ? healthTargetLabels.get("subtitle")
               : current.subtitle}
