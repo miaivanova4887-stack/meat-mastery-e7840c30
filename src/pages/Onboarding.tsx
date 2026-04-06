@@ -396,13 +396,13 @@ const Onboarding = () => {
               <div
                 className={`rounded-full transition-all duration-150 ${
                   i <= step
-                    ? "w-2 h-2 bg-primary"
+                    ? "w-2.5 h-2.5 bg-primary"
                     : "w-1.5 h-1.5 bg-border"
                 }`}
               />
               {i < totalSteps - 1 && (
                 <div
-                  className={`w-2 h-px transition-colors duration-150 ${
+                  className={`w-3 h-px transition-colors duration-150 ${
                     i < step ? "bg-primary/40" : "bg-border/40"
                   }`}
                 />
@@ -411,7 +411,7 @@ const Onboarding = () => {
           ))}
         </div>
 
-        <span className="text-[10px] font-bold text-muted-foreground tracking-wider tabular-nums uppercase">
+        <span className="text-[10px] font-semibold text-muted-foreground tracking-wide tabular-nums">
           {step + 1}/{totalSteps}
         </span>
       </div>
