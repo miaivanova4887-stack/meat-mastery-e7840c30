@@ -179,7 +179,7 @@
 
   /* Light-mode specific refinements */
   :root .ios-card {
-    box-shadow: 0 1px 3px -1px hsl(25 20% 20% / 0.06), 0 2px 8px -2px hsl(25 20% 20% / 0.08);
+    box-shadow: 0 1px 3px -1px hsl(25 20% 20% / 0.08), 0 2px 8px -2px hsl(25 20% 20% / 0.10);
   }
   
   :root .ios-blur {

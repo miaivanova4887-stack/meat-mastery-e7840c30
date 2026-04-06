@@ -128,7 +128,7 @@ const Index = () => {
       {/* Hero */}
       <div className="relative h-[58vh] overflow-hidden">
         <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover scale-105" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-black/30" />
         {/* Accent glow behind hero */}
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-32 rounded-full blur-[80px] opacity-20"
           style={{ background: "linear-gradient(90deg, hsl(var(--flame)), hsl(var(--gold)))" }}
