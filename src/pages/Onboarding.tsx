@@ -451,10 +451,6 @@ const Onboarding = () => {
             </p>
           )}
         </div>
-              ? healthTargetLabels.get("subtitle")
-              : current.subtitle}
-          </p>
-        </div>
 
         {/* Options */}
         <div className="space-y-2 flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
