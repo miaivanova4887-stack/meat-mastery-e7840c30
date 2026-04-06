@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, X, Trash2, ShoppingCart, ShoppingBag, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
+import { ArrowLeft, Plus, X, Trash2, ShoppingCart, ShoppingBag, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera, CalendarPlus } from "lucide-react";
 import TeaserGate from "@/components/TeaserGate";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
