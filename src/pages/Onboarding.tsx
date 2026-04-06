@@ -439,34 +439,33 @@ const Onboarding = () => {
         {/* Options — segmented control blocks */}
         <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
           {current.type === "options" && (
-            <div className="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/30">
+            <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/30">
               {current.options.map((opt, i) => {
                 const selected = current.multiSelect ? multiSelected.includes(i) : false;
                 return (
                   <button
                     key={`${step}-${i}`}
                     onClick={() => handleSelect(i)}
-                    className={`w-full flex items-center gap-3 h-[44px] px-4 transition-all duration-150 text-left active:scale-[0.99] ${
+                    className={`w-full flex items-center gap-3 h-[52px] px-4 transition-all duration-150 text-left active:scale-[0.99] ${
                       selected
                         ? "onboarding-segment-selected"
-                        : "onboarding-segment-idle hover:bg-muted/30"
+                        : "onboarding-segment-idle"
                     }`}
                   >
-                    {/* Inline emoji */}
                     <span className="text-[14px] leading-none flex-shrink-0">{opt.emoji}</span>
 
                     <div className="flex-1 min-w-0">
                       <span
-                        className={`text-[13px] font-medium leading-tight ${
-                          selected ? "text-primary-foreground" : "text-foreground"
+                        className={`text-[14px] font-medium leading-tight ${
+                          selected ? "text-primary" : "text-foreground"
                         }`}
                       >
                         {opt.label}
                       </span>
                       {opt.desc && (
                         <span
-                          className={`text-[10.5px] ml-1.5 ${
-                            selected ? "text-primary-foreground/70" : "text-muted-foreground"
+                          className={`text-[11px] ml-1.5 ${
+                            selected ? "text-primary/70" : "text-muted-foreground"
                           }`}
                         >
                           · {opt.desc}
@@ -474,7 +473,6 @@ const Onboarding = () => {
                       )}
                     </div>
 
-                    {/* Check ring for multi-select */}
                     {current.multiSelect && (
                       <div
                         className={`onboarding-check ${selected ? "onboarding-check-active" : ""}`}
