@@ -159,8 +159,21 @@ function isValidUrl(str: string): boolean {
   try { new URL(str.trim()); return true; } catch { return false; }
 }
 
-export default function CmsContentEditor() {
+interface CmsContentEditorProps {
+  initialSlug?: string | null;
+  onSlugChange?: (slug: string) => void;
+}
+
+interface CustomPageLayout {
+  page_slug: string;
+  title: string;
+  blocks: any[];
+  is_published: boolean;
+}
+
+export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsContentEditorProps = {}) {
   const [dbBlocks, setDbBlocks] = useState<ContentBlock[]>([]);
+  const [customLayouts, setCustomLayouts] = useState<CustomPageLayout[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [search, setSearch] = useState("");
