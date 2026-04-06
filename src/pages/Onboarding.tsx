@@ -427,7 +427,7 @@ const Onboarding = () => {
       >
         {/* Editorial header */}
         <div className="mb-8">
-          <h1 className="text-[26px] font-editorial font-semibold text-foreground leading-[1.15] tracking-[-0.01em]">
+          <h1 className="text-[26px] font-black text-foreground leading-[1.15] tracking-[-0.02em]">
             {current.title}
           </h1>
           <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed font-light tracking-wide">
