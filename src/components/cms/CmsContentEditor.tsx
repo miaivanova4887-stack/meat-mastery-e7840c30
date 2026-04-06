@@ -499,7 +499,7 @@ export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsConte
                     selectedPage === page ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50 text-foreground"
                   }`}
                 >
-                  <div className="font-medium">{pageName(page)}</div>
+                  <div className="font-medium">{extendedPageName(page)}</div>
                   <div className="text-[10px] text-muted-foreground">
                     {fieldCount} fields{linkCount > 0 ? ` · ${linkCount} links` : ""}
                   </div>
