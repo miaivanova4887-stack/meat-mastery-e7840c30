@@ -69,7 +69,12 @@ const BLOCK_TEMPLATES = [
 let blockIdCounter = 0;
 function newBlockId() { return `block_${Date.now()}_${blockIdCounter++}`; }
 
-export default function CmsLayoutBuilder() {
+interface CmsLayoutBuilderProps {
+  initialSlug?: string | null;
+  onSlugChange?: (slug: string) => void;
+}
+
+export default function CmsLayoutBuilder({ initialSlug, onSlugChange }: CmsLayoutBuilderProps = {}) {
   const [layouts, setLayouts] = useState<PageLayout[]>([]);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [currentBlocks, setCurrentBlocks] = useState<LayoutBlock[]>([]);
