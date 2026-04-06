@@ -327,19 +327,32 @@ const Onboarding = () => {
           } catch {}
         }
 
-        // Save to profile if authenticated
-        supabase.auth.getUser().then(({ data: { user } }) => {
+        // Save to profile if authenticated (including wellness consent)
+        const saveProfile = async () => {
+          const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            (supabase as any)
+            const { error } = await (supabase as any)
               .from("profiles")
               .update({
                 health_targets: healthTargets,
                 user_attributes: userAttributes,
+                wellness_disclaimer_consented: true,
+                wellness_disclaimer_consented_at: new Date().toISOString(),
+                wellness_disclaimer_version: "1.0",
               })
-              .eq("id", user.id)
-              .then(() => {});
+              .eq("id", user.id);
+            if (error) {
+              toast.error("Failed to save consent. Please try again.");
+              setConsentSaving(false);
+              return; // Don't navigate
+            }
           }
-        });
+
+          window.dispatchEvent(new Event("profile-update"));
+          navigate("/", { replace: true });
+        };
+
+        saveProfile();
 
         const CUISINE_MAP_1 = ["american", "european", "indian", "mexican"];
         const CUISINE_MAP_2 = ["korean", "japanese", "african", "middle_eastern"];
