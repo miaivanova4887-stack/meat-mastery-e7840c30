@@ -515,7 +515,7 @@ export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsConte
         {selectedPage ? (
           <>
             <div className="px-5 py-3 border-b border-border bg-card/50">
-              <h2 className="text-sm font-bold text-foreground">{pageName(selectedPage)}</h2>
+              <h2 className="text-sm font-bold text-foreground">{extendedPageName(selectedPage)}</h2>
               <p className="text-[10px] text-muted-foreground">
                 {currentSections.length} sections{currentLinkPairs.length > 0 ? ` · ${currentLinkPairs.length} link pairs` : ""} · Edit content for English and French
               </p>
