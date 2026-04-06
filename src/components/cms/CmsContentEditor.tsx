@@ -10,6 +10,7 @@ import { Search, Save, Loader2, Globe, Image as ImageIcon, Link as LinkIcon, Typ
 import en from "@/i18n/en.json";
 import fr from "@/i18n/fr.json";
 import { type CmsPageRecord, slugToContentKey } from "./cmsPages";
+import { normalizeLayoutBlocks } from "./cmsLayout";
 
 interface ContentBlock {
   id?: string;
@@ -153,6 +154,13 @@ export default function CmsContentEditor({ pages, activePage, onSelectPage, refr
 
   useEffect(() => { fetchBlocks(); }, [fetchBlocks]);
 
+  useEffect(() => {
+    setEdits({});
+    setLinkEdits({});
+    setSectionStatus({});
+    setSaving(null);
+  }, [activePage?.slug]);
+
   // Build i18n content map keyed by contentKey (for app pages)
   const allContent = useMemo(() => {
     const map = new Map<string, { en: string; fr: string; type: string }>();
@@ -221,13 +229,13 @@ export default function CmsContentEditor({ pages, activePage, onSelectPage, refr
   // Build block-instance content for custom pages — keyed by blockId
   const customBlockFields = useMemo(() => {
     if (!activePage || activePage.source !== "custom") return null;
-    const blocks = activePage.blocks || [];
+    const blocks = normalizeLayoutBlocks(activePage.blocks || [], activePage.slug);
     if (blocks.length === 0) return [];
-    return blocks.map((block: any) => ({
+    return blocks.map((block) => ({
       blockId: block.id,
       blockName: block.name || block.blockType || "Block",
       blockType: block.blockType,
-      fields: (block.fields || []).map((f: any) => ({
+      fields: (block.fields || []).map((f) => ({
         key: f.key,
         label: f.label || humanize(f.key),
         type: f.type || "text",
@@ -363,14 +371,14 @@ export default function CmsContentEditor({ pages, activePage, onSelectPage, refr
     const relevantEdits = Object.keys(edits).filter(ek => ek.startsWith(prefix));
     if (relevantEdits.length === 0) return;
     setSaving("custom-blocks");
-    const updatedBlocks = JSON.parse(JSON.stringify(activePage.blocks));
+    const updatedBlocks = normalizeLayoutBlocks(activePage.blocks || [], activePage.slug);
     for (const ek of relevantEdits) {
       const parts = ek.split("|");
       const blockId = parts[1];
       const fieldKey = parts[2];
       const locale = parts[3] as "en" | "fr";
       const value = edits[ek];
-      const block = updatedBlocks.find((b: any) => b.id === blockId);
+      const block = updatedBlocks.find((b) => b.id === blockId);
       if (block) {
         if (!block.content) block.content = {};
         if (!block.content[fieldKey]) block.content[fieldKey] = { en: "", fr: "" };
