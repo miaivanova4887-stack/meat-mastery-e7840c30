@@ -460,7 +460,7 @@ const Onboarding = () => {
 
                   <div className="flex-1 min-w-0">
                     <span
-                      className={`text-[13.5px] font-medium block leading-tight ${
+                      className={`text-[14px] font-medium block leading-tight ${
                         selected ? "text-foreground" : "text-foreground"
                       }`}
                     >
