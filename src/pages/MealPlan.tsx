@@ -408,7 +408,7 @@ const MealPlan = () => {
           alt="Meal planning"
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="absolute inset-0 mini-hero-overlay" />
         <div className="absolute bottom-3 left-4">
           <p className="text-xs text-muted-foreground font-medium">{t("mealPlan.planAhead")}</p>
           <p className="text-lg font-display font-bold text-foreground">{t("mealPlan.yourWeeklyFuel")}</p>

@@ -239,6 +239,43 @@
   }
 }
 
+  /* Mini-hero overlays for inner pages (Recipes, MealPlan) */
+  :root .mini-hero-overlay {
+    background: linear-gradient(to top,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.85) 30%,
+      hsl(var(--background) / 0.3) 70%,
+      transparent 100%
+    );
+  }
+
+  .dark .mini-hero-overlay {
+    background: linear-gradient(to top,
+      hsl(var(--background)) 0%,
+      hsl(var(--background) / 0.6) 40%,
+      transparent 100%
+    );
+  }
+
+  /* Sticky page headers — solid in light mode */
+  :root .page-header {
+    background: hsl(var(--card) / 0.95);
+    border-color: hsl(25 8% 88%);
+  }
+
+  /* Filter pills — visible in light mode */
+  :root .filter-pill-inactive {
+    background: hsl(var(--secondary));
+    border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  /* MotivationCTA — card-based in light mode */
+  :root .motivation-cta {
+    background: hsl(var(--card));
+    border-color: hsl(var(--border) / 0.6);
+    box-shadow: 0 2px 12px -4px hsl(var(--primary) / 0.12);
+  }
+
 /* Editorial luxury onboarding utilities */
 @layer utilities {
   .font-editorial {
