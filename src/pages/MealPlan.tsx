@@ -1,7 +1,7 @@
 import { ArrowLeft, Plus, X, Trash2, ShoppingCart, ShoppingBag, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
 import TeaserGate from "@/components/TeaserGate";
-import { useNavigate } from "react-router-dom";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { recipes, TIER_LABELS, type Recipe, type DietTier } from "@/data/recipes";
