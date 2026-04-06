@@ -572,8 +572,8 @@ const Onboarding = () => {
                                 <Check size={12} strokeWidth={2.5} className="flex-shrink-0" />
                               )}
                               <span
-                                className={`text-[12.5px] font-medium leading-tight ${
-                                  selected ? "" : "text-foreground"
+                                className={`text-[14px] font-medium leading-tight ${
+                                  selected ? "text-foreground" : "text-foreground"
                                 }`}
                               >
                                 {healthTargetLabels.get(targetKey) || targetKey}
