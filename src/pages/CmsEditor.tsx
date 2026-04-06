@@ -56,6 +56,27 @@ export default function CmsEditor() {
   }, [pages, activeSlug]);
 
   useEffect(() => {
+    if (pages.length === 0) {
+      if (activeSlug !== null) setActiveSlug(null);
+      return;
+    }
+
+    if (activeSlug && pages.some(page => page.slug === activeSlug)) {
+      return;
+    }
+
+    const defaultPage =
+      pages.find(page => page.source === "custom" && page.isPublished) ??
+      pages.find(page => page.source === "custom") ??
+      pages.find(page => page.slug === "home") ??
+      pages[0];
+
+    if (defaultPage) {
+      setActiveSlug(defaultPage.slug);
+    }
+  }, [pages, activeSlug]);
+
+  useEffect(() => {
     if (adminStatus === 'admin') refreshPages();
   }, [adminStatus, refreshPages]);
 

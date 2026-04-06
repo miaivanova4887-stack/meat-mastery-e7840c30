@@ -63,9 +63,20 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
   }
 
   const togglePublish = async (page: CmsPageRecord) => {
-    if (!page.pageLayoutId) return;
-    await (supabase as any).from("page_layouts").update({ is_published: !page.isPublished }).eq("id", page.pageLayoutId);
+    if (!page.pageLayoutId || page.source !== "custom") return;
+    const nextPublished = !page.isPublished;
+    const { error } = await (supabase as any)
+      .from("page_layouts")
+      .update({ is_published: nextPublished, updated_at: new Date().toISOString() })
+      .eq("id", page.pageLayoutId);
+
+    if (error) {
+      toast({ title: "Publish failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
     await refreshPages();
+    toast({ title: nextPublished ? "Page published" : "Page unpublished" });
   };
 
   const deleteLayout = async (page: CmsPageRecord) => {
@@ -80,12 +91,10 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
   };
 
   const saveSettings = async () => {
-    if (!activePage?.pageLayoutId) return;
+    if (!activePage?.pageLayoutId || activePage.source !== "custom") return;
     setSaving(true);
     const update: any = { title: editTitle, is_published: editPublished, updated_at: new Date().toISOString() };
-    if (activePage.source === "custom") {
-      update.parent_slug = editParent || null;
-    }
+    update.parent_slug = editParent || null;
     const { error } = await (supabase as any).from("page_layouts").update(update).eq("id", activePage.pageLayoutId);
     if (error) toast({ title: "Save failed", description: error.message, variant: "destructive" });
     else { toast({ title: "Settings saved" }); await refreshPages(); }
@@ -133,13 +142,13 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                       </span>
                     </td>
                     <td className="py-2.5">
-                      {page.pageLayoutId ? (
+                      {page.source === "custom" && page.pageLayoutId ? (
                         <span className={`flex items-center gap-1 text-[10px] font-medium ${page.isPublished ? "text-green-500" : "text-muted-foreground"}`}>
                           {page.isPublished ? <Globe className="h-3 w-3" /> : <GlobeLock className="h-3 w-3" />}
                           {page.isPublished ? "Published" : "Draft"}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground">Default</span>
+                        <span className="text-[10px] text-muted-foreground">Built-in route</span>
                       )}
                     </td>
                     <td className="py-2.5">
@@ -156,7 +165,7 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                         <a href={page.route} target="_blank" rel="noopener noreferrer">
                           <Button variant="ghost" size="icon" className="h-6 w-6" title="Preview"><ExternalLink className="h-3 w-3" /></Button>
                         </a>
-                        {page.pageLayoutId && (
+                        {page.source === "custom" && page.pageLayoutId && (
                           <Button variant="ghost" size="icon" className="h-6 w-6" title={page.isPublished ? "Unpublish" : "Publish"} onClick={() => togglePublish(page)}>
                             {page.isPublished ? <GlobeLock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
                           </Button>
@@ -211,7 +220,7 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                 </div>
 
                 {/* Publish toggle */}
-                {activePage.pageLayoutId && (
+                {activePage.source === "custom" && activePage.pageLayoutId && (
                   <div>
                     <label className="text-[10px] font-semibold text-muted-foreground uppercase block mb-1">Published</label>
                     <div className="flex items-center gap-2">
@@ -248,7 +257,7 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                 </div>
 
                 {/* Save button (pages with layout) */}
-                {activePage.pageLayoutId && (
+                {activePage.source === "custom" && activePage.pageLayoutId && (
                   <Button size="sm" className="w-full h-8 text-xs gap-1" onClick={saveSettings} disabled={saving}>
                     {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                     Save Settings
@@ -264,6 +273,13 @@ export default function CmsPagesTab({ pages, activePage, onSelectPage, refreshPa
                     <FileText className="h-3 w-3" /> Edit Content
                   </Button>
                 </div>
+
+                {activePage.source === "app" && (
+                  <div className="rounded-md border border-border bg-muted/20 p-3">
+                    <p className="text-[10px] font-semibold text-foreground">Built-in app route</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">Use the Content tab for reliable frontend changes. Layout publish is stabilized on custom pages only.</p>
+                  </div>
+                )}
 
                 {!activePage.pageLayoutId && activePage.source === "app" && (
                   <p className="text-[10px] text-muted-foreground italic">

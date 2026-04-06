@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +12,7 @@ import {
   Globe, CheckCircle2, Eye, Type, AlignLeft, MousePointerClick, ShieldAlert, Image, Minus, Wrench, AlertCircle
 } from "lucide-react";
 import { type CmsPageRecord, APP_PAGES as APP_PAGE_DEFS } from "./cmsPages";
+import { CmsLayoutDocument, normalizeLayoutBlocks } from "./cmsLayout";
 
 interface BlockField {
   key: string;
@@ -59,17 +61,21 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
   const [saved, setSaved] = useState(false);
   const [insertIndex, setInsertIndex] = useState<number | null>(null);
   const { toast } = useToast();
+  const { i18n } = useTranslation();
 
   // When activePage changes, load its blocks
   useEffect(() => {
     if (!activePage) { setCurrentBlocks([]); return; }
-    // Load from shared page record
-    const blocks: LayoutBlock[] = (activePage.blocks || []).map((b: any) => ({
-      id: b.id || newBlockId(),
-      name: b.name || b.blockType || "Block",
-      blockType: b.blockType,
-      fields: b.fields || [],
-      content: b.content || {},
+    const blocks: LayoutBlock[] = normalizeLayoutBlocks(activePage.blocks || [], activePage.slug).map((block) => ({
+      id: block.id || newBlockId(),
+      name: block.name || block.blockType || "Block",
+      blockType: block.blockType,
+      fields: (block.fields || []).map((field) => ({
+        key: field.key,
+        label: field.label,
+        type: field.type === "link" || field.type === "image_url" ? field.type : "text",
+      })),
+      content: block.content || {},
     }));
     setCurrentBlocks(blocks);
     setInsertIndex(null);
@@ -85,9 +91,7 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
     ...APP_PAGE_DEFS.map(p => ({ label: p.title, value: p.route })),
     ...customPages.map(p => ({ label: `${p.title} (custom)`, value: p.route })),
   ], [customPages]);
-
-  const previewRoute = activePage?.route || null;
-  const previewKey = useMemo(() => `${activePage?.slug}-${currentBlocks.length}-${currentBlocks.map(b => b.id).join(",")}`, [activePage?.slug, currentBlocks]);
+  const previewLocale = i18n.language?.startsWith("fr") ? "fr" : "en";
 
   const moveBlock = (index: number, dir: -1 | 1) => {
     const newIndex = index + dir;
@@ -153,7 +157,7 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
   };
 
   const saveLayout = async () => {
-    if (!activePage) return;
+    if (!activePage || activePage.source !== "custom") return;
     setSaving(true);
     if (activePage.pageLayoutId) {
       const { error } = await (supabase as any).from("page_layouts")
@@ -174,8 +178,16 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
   const createPage = async () => {
     if (!newPageTitle.trim() || !newPageSlug.trim()) return;
     const slug = newPageSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-");
+    if (!slug) {
+      toast({ title: "Invalid slug", description: "Enter a valid page slug.", variant: "destructive" });
+      return;
+    }
+    if (pages.some(page => page.slug === slug)) {
+      toast({ title: "Slug already exists", description: "Choose a unique slug for this custom page.", variant: "destructive" });
+      return;
+    }
     const insertData: any = { page_slug: slug, title: newPageTitle.trim(), blocks: [], is_published: false };
-    if (newPageParent && newPageParent !== "__none__") insertData.parent_slug = newPageParent;
+    if (newPageParent) insertData.parent_slug = newPageParent;
     const { data, error } = await (supabase as any).from("page_layouts").insert(insertData).select().single();
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -205,9 +217,20 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
   };
 
   const togglePublish = async () => {
-    if (!activePage?.pageLayoutId) return;
-    await (supabase as any).from("page_layouts").update({ is_published: !activePage.isPublished }).eq("id", activePage.pageLayoutId);
+    if (!activePage?.pageLayoutId || activePage.source !== "custom") return;
+    const nextPublished = !activePage.isPublished;
+    const { error } = await (supabase as any)
+      .from("page_layouts")
+      .update({ is_published: nextPublished, updated_at: new Date().toISOString() })
+      .eq("id", activePage.pageLayoutId);
+
+    if (error) {
+      toast({ title: "Publish failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
     await refreshPages();
+    toast({ title: nextPublished ? "Page published" : "Page unpublished" });
   };
 
   const addFieldToNewBlock = () => {
@@ -244,7 +267,7 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
               <span>/p/</span>
               <Input placeholder="slug" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="h-6 text-[10px] flex-1" />
             </div>
-            <Select value={newPageParent || "__none__"} onValueChange={setNewPageParent}>
+            <Select value={newPageParent || "__none__"} onValueChange={(value) => setNewPageParent(value === "__none__" ? "" : value)}>
               <SelectTrigger className="h-7 text-[10px]">
                 <SelectValue placeholder="Parent page (optional)" />
               </SelectTrigger>
@@ -350,207 +373,218 @@ export default function CmsLayoutBuilder({ pages, activePage, onSelectPage, refr
                 <p className="text-[10px] text-muted-foreground">{currentBlocks.length} blocks</p>
               </div>
               <div className="flex items-center gap-2">
-                {saved && <span className="flex items-center gap-1 text-[10px] text-green-500 font-medium"><CheckCircle2 className="h-3 w-3" /> Saved</span>}
-                {activePage.pageLayoutId && (
+                {saved && activePage.source === "custom" && <span className="flex items-center gap-1 text-[10px] text-green-500 font-medium"><CheckCircle2 className="h-3 w-3" /> Saved</span>}
+                {activePage.source === "custom" && activePage.pageLayoutId && (
                   <Button size="sm" variant="outline" className="h-7 text-[10px]" onClick={togglePublish}>
                     {activePage.isPublished ? "Unpublish" : "Publish"}
                   </Button>
                 )}
-                <Button size="sm" className="h-7 text-[10px] gap-1" onClick={saveLayout} disabled={saving}>
-                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  Save Layout
-                </Button>
+                {activePage.source === "custom" ? (
+                  <Button size="sm" className="h-7 text-[10px] gap-1" onClick={saveLayout} disabled={saving}>
+                    {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                    Save Layout
+                  </Button>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">Built-in app route</span>
+                )}
               </div>
             </div>
 
-            <div className="flex-1 flex overflow-hidden">
-              <ScrollArea className="flex-1 min-w-0">
-                <div className="p-3 space-y-2">
-                  {currentBlocks.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border rounded-lg bg-muted/20">
-                      <AlertCircle className="h-8 w-8 text-muted-foreground mb-3" />
-                      <p className="text-sm font-medium text-foreground mb-1">No blocks yet</p>
-                      <p className="text-xs text-muted-foreground mb-3">Add blocks below to start building this page layout.</p>
-                    </div>
-                  )}
+            {activePage.source === "custom" ? (
+              <div className="flex-1 flex overflow-hidden">
+                <ScrollArea className="flex-1 min-w-0">
+                  <div className="p-3 space-y-2">
+                    {currentBlocks.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-border rounded-lg bg-muted/20">
+                        <AlertCircle className="h-8 w-8 text-muted-foreground mb-3" />
+                        <p className="text-sm font-medium text-foreground mb-1">No blocks yet</p>
+                        <p className="text-xs text-muted-foreground mb-3">Add blocks below to start building this page layout.</p>
+                      </div>
+                    )}
 
-                  {currentBlocks.map((block, index) => (
-                    <div key={block.id}>
-                      {insertIndex === index && (
-                        <div className="h-1 bg-primary rounded-full mb-2 animate-pulse" />
-                      )}
-                      <div className={`border rounded-lg bg-card overflow-hidden ${insertIndex === index ? "border-primary" : "border-border"}`}>
-                        <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
-                          <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
-                          <span className="text-xs font-bold text-foreground flex-1">{block.name}</span>
-                          {blockTypeLabel(block) && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium">{blockTypeLabel(block)}</span>
-                          )}
-                          <span className="text-[10px] text-muted-foreground">{block.fields.length}f</span>
-                          <div className="flex items-center gap-0.5">
-                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveBlock(index, -1)} disabled={index === 0}>
-                              <ArrowUp className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveBlock(index, 1)} disabled={index === currentBlocks.length - 1}>
-                              <ArrowDown className="h-3 w-3" />
-                            </Button>
-                            <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => removeBlock(index)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                    {currentBlocks.map((block, index) => (
+                      <div key={block.id}>
+                        {insertIndex === index && (
+                          <div className="h-1 bg-primary rounded-full mb-2 animate-pulse" />
+                        )}
+                        <div className={`border rounded-lg bg-card overflow-hidden ${insertIndex === index ? "border-primary" : "border-border"}`}>
+                          <div className="flex items-center gap-2 px-3 py-2 bg-muted/30 border-b border-border">
+                            <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab" />
+                            <span className="text-xs font-bold text-foreground flex-1">{block.name}</span>
+                            {blockTypeLabel(block) && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-medium">{blockTypeLabel(block)}</span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground">{block.fields.length}f</span>
+                            <div className="flex items-center gap-0.5">
+                              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveBlock(index, -1)} disabled={index === 0}>
+                                <ArrowUp className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => moveBlock(index, 1)} disabled={index === currentBlocks.length - 1}>
+                                <ArrowDown className="h-3 w-3" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => removeBlock(index)}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="p-3 space-y-2">
+                            {block.fields.map(field => {
+                              const content = block.content?.[field.key] || { en: "", fr: "" };
+                              const isLong = field.type === "text" && (content.en.length > 80 || content.fr.length > 80);
+                              const isLink = field.type === "link";
+
+                              return (
+                                <div key={field.key}>
+                                  <label className="text-[10px] font-medium text-foreground mb-0.5 block">{field.label}</label>
+
+                                  {isLink && (
+                                    <div className="mb-1">
+                                      <Select
+                                        value={linkOptions.some(o => o.value === content.en) ? content.en : "__manual__"}
+                                        onValueChange={(val) => {
+                                          if (val !== "__manual__") {
+                                            updateBlockContent(index, field.key, "en", val);
+                                            updateBlockContent(index, field.key, "fr", val);
+                                          }
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-7 text-[10px]">
+                                          <SelectValue placeholder="Select a page…" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="__manual__">Manual URL</SelectItem>
+                                          {linkOptions.map(o => (
+                                            <SelectItem key={o.value} value={o.value}>{o.label} — {o.value}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <div>
+                                      <span className="text-[8px] text-muted-foreground uppercase block">EN</span>
+                                      {isLong ? (
+                                        <Textarea value={content.en} onChange={e => updateBlockContent(index, field.key, "en", e.target.value)} className="text-[10px] min-h-[40px] resize-y" placeholder="English..." />
+                                      ) : (
+                                        <Input type={isLink || field.type === "image_url" ? "url" : "text"} value={content.en} onChange={e => updateBlockContent(index, field.key, "en", e.target.value)} className="h-7 text-[10px]" placeholder="EN..." />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <span className="text-[8px] text-muted-foreground uppercase block">FR</span>
+                                      {isLong ? (
+                                        <Textarea value={content.fr} onChange={e => updateBlockContent(index, field.key, "fr", e.target.value)} className="text-[10px] min-h-[40px] resize-y" placeholder="French..." />
+                                      ) : (
+                                        <Input type={isLink || field.type === "image_url" ? "url" : "text"} value={content.fr} onChange={e => updateBlockContent(index, field.key, "fr", e.target.value)} className="h-7 text-[10px]" placeholder="FR..." />
+                                      )}
+                                    </div>
+                                  </div>
+                                  {field.type === "image_url" && content.en && (
+                                    <img src={content.en} alt="Preview" className="mt-1 h-10 rounded border border-border object-cover" onError={e => (e.currentTarget.style.display = "none")} />
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
+                      </div>
+                    ))}
 
-                        <div className="p-3 space-y-2">
-                          {block.fields.map(field => {
-                            const content = block.content?.[field.key] || { en: "", fr: "" };
-                            const isLong = field.type === "text" && (content.en.length > 80 || content.fr.length > 80);
-                            const isLink = field.type === "link";
+                    {insertIndex === currentBlocks.length && (
+                      <div className="h-1 bg-primary rounded-full animate-pulse" />
+                    )}
 
+                    {!showTemplatePicker ? (
+                      <Button variant="outline" className="w-full h-9 text-xs gap-1.5 border-dashed" onClick={() => { setShowTemplatePicker(true); setInsertIndex(currentBlocks.length); }}>
+                        <Plus className="h-3.5 w-3.5" /> Add Block
+                      </Button>
+                    ) : !showCustomBlock ? (
+                      <div className="border border-primary/30 rounded-lg p-3 bg-card space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-foreground">Choose Block Type</h4>
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { setShowTemplatePicker(false); setInsertIndex(null); }}>Cancel</Button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {BLOCK_TEMPLATES.map(tpl => {
+                            const Icon = tpl.icon;
                             return (
-                              <div key={field.key}>
-                                <label className="text-[10px] font-medium text-foreground mb-0.5 block">{field.label}</label>
-
-                                {isLink && (
-                                  <div className="mb-1">
-                                    <Select
-                                      value={linkOptions.some(o => o.value === content.en) ? content.en : "__manual__"}
-                                      onValueChange={(val) => {
-                                        if (val !== "__manual__") {
-                                          updateBlockContent(index, field.key, "en", val);
-                                          updateBlockContent(index, field.key, "fr", val);
-                                        }
-                                      }}
-                                    >
-                                      <SelectTrigger className="h-7 text-[10px]">
-                                        <SelectValue placeholder="Select a page…" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="__manual__">Manual URL</SelectItem>
-                                        {linkOptions.map(o => (
-                                          <SelectItem key={o.value} value={o.value}>{o.label} — {o.value}</SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                )}
-
-                                <div className="grid grid-cols-2 gap-1.5">
-                                  <div>
-                                    <span className="text-[8px] text-muted-foreground uppercase block">EN</span>
-                                    {isLong ? (
-                                      <Textarea value={content.en} onChange={e => updateBlockContent(index, field.key, "en", e.target.value)} className="text-[10px] min-h-[40px] resize-y" placeholder="English..." />
-                                    ) : (
-                                      <Input type={isLink || field.type === "image_url" ? "url" : "text"} value={content.en} onChange={e => updateBlockContent(index, field.key, "en", e.target.value)} className="h-7 text-[10px]" placeholder="EN..." />
-                                    )}
-                                  </div>
-                                  <div>
-                                    <span className="text-[8px] text-muted-foreground uppercase block">FR</span>
-                                    {isLong ? (
-                                      <Textarea value={content.fr} onChange={e => updateBlockContent(index, field.key, "fr", e.target.value)} className="text-[10px] min-h-[40px] resize-y" placeholder="French..." />
-                                    ) : (
-                                      <Input type={isLink || field.type === "image_url" ? "url" : "text"} value={content.fr} onChange={e => updateBlockContent(index, field.key, "fr", e.target.value)} className="h-7 text-[10px]" placeholder="FR..." />
-                                    )}
-                                  </div>
-                                </div>
-                                {field.type === "image_url" && content.en && (
-                                  <img src={content.en} alt="Preview" className="mt-1 h-10 rounded border border-border object-cover" onError={e => (e.currentTarget.style.display = "none")} />
-                                )}
-                              </div>
+                              <button
+                                key={tpl.type}
+                                onClick={() => insertTemplateBlock(tpl)}
+                                className="flex flex-col items-center gap-1 p-2.5 rounded-md border border-border hover:border-primary hover:bg-primary/5 transition-colors text-center"
+                              >
+                                <Icon className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-[10px] font-medium text-foreground leading-tight">{tpl.label}</span>
+                              </button>
                             );
                           })}
                         </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {insertIndex === currentBlocks.length && (
-                    <div className="h-1 bg-primary rounded-full animate-pulse" />
-                  )}
-
-                  {/* Add block */}
-                  {!showTemplatePicker ? (
-                    <Button variant="outline" className="w-full h-9 text-xs gap-1.5 border-dashed" onClick={() => { setShowTemplatePicker(true); setInsertIndex(currentBlocks.length); }}>
-                      <Plus className="h-3.5 w-3.5" /> Add Block
-                    </Button>
-                  ) : !showCustomBlock ? (
-                    <div className="border border-primary/30 rounded-lg p-3 bg-card space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-foreground">Choose Block Type</h4>
-                        <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => { setShowTemplatePicker(false); setInsertIndex(null); }}>Cancel</Button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {BLOCK_TEMPLATES.map(tpl => {
-                          const Icon = tpl.icon;
-                          return (
-                            <button
-                              key={tpl.type}
-                              onClick={() => insertTemplateBlock(tpl)}
-                              className="flex flex-col items-center gap-1 p-2.5 rounded-md border border-border hover:border-primary hover:bg-primary/5 transition-colors text-center"
-                            >
-                              <Icon className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-[10px] font-medium text-foreground leading-tight">{tpl.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <Button variant="ghost" size="sm" className="w-full h-7 text-[10px] gap-1 text-muted-foreground" onClick={() => setShowCustomBlock(true)}>
-                        <Wrench className="h-3 w-3" /> Custom Block…
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="border border-primary/30 rounded-lg p-3 bg-card space-y-2">
-                      <h4 className="text-xs font-bold text-foreground">Custom Block</h4>
-                      <Input placeholder="Block name (e.g. Hero Section)" value={newBlockName} onChange={e => setNewBlockName(e.target.value)} className="h-7 text-xs" />
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase">Fields</p>
-                        {newBlockFields.map((field, i) => (
-                          <div key={i} className="flex items-center gap-1.5">
-                            <Input placeholder="Label" value={field.label} onChange={e => updateNewBlockField(i, { label: e.target.value })} className="h-6 text-[10px] flex-1" />
-                            <select value={field.type} onChange={e => updateNewBlockField(i, { type: e.target.value as any })} className="h-6 text-[10px] rounded border border-input bg-background px-1.5">
-                              <option value="text">Text</option>
-                              <option value="link">Link / Button</option>
-                              <option value="image_url">Image URL</option>
-                            </select>
-                            <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => removeNewBlockField(i)} disabled={newBlockFields.length <= 1}>
-                              <Trash2 className="h-2.5 w-2.5" />
-                            </Button>
-                          </div>
-                        ))}
-                        <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-1" onClick={addFieldToNewBlock}>
-                          <Plus className="h-2.5 w-2.5" /> Add Field
+                        <Button variant="ghost" size="sm" className="w-full h-7 text-[10px] gap-1 text-muted-foreground" onClick={() => setShowCustomBlock(true)}>
+                          <Wrench className="h-3 w-3" /> Custom Block…
                         </Button>
                       </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" className="h-7 text-xs flex-1" onClick={addCustomBlock} disabled={!newBlockName.trim()}>Add Block</Button>
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowCustomBlock(false); }}>Back</Button>
+                    ) : (
+                      <div className="border border-primary/30 rounded-lg p-3 bg-card space-y-2">
+                        <h4 className="text-xs font-bold text-foreground">Custom Block</h4>
+                        <Input placeholder="Block name (e.g. Hero Section)" value={newBlockName} onChange={e => setNewBlockName(e.target.value)} className="h-7 text-xs" />
+                        <div className="space-y-1.5">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase">Fields</p>
+                          {newBlockFields.map((field, i) => (
+                            <div key={i} className="flex items-center gap-1.5">
+                              <Input placeholder="Label" value={field.label} onChange={e => updateNewBlockField(i, { label: e.target.value })} className="h-6 text-[10px] flex-1" />
+                              <select value={field.type} onChange={e => updateNewBlockField(i, { type: e.target.value as any })} className="h-6 text-[10px] rounded border border-input bg-background px-1.5">
+                                <option value="text">Text</option>
+                                <option value="link">Link / Button</option>
+                                <option value="image_url">Image URL</option>
+                              </select>
+                              <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => removeNewBlockField(i)} disabled={newBlockFields.length <= 1}>
+                                <Trash2 className="h-2.5 w-2.5" />
+                              </Button>
+                            </div>
+                          ))}
+                          <Button variant="ghost" size="sm" className="h-5 text-[10px] gap-1" onClick={addFieldToNewBlock}>
+                            <Plus className="h-2.5 w-2.5" /> Add Field
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="h-7 text-xs flex-1" onClick={addCustomBlock} disabled={!newBlockName.trim()}>Add Block</Button>
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setShowCustomBlock(false); }}>Back</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+
+                <div className="w-[400px] border-l border-border bg-muted/30 flex flex-col shrink-0" style={{ height: "calc(100vh - 88px)" }}>
+                  <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2 shrink-0">
+                    <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Live Preview</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto">375px mobile · {previewLocale.toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <div className="mx-auto w-[375px] overflow-hidden rounded-xl border-2 border-border bg-background shadow-lg">
+                      <div className="pointer-events-none min-h-[667px]">
+                        <CmsLayoutDocument
+                          title={activePage.title}
+                          blocks={currentBlocks}
+                          locale={previewLocale}
+                          className="min-h-[667px]"
+                        />
                       </div>
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
-
-              {/* Live preview */}
-              <div className="w-[400px] border-l border-border bg-muted/30 flex flex-col shrink-0" style={{ height: "calc(100vh - 88px)" }}>
-                <div className="px-3 py-2 border-b border-border bg-card/50 flex items-center gap-2 shrink-0">
-                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Live Preview</span>
-                  <span className="text-[10px] text-muted-foreground ml-auto">375px mobile</span>
-                </div>
-                <div className="flex-1 overflow-y-auto p-3">
-                  {previewRoute && (
-                    <div className="w-[375px] rounded-xl border-2 border-border bg-background overflow-hidden shadow-lg relative mx-auto" style={{ height: "3000px" }}>
-                      <iframe
-                        key={previewKey}
-                        src={`${window.location.origin}${previewRoute}`}
-                        className="w-full border-0"
-                        title="Page Preview"
-                        style={{ pointerEvents: "none", height: "3000px" }}
-                      />
-                    </div>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-6">
+                <div className="max-w-md rounded-lg border border-border bg-card p-5 text-center">
+                  <AlertCircle className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">Layout publish is stabilized on custom pages</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Built-in app routes still render from their React screens, so use the Content tab for reliable frontend changes there.</p>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">

@@ -2,6 +2,8 @@
  * Unified CMS page registry — single source of truth for app + custom pages.
  */
 
+import { normalizeLayoutBlocks } from "./cmsLayout";
+
 export interface CmsPageRecord {
   source: "app" | "custom";
   slug: string;
@@ -75,7 +77,7 @@ export function buildPageRegistry(layouts: PageLayoutRow[]): CmsPageRecord[] {
       pageLayoutId: layout?.id,
       isPublished: layout?.is_published ?? false,
       parentSlug: null,
-      blocks: layout?.blocks ?? [],
+      blocks: normalizeLayoutBlocks(layout?.blocks ?? [], ap.slug),
       updatedAt: layout?.updated_at ?? null,
     });
   }
@@ -92,7 +94,7 @@ export function buildPageRegistry(layouts: PageLayoutRow[]): CmsPageRecord[] {
       pageLayoutId: l.id,
       isPublished: l.is_published,
       parentSlug: l.parent_slug || null,
-      blocks: l.blocks ?? [],
+      blocks: normalizeLayoutBlocks(l.blocks ?? [], l.page_slug),
       updatedAt: l.updated_at,
     });
   }
