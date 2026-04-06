@@ -183,6 +183,14 @@
     border-color: hsl(25 8% 88% / 0.8);
   }
 
+  .dark .ios-card {
+    border-color: hsl(0 0% 100% / 0.06);
+    box-shadow:
+      0 0 0 0.5px hsl(0 0% 100% / 0.04),
+      0 1px 3px -1px hsl(0 0% 0% / 0.5),
+      0 4px 16px -6px hsl(0 0% 0% / 0.4);
+  }
+
   :root .ios-blur {
     backdrop-filter: saturate(200%) blur(24px);
     -webkit-backdrop-filter: saturate(200%) blur(24px);
