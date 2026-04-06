@@ -159,8 +159,21 @@ function isValidUrl(str: string): boolean {
   try { new URL(str.trim()); return true; } catch { return false; }
 }
 
-export default function CmsContentEditor() {
+interface CmsContentEditorProps {
+  initialSlug?: string | null;
+  onSlugChange?: (slug: string) => void;
+}
+
+interface CustomPageLayout {
+  page_slug: string;
+  title: string;
+  blocks: any[];
+  is_published: boolean;
+}
+
+export default function CmsContentEditor({ initialSlug, onSlugChange }: CmsContentEditorProps = {}) {
   const [dbBlocks, setDbBlocks] = useState<ContentBlock[]>([]);
+  const [customLayouts, setCustomLayouts] = useState<CustomPageLayout[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -234,19 +247,69 @@ export default function CmsContentEditor() {
     for (const page of Object.keys(linkPairsByPage)) {
       if (!result[page]) result[page] = {};
     }
+    // Add custom pages from page_layouts that aren't already in i18n
+    const APP_SLUGS = Object.keys(PAGE_NAMES);
+    for (const layout of customLayouts) {
+      const slug = layout.page_slug;
+      if (APP_SLUGS.includes(slug)) continue;
+      if (searchLower && !slug.toLowerCase().includes(searchLower) && !layout.title.toLowerCase().includes(searchLower)) continue;
+      if (!result[slug]) result[slug] = {};
+      // Add block fields as editable content sections
+      if (layout.blocks && layout.blocks.length > 0) {
+        for (const block of layout.blocks) {
+          const sectionKey = block.name || block.blockType || "main";
+          if (!result[slug][sectionKey]) result[slug][sectionKey] = [];
+          for (const field of (block.fields || [])) {
+            const content = block.content?.[field.key] || { en: "", fr: "" };
+            const mapKey = `${slug}|${sectionKey}|${field.key}`;
+            // Only add if not already present
+            if (!result[slug][sectionKey].some((i: any) => i.mapKey === mapKey)) {
+              result[slug][sectionKey].push({ key: field.key, en: content.en || "", fr: content.fr || "", type: field.type || "text", mapKey });
+            }
+          }
+        }
+      }
+    }
     return result;
-  }, [allContent, search, linkPairsByPage]);
+  }, [allContent, search, linkPairsByPage, customLayouts]);
 
-  const pages = useMemo(() => Object.keys(grouped).sort((a, b) => pageName(a).localeCompare(pageName(b))), [grouped]);
+  // Extend PAGE_NAMES for custom pages
+  const extendedPageName = useCallback((key: string) => {
+    const custom = customLayouts.find(l => l.page_slug === key);
+    if (custom) return custom.title;
+    return pageName(key);
+  }, [customLayouts]);
+
+  const pages = useMemo(() => Object.keys(grouped).sort((a, b) => extendedPageName(a).localeCompare(extendedPageName(b))), [grouped, extendedPageName]);
 
   useEffect(() => {
     if (pages.length > 0 && !selectedPage) setSelectedPage(pages[0]);
   }, [pages, selectedPage]);
 
+  // Sync with shared slug from parent
+  useEffect(() => {
+    if (initialSlug && pages.includes(initialSlug) && selectedPage !== initialSlug) {
+      setSelectedPage(initialSlug);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSlug, pages]);
+
+  const handleSelectPage = (page: string) => {
+    setSelectedPage(page);
+    onSlugChange?.(page);
+  };
+
   const fetchBlocks = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await (supabase as any).from("content_blocks").select("*").order("page");
-    if (!error && data) setDbBlocks(data);
+    const [blocksResult, layoutsResult] = await Promise.all([
+      (supabase as any).from("content_blocks").select("*").order("page"),
+      (supabase as any).from("page_layouts").select("page_slug, title, blocks, is_published").order("title"),
+    ]);
+    if (!blocksResult.error && blocksResult.data) setDbBlocks(blocksResult.data);
+    if (!layoutsResult.error && layoutsResult.data) {
+      const APP_SLUGS = Object.keys(PAGE_NAMES);
+      setCustomLayouts(layoutsResult.data.filter((l: any) => !APP_SLUGS.includes(l.page_slug)).map((l: any) => ({ ...l, blocks: l.blocks || [] })));
+    }
     setLoading(false);
   }, []);
 
@@ -343,6 +406,10 @@ export default function CmsContentEditor() {
     setSaving(null);
   };
 
+  const isCustomPage = useCallback((page: string) => {
+    return customLayouts.some(l => l.page_slug === page);
+  }, [customLayouts]);
+
   const saveSection = async (page: string, section: string) => {
     const sectionKey = `${page}|${section}`;
     const prefix = `${page}|${section}|`;
@@ -352,33 +419,60 @@ export default function CmsContentEditor() {
     setSaving(sectionKey);
     let hasError = false;
 
-    for (const ek of relevantEdits) {
-      const parts = ek.split("|");
-      const locale = parts[3];
-      const [p, s, k] = [parts[0], parts[1], parts[2]];
-      const value = edits[ek];
-      if (value === undefined) continue;
-
-      const fieldType = allContent.get(`${p}|${s}|${k}`)?.type || "text";
-
-      if (fieldType === "link" || fieldType === "image_url") {
-        try {
-          if (value.trim()) new URL(value.trim());
-        } catch {
-          toast({ title: "Invalid URL", description: `"${fieldLabel(k)}" must be a valid URL.`, variant: "destructive" });
-          hasError = true;
-          continue;
+    if (isCustomPage(page)) {
+      // For custom pages, update blocks JSON in page_layouts
+      const layout = customLayouts.find(l => l.page_slug === page);
+      if (!layout) { setSaving(null); return; }
+      const updatedBlocks = [...layout.blocks];
+      for (const ek of relevantEdits) {
+        const parts = ek.split("|");
+        const locale = parts[3] as "en" | "fr";
+        const [, s, k] = [parts[0], parts[1], parts[2]];
+        const value = edits[ek];
+        if (value === undefined) continue;
+        const block = updatedBlocks.find((b: any) => (b.name === s || b.blockType === s));
+        if (block && block.content) {
+          if (!block.content[k]) block.content[k] = { en: "", fr: "" };
+          block.content[k][locale] = value;
         }
       }
-
-      const existing = dbBlocks.find(b => b.page === p && b.section === s && b.key === k && b.locale === locale);
-      const result = existing
-        ? await (supabase as any).from("content_blocks").update({ value, type: fieldType, updated_at: new Date().toISOString() }).eq("id", existing.id)
-        : await (supabase as any).from("content_blocks").insert({ page: p, section: s, key: k, type: fieldType, locale, value });
-
-      if (result.error) {
+      const { error } = await (supabase as any).from("page_layouts")
+        .update({ blocks: updatedBlocks, updated_at: new Date().toISOString() })
+        .eq("page_slug", page);
+      if (error) {
         hasError = true;
-        toast({ title: "Save failed", description: result.error.message, variant: "destructive" });
+        toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      }
+    } else {
+      // For app pages, save to content_blocks table
+      for (const ek of relevantEdits) {
+        const parts = ek.split("|");
+        const locale = parts[3];
+        const [p, s, k] = [parts[0], parts[1], parts[2]];
+        const value = edits[ek];
+        if (value === undefined) continue;
+
+        const fieldType = allContent.get(`${p}|${s}|${k}`)?.type || "text";
+
+        if (fieldType === "link" || fieldType === "image_url") {
+          try {
+            if (value.trim()) new URL(value.trim());
+          } catch {
+            toast({ title: "Invalid URL", description: `"${fieldLabel(k)}" must be a valid URL.`, variant: "destructive" });
+            hasError = true;
+            continue;
+          }
+        }
+
+        const existing = dbBlocks.find(b => b.page === p && b.section === s && b.key === k && b.locale === locale);
+        const result = existing
+          ? await (supabase as any).from("content_blocks").update({ value, type: fieldType, updated_at: new Date().toISOString() }).eq("id", existing.id)
+          : await (supabase as any).from("content_blocks").insert({ page: p, section: s, key: k, type: fieldType, locale, value });
+
+        if (result.error) {
+          hasError = true;
+          toast({ title: "Save failed", description: result.error.message, variant: "destructive" });
+        }
       }
     }
 
@@ -431,12 +525,12 @@ export default function CmsContentEditor() {
               return (
                 <button
                   key={page}
-                  onClick={() => setSelectedPage(page)}
+                  onClick={() => handleSelectPage(page)}
                   className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors ${
                     selectedPage === page ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50 text-foreground"
                   }`}
                 >
-                  <div className="font-medium">{pageName(page)}</div>
+                  <div className="font-medium">{extendedPageName(page)}</div>
                   <div className="text-[10px] text-muted-foreground">
                     {fieldCount} fields{linkCount > 0 ? ` · ${linkCount} links` : ""}
                   </div>
@@ -452,7 +546,7 @@ export default function CmsContentEditor() {
         {selectedPage ? (
           <>
             <div className="px-5 py-3 border-b border-border bg-card/50">
-              <h2 className="text-sm font-bold text-foreground">{pageName(selectedPage)}</h2>
+              <h2 className="text-sm font-bold text-foreground">{extendedPageName(selectedPage)}</h2>
               <p className="text-[10px] text-muted-foreground">
                 {currentSections.length} sections{currentLinkPairs.length > 0 ? ` · ${currentLinkPairs.length} link pairs` : ""} · Edit content for English and French
               </p>

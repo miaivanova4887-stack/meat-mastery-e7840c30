@@ -39,9 +39,10 @@ interface PageLayout {
 
 interface Props {
   onNavigateToLayout: (slug: string) => void;
+  onNavigateToContent?: (slug: string) => void;
 }
 
-export default function CmsPagesTab({ onNavigateToLayout }: Props) {
+export default function CmsPagesTab({ onNavigateToLayout, onNavigateToContent }: Props) {
   const [layouts, setLayouts] = useState<PageLayout[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -169,6 +170,11 @@ export default function CmsPagesTab({ onNavigateToLayout }: Props) {
                       <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit in Layout Builder" onClick={() => onNavigateToLayout(page.slug)}>
                         <Layout className="h-3 w-3" />
                       </Button>
+                      {onNavigateToContent && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" title="Edit Content" onClick={() => onNavigateToContent(page.slug)}>
+                          <FileText className="h-3 w-3" />
+                        </Button>
+                      )}
                       <a href={page.path} target="_blank" rel="noopener noreferrer">
                         <Button variant="ghost" size="icon" className="h-6 w-6" title="Preview">
                           <ExternalLink className="h-3 w-3" />

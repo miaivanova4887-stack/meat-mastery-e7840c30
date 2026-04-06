@@ -15,13 +15,7 @@ export default function CmsEditor() {
   const { user, loading: authLoading } = useAuth();
   const [adminStatus, setAdminStatus] = useState<'checking' | 'admin' | 'denied'>('checking');
   const [activeTab, setActiveTab] = useState<Tab>("content");
-
-  console.log('CmsEditor state:', {
-    authLoading,
-    adminStatus,
-    userEmail: user?.email,
-    userId: user?.id,
-  });
+  const [sharedSlug, setSharedSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -60,6 +54,11 @@ export default function CmsEditor() {
     { key: "pages", label: "Pages", icon: <FileText className="h-4 w-4" /> },
   ];
 
+  const navigateToTab = (tab: Tab, slug?: string) => {
+    if (slug) setSharedSlug(slug);
+    setActiveTab(tab);
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       <div className="flex items-center border-b border-border bg-card px-4 shrink-0">
@@ -86,10 +85,10 @@ export default function CmsEditor() {
       </div>
 
       <div className="flex-1 overflow-hidden">
-        {activeTab === "content" && <CmsContentEditor />}
-        {activeTab === "layout" && <CmsLayoutBuilder />}
+        {activeTab === "content" && <CmsContentEditor initialSlug={sharedSlug} onSlugChange={setSharedSlug} />}
+        {activeTab === "layout" && <CmsLayoutBuilder initialSlug={sharedSlug} onSlugChange={setSharedSlug} />}
         {activeTab === "pages" && (
-          <CmsPagesTab onNavigateToLayout={(slug) => { setActiveTab("layout"); }} />
+          <CmsPagesTab onNavigateToLayout={(slug) => navigateToTab("layout", slug)} onNavigateToContent={(slug) => navigateToTab("content", slug)} />
         )}
       </div>
     </div>

@@ -69,7 +69,12 @@ const BLOCK_TEMPLATES = [
 let blockIdCounter = 0;
 function newBlockId() { return `block_${Date.now()}_${blockIdCounter++}`; }
 
-export default function CmsLayoutBuilder() {
+interface CmsLayoutBuilderProps {
+  initialSlug?: string | null;
+  onSlugChange?: (slug: string) => void;
+}
+
+export default function CmsLayoutBuilder({ initialSlug, onSlugChange }: CmsLayoutBuilderProps = {}) {
   const [layouts, setLayouts] = useState<PageLayout[]>([]);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [currentBlocks, setCurrentBlocks] = useState<LayoutBlock[]>([]);
@@ -95,6 +100,19 @@ export default function CmsLayoutBuilder() {
   }, []);
 
   useEffect(() => { fetchLayouts(); }, [fetchLayouts]);
+
+  // Sync with shared slug from parent
+  useEffect(() => {
+    if (initialSlug && !loading && layouts.length > 0 && selectedSlug !== initialSlug) {
+      selectPage(initialSlug);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSlug, loading, layouts.length]);
+
+  const handleSelectPage = (slug: string) => {
+    selectPage(slug);
+    onSlugChange?.(slug);
+  };
 
   const selectPage = async (slug: string) => {
     setSelectedSlug(slug);
@@ -337,7 +355,7 @@ export default function CmsLayoutBuilder() {
             {allPages.filter(p => p.isApp).map(page => (
               <button
                 key={page.slug}
-                onClick={() => selectPage(page.slug)}
+                onClick={() => handleSelectPage(page.slug)}
                 className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                   selectedSlug === page.slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                 }`}
@@ -356,7 +374,7 @@ export default function CmsLayoutBuilder() {
                 {customParents.map(page => (
                   <div key={page.page_slug}>
                     <button
-                      onClick={() => selectPage(page.page_slug)}
+                      onClick={() => handleSelectPage(page.page_slug)}
                       className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                         selectedSlug === page.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                       }`}
@@ -370,7 +388,7 @@ export default function CmsLayoutBuilder() {
                     {customChildren.filter(c => c.parent_slug === page.page_slug).map(child => (
                       <button
                         key={child.page_slug}
-                        onClick={() => selectPage(child.page_slug)}
+                        onClick={() => handleSelectPage(child.page_slug)}
                         className={`w-full text-left pl-7 pr-3 py-1.5 rounded-md text-xs transition-colors ${
                           selectedSlug === child.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                         }`}
@@ -388,7 +406,7 @@ export default function CmsLayoutBuilder() {
                 {customChildren.filter(c => !customParents.some(p => p.page_slug === c.parent_slug)).map(page => (
                   <button
                     key={page.page_slug}
-                    onClick={() => selectPage(page.page_slug)}
+                    onClick={() => handleSelectPage(page.page_slug)}
                     className={`w-full text-left px-3 py-1.5 rounded-md text-xs transition-colors ${
                       selectedSlug === page.page_slug ? "bg-primary/10 text-primary font-semibold" : "hover:bg-accent/50"
                     }`}
