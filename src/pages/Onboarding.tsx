@@ -519,11 +519,11 @@ const Onboarding = () => {
               {HEALTH_TARGET_CATEGORIES.map((cat) => (
                 <div key={cat.catKey}>
                   {/* Category header — uppercase label + accent rule */}
-                  <div className="mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <div className="mb-2.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                       {healthTargetLabels.get(cat.catKey) || cat.catKey}
                     </span>
-                    <div className="h-[2px] bg-primary/30 mt-1 w-8 rounded-full" />
+                    <div className="h-[2px] bg-primary/20 mt-1.5 w-6 rounded-full" />
                   </div>
 
                   {/* Segmented control block */}
