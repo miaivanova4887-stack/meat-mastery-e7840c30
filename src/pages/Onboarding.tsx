@@ -527,7 +527,7 @@ const Onboarding = () => {
                   </div>
 
                   {/* Segmented control block */}
-                  <div className="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/30">
+                  <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/30">
                     {cat.targets.map((targetKey) => {
                       const selected = healthTargets.includes(targetKey);
                       return (
@@ -535,15 +535,15 @@ const Onboarding = () => {
                           key={targetKey}
                           type="button"
                           onClick={() => toggleHealthTarget(targetKey)}
-                          className={`w-full flex items-center gap-3 h-[44px] px-4 transition-all duration-150 active:scale-[0.99] ${
+                          className={`w-full flex items-center gap-3 h-[52px] px-4 transition-all duration-150 active:scale-[0.99] ${
                             selected
                               ? "onboarding-segment-selected"
-                              : "onboarding-segment-idle hover:bg-muted/30"
+                              : "onboarding-segment-idle"
                           }`}
                         >
                           <span
-                            className={`flex-1 text-[13px] font-medium text-left ${
-                              selected ? "text-primary-foreground" : "text-foreground"
+                            className={`flex-1 text-[14px] font-medium text-left ${
+                              selected ? "text-primary" : "text-foreground"
                             }`}
                           >
                             {healthTargetLabels.get(targetKey) || targetKey}
