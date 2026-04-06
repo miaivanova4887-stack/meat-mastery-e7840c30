@@ -1,7 +1,7 @@
-import { ArrowLeft, Plus, X, Trash2, ShoppingCart, ShoppingBag, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera } from "lucide-react";
+import { ArrowLeft, Plus, X, Trash2, ShoppingCart, ShoppingBag, Flame, Check, Sparkles, Loader2, ChevronDown, ChevronUp, RefreshCw, Camera, CalendarPlus } from "lucide-react";
 import TeaserGate from "@/components/TeaserGate";
-import { useNavigate } from "react-router-dom";
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, activeSlots, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { recipes, TIER_LABELS, type Recipe, type DietTier } from "@/data/recipes";
@@ -42,6 +42,7 @@ function isToday(day: DayKey): boolean {
 
 const MealPlan = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t } = useTranslation();
   const { plan, assignMeal, removeMeal, clearDay, clearWeek, dayTotals, toggleCompleted, isCompleted, dayCompletionCount } = useMealPlan();
   const { customRecipes, addRecipe } = useCustomRecipes();
@@ -93,6 +94,32 @@ const MealPlan = () => {
   const currentSlot = useMemo(() => isToday(activeDay) ? getCurrentSlot(userSlots) : null, [activeDay, userSlots]);
 
   const allRecipes = useMemo(() => [...customRecipes, ...recipes], [customRecipes]);
+
+  // Visual placement mode — recipe passed via route state from Recipes page
+  const [assignRecipe, setAssignRecipe] = useState<PlannedMeal | null>(null);
+  useEffect(() => {
+    const state = location.state as { assignRecipe?: { name: string; cal: string; protein: string; fat: string; time: string; serving: string } } | null;
+    if (state?.assignRecipe) {
+      const r = state.assignRecipe;
+      setAssignRecipe({
+        recipeName: r.name,
+        cal: r.cal,
+        protein: r.protein,
+        fat: r.fat,
+        time: r.time,
+        serving: r.serving,
+      });
+      // Clear the state so refreshing doesn't re-enter placement mode
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
+
+  const handlePlacementPick = useCallback((slot: MealSlot) => {
+    if (!assignRecipe) return;
+    assignMeal(activeDay, slot, assignRecipe);
+    toast.success(`${assignRecipe.recipeName} → ${SLOT_LABELS[slot].replace(/^.*?\s/, "")} on ${activeDay}`);
+    setAssignRecipe(null);
+  }, [assignRecipe, activeDay, assignMeal]);
 
   // Recipe detail drawer
   const [detailMeal, setDetailMeal] = useState<{ day: DayKey; slot: MealSlot; meal: PlannedMeal } | null>(null);
@@ -416,6 +443,24 @@ const MealPlan = () => {
       </div>
 
       <div className="px-4 pt-4 space-y-4">
+        {/* Placement mode banner */}
+        {assignRecipe && (
+          <div className="ios-card p-3.5 flex items-center gap-3 border-2 border-primary/40 bg-primary/5">
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <CalendarPlus size={18} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-semibold text-foreground truncate">Placing: {assignRecipe.recipeName}</p>
+              <p className="text-[11px] text-muted-foreground">Tap a meal slot below to place it</p>
+            </div>
+            <button
+              onClick={() => setAssignRecipe(null)}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
         {/* AI Generator Banner */}
         <TeaserGate requiredTier="elite" featureName="AI Meal Planner">
           <button
@@ -590,7 +635,10 @@ const MealPlan = () => {
                     }
                   }}
                   onClick={() => {
-                    if (meal && !swipedSlot) {
+                    if (assignRecipe && meal) {
+                      // In placement mode, tapping occupied slot replaces it
+                      handlePlacementPick(slot);
+                    } else if (meal && !swipedSlot) {
                       setDetailMeal({ day: activeDay, slot, meal });
                     } else if (swipedSlot) {
                       setSwipedSlot(null);
@@ -674,6 +722,13 @@ const MealPlan = () => {
                         )}
                       </label>
                     </div>
+                  ) : assignRecipe ? (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handlePlacementPick(slot); }}
+                      className="w-full flex items-center justify-center gap-2 py-4 rounded-xl border-2 border-dashed border-primary/50 text-primary bg-primary/5 hover:bg-primary/10 transition-all text-sm font-semibold animate-pulse"
+                    >
+                      <CalendarPlus size={16} /> + Add here
+                    </button>
                   ) : (
                     <div className="flex gap-2">
                       <button

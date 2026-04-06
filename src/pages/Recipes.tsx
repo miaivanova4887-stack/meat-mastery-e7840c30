@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart, Check, Pencil } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Search, X, ChefHat, Plus, Trash2, ChevronDown, ChevronUp, Users, ShoppingBag, Heart, Check, Pencil, CalendarPlus } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { recipes, TIER_LABELS, CUISINE_LABELS, type DietTier, type CravingType, type CuisineType, type CustomRecipe, type Ingredient } from "@/data/recipes";
@@ -10,6 +10,7 @@ import { useShoppingBag, parseAmount } from "@/contexts/ShoppingBagContext";
 import { MealImage } from "@/hooks/useMealImage";
 import { toast } from "sonner";
 import { useFavorites } from "@/hooks/useFavorites";
+import AddToPlanSheet, { type AddToPlanRecipe } from "@/components/AddToPlanSheet";
 import TeaserGate from "@/components/TeaserGate";
 import heroMealMale from "@/assets/hero-meal-male.jpg";
 import heroMealFemale from "@/assets/hero-meal-female.jpg";
@@ -53,6 +54,7 @@ const Recipes = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [planTarget, setPlanTarget] = useState<AddToPlanRecipe | null>(null);
   const isFrench = i18n.language.startsWith("fr");
 
   // Read tag from URL search params
@@ -181,15 +183,30 @@ const Recipes = () => {
             </div>
           </div>
           <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-            <button
-              onClick={(e) => { e.stopPropagation(); toggleFavorite(r.name); }}
-              className="p-1.5 -m-1.5 rounded-lg transition-all active:scale-90"
-            >
-              <Heart
-                size={18}
-                className={`transition-colors ${isFavorite(r.name) ? "fill-destructive text-destructive" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
-              />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPlanTarget({ name: r.name, cal: r.cal, protein: r.protein, fat: r.fat, time: r.time, serving: r.serving });
+                }}
+                className="p-1.5 -m-1.5 rounded-lg transition-all active:scale-90"
+                title="Add to plan"
+              >
+                <CalendarPlus
+                  size={18}
+                  className="text-muted-foreground/40 hover:text-primary transition-colors"
+                />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleFavorite(r.name); }}
+                className="p-1.5 -m-1.5 rounded-lg transition-all active:scale-90"
+              >
+                <Heart
+                  size={18}
+                  className={`transition-colors ${isFavorite(r.name) ? "fill-destructive text-destructive" : "text-muted-foreground/40 hover:text-muted-foreground"}`}
+                />
+              </button>
+            </div>
             <span className="text-xs font-semibold text-primary">{scaledProtein} P</span>
             <span className="text-xs font-medium text-muted-foreground">{scaledFat} F</span>
           </div>
@@ -340,6 +357,14 @@ const Recipes = () => {
             </button>
           ))}
         </div>
+
+        {/* Place in Plan visual action */}
+        <button
+          onClick={() => navigate("/meal-plan", { state: { assignRecipe: { name: r.name, cal: r.cal, protein: r.protein, fat: r.fat, time: r.time, serving: r.serving } } })}
+          className="flex items-center gap-1.5 mt-3 text-xs text-primary font-medium hover:text-primary/80 transition-colors min-h-[32px]"
+        >
+          <CalendarPlus size={13} /> Place in Plan →
+        </button>
         </div>
       </div>
     );
@@ -471,6 +496,12 @@ const Recipes = () => {
           {totalCount === 0 && <div className="text-center py-12 text-muted-foreground text-sm">{t("recipes.noRecipes")}</div>}
         </div>
       </div>
+
+      <AddToPlanSheet
+        open={!!planTarget}
+        onOpenChange={(open) => { if (!open) setPlanTarget(null); }}
+        recipe={planTarget}
+      />
     </div>
   );
 };
