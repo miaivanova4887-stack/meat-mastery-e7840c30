@@ -198,10 +198,10 @@
   :root .hero-gradient {
     background: linear-gradient(to top,
       hsl(var(--background)) 0%,
-      hsl(var(--background)) 12%,
-      hsl(var(--background) / 0.95) 22%,
-      hsl(var(--background) / 0.6) 42%,
-      transparent 60%,
+      hsl(var(--background)) 8%,
+      hsl(var(--background) / 0.95) 15%,
+      hsl(var(--background) / 0.6) 35%,
+      transparent 55%,
       hsl(0 0% 0% / 0.15) 100%
     );
   }
@@ -231,7 +231,7 @@
   }
 
   :root .hero-text-overlay .text-muted-foreground {
-    color: hsl(0 0% 100% / 0.95);
+    color: hsl(0 0% 100% / 0.85);
   }
 
   :root .hero-text-overlay .text-primary {
