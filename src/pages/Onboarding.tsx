@@ -396,13 +396,13 @@ const Onboarding = () => {
               <div
                 className={`rounded-full transition-all duration-150 ${
                   i <= step
-                    ? "w-2 h-2 bg-primary"
+                    ? "w-2.5 h-2.5 bg-primary"
                     : "w-1.5 h-1.5 bg-border"
                 }`}
               />
               {i < totalSteps - 1 && (
                 <div
-                  className={`w-2 h-px transition-colors duration-150 ${
+                  className={`w-3 h-px transition-colors duration-150 ${
                     i < step ? "bg-primary/40" : "bg-border/40"
                   }`}
                 />
@@ -411,7 +411,7 @@ const Onboarding = () => {
           ))}
         </div>
 
-        <span className="text-[10px] font-bold text-muted-foreground tracking-wider tabular-nums uppercase">
+        <span className="text-[10px] font-semibold text-muted-foreground tracking-wide tabular-nums">
           {step + 1}/{totalSteps}
         </span>
       </div>
@@ -424,12 +424,12 @@ const Onboarding = () => {
             : "opacity-100 translate-y-0"
         }`}
       >
-        {/* Clinical header */}
-        <div className="mb-6">
-          <h1 className="text-[22px] font-bold uppercase tracking-[0.04em] text-foreground leading-[1.2]">
+        {/* Header */}
+        <div className="mb-7">
+          <h1 className="text-[26px] font-extrabold tracking-[-0.02em] text-foreground leading-[1.15]">
             {current.title}
           </h1>
-          <p className="text-[12px] text-muted-foreground mt-1.5 leading-relaxed tracking-wide">
+          <p className="text-[13px] text-muted-foreground mt-2 leading-relaxed tracking-normal">
             {isStep4 && healthTargetLabels.get("subtitle")
               ? healthTargetLabels.get("subtitle")
               : current.subtitle}
@@ -439,34 +439,33 @@ const Onboarding = () => {
         {/* Options — segmented control blocks */}
         <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
           {current.type === "options" && (
-            <div className="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/30">
+            <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/30">
               {current.options.map((opt, i) => {
                 const selected = current.multiSelect ? multiSelected.includes(i) : false;
                 return (
                   <button
                     key={`${step}-${i}`}
                     onClick={() => handleSelect(i)}
-                    className={`w-full flex items-center gap-3 h-[44px] px-4 transition-all duration-150 text-left active:scale-[0.99] ${
+                    className={`w-full flex items-center gap-3 h-[52px] px-4 transition-all duration-150 text-left active:scale-[0.99] ${
                       selected
                         ? "onboarding-segment-selected"
-                        : "onboarding-segment-idle hover:bg-muted/30"
+                        : "onboarding-segment-idle"
                     }`}
                   >
-                    {/* Inline emoji */}
                     <span className="text-[14px] leading-none flex-shrink-0">{opt.emoji}</span>
 
                     <div className="flex-1 min-w-0">
                       <span
-                        className={`text-[13px] font-medium leading-tight ${
-                          selected ? "text-primary-foreground" : "text-foreground"
+                        className={`text-[14px] font-medium leading-tight ${
+                          selected ? "text-primary" : "text-foreground"
                         }`}
                       >
                         {opt.label}
                       </span>
                       {opt.desc && (
                         <span
-                          className={`text-[10.5px] ml-1.5 ${
-                            selected ? "text-primary-foreground/70" : "text-muted-foreground"
+                          className={`text-[11px] ml-1.5 ${
+                            selected ? "text-primary/70" : "text-muted-foreground"
                           }`}
                         >
                           · {opt.desc}
@@ -474,7 +473,6 @@ const Onboarding = () => {
                       )}
                     </div>
 
-                    {/* Check ring for multi-select */}
                     {current.multiSelect && (
                       <div
                         className={`onboarding-check ${selected ? "onboarding-check-active" : ""}`}
@@ -493,7 +491,7 @@ const Onboarding = () => {
             !isStep4 &&
             current.fields.map((field, i) => (
               <div key={field.key} className="mb-3">
-                <label className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-1 block">
+                <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1.5 block">
                   {field.label}
                 </label>
                 <div className="flex items-center gap-2">
@@ -503,7 +501,7 @@ const Onboarding = () => {
                     placeholder={field.placeholder}
                     value={inputValues[field.key] || ""}
                     onChange={(e) => handleInputChange(field.key, e.target.value)}
-                    className="flex-1 h-[44px] rounded-lg border border-border/40 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30 transition-all duration-150"
+                    className="flex-1 h-[50px] rounded-xl border border-border/40 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30 transition-all duration-150"
                     maxLength={field.type === "number" ? 6 : 200}
                   />
                   {field.unit && (
@@ -521,15 +519,15 @@ const Onboarding = () => {
               {HEALTH_TARGET_CATEGORIES.map((cat) => (
                 <div key={cat.catKey}>
                   {/* Category header — uppercase label + accent rule */}
-                  <div className="mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                  <div className="mb-2.5">
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                       {healthTargetLabels.get(cat.catKey) || cat.catKey}
                     </span>
-                    <div className="h-[2px] bg-primary/30 mt-1 w-8 rounded-full" />
+                    <div className="h-[2px] bg-primary/20 mt-1.5 w-6 rounded-full" />
                   </div>
 
                   {/* Segmented control block */}
-                  <div className="rounded-lg border border-border/50 overflow-hidden divide-y divide-border/30">
+                  <div className="rounded-xl border border-border/50 overflow-hidden divide-y divide-border/30">
                     {cat.targets.map((targetKey) => {
                       const selected = healthTargets.includes(targetKey);
                       return (
@@ -537,15 +535,15 @@ const Onboarding = () => {
                           key={targetKey}
                           type="button"
                           onClick={() => toggleHealthTarget(targetKey)}
-                          className={`w-full flex items-center gap-3 h-[44px] px-4 transition-all duration-150 active:scale-[0.99] ${
+                          className={`w-full flex items-center gap-3 h-[52px] px-4 transition-all duration-150 active:scale-[0.99] ${
                             selected
                               ? "onboarding-segment-selected"
-                              : "onboarding-segment-idle hover:bg-muted/30"
+                              : "onboarding-segment-idle"
                           }`}
                         >
                           <span
-                            className={`flex-1 text-[13px] font-medium text-left ${
-                              selected ? "text-primary-foreground" : "text-foreground"
+                            className={`flex-1 text-[14px] font-medium text-left ${
+                              selected ? "text-primary" : "text-foreground"
                             }`}
                           >
                             {healthTargetLabels.get(targetKey) || targetKey}
@@ -593,7 +591,7 @@ const Onboarding = () => {
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
           <div className="pt-4">
             <Button
-              className="w-full gap-2 h-[48px] text-[13px] font-bold uppercase tracking-[0.06em] rounded-lg transition-all duration-150"
+              className="w-full gap-2 h-[50px] text-[14px] font-semibold tracking-normal rounded-xl transition-all duration-150"
               disabled={
                 !canSkip &&
                 (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
@@ -624,7 +622,7 @@ const Onboarding = () => {
             localStorage.setItem(STORAGE_KEY, "true");
             navigate("/", { replace: true });
           }}
-          className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-150 tracking-wider uppercase font-medium"
+          className="text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors duration-150 tracking-normal font-medium"
         >
           Skip for now
         </button>
