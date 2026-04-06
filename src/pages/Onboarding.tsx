@@ -447,7 +447,7 @@ const Onboarding = () => {
                   key={`${step}-${i}`}
                   onClick={() => handleSelect(i)}
                   style={{ animationDelay: `${i * 60}ms` }}
-                  className={`w-full flex items-center gap-3.5 py-3.5 px-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.98]
+                  className={`w-full flex items-center gap-3.5 h-[52px] px-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.98]
                     ${selected ? "onboarding-card-selected" : "onboarding-card-idle"}
                   `}
                 >
