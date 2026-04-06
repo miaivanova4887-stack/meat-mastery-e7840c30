@@ -54,6 +54,7 @@ const Recipes = () => {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [multipliers, setMultipliers] = useState<Record<string, number>>({});
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [planTarget, setPlanTarget] = useState<AddToPlanRecipe | null>(null);
   const isFrench = i18n.language.startsWith("fr");
 
   // Read tag from URL search params
