@@ -1,27 +1,49 @@
 
 
-## Fix: Meal unmark removes Progress entries
+## Add stable planned-meal IDs for meal-to-Progress sync
 
-### Problem
-`useMealSync.syncMealToProgress` only handles the "mark completed" case. When `wasCompleted` is true (unchecking), it returns early. Progress entries are never deleted on uncheck.
+### What changes
 
-### Solution
-Add delete logic to `useMealSync` that removes the matching progress entries when a meal is unmarked. Use `day-slot` as a stable identifier in the notes field so entries can be reliably matched for deletion, even if the same recipe appears in multiple slots.
+**1. `src/hooks/useMealPlan.ts` — Add `id` to `PlannedMeal`**
+- Add `id: string` to the `PlannedMeal` interface.
+- Generate a unique ID (`crypto.randomUUID()`) whenever a meal is assigned via `assignMeal`. The ID is stored alongside the meal data in localStorage.
+- The `load()` function backfills missing IDs on existing saved meals so old data migrates seamlessly.
 
-### Changes
+**2. `src/hooks/useMealSync.ts` — Use `meal.id` as the sync tag**
+- Change the tag format from `[meal-sync] ${day}-${slot}` to `[meal-sync] ${meal.id}`.
+- On uncheck: delete `progress_entries` matching `[meal-sync] ${meal.id}%`.
+- On check: insert entries with `[meal-sync] ${meal.id} ${meal.recipeName}`.
+- Remove `day`/`slot` parameters from `syncMealToProgress` signature; only `meal` and `wasCompleted` are needed since the ID is on the meal object.
 
-**1. `src/hooks/useMealSync.ts`**
-- Change the notes tag format from `[meal-sync] {recipeName}` to `[meal-sync] {day}-{slot} {recipeName}`. This makes each entry uniquely identifiable by its plan position.
-- When `wasCompleted` is `true` (unchecking): delete all `progress_entries` where `user_id` matches, `category = 'diet_trends'`, and `notes` starts with `[meal-sync] {day}-{slot}`.
-- When `wasCompleted` is `false` (checking): insert entries as before, but with the new notes format.
-- Update the function signature to accept `day` and `slot` parameters alongside `meal` and `wasCompleted`.
+**3. `src/pages/MealPlan.tsx` — Simplify call site**
+- Update `syncMealToProgress` calls to pass `meal` and `wasCompleted` only (no `day`/`slot`).
 
-**2. `src/pages/MealPlan.tsx`**
-- Update the call site at line ~676 to pass `activeDay` and `slot` to `syncMealToProgress`.
+**4. `src/components/AddToPlanSheet.tsx` — Generate ID on assign**
+- When building the `PlannedMeal` object before calling `assignMeal`, include `id: crypto.randomUUID()`.
 
-### Technical detail
-- Delete uses `.like("notes", "[meal-sync] Mon-breakfast%")` pattern to match all metrics (calories, protein, fat) for that specific meal slot.
-- No migration needed — `progress_entries` already supports delete via RLS for the owning user.
-- The `day-slot` key is stable per plan position, so re-marking after unmarking creates fresh entries without duplicates.
-- Same recipe in two slots gets different tags (e.g., `Mon-breakfast` vs `Mon-dinner`), so unmarking one doesn't affect the other.
+### How IDs flow
+
+```text
+User picks recipe → PlannedMeal { id: "abc-123", recipeName: "Ribeye", ... }
+                     ↓
+assignMeal(day, slot, meal)  →  saved to localStorage with id
+                     ↓
+toggleCompleted → syncMealToProgress(meal, wasCompleted)
+                     ↓
+  check:   INSERT progress_entries with notes = "[meal-sync] abc-123 Ribeye"
+  uncheck: DELETE progress_entries WHERE notes LIKE "[meal-sync] abc-123%"
+```
+
+### Migration of existing data
+- `load()` in `useMealPlan` iterates all saved meals; any meal missing an `id` gets one assigned via `crypto.randomUUID()` and is persisted on next save.
+- Existing progress entries tagged with old `[meal-sync] Mon-breakfast` format are not retroactively updated — they remain deletable manually. Only new syncs use the stable ID.
+
+### Files changed
+- `src/hooks/useMealPlan.ts`
+- `src/hooks/useMealSync.ts`
+- `src/pages/MealPlan.tsx`
+- `src/components/AddToPlanSheet.tsx`
+
+### No database migration needed
+The `id` lives in the `PlannedMeal` object in localStorage. The `notes` field in `progress_entries` is already a free-text column.
 
