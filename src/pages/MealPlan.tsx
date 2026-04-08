@@ -102,6 +102,7 @@ const MealPlan = () => {
     if (state?.assignRecipe) {
       const r = state.assignRecipe;
       setAssignRecipe({
+        id: crypto.randomUUID(),
         recipeName: r.name,
         cal: r.cal,
         protein: r.protein,
@@ -138,6 +139,7 @@ const MealPlan = () => {
 
   const handlePick = (recipe: Recipe, slot: MealSlot) => {
     const meal: PlannedMeal = {
+      id: crypto.randomUUID(),
       recipeName: recipe.name,
       cal: recipe.cal,
       protein: recipe.protein,
@@ -173,6 +175,7 @@ const MealPlan = () => {
       const result = data.plan;
 
       const toMeal = (m: any): PlannedMeal => ({
+        id: crypto.randomUUID(),
         recipeName: String(m.recipeName || ""),
         cal: String(m.cal || "0"),
         protein: String(m.protein || "0g"),
@@ -249,6 +252,7 @@ const MealPlan = () => {
     const validIngs = quickIngredients.filter((i) => i.name.trim());
 
     const meal: PlannedMeal = {
+      id: crypto.randomUUID(),
       recipeName: quickName.trim(),
       cal: quickCal || "0",
       protein: quickProtein || "0g",
@@ -309,6 +313,7 @@ const MealPlan = () => {
 
       const r = data.result;
       const meal: PlannedMeal = {
+        id: crypto.randomUUID(),
         recipeName: String(r.recipeName || ""),
         cal: String(r.cal || "0"),
         protein: String(r.protein || "0g"),
@@ -673,7 +678,7 @@ const MealPlan = () => {
                           e.stopPropagation();
                           const wasCompleted = isCompleted(activeDay, slot);
                           toggleCompleted(activeDay, slot);
-                          if (meal) syncMealToProgress(meal, wasCompleted, activeDay, slot);
+                          if (meal) syncMealToProgress(meal, wasCompleted);
                         }}
                         className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           isCompleted(activeDay, slot)

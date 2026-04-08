@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 export type MealSlot = "breakfast" | "lunch" | "dinner" | "snack";
 
 export interface PlannedMeal {
+  id: string;
   recipeName: string;
   cal: string;
   protein: string;
@@ -52,6 +53,7 @@ function load(): WeekPlan {
       for (const slot of MEAL_SLOTS) {
         const m = parsed[day][slot];
         if (m) {
+          if (!m.id) m.id = crypto.randomUUID();
           m.cal = String(m.cal ?? "0");
           m.protein = String(m.protein ?? "0g");
           m.fat = String(m.fat ?? "0g");

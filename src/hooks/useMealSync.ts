@@ -3,22 +3,22 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import type { PlannedMeal, DayKey, MealSlot } from "@/hooks/useMealPlan";
+import type { PlannedMeal } from "@/hooks/useMealPlan";
 
 /**
  * Auto-syncs completed meal macros to progress_entries.
  * Called when a meal is checked off in the meal plan.
- * Uses day-slot tag for stable matching on uncheck.
+ * Uses stable planned-meal ID for matching on uncheck.
  */
 export function useMealSync() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
   const syncMealToProgress = useCallback(
-    async (meal: PlannedMeal, wasCompleted: boolean, day: DayKey, slot: MealSlot) => {
+    async (meal: PlannedMeal, wasCompleted: boolean) => {
       if (!user) return;
 
-      const tag = `[meal-sync] ${day}-${slot}`;
+      const tag = `[meal-sync] ${meal.id}`;
 
       if (wasCompleted) {
         // Unchecking — remove the matching progress entries

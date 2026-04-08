@@ -76,6 +76,7 @@ export default function AddToPlanSheet({ open, onOpenChange, recipe }: AddToPlan
   const handleConfirm = () => {
     if (!recipe || !selectedSlot) return;
     const meal: PlannedMeal = {
+      id: crypto.randomUUID(),
       recipeName: recipe.name,
       cal: recipe.cal,
       protein: recipe.protein,
