@@ -673,7 +673,7 @@ const MealPlan = () => {
                           e.stopPropagation();
                           const wasCompleted = isCompleted(activeDay, slot);
                           toggleCompleted(activeDay, slot);
-                          if (meal) syncMealToProgress(meal, wasCompleted);
+                          if (meal) syncMealToProgress(meal, wasCompleted, activeDay, slot);
                         }}
                         className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           isCompleted(activeDay, slot)
