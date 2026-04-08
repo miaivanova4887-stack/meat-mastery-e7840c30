@@ -3,24 +3,45 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import type { PlannedMeal } from "@/hooks/useMealPlan";
+import type { PlannedMeal, DayKey, MealSlot } from "@/hooks/useMealPlan";
 
 /**
  * Auto-syncs completed meal macros to progress_entries.
  * Called when a meal is checked off in the meal plan.
- * Uses a single bulk insert to avoid race conditions.
+ * Uses day-slot tag for stable matching on uncheck.
  */
 export function useMealSync() {
   const { user } = useAuth();
   const qc = useQueryClient();
 
   const syncMealToProgress = useCallback(
-    async (meal: PlannedMeal, wasCompleted: boolean) => {
-      // Only sync when marking as completed (not when un-completing)
-      if (!user || wasCompleted) return;
+    async (meal: PlannedMeal, wasCompleted: boolean, day: DayKey, slot: MealSlot) => {
+      if (!user) return;
 
+      const tag = `[meal-sync] ${day}-${slot}`;
+
+      if (wasCompleted) {
+        // Unchecking — remove the matching progress entries
+        const { error } = await supabase
+          .from("progress_entries")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("category", "diet_trends")
+          .like("notes", `${tag}%`);
+
+        if (error) {
+          console.error("Meal unsync failed:", error);
+          toast.error("Failed to remove meal from progress");
+        } else {
+          qc.invalidateQueries({ queryKey: ["progress-entries"] });
+          toast.success(`${meal.recipeName} removed from progress`);
+        }
+        return;
+      }
+
+      // Checking — insert progress entries
       const now = new Date().toISOString();
-      const note = `[meal-sync] ${meal.recipeName}`;
+      const note = `${tag} ${meal.recipeName}`;
 
       const cal = parseFloat(meal.cal) || 0;
       const protein = parseFloat(meal.protein) || 0;
