@@ -10,6 +10,12 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
+/** Get the current session's access token for authenticated requests */
+async function getAccessToken(): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
 export async function getVapidPublicKey(): Promise<string | null> {
   try {
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -24,8 +30,6 @@ export async function getVapidPublicKey(): Promise<string | null> {
 }
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  // Important: service workers can interfere with Capacitor native plugin injection.
-  // Never register SW inside native Android/iOS builds.
   if (Capacitor.isNativePlatform()) return null;
   if (!("serviceWorker" in navigator)) return null;
   try {
@@ -39,13 +43,15 @@ export async function subscribeToPush(): Promise<boolean> {
   if (Capacitor.isNativePlatform()) return false;
 
   try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) return false;
+
     const publicKey = await getVapidPublicKey();
     if (!publicKey) return false;
 
     const registration = await registerServiceWorker();
     if (!registration) return false;
 
-    // Wait for service worker to be ready
     await navigator.serviceWorker.ready;
 
     const subscription = await registration.pushManager.subscribe({
@@ -59,7 +65,10 @@ export async function subscribeToPush(): Promise<boolean> {
       `https://${projectId}.supabase.co/functions/v1/push-notifications?action=subscribe`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
         body: JSON.stringify({
           endpoint: sub.endpoint,
           keys: sub.keys,
@@ -77,12 +86,18 @@ export async function subscribeToPush(): Promise<boolean> {
 export async function sendPushToAll(title: string, body: string): Promise<void> {
   if (Capacitor.isNativePlatform()) return;
 
+  const accessToken = await getAccessToken();
+  if (!accessToken) return;
+
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   await fetch(
     `https://${projectId}.supabase.co/functions/v1/push-notifications?action=send`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${accessToken}`,
+      },
       body: JSON.stringify({ title, body, icon: "🔥" }),
     }
   );

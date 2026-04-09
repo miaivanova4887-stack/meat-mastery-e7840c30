@@ -35,6 +35,20 @@ async function getVapidKeys(supabaseAdmin: ReturnType<typeof createClient>) {
   return vapidKeys;
 }
 
+/** Extract and validate the authenticated user from the request */
+async function getAuthUser(req: Request, supabaseAdmin: ReturnType<typeof createClient>) {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) return null;
+
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
+  const { data: { user } } = await userClient.auth.getUser();
+  return user;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -49,7 +63,7 @@ Deno.serve(async (req) => {
   const action = url.searchParams.get("action");
 
   try {
-    // GET public key for client subscription
+    // GET public key for client subscription (public endpoint)
     if (action === "vapid-public-key" || req.method === "GET") {
       const keys = await getVapidKeys(supabaseAdmin);
       return json({ publicKey: keys.publicKey });
@@ -57,8 +71,11 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
 
-    // Subscribe: store push subscription
+    // Subscribe: store push subscription (requires auth)
     if (action === "subscribe") {
+      const user = await getAuthUser(req, supabaseAdmin);
+      if (!user) return json({ error: "Unauthorized" }, 401);
+
       const { endpoint, keys } = body;
       if (!endpoint || !keys?.p256dh || !keys?.auth) {
         return json({ error: "Invalid subscription" }, 400);
@@ -69,6 +86,7 @@ Deno.serve(async (req) => {
           endpoint,
           keys_p256dh: keys.p256dh,
           keys_auth: keys.auth,
+          user_id: user.id,
         },
         { onConflict: "endpoint" }
       );
@@ -76,18 +94,36 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
-    // Unsubscribe
+    // Unsubscribe (requires auth)
     if (action === "unsubscribe") {
+      const user = await getAuthUser(req, supabaseAdmin);
+      if (!user) return json({ error: "Unauthorized" }, 401);
+
       const { endpoint } = body;
+      // Only delete the user's own subscription
       await supabaseAdmin
         .from("push_subscriptions")
         .delete()
-        .eq("endpoint", endpoint);
+        .eq("endpoint", endpoint)
+        .eq("user_id", user.id);
       return json({ ok: true });
     }
 
-    // Send push notification to all subscribers
+    // Send push notification to all subscribers (requires admin)
     if (action === "send") {
+      const user = await getAuthUser(req, supabaseAdmin);
+      if (!user) return json({ error: "Unauthorized" }, 401);
+
+      // Check admin role
+      const { data: roleData } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+
+      if (!roleData) return json({ error: "Forbidden: admin role required" }, 403);
+
       const { title, body: notifBody, icon } = body;
       const keys = await getVapidKeys(supabaseAdmin);
 
@@ -136,6 +172,6 @@ Deno.serve(async (req) => {
     return json({ error: "Unknown action" }, 400);
   } catch (err) {
     console.error(err);
-    return json({ error: (err as Error).message }, 500);
+    return json({ error: "Internal server error" }, 500);
   }
 });
