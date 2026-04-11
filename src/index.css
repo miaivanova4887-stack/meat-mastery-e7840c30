@@ -206,10 +206,10 @@
   :root .hero-gradient {
     background: linear-gradient(to top,
       hsl(var(--background)) 0%,
-      hsl(var(--background)) 12%,
-      hsl(var(--background) / 0.95) 22%,
-      hsl(var(--background) / 0.6) 42%,
-      transparent 60%,
+      hsl(var(--background)) 15%,
+      hsl(var(--background) / 0.97) 25%,
+      hsl(var(--background) / 0.75) 40%,
+      hsl(var(--background) / 0.25) 60%,
       hsl(0 0% 0% / 0.15) 100%
     );
   }
@@ -218,8 +218,9 @@
   .dark .hero-gradient {
     background: linear-gradient(to top,
       hsl(var(--background)) 0%,
-      hsl(var(--background) / 0.6) 30%,
-      hsl(0 0% 0% / 0.3) 100%
+      hsl(var(--background) / 0.92) 18%,
+      hsl(var(--background) / 0.65) 35%,
+      hsl(0 0% 0% / 0.35) 100%
     );
   }
 

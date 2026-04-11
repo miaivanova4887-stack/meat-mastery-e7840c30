@@ -147,10 +147,10 @@ const Index = () => {
           <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-primary mb-2 animate-fade-in">
             {t("home.healingJourney")}
           </p>
-          <h1 className="text-[2.2rem] font-black text-foreground leading-[1.02] tracking-[-0.02em]">
+          <h1 className="text-[2.2rem] font-black text-foreground leading-[1.02] tracking-[-0.02em]" style={{ textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}>
             {t("home.healthIsWealth")}<br />{t("home.healthIsWealth2")}
           </h1>
-          <p className="text-muted-foreground mt-2.5 text-[13px] max-w-[280px] leading-relaxed font-light">
+          <p className="text-muted-foreground mt-2.5 text-[13px] max-w-[280px] leading-relaxed font-light" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.4)" }}>
             {subtitle}
           </p>
         </div>
