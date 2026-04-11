@@ -412,6 +412,10 @@ const Onboarding = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Temporary build fingerprint badge */}
+      <div className="fixed bottom-2 left-2 z-50 rounded bg-destructive/90 px-2 py-0.5 text-[9px] font-mono text-destructive-foreground shadow">
+        FP: {window.__BUILD_FINGERPRINT__ ?? "?"}
+      </div>
       {/* Premium top bar */}
       <div
         className="px-5 pt-4 pb-3 flex items-center gap-4"
