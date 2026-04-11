@@ -1,39 +1,42 @@
 
 
-## Fix: Hero bottom text readability
+## Fix: Push light-mode hero gradient tint lower
 
 ### Problem
-The subtitle text (`text-muted-foreground`) at the bottom of the hero sits over the image where the gradient transitions from opaque to semi-transparent. The gradient doesn't extend high enough with sufficient opacity, so the bottom text washes out — especially in dark mode where the gradient jumps from 60% opacity at 30% to 30% opacity at 100%.
+The light-mode hero gradient currently holds a solid/opaque background from 0–15% and starts fading at 25%. The warm ivory tint sits too high, creating a visible "fog" band in the middle of the hero image. The text at the bottom is readable now, but the saturated tint needs to shift downward so more of the hero image is visible above.
 
-### Changes
+### Change
 
-**1. `src/index.css` — Strengthen hero gradient in the text zone**
+**`src/index.css` — Light-mode `.hero-gradient` only**
 
-- **Light mode** (`hero-gradient`): Extend the opaque-to-semi-opaque range higher so the text area has more contrast. Change the gradient to hold solid background longer and fade more gradually:
-  - `0%–15%`: solid background
-  - `25%`: 0.97 opacity
-  - `40%`: 0.75 (was 0.6)
-  - `60%`: 0.25 (was transparent)
-  - `100%`: dark tint stays
+Shift all intermediate stops downward so the opaque zone starts later and the tint concentrates near the bottom:
 
-- **Dark mode** (`hero-gradient`): Add intermediate stops for a smoother, darker fade behind the text:
-  - `0%`: solid background
-  - `18%`: 0.92 opacity
-  - `35%`: 0.65 (was 0.6 at 30%)
-  - `100%`: 0.35 (was 0.3)
+```css
+:root .hero-gradient {
+  background: linear-gradient(to top,
+    hsl(var(--background)) 0%,
+    hsl(var(--background)) 10%,
+    hsl(var(--background) / 0.97) 18%,
+    hsl(var(--background) / 0.75) 30%,
+    hsl(var(--background) / 0.15) 50%,
+    hsl(0 0% 0% / 0.15) 100%
+  );
+}
+```
 
-**2. `src/pages/Index.tsx` — Add text-shadow to bottom hero text**
+Key differences from current:
+- Solid zone: 0–10% (was 0–15%)
+- 0.97 stop: 18% (was 25%)
+- 0.75 stop: 30% (was 40%)
+- Fade-out: 0.15 at 50% (was 0.25 at 60%)
 
-Add a subtle text shadow to the h1 and subtitle paragraph for extra separation from the image, without changing colors or layout:
-- h1: `style={{ textShadow: "0 2px 8px rgba(0,0,0,0.5)" }}`
-- subtitle `<p>`: `style={{ textShadow: "0 1px 6px rgba(0,0,0,0.4)" }}`
-
-### What stays the same
-- Background image, hero height, layout, color scheme, logo position
-- All other sections untouched
-- Works in both light and dark mode (gradient rules are separate per mode)
+This pulls the opaque tint closer to the bottom edge, letting more hero image show through while keeping the text zone readable.
 
 ### Files changed
-- `src/index.css`
-- `src/pages/Index.tsx`
+- `src/index.css` (light-mode `.hero-gradient` only — 1 rule, ~6 lines)
+
+### What stays the same
+- Dark mode gradient unchanged
+- Text shadows on hero text unchanged
+- Layout, image, colors all unchanged
 
