@@ -1,42 +1,34 @@
 
 
-## Fix: Push light-mode hero gradient tint lower
-
-### Problem
-The light-mode hero gradient currently holds a solid/opaque background from 0–15% and starts fading at 25%. The warm ivory tint sits too high, creating a visible "fog" band in the middle of the hero image. The text at the bottom is readable now, but the saturated tint needs to shift downward so more of the hero image is visible above.
+## Fix: Push light-mode hero gradient tint even lower
 
 ### Change
 
-**`src/index.css` — Light-mode `.hero-gradient` only**
+**`src/index.css` — `:root .hero-gradient` only**
 
-Shift all intermediate stops downward so the opaque zone starts later and the tint concentrates near the bottom:
+Shift stops downward again so the opaque tint hugs the very bottom:
 
 ```css
 :root .hero-gradient {
   background: linear-gradient(to top,
     hsl(var(--background)) 0%,
-    hsl(var(--background)) 10%,
-    hsl(var(--background) / 0.97) 18%,
-    hsl(var(--background) / 0.75) 30%,
-    hsl(var(--background) / 0.15) 50%,
+    hsl(var(--background)) 8%,
+    hsl(var(--background) / 0.95) 14%,
+    hsl(var(--background) / 0.6) 24%,
+    hsl(var(--background) / 0.1) 42%,
     hsl(0 0% 0% / 0.15) 100%
   );
 }
 ```
 
 Key differences from current:
-- Solid zone: 0–10% (was 0–15%)
-- 0.97 stop: 18% (was 25%)
-- 0.75 stop: 30% (was 40%)
-- Fade-out: 0.15 at 50% (was 0.25 at 60%)
+- Solid zone: 0–8% (was 0–10%)
+- 0.95 stop: 14% (was 0.97 at 18%)
+- 0.6 stop: 24% (was 0.75 at 30%)
+- Fade-out: 0.1 at 42% (was 0.15 at 50%)
 
-This pulls the opaque tint closer to the bottom edge, letting more hero image show through while keeping the text zone readable.
+This pulls the visible tint closer to the bottom edge, letting more hero image show through. Dark mode unchanged.
 
 ### Files changed
-- `src/index.css` (light-mode `.hero-gradient` only — 1 rule, ~6 lines)
-
-### What stays the same
-- Dark mode gradient unchanged
-- Text shadows on hero text unchanged
-- Layout, image, colors all unchanged
+- `src/index.css` (1 rule, ~6 lines)
 
