@@ -224,7 +224,7 @@ const Index = () => {
         {/* Health Data */}
         <HealthDashboard />
         {/* Motivation CTA — opens coaching booking modal */}
-        <MotivationCTA onClick={() => { setCoachingInitialScreen("info"); setCoachingOpen(true); }} />
+        <MotivationCTA />
 
         {/* Update preferences */}
         <button
