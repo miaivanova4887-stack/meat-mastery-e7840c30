@@ -19,7 +19,7 @@ const BottomNav = () => {
 
   if (location.pathname === "/onboarding") return null;
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 ios-blur shadow-lg bottom-nav"
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 ios-blur shadow-lg bottom-nav border-t border-border/40"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
     >
       <div className="flex items-center justify-around py-2 px-1">
@@ -35,6 +35,7 @@ const BottomNav = () => {
             >
               <Icon size={22} strokeWidth={active ? 2.2 : 1.6} />
               <span className="text-[11px] font-medium">{label}</span>
+              {active && <span className="w-1 h-1 rounded-full bg-primary" />}
             </button>
           );
         })}
