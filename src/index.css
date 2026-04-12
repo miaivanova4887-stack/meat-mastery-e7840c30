@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    --background: 30 10% 98%;
+    --background: 32 12% 97%;
     --foreground: 20 15% 5%;
 
     --card: 0 0% 100%;
@@ -21,7 +21,7 @@
     --secondary-foreground: 20 8% 22%;
 
     --muted: 25 6% 94%;
-    --muted-foreground: 20 8% 35%;
+    --muted-foreground: 22 10% 40%;
 
     --accent: 25 12% 92%;
     --accent-foreground: 22 85% 48%;
@@ -29,7 +29,7 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 25 8% 88%;
+    --border: 28 10% 90%;
     --input: 25 6% 90%;
     --ring: 22 85% 48%;
 
@@ -179,8 +179,8 @@
 
   /* Light-mode specific refinements */
   :root .ios-card {
-    box-shadow: 0 1px 3px -1px hsl(20 10% 10% / 0.10), 0 4px 12px -4px hsl(20 10% 10% / 0.08);
-    border-color: hsl(25 8% 88% / 0.8);
+    box-shadow: 0 2px 8px -2px hsl(25 15% 30% / 0.08), 0 8px 24px -8px hsl(25 15% 30% / 0.06);
+    border-color: hsl(28 10% 90% / 0.7);
   }
 
   .dark .ios-card {
@@ -280,9 +280,23 @@
 
   /* MotivationCTA — card-based in light mode */
   :root .motivation-cta {
-    background: hsl(var(--card));
-    border-color: hsl(var(--border) / 0.6);
-    box-shadow: 0 2px 12px -4px hsl(var(--primary) / 0.12);
+    background: linear-gradient(135deg, hsl(0 0% 100%), hsl(var(--bone)));
+    border-color: hsl(var(--border) / 0.5);
+    box-shadow: 0 2px 16px -4px hsl(25 15% 30% / 0.10);
+  }
+
+  :root .light-divider {
+    height: 1px;
+    background: linear-gradient(90deg, hsl(var(--border)), hsl(var(--border) / 0.3), transparent);
+  }
+
+  :root .section-accent-bar {
+    display: block;
+    width: 32px;
+    height: 2px;
+    border-radius: 1px;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--gold)));
+    margin-top: 4px;
   }
 
 /* Editorial luxury onboarding utilities */
