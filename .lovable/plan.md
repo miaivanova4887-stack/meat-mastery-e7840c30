@@ -1,28 +1,44 @@
 
-
-## Fix: Remove dark-mode white border lines (for real this time)
+## Fix dark-mode top line above the bottom menu
 
 ### Root cause
-The previous CSS overrides (`.dark nav.bottom-nav { border-color: transparent }`) are inside `@layer utilities`, which puts them at the same cascade layer as Tailwind's own `border-border/40` class. Tailwind's JIT-generated utilities appear later in the stylesheet and win the specificity tie.
+The issue is not the component class anymore — it is the custom CSS in `src/index.css`.
 
-### Solution
-Apply `dark:border-transparent` directly in the component classNames. This is the most reliable approach since Tailwind will generate the correct dark-mode override at the utility layer level.
+The current rule:
+```css
+:root nav.bottom-nav {
+  border-color: hsl(25 10% 88%);
+  box-shadow: 0 -1px 3px hsl(20 10% 10% / 0.06);
+}
+```
+
+looks like a light-mode rule, but `:root` matches the app in both themes. So in dark mode it still applies a light border color and light-mode top shadow, overriding the intended `dark:border-transparent` behavior on the nav.
+
+The same pattern exists for:
+```css
+:root .page-header { ... }
+```
+which is why similar white lines can keep coming back on dark headers too.
 
 ### Changes
+1. **`src/index.css`**
+   - Replace the fake light-only selectors with real light-only selectors:
+   ```css
+   html:not(.dark) nav.bottom-nav { ... }
+   html:not(.dark) .page-header { ... }
+   ```
+   - Keep the warm border + subtle top shadow only in light mode.
+   - Let dark mode fall back to the component’s existing borderless styling and `shadow-lg`.
 
-**1. `src/components/BottomNav.tsx`** — Add `dark:border-transparent` to the nav element's className (line 22)
+2. **`src/components/BottomNav.tsx`**
+   - Keep `dark:border-transparent` as a safeguard.
+   - No layout or behavior changes needed.
 
-**2. `src/pages/Recipes.tsx`** — Add `dark:border-transparent` to the sticky header (line 375)
+### Expected result
+- In **dark mode**, the line above the bottom nav disappears.
+- In **light mode**, the premium warm separator stays exactly as intended.
+- The same selector bug is removed for sticky page headers too, so dark mode stays visually clean across Home, Recipes, Plan, Progress, and Profile.
 
-**3. `src/pages/MealPlan.tsx`** — Add `dark:border-transparent` to the sticky header (line 415)
-
-**4. `src/pages/Progress.tsx`** — Add `dark:border-transparent` to the sticky header (line 50)
-
-**5. `src/pages/Profile.tsx`** — Add `dark:border-transparent` to the sticky header (line 355)
-
-**6. `src/index.css`** — Remove the now-redundant `.dark nav.bottom-nav` and `.dark .page-header` rules (lines 186-192)
-
-### What stays the same
-- Light mode borders unchanged
-- All other styling preserved
-
+### Files to update
+- `src/index.css`
+- no functional change required in `src/components/BottomNav.tsx`
