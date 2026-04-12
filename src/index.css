@@ -197,7 +197,7 @@
   }
 
   /* Bottom nav light-mode polish */
-  :root nav.bottom-nav {
+  html:not(.dark) nav.bottom-nav {
     border-color: hsl(25 10% 88%);
     box-shadow: 0 -1px 3px hsl(20 10% 10% / 0.06);
   }
@@ -267,7 +267,7 @@
   }
 
   /* Sticky page headers — solid in light mode */
-  :root .page-header {
+  html:not(.dark) .page-header {
     background: hsl(var(--card) / 0.95);
     border-color: hsl(25 8% 88%);
   }
