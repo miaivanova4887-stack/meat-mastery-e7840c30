@@ -29,8 +29,8 @@ const MotivationCTA = ({ onClick }: MotivationCTAProps) => {
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-primary/[0.02] pointer-events-none rounded-2xl" />
       <div className="flex items-center gap-3.5">
-        <div className="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/50 flex items-center justify-center shrink-0 shadow-lg shadow-primary/20 ring-1 ring-white/20">
-          <Zap size={24} className="text-primary-foreground drop-shadow-md" fill="currentColor" />
+         <div className="w-[52px] h-[52px] rounded-2xl bg-gradient-to-br from-primary via-primary to-primary/50 flex items-center justify-center shrink-0 shadow-lg shadow-primary/25 ring-1 ring-white/20">
+           <Zap size={24} className="text-primary-foreground drop-shadow-md" fill="currentColor" />
         </div>
         <div className="flex-1 relative z-10">
           <p className="text-sm font-bold text-foreground tracking-tight">{t("home.motivationTitle")}</p>

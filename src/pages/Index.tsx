@@ -157,10 +157,12 @@ const Index = () => {
       </div>
 
       {/* Content */}
-      <div className="px-4 space-y-4 -mt-2 relative z-10">
+      <div className="px-4 space-y-5 -mt-2 relative z-10">
         {tip && (
           <div className="ios-card px-4 py-3 animate-fade-in flex items-start gap-2.5">
-            <span className="text-primary text-base mt-0.5">💡</span>
+            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <span className="text-primary text-xs font-bold">!</span>
+            </div>
             <p className="text-xs text-foreground/80 leading-relaxed">{tip}</p>
           </div>
         )}
@@ -181,7 +183,7 @@ const Index = () => {
               >
                 <div className="relative h-24 w-full">
                   <img src={icon} alt={label} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-card/30 to-card/0" />
                   {highlighted && !locked && (
                     <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
                   )}
@@ -214,7 +216,7 @@ const Index = () => {
         {/* Quote */}
         <div className="ios-card p-5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-primary/40 via-primary/10 to-transparent" />
-          <p className="text-[13px] italic text-foreground/60 leading-relaxed pl-3">
+          <p className="text-[13px] italic text-foreground/60 leading-relaxed pl-3 font-editorial">
             "{quoteText}"
           </p>
           <span className="text-[10px] text-muted-foreground mt-2 block font-medium uppercase tracking-wider pl-3">— {quoteAuthor}</span>
@@ -227,7 +229,7 @@ const Index = () => {
         {/* Update preferences */}
         <button
           onClick={() => setShowResetDrawer(true)}
-          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-2"
+          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-2 underline underline-offset-4 decoration-border"
         >
           <RotateCcw size={13} />
           {t("home.updatePreferences")}
