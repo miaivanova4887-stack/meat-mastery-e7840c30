@@ -1,44 +1,36 @@
 
-## Fix dark-mode top line above the bottom menu
 
-### Root cause
-The issue is not the component class anymore — it is the custom CSS in `src/index.css`.
+## Wire MotivationCTA to coaching booking on all pages
 
-The current rule:
-```css
-:root nav.bottom-nav {
-  border-color: hsl(25 10% 88%);
-  box-shadow: 0 -1px 3px hsl(20 10% 10% / 0.06);
-}
-```
+### Problem
+On the Homepage, "Need extra motivation?" opens the coaching booking modal. On all other pages (Budget, Benefits, Myths, Athletic, Sustain, Stories, Cravings, GettingStarted, Guide), it navigates to a content page instead — inconsistent experience.
 
-looks like a light-mode rule, but `:root` matches the app in both themes. So in dark mode it still applies a light border color and light-mode top shadow, overriding the intended `dark:border-transparent` behavior on the nav.
-
-The same pattern exists for:
-```css
-:root .page-header { ... }
-```
-which is why similar white lines can keep coming back on dark headers too.
+### Solution
+Move the coaching booking state management into the `MotivationCTA` component itself, so every instance automatically opens the coaching modal without each parent page needing to wire it up manually.
 
 ### Changes
-1. **`src/index.css`**
-   - Replace the fake light-only selectors with real light-only selectors:
-   ```css
-   html:not(.dark) nav.bottom-nav { ... }
-   html:not(.dark) .page-header { ... }
-   ```
-   - Keep the warm border + subtle top shadow only in light mode.
-   - Let dark mode fall back to the component’s existing borderless styling and `shadow-lg`.
 
-2. **`src/components/BottomNav.tsx`**
-   - Keep `dark:border-transparent` as a safeguard.
-   - No layout or behavior changes needed.
+**1. `src/components/MotivationCTA.tsx`**
+- Import `CoachingBooking` and `useState`
+- Add internal state for `coachingOpen`
+- Render `<CoachingBooking>` inside the component
+- Default click behavior opens the coaching modal (remove goal-based navigation)
+- Keep the `onClick` prop as an optional override for any page that needs custom behavior
 
-### Expected result
-- In **dark mode**, the line above the bottom nav disappears.
-- In **light mode**, the premium warm separator stays exactly as intended.
-- The same selector bug is removed for sticky page headers too, so dark mode stays visually clean across Home, Recipes, Plan, Progress, and Profile.
+**2. `src/pages/Index.tsx`**
+- Remove the `coachingOpen`/`coachingInitialScreen` state and `CoachingBooking` render that are tied to MotivationCTA
+- Simplify to just `<MotivationCTA />` (no onClick prop needed)
+- Keep any other `CoachingBooking` usage (e.g. from URL params `?coaching_payment=success`) if it exists separately
 
-### Files to update
-- `src/index.css`
-- no functional change required in `src/components/BottomNav.tsx`
+**3. Pages that need NO changes**
+All other pages (`BudgetEating`, `Benefits`, `Myths`, `AthleticPerformance`, `Sustain`, `Stories`, `Cravings`, `GettingStarted`, `Guide`) already render `<MotivationCTA />` without props — they will automatically get the coaching modal behavior.
+
+### Files changed
+- `src/components/MotivationCTA.tsx` — embed CoachingBooking modal (~15 lines added)
+- `src/pages/Index.tsx` — remove redundant coaching state/render for MotivationCTA (~5 lines removed)
+
+### What stays the same
+- CoachingBooking component unchanged
+- Homepage coaching flow via URL params still works
+- All styling, layout, dark/light mode unaffected
+
