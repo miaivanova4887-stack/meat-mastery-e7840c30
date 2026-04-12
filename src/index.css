@@ -183,6 +183,14 @@
     border-color: hsl(28 10% 90% / 0.7);
   }
 
+  .dark nav.bottom-nav {
+    border-color: transparent;
+  }
+
+  .dark .page-header {
+    border-color: transparent;
+  }
+
   .dark .ios-card {
     border-color: hsl(0 0% 100% / 0.03);
     box-shadow:
