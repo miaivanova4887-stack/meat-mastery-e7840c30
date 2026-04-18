@@ -220,3 +220,67 @@ describe("parseHealthTranscript - clause-scoped quantity matching", () => {
     expect(kcalFor("150g salmon and 20g butter", "butter")).toBe(143);
   });
 });
+
+describe("parseHealthTranscript - household quantity words", () => {
+  /**
+   * Pull the notes string for the first calorie entry. The notes carry the
+   * resolved weight (e.g. "50g cheese (approx.)") which is what we care
+   * about: was the parser able to recover a sensible serving size?
+   */
+  function notesFor(transcript: string): string | undefined {
+    const { entries } = parseHealthTranscript(transcript);
+    return entries.find((e) => e.metric === "calories")?.notes;
+  }
+  function kcalFor(transcript: string, noteFragment: string): number | undefined {
+    const { entries } = parseHealthTranscript(transcript);
+    return entries.find(
+      (e) =>
+        e.metric === "calories" &&
+        (e.notes || "").toLowerCase().includes(noteFragment.toLowerCase())
+    )?.value;
+  }
+
+  it("logs 'one piece of cheese' as one default serving, not 1 gram", () => {
+    // The original bug: "one" becomes "1" in the number-word pass, and the
+    // parser then read it as 1 gram. A household unit like "piece" should
+    // scale the food's refGrams by the count instead.
+    // Cheese refGrams=50, cal=200 → one piece = 50g = 200 kcal.
+    expect(notesFor("one piece of cheese")).toMatch(/^50g cheese/);
+    expect(kcalFor("one piece of cheese", "cheese")).toBe(200);
+  });
+
+  it.each([
+    ["a piece of cheese", 50, 200],
+    ["a slice of cheese", 50, 200],
+    ["one slice of cheese", 50, 200],
+    ["a serving of cheese", 50, 200],
+    ["one serving of cheese", 50, 200],
+    ["a chunk of cheese", 50, 200],
+    ["a wedge of cheese", 50, 200],
+  ])("'%s' logs as one serving (%ig, %i kcal)", (input, grams, kcal) => {
+    expect(notesFor(input)).toMatch(new RegExp(`^${grams}g cheese`));
+    expect(kcalFor(input, "cheese")).toBe(kcal);
+  });
+
+  it.each([
+    ["two slices of cheese", 100, 400],
+    ["three pieces of cheese", 150, 600],
+    ["two slices of bacon", 200, 1080], // bacon refGrams=100, cal=540
+    ["two tablespoons of butter", 40, 286], // butter refGrams=20, cal=143
+    ["two sticks of butter", 40, 286],
+  ])("'%s' scales by the count (%ig, %i kcal)", (input, grams, kcal) => {
+    // Extract just the food name from the input's tail for the note regex.
+    const foodName = input.split(" of ").pop()!.split(" ")[0];
+    expect(notesFor(input)).toMatch(new RegExp(`^${grams}g`));
+    expect(kcalFor(input, foodName)).toBe(kcal);
+  });
+
+  it("still treats explicit weights correctly (household fix doesn't regress)", () => {
+    expect(kcalFor("50g cheese", "cheese")).toBe(200);
+    expect(kcalFor("100g cheese", "cheese")).toBe(400);
+  });
+
+  it("still logs 'cheese' alone as a default serving", () => {
+    expect(kcalFor("cheese", "cheese")).toBe(200);
+  });
+});

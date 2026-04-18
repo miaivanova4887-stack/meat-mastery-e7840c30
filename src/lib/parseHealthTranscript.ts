@@ -195,14 +195,41 @@ function canonicaliseQuantity(val: number, rawUnit: string): { value: number; un
   if (u === "g" || u === "gr" || u === "gram" || u === "grams" || u === "") return { value: val, unit: "g" };
   if (u === "ml" || u === "milliliter" || u === "milliliters" || u === "millilitre" || u === "millilitres") return { value: val, unit: "ml" };
   if (u === "l" || u === "liter" || u === "liters" || u === "litre" || u === "litres") return { value: val * 1000, unit: "ml" };
+  // Household servings ("piece", "slice", "tablespoon", …) aren't a weight
+  // or volume on their own — they're a count that scales the food's default
+  // refGrams. Signal that by returning unit="serving".
+  if (isHouseholdUnit(u)) return { value: val, unit: "serving" };
   return null;
 }
 
 // Shared numeric+unit regex. Accepts weight (g/oz/kg/lb + long forms) and
-// fluid (ml/l + long forms) units. "gr" is included as the EU/Russian
+// fluid (ml/l + long forms) units, plus household servings that scale the
+// food's default `refGrams` by a count ("one piece of cheese" → 50g,
+// "two slices of bacon" → 200g). "gr" is included as the EU/Russian
 // shorthand. Longer alternatives come first so "grams" doesn't get chopped
 // to "gr". "g"/"l" are the short forms that must be last.
-const QTY_TOKEN = /(\d+(?:\.\d+)?)\s*(ml|milliliters?|millilitres?|liters?|litres?|grams?|kilograms?|kg|pounds?|lbs?|ounces?|oz|gr|g|l)?\b/gi;
+//
+// The household unit group (pieces/slices/etc) ends with "?:of\s+"? so that
+// "one piece of cheese" and "one piece cheese" both parse the same way.
+const HOUSEHOLD_UNIT_RE =
+  "pieces?|slices?|sticks?|tablespoons?|tbsps?|teaspoons?|tsps?|" +
+  "scoops?|servings?|portions?|handfuls?|chunks?|cubes?|wedges?|" +
+  "strips?|rashers?|fillets?|filets?|patt(?:y|ies)|cans?|jars?|" +
+  "bowls?|plates?";
+const QTY_TOKEN = new RegExp(
+  "(\\d+(?:\\.\\d+)?)\\s*" +
+    // Group 2: weight/volume unit (optional).
+    "(ml|milliliters?|millilitres?|liters?|litres?|grams?|kilograms?|kg|pounds?|lbs?|ounces?|oz|gr|g|l|" +
+    // or a household serving unit.
+    HOUSEHOLD_UNIT_RE +
+    ")?\\b",
+  "gi",
+);
+
+/** True when `u` is one of the household serving words. */
+function isHouseholdUnit(u: string): boolean {
+  return new RegExp(`^(?:${HOUSEHOLD_UNIT_RE})$`, "i").test(u);
+}
 
 /**
  * Locate the clause window around a keyword. We treat commas, "and", "plus",
@@ -587,7 +614,17 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
       matchedSpans.push([idx, idx + kw.length]);
       if (food.group && !food.approximated) matchedGroups.add(food.group);
       const qty = findQuantityNear(lower, idx, kw.length);
-      const grams = qty ? qty.value : food.refGrams;
+      // Resolve the effective weight in grams:
+      //   - no quantity found          → one default serving (refGrams)
+      //   - household count ("serving") → count × refGrams (so "one piece
+      //     of cheese" = 50g, "two slices of bacon" = 200g)
+      //   - explicit weight/volume     → use the value directly
+      const grams =
+        !qty
+          ? food.refGrams
+          : qty.unit === "serving"
+            ? qty.value * food.refGrams
+            : qty.value;
       const scale = grams / food.refGrams;
 
       // Note text shows the resolved food name + quantity. Generic fallbacks
