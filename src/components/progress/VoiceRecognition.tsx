@@ -47,6 +47,7 @@ const VoiceRecognition = () => {
     stopListening,
     resetTranscript,
     getTranscript,
+    receivedInput,
   } = useVoiceCapture({
     onPermissionBlocked: () => {
       toast.error("Microphone permission is blocked. Opening app settings…", { duration: 2500 });
@@ -124,18 +125,29 @@ const VoiceRecognition = () => {
     }
     await new Promise((resolve) => setTimeout(resolve, 250));
 
-    const captured = (getTranscript().trim() || transcriptBeforeStop).trim();
+    // Gate auto-submit on "did this session actually hear anything". On
+    // iOS the audio session can get stuck after a previous recognition
+    // run; the native layer then resolves the start promise immediately
+    // with no partials ever firing, but `getTranscript()` may still hold
+    // the previous run's text. Without this gate we'd auto-resubmit that
+    // stale text and show the user their previous meal's macros again.
+    const heardSomething = receivedInput();
+    const captured = heardSomething
+      ? (getTranscript().trim() || transcriptBeforeStop).trim()
+      : "";
     if (captured) {
       setTextInput(captured);
     }
     setIsStopping(false);
     stopInProgressRef.current = false;
-    // Auto-submit when we have a real transcript. We pass the captured text
-    // as an override so we don't race setTextInput → state → submitText.
     if (shouldAutoSubmit && captured) {
       submitText(captured);
+    } else if (shouldAutoSubmit && !heardSomething) {
+      // Surface the "silent session" case so the user knows to try again
+      // rather than staring at an unchanged UI and wondering what happened.
+      toast.error("Didn't catch that — please try again.");
     }
-  }, [getTranscript, listening, stopListening, submitText]);
+  }, [getTranscript, listening, receivedInput, stopListening, submitText]);
 
   useEffect(() => {
     if (listening) {
@@ -153,6 +165,10 @@ const VoiceRecognition = () => {
     const timer = window.setTimeout(() => {
       if (!autoProcessPendingRef.current || !hasEnteredListeningRef.current) return;
       autoProcessPendingRef.current = false;
+      // Same "silent session" guard as stopVoice: don't auto-submit stale
+      // text from a previous recognition run if the current session never
+      // actually heard anything.
+      if (!receivedInput()) return;
       const captured = getTranscript().trim();
       if (captured) {
         setTextInput(captured);
@@ -161,7 +177,7 @@ const VoiceRecognition = () => {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [listening, getTranscript, submitText]);
+  }, [listening, getTranscript, receivedInput, submitText]);
 
   const logEntries = useCallback(async () => {
     if (!parsedResult?.entries?.length) return;

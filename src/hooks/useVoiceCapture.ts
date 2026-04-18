@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
 import { SpeechRecognition } from "@capacitor-community/speech-recognition";
+
+// In-app Swift plugin (see ios/App/App/AudioSessionPlugin.swift). Exposes
+// `resetAudioSession()` which deactivates + reactivates AVAudioSession so
+// SFSpeechRecognizer starts fresh on each voice session. Without this, the
+// 2nd consecutive voice session on iOS opens the mic but emits no partial
+// results and eventually rejects with "no-speech".
+interface AudioSessionPluginShape {
+  resetAudioSession: (options?: { delayMs?: number }) => Promise<{ ok: boolean }>;
+  deactivate: () => Promise<{ ok: boolean }>;
+}
+const AudioSession = registerPlugin<AudioSessionPluginShape>("AudioSession");
 
 type SpeechRecognitionLike = {
   continuous: boolean;
@@ -82,6 +93,12 @@ export const useVoiceCapture = ({
   const isStoppingRef = useRef(false);
   const sessionIdRef = useRef(0);
   const lastStopAtRef = useRef(0);
+  // Flipped to true the first time the active session emits a partial or
+  // final result containing actual text. Lets callers distinguish between
+  // "session ended without ever hearing anything" (iOS audio-session stuck
+  // state) and "session ended with real input". Reset at the start of each
+  // new session.
+  const receivedInputRef = useRef(false);
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -97,6 +114,14 @@ export const useVoiceCapture = ({
   }, []);
 
   const getTranscript = useCallback(() => transcriptRef.current, []);
+
+  /**
+   * Returns true iff the most recent voice session actually produced any
+   * speech input (partial or final). Callers should consult this before
+   * auto-submitting the transcript so that a stuck audio session doesn't
+   * silently re-submit stale text from a previous run.
+   */
+  const receivedInput = useCallback(() => receivedInputRef.current, []);
 
   const stopListening = useCallback(async () => {
     setListening(false);
@@ -141,13 +166,44 @@ export const useVoiceCapture = ({
       return false;
     }
 
+    // Baseline cooldown so any lingering native callbacks from the previous
+    // session finish. This is cheap even on the 1st run (elapsedSinceStop
+    // will be very large the first time).
+    const cooldownMs = isNative ? 400 : 250;
     const elapsedSinceStop = Date.now() - lastStopAtRef.current;
-    if (elapsedSinceStop < 450) {
-      await new Promise((resolve) => setTimeout(resolve, 450 - elapsedSinceStop));
+    if (elapsedSinceStop < cooldownMs) {
+      await new Promise((resolve) => setTimeout(resolve, cooldownMs - elapsedSinceStop));
     }
 
-    const usePopup = true;
-    const usePartialResults = false;
+    // On iOS, explicitly reset the shared AVAudioSession before every new
+    // voice session. This is the key fix for "1st run OK, 2nd run fails":
+    // the community speech plugin doesn't release the audio session between
+    // sessions, leaving SFSpeechRecognizer in a stuck state. Our custom
+    // Swift plugin deactivates + reactivates it, forcing a clean slate.
+    // Non-fatal on failure — we still try to start.
+    if (Capacitor.getPlatform() === "ios") {
+      try {
+        await AudioSession.resetAudioSession({ delayMs: 250 });
+      } catch (err) {
+        // Log but don't block start — old builds without the plugin should
+        // still work on the 1st session.
+        // eslint-disable-next-line no-console
+        console.warn("AudioSession.resetAudioSession failed", err);
+      }
+    }
+
+    // On iOS the native plugin only fires a final `call.resolve()` when the
+    // recognizer decides it's done (`isFinal=true`, after a long pause).
+    // Without partial results the UI stays on "listening" forever. Enabling
+    // partial results makes the recognizer emit a stream of `partialResults`
+    // events AND resolve the start promise immediately.
+    //
+    // Android: popup=true uses the system Google Voice UI which already
+    // returns a final transcript when the overlay dismisses, so it keeps the
+    // original behaviour.
+    const platform = Capacitor.getPlatform();
+    const usePopup = platform === "android";
+    const usePartialResults = platform === "ios";
 
     const available = await SpeechRecognition.available();
     if (!available?.available) {
@@ -168,6 +224,11 @@ export const useVoiceCapture = ({
     nativeStoppedWaitRef.current?.resolve();
     nativeStoppedWaitRef.current = null;
     setTranscriptSafe("");
+    // Fresh session — reset the "has input?" flag. receivedInputRef is
+    // what lets the caller distinguish "user spoke, session ran cleanly"
+    // from "audio session was stuck so nothing was captured". See the
+    // comment on receivedInputRef for the iOS-specific failure mode.
+    receivedInputRef.current = false;
 
     const sessionId = ++sessionIdRef.current;
 
@@ -197,6 +258,11 @@ export const useVoiceCapture = ({
         if (sessionId !== sessionIdRef.current) return;
         const partialMatch = extractFirstMatch(payload);
         if (partialMatch) {
+          // Mark the session as "heard something" before writing the
+          // transcript, so downstream consumers (stopVoice, natural-stop)
+          // know the session is genuine and not a stuck-audio-session
+          // replay of cached text.
+          receivedInputRef.current = true;
           setTranscriptSafe(partialMatch);
         }
       });
@@ -236,7 +302,14 @@ export const useVoiceCapture = ({
           if (sessionId !== sessionIdRef.current) return;
           const finalMatch = extractFirstMatch(result);
           if (finalMatch) {
-            setTranscriptSafe(finalMatch);
+            // Only trust a final result if we also received at least one
+            // partial for this session. On iPhone, a stuck audio session
+            // can resolve the native start promise with CACHED transcript
+            // from the previous run, which would otherwise reappear in
+            // the UI as if the user said it again.
+            if (receivedInputRef.current) {
+              setTranscriptSafe(finalMatch);
+            }
           }
         })
         .catch((error: any) => {
@@ -297,6 +370,9 @@ export const useVoiceCapture = ({
         .map((result: any) => result?.[0]?.transcript || "")
         .join(" ")
         .trim();
+      if (combined) {
+        receivedInputRef.current = true;
+      }
       setTranscriptSafe(combined);
     };
 
@@ -313,6 +389,7 @@ export const useVoiceCapture = ({
 
     webRecognitionRef.current = recognition;
     setTranscriptSafe("");
+    receivedInputRef.current = false;
 
     try {
       recognition.start();
@@ -362,5 +439,6 @@ export const useVoiceCapture = ({
     stopListening,
     resetTranscript,
     getTranscript,
+    receivedInput,
   };
 };
