@@ -105,9 +105,17 @@ const VoiceRecognition = () => {
     // arrives — confusing and easy to submit by accident.
     setTextInput("");
     setExpanded(true);
+    // ALWAYS stop any lingering native session before starting a new one.
+    // On iOS, after auto-submit the previous SFSpeechRecognizer session
+    // often stays alive at the OS level even after our app-level
+    // `listening` state flipped to false. Starting a new session on top
+    // of it produces replayed cached partials ("50 g of butter" pops out
+    // again on run 2) followed by a "Recognition request was canceled"
+    // error. Proactively stop first, then start.
+    await stopListening();
     const started = await startListening();
     autoProcessPendingRef.current = Boolean(started);
-  }, [resetTranscript, startListening]);
+  }, [resetTranscript, startListening, stopListening]);
 
   const stopVoice = useCallback(async () => {
     if (stopInProgressRef.current) return;

@@ -99,6 +99,17 @@ export const useVoiceCapture = ({
   // state) and "session ended with real input". Reset at the start of each
   // new session.
   const receivedInputRef = useRef(false);
+  // The last transcript text we accepted from the PREVIOUS session. On iOS,
+  // if a new session starts while the previous SFSpeechRecognizer is still
+  // finishing, the native layer replays the previous session's final
+  // partials onto the new session's listener. We use this to filter those
+  // stale echoes out by dropping any leading partial whose text exactly
+  // matches what the previous session ended on.
+  const previousFinalTextRef = useRef("");
+  // Tracks whether we've already accepted a "real" partial in the CURRENT
+  // session. Once we have, we stop filtering — any text after that is
+  // definitely from the new session.
+  const currentSessionAcceptedPartialRef = useRef(false);
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -181,9 +192,15 @@ export const useVoiceCapture = ({
     // sessions, leaving SFSpeechRecognizer in a stuck state. Our custom
     // Swift plugin deactivates + reactivates it, forcing a clean slate.
     // Non-fatal on failure — we still try to start.
+    //
+    // Bumped from 250ms to 500ms after device logs showed run 2 kicking
+    // off while run 1's recognizer was still emitting cached partials
+    // ("50 g of butter" replay on the 2nd start). Giving CoreAudio more
+    // time to fully release + reinstate before we register new listeners
+    // reduces the overlap window significantly.
     if (Capacitor.getPlatform() === "ios") {
       try {
-        await AudioSession.resetAudioSession({ delayMs: 250 });
+        await AudioSession.resetAudioSession({ delayMs: 500 });
       } catch (err) {
         // Log but don't block start — old builds without the plugin should
         // still work on the 1st session.
@@ -223,12 +240,18 @@ export const useVoiceCapture = ({
     await cleanupNativeListeners();
     nativeStoppedWaitRef.current?.resolve();
     nativeStoppedWaitRef.current = null;
+    // Remember what the previous session ended on BEFORE we clear the
+    // transcript, so the stale-echo filter in the partialResults listener
+    // has something to compare against. Empty string means "no previous
+    // session to echo from" — filter will be a no-op.
+    previousFinalTextRef.current = transcriptRef.current.trim();
     setTranscriptSafe("");
     // Fresh session — reset the "has input?" flag. receivedInputRef is
     // what lets the caller distinguish "user spoke, session ran cleanly"
     // from "audio session was stuck so nothing was captured". See the
     // comment on receivedInputRef for the iOS-specific failure mode.
     receivedInputRef.current = false;
+    currentSessionAcceptedPartialRef.current = false;
 
     const sessionId = ++sessionIdRef.current;
 
@@ -257,14 +280,28 @@ export const useVoiceCapture = ({
       const partialResultsHandle = await SpeechRecognition.addListener("partialResults", (payload: any) => {
         if (sessionId !== sessionIdRef.current) return;
         const partialMatch = extractFirstMatch(payload);
-        if (partialMatch) {
-          // Mark the session as "heard something" before writing the
-          // transcript, so downstream consumers (stopVoice, natural-stop)
-          // know the session is genuine and not a stuck-audio-session
-          // replay of cached text.
-          receivedInputRef.current = true;
-          setTranscriptSafe(partialMatch);
+        if (!partialMatch) return;
+
+        // Stale-echo filter: if this is the first partial of a new session
+        // AND it matches the text the previous session ended on exactly,
+        // it's almost certainly iOS replaying a cached final from the
+        // stuck previous recognizer. Drop it. Once we've accepted even
+        // one partial, we stop filtering — real speech is flowing.
+        if (
+          !currentSessionAcceptedPartialRef.current &&
+          previousFinalTextRef.current &&
+          partialMatch.trim() === previousFinalTextRef.current
+        ) {
+          return;
         }
+
+        currentSessionAcceptedPartialRef.current = true;
+        // Mark the session as "heard something" before writing the
+        // transcript, so downstream consumers (stopVoice, natural-stop)
+        // know the session is genuine and not a stuck-audio-session
+        // replay of cached text.
+        receivedInputRef.current = true;
+        setTranscriptSafe(partialMatch);
       });
       listenerHandles.push(partialResultsHandle);
     }
