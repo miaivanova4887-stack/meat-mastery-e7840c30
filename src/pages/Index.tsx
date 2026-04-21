@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { ChevronRight, RotateCcw, Lock, ShieldCheck } from "lucide-react";
+import { ChevronRight, RotateCcw, Lock } from "lucide-react";
 import CarnivoreXLogo from "@/components/CarnivoreXLogo";
 import { useTranslation } from "react-i18next";
 import { useSubscription, type SubscriptionTier } from "@/contexts/SubscriptionContext";
