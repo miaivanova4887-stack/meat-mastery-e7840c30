@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Navigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
-import { ChevronRight, RotateCcw, Lock, ShieldCheck } from "lucide-react";
+import { ChevronRight, RotateCcw, Lock } from "lucide-react";
 import CarnivoreXLogo from "@/components/CarnivoreXLogo";
 import { useTranslation } from "react-i18next";
 import { useSubscription, type SubscriptionTier } from "@/contexts/SubscriptionContext";
@@ -235,16 +235,6 @@ const Index = () => {
           {t("home.updatePreferences")}
         </button>
 
-        <div className="pt-4 pb-2 flex items-start gap-2.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground">Disclaimer</p>
-            <p className="text-[11px] leading-relaxed text-muted-foreground/80">
-              CarnivoreX is a wellness tracking tool, not a medical service. Nothing in this app constitutes medical advice — consult your physician before making any dietary changes.
-            </p>
-          </div>
-        </div>
-
         <Accordion type="single" collapsible className="pb-6 pt-2 px-0">
           <AccordionItem value="privacy" className="border-b border-border/30">
             <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
@@ -256,13 +246,23 @@ const Index = () => {
               </div>
             </AccordionContent>
           </AccordionItem>
-          <AccordionItem value="terms" className="border-b-0">
+          <AccordionItem value="terms" className="border-b border-border/30">
             <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
               {t("home.footer_legal.terms_label")}
             </AccordionTrigger>
             <AccordionContent>
               <div className="max-h-64 overflow-y-auto text-xs text-muted-foreground/80 leading-relaxed whitespace-pre-line">
                 {t("terms.main.body")}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="disclaimer" className="border-b-0">
+            <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
+              Disclaimer
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="text-xs text-muted-foreground/80 leading-relaxed">
+                CarnivoreX is a wellness tracking tool, not a medical service. Nothing in this app constitutes medical advice — consult your physician before making any dietary changes.
               </div>
             </AccordionContent>
           </AccordionItem>
