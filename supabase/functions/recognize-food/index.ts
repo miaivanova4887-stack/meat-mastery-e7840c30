@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireTier } from "../_shared/requireTier.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Subscription gate: Snap & Log (photo food recognition) is a Pro feature.
+  const gate = await requireTier(req, "pro");
+  if (gate instanceof Response) return gate;
 
   try {
     const { imageBase64, dietTier } = await req.json();

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
 import { useMealPlan, DAYS, MEAL_SLOTS, SLOT_LABELS, type DayKey, type MealSlot, type PlannedMeal } from "@/hooks/useMealPlan";
 import { toast } from "sonner";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, X } from "lucide-react";
 
 export interface AddToPlanRecipe {
   name: string;
@@ -105,8 +105,27 @@ export default function AddToPlanSheet({ open, onOpenChange, recipe }: AddToPlan
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
-        <DrawerHeader className="pb-2">
+      <DrawerContent>
+        {/* Close button — explicit X so users on any platform can dismiss,
+            not only via swipe-down. Vaul installs a drag-to-dismiss pointer
+            handler on DrawerContent; we stop propagation so taps on the X
+            don't get swallowed as the start of a drag gesture. The z-50 +
+            pointerdown/touchstart stop-propagation is what makes the tap
+            actually register on iOS Safari / WKWebView. */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenChange(false);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          aria-label="Close"
+          className="absolute right-3 top-3 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-muted/80 text-foreground shadow-md active:scale-95 transition-all"
+        >
+          <X size={20} />
+        </button>
+        <DrawerHeader className="pb-2 pr-12">
           <DrawerTitle className="text-base font-display">{recipe.name}</DrawerTitle>
           <DrawerDescription className="flex items-center gap-3 text-xs">
             <span>{recipe.cal} cal</span>

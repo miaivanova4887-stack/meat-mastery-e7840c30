@@ -195,7 +195,14 @@ const CategoryView = ({ category }: Props) => {
                 <div>
                   <p className="text-sm font-semibold text-foreground">{convertVal(Number(e.value))} {displayUnit()}</p>
                   <p className="text-[10px] text-muted-foreground">{format(new Date(e.recorded_at), "MMM dd, h:mm a")}</p>
-                  {e.notes && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{e.notes}</p>}
+                  {(() => {
+                    // Hide the internal [meal-sync] <id> tag from the user — keep only
+                    // the human-readable recipe name that follows it (if any).
+                    const clean = e.notes?.replace(/^\[meal-sync\]\s*\S+\s*/, "").trim();
+                    return clean ? (
+                      <p className="text-[10px] text-muted-foreground/70 mt-0.5">{clean}</p>
+                    ) : null;
+                  })()}
                 </div>
                 <button onClick={() => deleteEntry.mutate(e.id)} className="text-muted-foreground hover:text-destructive transition-colors p-1">
                   <Trash2 size={14} />

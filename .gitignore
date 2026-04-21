@@ -22,3 +22,45 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Android build
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+android/app/release/
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/
+android/local.properties
+
+# Signing — NEVER COMMIT THESE
+android/keystore.properties
+*.jks
+*.keystore
+
+# Release artifacts (staged locally, uploaded to Play separately)
+release/
+
+# iOS build artifacts (but keep ios/App project source)
+ios/App/build/
+ios/App/Pods/
+ios/App/App/public/
+ios/DerivedData/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+
+# OpenClaw assistant workspace — local only, never sync
+.openclaw/
+memory/
+Users/
+AGENTS.md
+SOUL.md
+USER.md
+IDENTITY.md
+TOOLS.md
+HEARTBEAT.md
+BOOTSTRAP.md
+
+# Supabase local state
+supabase/.temp/

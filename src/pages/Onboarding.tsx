@@ -412,10 +412,6 @@ const Onboarding = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Temporary build fingerprint badge */}
-      <div className="fixed bottom-2 left-2 z-50 rounded bg-destructive/90 px-2 py-0.5 text-[9px] font-mono text-destructive-foreground shadow">
-        FP: {window.__BUILD_FINGERPRINT__ ?? "?"}
-      </div>
       {/* Premium top bar */}
       <div
         className="px-5 pt-4 pb-3 flex items-center gap-4"
@@ -501,13 +497,22 @@ const Onboarding = () => {
                   key={`${step}-${i}`}
                   onClick={() => handleSelect(i)}
                   style={{ animationDelay: `${i * 60}ms` }}
-                  className={`w-full flex items-center gap-3.5 h-[52px] px-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.98]
+                  /*
+                   * Card height was a fixed `h-[52px]`, which clipped any
+                   * `desc` string long enough to wrap to two lines on
+                   * narrow viewports (e.g. "Cooking, planning & staying
+                   * consistent"). Using `min-h` + `py-2.5` keeps the
+                   * compact look for short descs but lets the card grow
+                   * naturally when the copy needs two lines, without
+                   * shrinking the 14px label / 11px desc font sizes.
+                   */
+                  className={`w-full flex items-center gap-3.5 min-h-[52px] py-2.5 px-4 rounded-xl border transition-all duration-200 text-left active:scale-[0.98]
                     ${selected ? "onboarding-card-selected" : "onboarding-card-idle"}
                   `}
                 >
                   {/* Medallion icon */}
                   <div
-                    className={`onboarding-medallion ${selected ? "onboarding-medallion-active" : ""}`}
+                    className={`onboarding-medallion shrink-0 ${selected ? "onboarding-medallion-active" : ""}`}
                   >
                     <span className="text-[15px] leading-none">{opt.emoji}</span>
                   </div>
@@ -529,7 +534,7 @@ const Onboarding = () => {
 
                   {/* Check ring */}
                   <div
-                    className={`onboarding-check ${selected ? "onboarding-check-active" : ""}`}
+                    className={`onboarding-check shrink-0 ${selected ? "onboarding-check-active" : ""}`}
                   >
                     {selected && <Check size={10} strokeWidth={2.5} className="text-primary-foreground" />}
                   </div>
@@ -616,7 +621,11 @@ const Onboarding = () => {
                               key={targetKey}
                               type="button"
                               onClick={() => toggleHealthTarget(targetKey)}
-                              className={`flex-1 flex items-center justify-center gap-2 h-[52px] px-3 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                              /* `min-h-[52px]` + `py-2` lets long translated
+                               * labels (e.g. "Insulin sensitivity") wrap to
+                               * two lines without clipping, while keeping
+                               * the compact look for short labels. */
+                              className={`flex-1 flex items-center justify-center gap-2 min-h-[52px] py-2 px-3 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
                                 selected
                                   ? "onboarding-pill-selected"
                                   : "onboarding-pill-idle"
@@ -626,7 +635,7 @@ const Onboarding = () => {
                                 <Check size={12} strokeWidth={2.5} className="flex-shrink-0" />
                               )}
                               <span
-                                className={`text-[14px] font-medium leading-tight ${
+                                className={`text-[14px] font-medium leading-tight text-center ${
                                   selected ? "text-foreground" : "text-foreground"
                                 }`}
                               >
@@ -646,14 +655,17 @@ const Onboarding = () => {
                               key={targetKey}
                               type="button"
                               onClick={() => toggleHealthTarget(targetKey)}
-                              className={`w-full flex items-center gap-3 h-[52px] px-4 transition-all duration-200 active:scale-[0.98] ${
+                              /* Flexible height so long translated labels
+                               * aren't clipped. min-h keeps the compact
+                               * look for short labels. */
+                              className={`w-full flex items-center gap-3 min-h-[52px] py-2.5 px-4 transition-all duration-200 active:scale-[0.98] ${
                                 selected
                                   ? "bg-primary/[0.05]"
                                   : "bg-card hover:bg-muted/30"
                               }`}
                             >
                               <span
-                                className={`flex-1 text-[14px] font-medium text-left ${
+                                className={`flex-1 min-w-0 text-[14px] font-medium text-left leading-tight ${
                                   selected ? "text-foreground" : "text-foreground/80"
                                 }`}
                               >

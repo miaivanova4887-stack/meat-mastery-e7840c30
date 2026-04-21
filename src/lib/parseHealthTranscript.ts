@@ -537,6 +537,62 @@ function normaliseWordNumbers(input: string): string {
     [/\bone cup\b/g, "240ml"],
     [/\ba glass\b/g, "240ml"],
     [/\bone glass\b/g, "240ml"],
+    // --- Coffee-shop size words ---
+    // Starbucks-style sizes that users actually say. We translate them to
+    // explicit ml so findQuantityNear picks the drink's real serving size
+    // instead of defaulting to 240ml. Sizes follow Starbucks hot-drink
+    // pours; cold drinks differ slightly but the 30-60ml drift is well
+    // under the accuracy of a voice-logged macro estimate.
+    //   short   =  8 fl oz = 240ml
+    //   tall    = 12 fl oz = 350ml
+    //   grande  = 16 fl oz = 470ml
+    //   venti   = 20 fl oz = 590ml (hot) / 24 fl oz = 710ml (iced)
+    //   trenta  = 30 fl oz = 890ml (iced only)
+    // We use the hot venti (more common for cappuccino/latte) as the
+    // default; iced venti drinkers can override with explicit "24 oz".
+    //
+    // Also handled: the generic small/medium/large/extra-large sizing
+    // used by Dunkin, Tim Hortons, McDonald's, Costa, Caffe Nero, and
+    // most coffee shops outside the US. These resolve to averages across
+    // major chains and can be overridden with an explicit ml value.
+    //   small       = 10 fl oz = 300ml
+    //   medium      = 14 fl oz = 400ml
+    //   large       = 17 fl oz = 500ml
+    //   extra-large = 22 fl oz = 650ml
+    //
+    // The `DRINK` group below is a single alternation reused in both size
+    // patterns so we only have one place to extend the drink list.
+    //
+    // Trailing "size" word is optional — handles "medium size frappuccino"
+    // and "frappuccino medium size" which voice dictation often produces.
+    [/\bshort(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha))/g, "240ml"],
+    [/\btall(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha))/g, "350ml"],
+    [/\bgrande(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha))/g, "470ml"],
+    [/\bventi(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha))/g, "590ml"],
+    [/\btrenta(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha))/g, "890ml"],
+    // Generic sizing. "extra large" must come before "large" to prevent
+    // the latter from consuming it first.
+    [/\bextra[- ]large(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake))/g, "650ml"],
+    [/\b(?:xl|x-large)(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake))/g, "650ml"],
+    [/\bsmall(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake))/g, "300ml"],
+    [/\bmedium(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake))/g, "400ml"],
+    [/\blarge(?:\s+size)?\b(?=\s+(?:cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake))/g, "500ml"],
+    // Also handle the reversed order ("cappuccino grande", "frappuccino
+    // medium size") that some users say, especially outside the US and
+    // in voice-dictated input where the size word lands after the drink.
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha)\s+short(?:\s+size)?\b/g, "240ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha)\s+tall(?:\s+size)?\b/g, "350ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha)\s+grande(?:\s+size)?\b/g, "470ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha)\s+venti(?:\s+size)?\b/g, "590ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha)\s+trenta(?:\s+size)?\b/g, "890ml $1"],
+    // Reversed generic sizing (extra-large first to win over plain "large").
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake)\s+extra[- ]large(?:\s+size)?\b/g, "650ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake)\s+(?:xl|x-large)(?:\s+size)?\b/g, "650ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake)\s+small(?:\s+size)?\b/g, "300ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake)\s+medium(?:\s+size)?\b/g, "400ml $1"],
+    [/\b(cappuccino|frappuccino|latte|macchiato|mocha|americano|espresso|coffee|flat white|cortado|matcha|chai|hot chocolate|tea|cold brew|iced coffee|cocoa|kombucha|milk|milkshake)\s+large(?:\s+size)?\b/g, "500ml $1"],
+    // Fl oz → ml (common on coffee-shop menus).
+    [/\b(\d+(?:\.\d+)?)\s*(?:fl ?oz|fluid ounces?|ounces?)\b/g, (_m: string, n: string) => `${Math.round(parseFloat(n) * 30)}ml`],
     // "a liter/litre" without a number → "1 litre"
     [/\ba (liter|litre|l)\b/g, "1 $1"],
     // --- Compound number words ---
@@ -658,16 +714,132 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
   }
 
   // --- Fluids / hydration ---
-  // Catches "1 liter of water", "500ml water", "two coffees", "1L tea", etc.
-  // Records a volume entry in ml under the "hydration" category. Each fluid
-  // keyword looks for a volume quantity near it; when none is present we fall
-  // back to a sensible default serving (1 cup = 240ml).
-  const FLUIDS: { keywords: string[]; displayName: string; defaultMl: number; metric: string }[] = [
+  // Catches "1 liter of water", "500ml water", "two coffees", "venti
+  // cappuccino", "1L tea", etc. Records a volume entry in ml under the
+  // "hydration" category. Each fluid keyword looks for a volume quantity
+  // near it; when none is present we fall back to a sensible default
+  // serving (1 cup = 240ml for coffee/tea, 500ml for water).
+  //
+  // Milk-based espresso drinks also emit diet_trends entries (calories,
+  // protein, fat) because on a carnivore tracker the milk macros matter —
+  // a venti latte has ~300kcal from milk alone and shouldn't look like
+  // "just hydration". Macros scale with ml / refMl.
+  //
+  // Ordered most-specific first so multi-word drinks ("flat white",
+  // "hot chocolate") match before single-word fallbacks ("coffee", "tea")
+  // that might appear inside them.
+  type Fluid = {
+    keywords: string[];
+    displayName: string;
+    defaultMl: number;
+    metric: string;
+    /** If set, emit diet_trends entries scaled to ml / refMl. */
+    macros?: { refMl: number; cal: number; protein: number; fat: number };
+  };
+  const FLUIDS: Fluid[] = [
+    // --- Specific espresso drinks (match BEFORE generic "coffee") ---
+    // Ordered MOST-SPECIFIC first so multi-word drinks ("flat white", "cold
+    // brew", "chai latte") claim their character spans before single-word
+    // siblings ("latte", "coffee", "chai") try to match. The overlap guard
+    // then blocks the single-word match from double-counting.
+    //
+    // Macros are rough averages for whole-milk versions; the carnivore
+    // user base mostly drinks whole milk or cream. Espresso itself is
+    // ~0 macros; the cal/protein/fat comes almost entirely from the milk.
+
+    // Multi-word espresso drinks
+    { keywords: ["flat white"],
+      displayName: "flat white", defaultMl: 160, metric: "coffee",
+      macros: { refMl: 160, cal: 120, protein: 7, fat: 7 } },
+    { keywords: ["caramel macchiato", "latte macchiato"],
+      displayName: "macchiato", defaultMl: 240, metric: "coffee",
+      macros: { refMl: 240, cal: 130, protein: 6, fat: 6 } },
+    { keywords: ["caffe mocha", "cafe mocha"],
+      displayName: "mocha", defaultMl: 350, metric: "coffee",
+      macros: { refMl: 350, cal: 290, protein: 10, fat: 11 } },
+    { keywords: ["caffe americano", "cafe americano"],
+      displayName: "americano", defaultMl: 240, metric: "coffee" },
+    { keywords: ["caffe latte", "cafe latte"],
+      displayName: "latte", defaultMl: 350, metric: "coffee",
+      macros: { refMl: 350, cal: 190, protein: 10, fat: 10 } },
+    { keywords: ["cold brew"],
+      displayName: "cold brew", defaultMl: 350, metric: "coffee" },
+    { keywords: ["iced coffee"],
+      displayName: "iced coffee", defaultMl: 470, metric: "coffee" },
+    { keywords: ["hot chocolate", "hot cocoa"],
+      displayName: "hot chocolate", defaultMl: 240, metric: "coffee",
+      macros: { refMl: 240, cal: 190, protein: 8, fat: 8 } },
+
+    // Frappuccino: blended ice + milk + syrup, high calorie. Macros are
+    // an average across the popular flavours (caramel / mocha / vanilla /
+    // java chip) using Starbucks grande nutrition data. Carnivore users
+    // aren't the target audience, but if they log one the calorie count
+    // has to reflect reality. Default size = grande (470ml, most-ordered).
+    { keywords: ["frappuccino", "frappucino", "frapp"],
+      displayName: "frappuccino", defaultMl: 470, metric: "coffee",
+      macros: { refMl: 470, cal: 380, protein: 5, fat: 15 } },
+    { keywords: ["milkshake", "milk shake"],
+      displayName: "milkshake", defaultMl: 400, metric: "milk",
+      macros: { refMl: 400, cal: 550, protein: 12, fat: 20 } },
+
+    // Multi-word teas (before single-word tea fallback)
+    { keywords: ["chai latte"],
+      displayName: "chai latte", defaultMl: 350, metric: "tea",
+      macros: { refMl: 350, cal: 240, protein: 8, fat: 5 } },
+    { keywords: ["matcha latte"],
+      displayName: "matcha latte", defaultMl: 350, metric: "tea",
+      macros: { refMl: 350, cal: 170, protein: 9, fat: 5 } },
+    { keywords: ["green tea"],
+      displayName: "green tea", defaultMl: 240, metric: "tea" },
+    { keywords: ["black tea"],
+      displayName: "black tea", defaultMl: 240, metric: "tea" },
+    { keywords: ["herbal tea"],
+      displayName: "herbal tea", defaultMl: 240, metric: "tea" },
+    { keywords: ["chai tea"],
+      displayName: "chai tea", defaultMl: 240, metric: "tea" },
+
+    // Single-word espresso drinks (plain words, middle of the list so they
+    // won't clobber their multi-word cousins above)
+    { keywords: ["cappuccino", "cappucino", "capuccino", "capucino"],
+      displayName: "cappuccino", defaultMl: 240, metric: "coffee",
+      macros: { refMl: 240, cal: 120, protein: 6, fat: 6 } },
+    { keywords: ["latte"],
+      displayName: "latte", defaultMl: 350, metric: "coffee",
+      macros: { refMl: 350, cal: 190, protein: 10, fat: 10 } },
+    { keywords: ["macchiato"],
+      displayName: "macchiato", defaultMl: 240, metric: "coffee",
+      macros: { refMl: 240, cal: 130, protein: 6, fat: 6 } },
+    { keywords: ["cortado", "gibraltar"],
+      displayName: "cortado", defaultMl: 120, metric: "coffee",
+      macros: { refMl: 120, cal: 70, protein: 4, fat: 4 } },
+    { keywords: ["mocha"],
+      displayName: "mocha", defaultMl: 350, metric: "coffee",
+      macros: { refMl: 350, cal: 290, protein: 10, fat: 11 } },
+    { keywords: ["americano"],
+      displayName: "americano", defaultMl: 240, metric: "coffee" },
+
+    // Single-word teas (same rationale: after multi-word teas)
+    { keywords: ["chai"],
+      displayName: "chai tea", defaultMl: 240, metric: "tea" },
+    { keywords: ["matcha"],
+      displayName: "matcha tea", defaultMl: 240, metric: "tea" },
+
+    // --- Fermented / misc ---
+    { keywords: ["kombucha"],
+      displayName: "kombucha", defaultMl: 330, metric: "water",
+      macros: { refMl: 330, cal: 30, protein: 0, fat: 0 } },
+    { keywords: ["sparkling water", "soda water", "seltzer", "mineral water"],
+      displayName: "sparkling water", defaultMl: 330, metric: "water" },
+
+    // --- Generic fallbacks (LAST so specific drinks match first) ---
     { keywords: ["water"],                      displayName: "water",  defaultMl: 500, metric: "water" },
-    { keywords: ["coffee", "espresso"],         displayName: "coffee", defaultMl: 240, metric: "coffee" },
-    { keywords: ["tea"],                         displayName: "tea",    defaultMl: 240, metric: "tea" },
-    { keywords: ["milk"],                        displayName: "milk",   defaultMl: 240, metric: "milk" },
-    { keywords: ["kefir"],                       displayName: "kefir",  defaultMl: 240, metric: "kefir" },
+    { keywords: ["espresso", "espressos"],       displayName: "espresso", defaultMl: 30,  metric: "coffee" },
+    { keywords: ["coffee", "coffees"],           displayName: "coffee", defaultMl: 240, metric: "coffee" },
+    { keywords: ["tea", "teas"],                 displayName: "tea",    defaultMl: 240, metric: "tea" },
+    { keywords: ["milk"],                       displayName: "milk",   defaultMl: 240, metric: "milk",
+      macros: { refMl: 240, cal: 150, protein: 8, fat: 8 } },
+    { keywords: ["kefir"],                      displayName: "kefir",  defaultMl: 240, metric: "kefir",
+      macros: { refMl: 240, cal: 160, protein: 9, fat: 9 } },
   ];
   for (const fluid of FLUIDS) {
     for (const kw of fluid.keywords) {
@@ -677,21 +849,47 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
       if (idx === -1) continue;
       if (matched.has(kw)) continue;
       if (overlapsExisting(idx, idx + kw.length)) continue;
-
       matched.add(kw);
       matchedSpans.push([idx, idx + kw.length]);
       const qty = findQuantityNear(lower, idx, kw.length);
-      // Only trust the quantity when it's a volume unit (ml). Weight units
-      // near a fluid word are almost certainly meant for a food later in the
-      // sentence, so we ignore them here and use the default serving.
-      const ml = qty && qty.unit === "ml" ? Math.round(qty.value) : fluid.defaultMl;
+      // ml              → use directly
+      // serving (count) → multiply defaultMl ("one cup of coffee" = 240ml)
+      // anything else   → fall through to count-near-drink check below
+      //                   (weight units near a fluid word almost always
+      //                   belong to a food item elsewhere in the sentence)
+      let ml = fluid.defaultMl;
+      if (qty?.unit === "ml") {
+        ml = Math.round(qty.value);
+      } else if (qty?.unit === "serving") {
+        ml = Math.round(qty.value * fluid.defaultMl);
+      } else {
+        // Bare count just before the drink word ("2 espressos", "3 coffees",
+        // "two coffees"). Look at the clause window directly to the left of
+        // the keyword and grab a small integer if present. We cap at 10 so
+        // we don't accidentally interpret "300 ribeye and a coffee" as
+        // 300 coffees. Volume-style numbers (anything ≥ 50) are assumed to
+        // be ml that was already spelled out and handled above.
+        const before = lower.slice(Math.max(0, idx - 20), idx);
+        const countMatch = before.match(/(\d+)\s+(?:of\s+)?$/);
+        if (countMatch) {
+          const n = parseInt(countMatch[1], 10);
+          if (n > 0 && n <= 10) ml = Math.round(n * fluid.defaultMl);
+        }
+      }
+      const note = `${ml}ml ${fluid.displayName}`;
       entries.push({
         category: "hydration",
         metric: fluid.metric,
         value: ml,
         unit: "ml",
-        notes: `${ml}ml ${fluid.displayName}`,
+        notes: note,
       });
+      if (fluid.macros) {
+        const scale = ml / fluid.macros.refMl;
+        entries.push({ category: "diet_trends", metric: "calories", value: Math.round(fluid.macros.cal * scale), unit: "kcal", notes: note });
+        entries.push({ category: "diet_trends", metric: "protein",  value: Math.round(fluid.macros.protein * scale), unit: "g",    notes: note });
+        entries.push({ category: "diet_trends", metric: "fat",      value: Math.round(fluid.macros.fat * scale), unit: "g",    notes: note });
+      }
       break;
     }
   }

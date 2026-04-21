@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Crown, Zap, Star, Loader2, ExternalLink } from "lucide-react";
+import { ArrowLeft, Check, Crown, Zap, Star, Loader2, ExternalLink, RefreshCw } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSubscription, type SubscriptionTier } from "@/contexts/SubscriptionContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -6,7 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywall";
 
+// --- Web / Stripe configuration ------------------------------------------
+// These price IDs drive Stripe Checkout on the web. On native iOS we ignore
+// them entirely and use RevenueCat's App Store Connect products instead.
 const TIERS = {
   pro: {
     monthly: { priceId: "price_1TEtllBqDvgi4jU7lMUy48WX", amount: "$6.99/mo" },
@@ -22,10 +26,15 @@ const TIERS = {
 const Pricing = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { tier, hasAccess, refreshSubscription } = useSubscription();
+  const { tier, hasAccess, source, refreshSubscription } = useSubscription();
   const { user } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const paywall = useNativePaywall();
+
+  // `paywall.enabled` is true only on native iOS/Android. On web, every buy
+  // button continues to go through Stripe Checkout as before.
+  const useNative = paywall.enabled;
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -34,7 +43,8 @@ const Pricing = () => {
     }
   }, [searchParams, refreshSubscription]);
 
-  const handleCheckout = async (priceId: string) => {
+  // --- Stripe (web) handlers ----------------------------------------------
+  const handleStripeCheckout = async (priceId: string) => {
     if (!user) {
       toast("Please sign in first");
       navigate("/auth");
@@ -49,14 +59,15 @@ const Pricing = () => {
       if (data?.url) {
         window.open(data.url, "_blank");
       }
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to start checkout");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to start checkout";
+      toast.error(msg);
     } finally {
       setLoading(null);
     }
   };
 
-  const handlePortal = async () => {
+  const handleStripePortal = async () => {
     setLoading("portal");
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
@@ -64,13 +75,58 @@ const Pricing = () => {
       if (data?.url) {
         window.open(data.url, "_blank");
       }
-    } catch (e: any) {
-      toast.error(e?.message || "Failed to open portal");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Failed to open portal";
+      toast.error(msg);
     } finally {
       setLoading(null);
     }
   };
 
+  // --- RevenueCat (native) handlers ---------------------------------------
+  const handleNativePurchase = async (info: NativePackageInfo) => {
+    if (!user) {
+      toast("Please sign in first");
+      navigate("/auth");
+      return;
+    }
+    const id = info.pkg.identifier;
+    setLoading(id);
+    try {
+      const result = await paywall.purchase(info.pkg);
+      if (result.ok) {
+        toast.success("Subscription activated! Welcome aboard 🎉");
+        await refreshSubscription();
+      } else if (result.cancelled) {
+        // User dismissed the sheet — stay quiet.
+      } else {
+        toast.error(result.error ?? "Purchase failed");
+      }
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleNativeRestore = async () => {
+    setLoading("restore");
+    try {
+      const result = await paywall.restore();
+      if (result.ok) {
+        if (result.summary?.isActive) {
+          toast.success("Purchases restored 🎉");
+        } else {
+          toast("No previous purchases found on this Apple ID.");
+        }
+        await refreshSubscription();
+      } else {
+        toast.error(result.error ?? "Restore failed");
+      }
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // --- Plan data ---------------------------------------------------------
   const plans: {
     tier: SubscriptionTier;
     name: string;
@@ -125,6 +181,31 @@ const Pricing = () => {
     },
   ];
 
+  /**
+   * Resolve the price label + buy handler for a given plan card.
+   * - On native: uses RC package info + triggers the App Store sheet.
+   * - On web: uses the hard-coded Stripe price IDs.
+   */
+  const getPurchaseContext = (planTier: "pro" | "elite") => {
+    if (useNative) {
+      const key = `${planTier}_${billingCycle}` as keyof typeof paywall.packages;
+      const info = paywall.packages[key];
+      return {
+        label: info?.priceLabel ?? (paywall.loading ? "Loading…" : "Unavailable"),
+        disabled: !info,
+        loadingKey: info ? info.pkg.identifier : null,
+        onBuy: info ? () => handleNativePurchase(info) : null,
+      };
+    }
+    const priceInfo = TIERS[planTier][billingCycle];
+    return {
+      label: priceInfo.amount,
+      disabled: false,
+      loadingKey: priceInfo.priceId,
+      onBuy: () => handleStripeCheckout(priceInfo.priceId),
+    };
+  };
+
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3"
@@ -156,23 +237,29 @@ const Pricing = () => {
           const isCurrent = tier === plan.tier;
           const Icon = plan.icon;
           const isUpgrade = !hasAccess(plan.tier);
-          const priceInfo = plan.tier !== "free"
-            ? TIERS[plan.tier as "pro" | "elite"][billingCycle]
-            : null;
+          const isIncluded = !isCurrent && !isUpgrade;
+          const purchase = plan.tier !== "free" ? getPurchaseContext(plan.tier as "pro" | "elite") : null;
 
           return (
             <div
               key={plan.tier}
               className={`ios-card p-5 relative overflow-hidden transition-all ${
-                plan.highlight && !isCurrent ? "ring-2 ring-primary/40" : ""
-              } ${isCurrent ? "ring-2 ring-primary" : ""}`}
+                plan.highlight && isUpgrade ? "ring-2 ring-primary/40" : ""
+              } ${isCurrent ? "ring-2 ring-primary" : ""} ${
+                isIncluded ? "opacity-75" : ""
+              }`}
             >
               {isCurrent && (
                 <div className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
                   Your Plan
                 </div>
               )}
-              {plan.highlight && !isCurrent && (
+              {isIncluded && (
+                <div className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                  Included
+                </div>
+              )}
+              {plan.highlight && isUpgrade && (
                 <div className="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary/15 text-primary">
                   Popular
                 </div>
@@ -192,8 +279,8 @@ const Pricing = () => {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-foreground">{plan.name}</h2>
-                  {priceInfo ? (
-                    <p className="text-sm font-semibold text-primary">{priceInfo.amount}</p>
+                  {purchase ? (
+                    <p className="text-sm font-semibold text-primary">{purchase.label}</p>
                   ) : (
                     <p className="text-sm text-muted-foreground">Always free</p>
                   )}
@@ -211,36 +298,64 @@ const Pricing = () => {
 
               {plan.tier === "free" ? (
                 isCurrent ? null : (
-                  <p className="text-xs text-muted-foreground text-center">Current plan</p>
+                  <p className="text-xs text-muted-foreground text-center">
+                    Included in your plan
+                  </p>
                 )
               ) : isCurrent ? (
-                <Button
-                  variant="outline"
-                  className="w-full gap-2"
-                  onClick={handlePortal}
-                  disabled={loading === "portal"}
-                >
-                  {loading === "portal" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                  Manage Subscription
-                </Button>
-              ) : isUpgrade && priceInfo ? (
+                // "Manage" button. On native iOS subscriptions are managed
+                // via Apple's Settings app, not our Stripe portal. We deep
+                // link to the subscription management page there.
+                source === "revenuecat" ? (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => {
+                      window.open("https://apps.apple.com/account/subscriptions", "_blank");
+                    }}
+                  >
+                    <ExternalLink size={14} />
+                    Manage in App Store
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleStripePortal}
+                    disabled={loading === "portal"}
+                  >
+                    {loading === "portal" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
+                    Manage Subscription
+                  </Button>
+                )
+              ) : isUpgrade && purchase ? (
                 <Button
                   className="w-full"
-                  onClick={() => handleCheckout(priceInfo.priceId)}
-                  disabled={loading === priceInfo.priceId}
+                  onClick={() => purchase.onBuy?.()}
+                  disabled={purchase.disabled || loading === purchase.loadingKey}
                 >
-                  {loading === priceInfo.priceId ? (
+                  {loading === purchase.loadingKey ? (
                     <Loader2 size={14} className="animate-spin" />
                   ) : (
                     `Upgrade to ${plan.name}`
                   )}
                 </Button>
+              ) : isIncluded ? (
+                <p className="text-xs text-muted-foreground text-center">
+                  Included in your current plan
+                </p>
               ) : null}
             </div>
           );
         })}
 
-        {/* Coaching add-on */}
+        {/* Coaching add-on
+         * Coaching is a one-time purchase, not a subscription, so it stays
+         * on Stripe even on iOS (Apple IAP is required for digital
+         * subscriptions and recurring in-app content, but one-off coaching
+         * calls delivered outside the app are considered physical-world
+         * services and can use external payment). If we later change this
+         * to be an in-app consumable we'll need to move it to RC too. */}
         <div className="ios-card p-5">
           <div className="flex items-center gap-2.5 mb-2">
             <div className="w-9 h-9 rounded-xl bg-[hsl(var(--gold))]/15 flex items-center justify-center">
@@ -258,7 +373,7 @@ const Pricing = () => {
           <Button
             variant="outline"
             className="w-full"
-            onClick={() => handleCheckout(TIERS.coaching.priceId)}
+            onClick={() => handleStripeCheckout(TIERS.coaching.priceId)}
             disabled={loading === TIERS.coaching.priceId}
           >
             {loading === TIERS.coaching.priceId ? (
@@ -268,6 +383,30 @@ const Pricing = () => {
             )}
           </Button>
         </div>
+
+        {/* Restore Purchases — required by Apple when IAP is enabled. Only
+         * surfaced on native; on web there's nothing to restore. */}
+        {useNative && (
+          <div className="pt-2">
+            <Button
+              variant="ghost"
+              className="w-full gap-2 text-xs text-muted-foreground"
+              onClick={handleNativeRestore}
+              disabled={loading === "restore"}
+            >
+              {loading === "restore" ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RefreshCw size={14} />
+              )}
+              Restore Purchases
+            </Button>
+            <p className="text-[10px] text-muted-foreground/70 text-center mt-2 leading-relaxed px-4">
+              Subscriptions auto-renew unless cancelled at least 24 hours before the period ends.
+              Manage or cancel anytime in your Apple ID settings.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

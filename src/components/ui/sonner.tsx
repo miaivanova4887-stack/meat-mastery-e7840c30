@@ -9,7 +9,16 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       position="top-center"
-      offset={{ top: "calc(env(safe-area-inset-top, 0px) + 2.5rem)" }}
+      // Push toasts far enough below the top safe area to clear every
+      // sticky page header in the app (Progress, HealthSync, Recipes, etc.)
+      // on tall iPhones like the 17 Pro where the dynamic island + header
+      // combine for ≈60 + 48 = 108px from the top edge. 6rem gives headroom.
+      //
+      // IMPORTANT: Sonner uses `mobileOffset` under `@media (max-width: 600px)`
+      // (i.e. every phone). Without this, `offset` is ignored on iPhone and
+      // toasts land on top of the Dynamic Island. Mirror the same value here.
+      offset={{ top: "calc(env(safe-area-inset-top, 0px) + 6rem)" }}
+      mobileOffset={{ top: "calc(env(safe-area-inset-top, 0px) + 6rem)" }}
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       toastOptions={{

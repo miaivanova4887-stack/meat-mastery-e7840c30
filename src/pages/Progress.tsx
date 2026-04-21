@@ -58,7 +58,7 @@ const Progress = () => {
           <button
             onClick={() => navigate("/progress/sync")}
             className={`relative p-1 transition-colors ${isHealthConnected ? "text-green-500" : "text-muted-foreground hover:text-foreground"}`}
-            title={isHealthConnected ? "Health Connect synced" : "Sync with health devices"}
+            title={isHealthConnected ? "Your Health & Fitness — synced" : "Sync with health devices"}
           >
             <Watch size={20} />
             {isHealthConnected && <CheckCircle2 size={10} className="absolute -bottom-0.5 -right-0.5 text-green-500 fill-green-500" />}

@@ -284,3 +284,172 @@ describe("parseHealthTranscript - household quantity words", () => {
     expect(kcalFor("cheese", "cheese")).toBe(200);
   });
 });
+
+describe("parseHealthTranscript — coffee-shop drinks", () => {
+  /** Pull the hydration entry (ml value) for the transcript. */
+  function mlFor(transcript: string): { ml: number; notes: string } | null {
+    const { entries } = parseHealthTranscript(transcript);
+    const h = entries.find((e) => e.category === "hydration");
+    return h ? { ml: h.value, notes: h.notes || "" } : null;
+  }
+  /** Pull the calorie entry. Returns null when the drink logs hydration only. */
+  function drinkKcal(transcript: string): number | null {
+    const { entries } = parseHealthTranscript(transcript);
+    const cal = entries.find((e) => e.metric === "calories");
+    return cal ? cal.value : null;
+  }
+
+  it("logs plain 'cappuccino' as a 240ml coffee with milk macros", () => {
+    const m = mlFor("cappuccino");
+    expect(m).not.toBeNull();
+    expect(m!.ml).toBe(240);
+    expect(m!.notes).toMatch(/cappuccino/);
+    expect(drinkKcal("cappuccino")).toBe(120);
+  });
+
+  it("recognises 'venti cappuccino' as 590ml (hot venti)", () => {
+    const m = mlFor("venti cappuccino");
+    expect(m!.ml).toBe(590);
+    expect(drinkKcal("venti cappuccino")).toBe(295);
+  });
+
+  it.each([
+    ["short", 240],
+    ["tall", 350],
+    ["grande", 470],
+    ["venti", 590],
+    ["trenta", 890],
+  ])("translates Starbucks size '%s' to %dml", (size, expected) => {
+    expect(mlFor(`${size} latte`)!.ml).toBe(expected);
+  });
+
+  it("handles reversed order ('cappuccino grande')", () => {
+    expect(mlFor("cappuccino grande")!.ml).toBe(470);
+  });
+
+  it("tolerates the common misspelling 'capuccino'", () => {
+    const m = mlFor("capuccino");
+    expect(m!.ml).toBe(240);
+    expect(m!.notes).toMatch(/cappuccino/);
+  });
+
+  it("logs 'flat white' at its ~160ml serving", () => {
+    expect(mlFor("flat white")!.ml).toBe(160);
+  });
+
+  it("matches 'chai latte' without double-counting as 'latte' too", () => {
+    const { entries } = parseHealthTranscript("chai latte");
+    const hydration = entries.filter((e) => e.category === "hydration");
+    expect(hydration).toHaveLength(1);
+    expect(hydration[0].notes).toMatch(/chai latte/);
+  });
+
+  it("matches 'matcha latte' cleanly too", () => {
+    const { entries } = parseHealthTranscript("grande matcha latte");
+    const hydration = entries.filter((e) => e.category === "hydration");
+    expect(hydration).toHaveLength(1);
+    expect(hydration[0].value).toBe(470);
+    expect(hydration[0].notes).toMatch(/matcha latte/);
+  });
+
+  it("multiplies ml by count for '2 espressos' and 'two coffees'", () => {
+    expect(mlFor("2 espressos")!.ml).toBe(60);   // 30ml × 2
+    expect(mlFor("two coffees")!.ml).toBe(480);  // 240ml × 2
+  });
+
+  it("respects an explicit volume override ('300ml cappuccino')", () => {
+    expect(mlFor("300ml cappuccino")!.ml).toBe(300);
+    expect(drinkKcal("300ml cappuccino")).toBe(150);
+  });
+
+  it("logs 'kombucha' with a 330ml serving and small calorie load", () => {
+    const m = mlFor("kombucha");
+    expect(m!.ml).toBe(330);
+    expect(drinkKcal("kombucha")).toBe(30);
+  });
+
+  it("co-logs a drink alongside a meal ('venti cappuccino and 50g butter')", () => {
+    const { entries } = parseHealthTranscript("venti cappuccino and 50g butter");
+    const drink = entries.find((e) => e.category === "hydration");
+    const butter = entries.find((e) => e.notes?.includes("butter"));
+    expect(drink!.value).toBe(590);
+    expect(butter).toBeDefined();
+  });
+
+  it("doesn't mis-fire drink macros for '300g steak'", () => {
+    // Guard: "tea" inside "steak" was the original whole-word bug; make sure
+    // the new fluid entries don't reintroduce anything similar.
+    const { entries } = parseHealthTranscript("300g steak");
+    expect(entries.some((e) => e.category === "hydration")).toBe(false);
+  });
+});
+
+describe("parseHealthTranscript — frappuccino & generic drink sizing", () => {
+  function mlFor(transcript: string): number | null {
+    const { entries } = parseHealthTranscript(transcript);
+    const h = entries.find((e) => e.category === "hydration");
+    return h ? h.value : null;
+  }
+  function kcalFor(transcript: string): number | null {
+    const { entries } = parseHealthTranscript(transcript);
+    const cal = entries.find((e) => e.metric === "calories");
+    return cal ? cal.value : null;
+  }
+
+  it("logs plain 'frappuccino' as grande (470ml) with blended-drink macros", () => {
+    expect(mlFor("frappuccino")).toBe(470);
+    expect(kcalFor("frappuccino")).toBe(380);
+  });
+
+  it("handles the original bug report 'Frappuccino medium size'", () => {
+    // Voice dictation often produces "<drink> <size> size" word order.
+    // This must scale down from the grande default and keep macros in sync.
+    expect(mlFor("Frappuccino medium size")).toBe(400);
+    expect(kcalFor("Frappuccino medium size")).toBe(323);
+  });
+
+  it("handles 'medium size frappuccino' (size word before drink)", () => {
+    expect(mlFor("medium size frappuccino")).toBe(400);
+  });
+
+  it.each([
+    ["small", 300],
+    ["medium", 400],
+    ["large", 500],
+    ["extra large", 650],
+    ["xl", 650],
+  ])("generic size '%s' resolves to %dml", (size, expected) => {
+    expect(mlFor(`${size} frappuccino`)).toBe(expected);
+  });
+
+  it("applies generic sizing to other drinks too ('large hot chocolate')", () => {
+    expect(mlFor("large hot chocolate")).toBe(500);
+  });
+
+  it("accepts common misspellings 'frappucino' and the shorthand 'frapp'", () => {
+    expect(mlFor("frappucino")).toBe(470);
+    expect(mlFor("frapp")).toBe(470);
+  });
+
+  it("doesn't clobber non-drink uses of size words", () => {
+    // "medium rare", "medium cooked", "small amount of", "large portion of"
+    // must NOT be rewritten to a fluid ml value, because no drink keyword
+    // follows. Food entries should still parse normally.
+    const steakCal = parseHealthTranscript("medium cooked ribeye").entries.find(e => e.metric === "calories")?.value;
+    expect(steakCal).toBe(900);
+    const cheeseCal = parseHealthTranscript("small amount of cheese").entries.find(e => e.metric === "calories")?.value;
+    expect(cheeseCal).toBe(200);
+    // Severity words for symptoms must still work (pre-sub for size is
+    // drink-scoped; the symptom "moderate joint pain" uses a separate map).
+    const sev = parseHealthTranscript("moderate joint pain").entries.find(e => e.metric === "joint_pain")?.value;
+    expect(sev).toBe(3);
+  });
+
+  it("logs a milkshake with milk-based macros", () => {
+    expect(mlFor("milkshake")).toBe(400);
+    expect(kcalFor("milkshake")).toBe(550);
+    // Scales with size
+    expect(mlFor("large milkshake")).toBe(500);
+    expect(kcalFor("large milkshake")).toBe(688);
+  });
+});

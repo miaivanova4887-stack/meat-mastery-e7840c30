@@ -67,18 +67,26 @@ const AddEntryDrawer = ({ open, onOpenChange, category, metricKey }: Props) => {
 
           {/* Metric selector if multiple */}
           {!metricKey && (
-            <div className="flex gap-2 flex-wrap">
+            // Grid (not flex-wrap) so 4 nutrition macros — calories / protein /
+            // fat / carbs — stay on one line across every iPhone width (SE,
+            // mini, Pro, Pro Max). For categories with 2–3 metrics the grid
+            // collapses naturally.
+            <div
+              className="grid gap-1.5"
+              style={{ gridTemplateColumns: `repeat(${metrics.length}, minmax(0, 1fr))` }}
+            >
               {metrics.map((m) => (
                 <button
                   key={m.key}
                   onClick={() => { setSelectedMetric(m.key); setValue(""); }}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  className={`px-2 py-1.5 rounded-full text-[11px] font-medium transition-all truncate ${
                     selectedMetric === m.key
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
                   }`}
                 >
-                  {m.icon} {m.label}
+                  <span className="mr-0.5">{m.icon}</span>
+                  {m.label}
                 </button>
               ))}
             </div>

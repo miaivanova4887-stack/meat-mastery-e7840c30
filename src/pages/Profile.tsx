@@ -6,6 +6,7 @@ import { recipes } from "@/data/recipes";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
@@ -74,10 +75,11 @@ const Profile = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
+  const qc = useQueryClient();
+  // Local UI-only shadow of the profile row — reads initialize from the
+  // React Query cache so the first paint is instant on revisits; writes
+  // stay optimistic via saveField + query invalidation.
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [myRecipes, setMyRecipes] = useState<CommunityRecipe[]>([]);
-  const [likedRecipes, setLikedRecipes] = useState<CommunityRecipe[]>([]);
-  const [progressMilestones, setProgressMilestones] = useState<any[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [tab, setTab] = useState<"feed" | "goals" | "community" | "settings">("feed");
   const userProfile = useUserProfile();
@@ -152,47 +154,101 @@ const Profile = () => {
     return Math.floor((todayStart.getTime() - targetStart.getTime()) / 86400000);
   }, []);
 
-  const fetchProfile = useCallback(async () => {
-    if (!user) return;
-    const { data } = await (supabase as any).from("profiles").select("*").eq("id", user.id).single();
-    if (data) {
-      setProfile(data);
+  // ---- React Query data layer --------------------------------------------
+  //
+  // Each fetch below is cached for 2 minutes (staleTime). On revisit, the
+  // page paints immediately from cache and a silent refetch updates in the
+  // background. Mutations (saveField, diet tier change, etc.) invalidate
+  // the relevant key.
+  //
+  // Note: the original implementation used setState + useEffect + Promise.all
+  // which forced every swipe-to-Profile to block on a network waterfall.
+
+  const STALE_MS = 2 * 60 * 1000;
+
+  const profileQuery = useQuery({
+    queryKey: ["profile", user?.id],
+    enabled: !!user,
+    staleTime: STALE_MS,
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await (supabase as any)
+        .from("profiles").select("*").eq("id", user.id).single();
+      return (data as Profile) || null;
+    },
+  });
+
+  // Mirror the query result into local state so existing optimistic update
+  // code paths (saveField, diet-tier change) keep working unchanged.
+  useEffect(() => {
+    if (profileQuery.data) {
+      setProfile(profileQuery.data);
       setEditValues({
-        display_name: data.display_name || "",
-        bio: data.bio || "",
-        diet_tier: data.diet_tier || "strict",
+        display_name: profileQuery.data.display_name || "",
+        bio: profileQuery.data.bio || "",
+        diet_tier: profileQuery.data.diet_tier || "strict",
       });
     }
-  }, [user]);
+  }, [profileQuery.data]);
 
-  const fetchMyRecipes = useCallback(async () => {
-    if (!user) return;
-    const { data } = await (supabase as any)
-      .from("community_recipes")
-      .select("id, name, time, cal, protein, fat, likes_count, created_at")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-    if (data) setMyRecipes(data);
-  }, [user]);
+  const myRecipesQuery = useQuery({
+    queryKey: ["my-community-recipes", user?.id],
+    enabled: !!user,
+    staleTime: STALE_MS,
+    queryFn: async () => {
+      if (!user) return [] as CommunityRecipe[];
+      const { data } = await (supabase as any)
+        .from("community_recipes")
+        .select("id, name, time, cal, protein, fat, likes_count, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      return (data as CommunityRecipe[]) || [];
+    },
+  });
+  const myRecipes = myRecipesQuery.data ?? [];
 
-  const fetchLikedRecipes = useCallback(async () => {
-    if (!user) return;
-    const { data: likes } = await (supabase as any)
-      .from("recipe_likes")
-      .select("recipe_id")
-      .eq("user_id", user.id);
-    if (!likes || likes.length === 0) { setLikedRecipes([]); return; }
-    const ids = likes.map((l: any) => l.recipe_id);
-    const { data } = await (supabase as any)
-      .from("community_recipes")
-      .select("id, name, time, cal, protein, fat, likes_count, created_at")
-      .in("id", ids)
-      .order("created_at", { ascending: false });
-    if (data) setLikedRecipes(data);
-  }, [user]);
+  const likedRecipesQuery = useQuery({
+    queryKey: ["liked-community-recipes", user?.id],
+    enabled: !!user,
+    staleTime: STALE_MS,
+    queryFn: async () => {
+      if (!user) return [] as CommunityRecipe[];
+      const { data: likes } = await (supabase as any)
+        .from("recipe_likes").select("recipe_id").eq("user_id", user.id);
+      if (!likes || likes.length === 0) return [] as CommunityRecipe[];
+      const ids = likes.map((l: any) => l.recipe_id);
+      const { data } = await (supabase as any)
+        .from("community_recipes")
+        .select("id, name, time, cal, protein, fat, likes_count, created_at")
+        .in("id", ids)
+        .order("created_at", { ascending: false });
+      return (data as CommunityRecipe[]) || [];
+    },
+  });
+  const likedRecipes = likedRecipesQuery.data ?? [];
 
-  const fetchProgressMilestones = useCallback(async () => {
-    if (!user) return;
+  const isAdminQuery = useQuery({
+    queryKey: ["is-admin", user?.id],
+    enabled: !!user,
+    staleTime: 10 * 60 * 1000, // admin role rarely changes
+    queryFn: async () => {
+      if (!user) return false;
+      const { data } = await (supabase as any)
+        .from("user_roles").select("role")
+        .eq("user_id", user.id).eq("role", "admin").maybeSingle();
+      return !!data;
+    },
+  });
+  useEffect(() => { setIsAdmin(!!isAdminQuery.data); }, [isAdminQuery.data]);
+
+  // Progress-milestones derivation runs inside the queryFn rather than at
+  // render time — keeps the render cheap and lets React Query cache the
+  // computed milestones alongside the raw fetches.
+  const milestonesQuery = useQuery({
+    queryKey: ["progress-milestones", user?.id],
+    enabled: !!user,
+    staleTime: STALE_MS,
+    queryFn: async () => {
     // Get recent entries (last 30 days) and goals
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
     const [{ data: entries }, { data: goals }] = await Promise.all([
@@ -292,16 +348,24 @@ const Profile = () => {
       }
     }
 
-    setProgressMilestones(milestones);
-  }, [user, toLocalDayKey]);
+      return milestones;
+    },
+  });
+  const progressMilestones = milestonesQuery.data ?? [];
 
+  // Redirect unauthenticated users. The queries above are gated on `user`
+  // so they won’t actually fire before this redirect runs.
   useEffect(() => {
-    if (!user) { navigate("/auth"); return; }
-    Promise.all([fetchProfile(), fetchMyRecipes(), fetchLikedRecipes(), fetchProgressMilestones()]).finally(() => setLoading(false));
-    // Check admin role
-    (supabase as any).from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle()
-      .then(({ data }: any) => { if (data) setIsAdmin(true); });
-  }, [user, navigate, fetchProfile, fetchMyRecipes, fetchLikedRecipes, fetchProgressMilestones]);
+    if (!user) navigate("/auth");
+  }, [user, navigate]);
+
+  // Only show the big splash loader on the first-ever load when we truly
+  // have nothing to paint. On revisits, cached data is already present so
+  // we render instantly and any background refetch is invisible.
+  useEffect(() => {
+    if (!user) return;
+    if (profileQuery.data !== undefined) setLoading(false);
+  }, [user, profileQuery.data]);
 
   const saveField = async (field: string) => {
     if (!user) return;
@@ -309,6 +373,7 @@ const Profile = () => {
     const { error } = await (supabase as any).from("profiles").update({ [field]: value }).eq("id", user.id);
     if (error) { toast.error("Failed to save"); return; }
     setProfile((prev) => prev ? { ...prev, [field]: value } : prev);
+    qc.invalidateQueries({ queryKey: ["profile", user.id] });
     setEditingField(null);
     toast.success("Updated!");
   };
@@ -395,7 +460,18 @@ const Profile = () => {
       <SubscriptionBadge />
 
       {/* Tabs */}
-      <div className="px-4 flex gap-2 mb-3">
+      {/*
+       * Horizontally-scrollable pill row. The four tabs (Feed / My Goals /
+       * Community / Settings) used to sit in a plain flex row and pushed
+       * off the right edge of narrow iPhones (≤ 375pt) when translations
+       * expanded. `overflow-x-auto` + `shrink-0` pills keeps every pill at
+       * its natural, readable size — and matching the rest of the app we
+       * hide the scrollbar so it reads as a single swipeable strip.
+       */}
+      <div
+        className="px-4 flex gap-2 mb-3 overflow-x-auto -mx-0 snap-x snap-mandatory"
+        style={{ scrollbarWidth: "none" }}
+      >
         {([
           { key: "feed", label: t("profile.yourFeed"), icon: Newspaper },
           { key: "goals", label: "My Goals", icon: Crosshair },
@@ -405,7 +481,7 @@ const Profile = () => {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            className={`shrink-0 snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${
               tab === key ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
             }`}
           >
@@ -791,6 +867,7 @@ const Profile = () => {
                       setEditValues((v) => ({ ...v, diet_tier: key }));
                       await (supabase as any).from("profiles").update({ diet_tier: key }).eq("id", user!.id);
                       setProfile((p) => p ? { ...p, diet_tier: key } : p);
+                      if (user) qc.invalidateQueries({ queryKey: ["profile", user.id] });
                       toast.success(t("profile.dietTierUpdated"));
                     }}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${

@@ -28,6 +28,12 @@ export const HealthDashboard = () => {
   const safeSteps = toFiniteNumber(healthData.steps);
   const safeHeartRate = toFiniteNumber(healthData.heartRate);
   const safeWeight = toFiniteNumber(healthData.weight);
+  // Platform-aware copy for the "setup" CTA. The dashboard header above
+  // uses the neutral "Your Health & Fitness" label on both platforms, but
+  // the setup subtitle names the concrete system the user will be granting
+  // permission to — Apple Health on iOS, Google Health Connect on Android.
+  const isIOS = Capacitor.getPlatform() === "ios";
+  const healthProviderLabel = isIOS ? "Apple Health" : "Health Connect";
   const safeActiveCalories = toFiniteNumber(healthData.activeCalories);
 
   if (!Capacitor.isNativePlatform() && !isConnected) return null;
@@ -41,7 +47,7 @@ export const HealthDashboard = () => {
         </div>
         <div className="flex-1 relative">
           <p className="text-[13px] font-bold text-foreground">Sync Smart Devices</p>
-          <p className="text-[11px] text-muted-foreground">Connect Health Connect to track steps, heart rate, weight & calories.</p>
+          <p className="text-[11px] text-muted-foreground">Connect {healthProviderLabel} to track steps, heart rate, weight &amp; calories.</p>
         </div>
         <Button size="sm" variant="outline" className="shrink-0 text-xs relative" onClick={requestPermissions} disabled={isLoading}>
           {isLoading ? 'Connecting…' : 'Setup'}
@@ -56,7 +62,7 @@ export const HealthDashboard = () => {
       <div className="absolute inset-0 bg-gradient-to-r from-green-500/5 to-green-600/5" />
       <div className="relative flex items-center gap-2 mb-3">
         <CheckCircle2 size={16} className="text-green-500" />
-        <p className="text-[13px] font-bold text-foreground">Health Connect Synced</p>
+        <p className="text-[13px] font-bold text-foreground">Your Health &amp; Fitness</p>
         <span className="text-[10px] text-muted-foreground ml-auto">Auto-refreshing</span>
       </div>
       <div className="relative grid grid-cols-4 gap-2">

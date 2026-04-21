@@ -49,6 +49,8 @@ import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 import { App as CapApp } from "@capacitor/app";
 import { useScrollToTop } from "./hooks/useScrollToTop";
 import { useContentOverrides } from "./hooks/useContentOverrides";
+import { useEdgeSwipeBack } from "./hooks/useEdgeSwipeBack";
+import { useTabSwipe } from "./hooks/useTabSwipe";
 
 const queryClient = new QueryClient();
 
@@ -64,6 +66,18 @@ function ScrollToTopHandler() {
 
 function ContentOverrideLoader() {
   useContentOverrides();
+  return null;
+}
+
+/** iOS-style left-edge swipe to go back. No-op on root. */
+function EdgeSwipeBackHandler() {
+  useEdgeSwipeBack();
+  return null;
+}
+
+/** Horizontal swipe to cycle between the four bottom-nav tabs. */
+function TabSwipeHandler() {
+  useTabSwipe();
   return null;
 }
 
@@ -116,6 +130,8 @@ const App = () => {
               <PageViewTracker />
               <ScrollToTopHandler />
               <BackButtonHandler />
+              <EdgeSwipeBackHandler />
+              <TabSwipeHandler />
               <Routes>
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/" element={<Index />} />

@@ -272,7 +272,21 @@ const RecipeCoach = () => {
         )}
       </div>
 
-      {/* Input */}
+      {/*
+       * Input bar. We disable it entirely when the user lacks Pro access
+       * because the messages pane already shows a block-mode TeaserGate
+       * (lines above) and previously a free user could still type into
+       * the textarea and call the `recipe-coach` edge function directly,
+       * burning through the workspace's AI quota with no upgrade prompt.
+       * The visible paywall in the message list plus a disabled composer
+       * mirrors the rest of the app's paywall pattern (Progress, MealPlan).
+       *
+       * NOTE: the `recipe-coach` Supabase Edge Function currently does
+       * NOT re-check subscription tier server-side. Anyone who bypasses
+       * the client gate (e.g. by calling the function directly with a
+       * valid auth token) can still hit it. Server-side JWT + tier check
+       * should be added in a follow-up change.
+       */}
       <form
         onSubmit={handleSubmit}
         className="flex-shrink-0 border-t border-border/40 bg-card/80 ios-blur px-4 py-3 safe-area-bottom"
@@ -283,14 +297,15 @@ const RecipeCoach = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask for recipes, meal ideas…"
+            placeholder={hasAccess("pro") ? "Ask for recipes, meal ideas…" : "Unlock with Pro to chat with your coach"}
             rows={1}
-            className="flex-1 resize-none bg-secondary rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 max-h-32"
+            disabled={!hasAccess("pro")}
+            className="flex-1 resize-none bg-secondary rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 max-h-32 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ minHeight: "40px" }}
           />
           <button
             type="submit"
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || !hasAccess("pro")}
             className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 transition-opacity"
           >
             <Send size={16} />

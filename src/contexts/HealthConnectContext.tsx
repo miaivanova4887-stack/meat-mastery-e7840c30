@@ -116,14 +116,14 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
     setIsLoading(true);
     setError(null);
 
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
-      setError("Health Connect is only available on Android devices.");
+    if (!Capacitor.isNativePlatform()) {
+      setError("Health sync is only available on mobile devices (iOS or Android).");
       setIsLoading(false);
       return;
     }
 
     if (!Capacitor.isPluginAvailable("HealthConnect")) {
-      setError("Native Health Connect module is missing in this APK. Rebuild web assets, sync Android, rebuild APK, then reinstall.");
+      setError("Native health module is missing in this build. Rebuild web assets, sync native project, rebuild app, then reinstall.");
       setIsLoading(false);
       return;
     }

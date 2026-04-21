@@ -844,8 +844,16 @@ const MealPlan = () => {
       {/* Recipe Picker Modal */}
       {pickingSlot && (
         <div className="fixed inset-0 z-50 bg-background/95 ios-blur flex flex-col">
-          <div className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
-            <button onClick={() => { setPickingSlot(null); setRecipeSearch(""); }} className="text-muted-foreground hover:text-foreground">
+          <div
+            className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+          >
+            <button
+              type="button"
+              onClick={() => { setPickingSlot(null); setRecipeSearch(""); }}
+              aria-label="Close"
+              className="-ml-2 p-2 text-muted-foreground hover:text-foreground"
+            >
               <X size={20} />
             </button>
             <h2 className="text-lg font-display font-bold flex-1">
@@ -895,8 +903,16 @@ const MealPlan = () => {
       {/* AI Generator Modal */}
       {showAI && (
         <div className="fixed inset-0 z-50 bg-background/95 ios-blur flex flex-col">
-          <div className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setShowAI(false)} className="text-muted-foreground hover:text-foreground">
+          <div
+            className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowAI(false)}
+              aria-label="Close"
+              className="-ml-2 p-2 text-muted-foreground hover:text-foreground"
+            >
               <X size={20} />
             </button>
             <h2 className="text-lg font-display font-bold flex-1">
@@ -993,8 +1009,16 @@ const MealPlan = () => {
       {/* Quick Add Recipe Modal */}
       {showQuickAdd && (
         <div className="fixed inset-0 z-50 bg-background/95 ios-blur flex flex-col">
-          <div className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 py-3 flex items-center gap-3">
-            <button onClick={() => setShowQuickAdd(false)} className="text-muted-foreground hover:text-foreground">
+          <div
+            className="sticky top-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 0.75rem)" }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowQuickAdd(false)}
+              aria-label="Close"
+              className="-ml-2 p-2 text-muted-foreground hover:text-foreground"
+            >
               <X size={20} />
             </button>
             <h2 className="text-lg font-display font-bold flex-1">Add Your Own Recipe</h2>

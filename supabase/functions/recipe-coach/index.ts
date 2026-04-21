@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireTier } from "../_shared/requireTier.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,6 +30,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // Subscription gate: recipe coach is a Pro feature. Runs before any work so
+  // unauthorized / free-tier callers can't consume upstream AI credits.
+  const gate = await requireTier(req, "pro");
+  if (gate instanceof Response) return gate;
 
   try {
     const { messages, profile } = await req.json();

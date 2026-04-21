@@ -23,7 +23,7 @@ const MotivationCTA = ({ onClick }: MotivationCTAProps) => {
     <>
       <button
         onClick={handleClick}
-        className="motivation-cta block w-full text-left relative overflow-hidden rounded-2xl border border-border/30 dark:border-white/10 bg-card/40 dark:bg-white/5 backdrop-blur-xl backdrop-saturate-150 shadow-[0_8px_32px_-8px_hsl(var(--primary)/0.15)] p-4 active:scale-[0.98] transition-all group hover:shadow-[0_8px_32px_-4px_hsl(var(--primary)/0.25)] hover:border-primary/20"
+        className="motivation-cta ios-card block w-full text-left relative overflow-hidden p-4 active:scale-[0.98] transition-all group hover:shadow-[0_8px_32px_-4px_hsl(var(--primary)/0.25)] hover:border-primary/20"
       >
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.04] via-transparent to-primary/[0.02] pointer-events-none rounded-2xl" />
         <div className="flex items-center gap-3.5">

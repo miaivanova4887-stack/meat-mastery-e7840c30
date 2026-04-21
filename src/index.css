@@ -134,6 +134,45 @@
     @apply border-border;
   }
 
+  /*
+   * Responsive root font size.
+   *
+   * Nearly every size in Tailwind is rem-based, so tuning html { font-size }
+   * uniformly scales spacing + type across the whole app without touching
+   * individual components.
+   *
+   * Target device range:
+   *   - iPhone SE / small Androids   (~320–375px) → ≈ 15px
+   *   - iPhone 12/13/14/15 / Pixel   (~390–412px) → ≈ 16px  (Tailwind default)
+   *   - iPhone 16/17 Pro / S24 Ultra (~420–440px) → ≈ 17px
+   *   - Tablets / unfolded foldables (600px+)    → ≈ 18px (capped)
+   *
+   * Formula: clamp(min, scaled, max) with the scaled middle tied to vw so
+   * it interpolates smoothly across any width. Also respects the user's
+   * OS text-size preference via `text-size-adjust`.
+   */
+  html {
+    /*
+     * Aggressive responsive root font size.
+     *
+     * Calibrated from device readings (iPhone 17 Pro reports 402px).
+     *   - 360px (small Androids / iPhone SE)        → 15px
+     *   - 390px (iPhone 14/15)                       → 17.2px
+     *   - 402px (iPhone 17 Pro, reported vw)         → 18.1px
+     *   - 430px (iPhone Pro Max / foldables closed)  → 20.2px
+     *   - 600px+ (tablet, foldable unfolded)         → 22px (capped)
+     *
+     * Slope: (20.2 - 15) / (430 - 360) = 5.2/70 = 0.0743 ≈ 7.43vw
+     * Intercept at 0vw: 15 - 360 * 0.0743 = 15 - 26.74 = -11.74px
+     * => -11.74px + 7.43vw ; at 402vw this yields ≈18.1px
+     */
+    font-size: clamp(15px, -0.73rem + 7.43vw, 22px);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -145,6 +184,100 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     @apply tracking-tight;
   }
+}
+
+/*
+ * ------------------------------------------------------------------
+ * Responsive type scaling for px-hardcoded arbitrary Tailwind classes
+ * ------------------------------------------------------------------
+ *
+ * Most of this app was authored with explicit pixel font sizes like
+ * `text-[10px]`, `text-[13px]`, etc. Those bypass the root rem scale,
+ * so a device-wide font bump requires overriding each explicit size.
+ *
+ * The interpolation below mirrors the html root size formula:
+ *   - <= 375px (iPhone SE / small Androids) : no change (base size)
+ *   - ~390–412px (iPhone 14/15, S23, Pixel): tiny bump (~+7%)
+ *   - >= 430px (iPhone 17 Pro)              : clearly bigger (~+18%)
+ *   - >= 600px (foldable unfolded / tablet) : cap at +33%
+ *
+ * Implemented with viewport breakpoints (not clamp) because Tailwind
+ * emits fixed-px font-size declarations that clamp() cannot retrofit.
+ */
+/*
+ * Tier 1: iPhone 12 mini / Pixel 4a / small Androids (~375–389px)
+ * Modest bump — the app was designed against this width originally.
+ */
+@media (min-width: 375px) {
+  .text-\[8px\]  { font-size: 10px; }
+  .text-\[9px\]  { font-size: 11px; }
+  .text-\[10px\] { font-size: 12px; }
+  .text-\[11px\] { font-size: 13px; }
+  .text-\[12px\] { font-size: 14px; }
+  .text-\[13px\] { font-size: 15px; }
+  .text-\[14px\] { font-size: 16px; }
+  .text-\[15px\] { font-size: 17px; }
+  .text-\[26px\] { font-size: 30px; }
+}
+/*
+ * Tier 2: iPhone 14/15 / Pixel / S23 (~390–401px) — bigger bump.
+ */
+@media (min-width: 390px) {
+  .text-\[8px\]  { font-size: 11px; }
+  .text-\[9px\]  { font-size: 12px; }
+  .text-\[10px\] { font-size: 13px; }
+  .text-\[11px\] { font-size: 14px; }
+  .text-\[12px\] { font-size: 15px; }
+  .text-\[13px\] { font-size: 16px; }
+  .text-\[14px\] { font-size: 17px; }
+  .text-\[15px\] { font-size: 18px; }
+  .text-\[26px\] { font-size: 32px; }
+  .text-\[2\.2rem\] { font-size: 2.5rem; }
+}
+/*
+ * Tier 3: iPhone 17 Pro reports vw=402 (verified via diagnostic).
+ */
+@media (min-width: 400px) {
+  .text-\[8px\]  { font-size: 12px; }
+  .text-\[9px\]  { font-size: 13px; }
+  .text-\[10px\] { font-size: 14px; }
+  .text-\[11px\] { font-size: 15px; }
+  .text-\[12px\] { font-size: 16px; }
+  .text-\[13px\] { font-size: 17px; }
+  .text-\[14px\] { font-size: 18px; }
+  .text-\[15px\] { font-size: 19px; }
+  .text-\[26px\] { font-size: 34px; }
+  .text-\[2\.2rem\] { font-size: 2.7rem; }
+}
+/*
+ * Tier 4: iPhone Pro Max / large Android (~420–599px).
+ */
+@media (min-width: 420px) {
+  .text-\[8px\]  { font-size: 13px; }
+  .text-\[9px\]  { font-size: 14px; }
+  .text-\[10px\] { font-size: 15px; }
+  .text-\[11px\] { font-size: 16px; }
+  .text-\[12px\] { font-size: 17px; }
+  .text-\[13px\] { font-size: 18px; }
+  .text-\[14px\] { font-size: 19px; }
+  .text-\[15px\] { font-size: 20px; }
+  .text-\[26px\] { font-size: 36px; }
+  .text-\[2\.2rem\] { font-size: 2.9rem; }
+}
+/*
+ * Tier 5: tablet / foldable unfolded (600px+).
+ */
+@media (min-width: 600px) {
+  .text-\[8px\]  { font-size: 14px; }
+  .text-\[9px\]  { font-size: 15px; }
+  .text-\[10px\] { font-size: 16px; }
+  .text-\[11px\] { font-size: 17px; }
+  .text-\[12px\] { font-size: 18px; }
+  .text-\[13px\] { font-size: 19px; }
+  .text-\[14px\] { font-size: 20px; }
+  .text-\[15px\] { font-size: 21px; }
+  .text-\[26px\] { font-size: 38px; }
+  .text-\[2\.2rem\] { font-size: 3.1rem; }
 }
 
 @layer utilities {
@@ -278,8 +411,10 @@
     border: 1px solid hsl(var(--border) / 0.5);
   }
 
-  /* MotivationCTA — card-based in light mode */
-  :root .motivation-cta {
+  /* MotivationCTA — card-based in light mode ONLY.
+     `:root:not(.dark)` ensures this white gradient never leaks into dark
+     theme (previously caused white-on-white unreadable text). */
+  :root:not(.dark) .motivation-cta {
     background: linear-gradient(135deg, hsl(0 0% 100%), hsl(var(--bone)));
     border-color: hsl(var(--border) / 0.5);
     box-shadow: 0 2px 16px -4px hsl(25 15% 30% / 0.10);

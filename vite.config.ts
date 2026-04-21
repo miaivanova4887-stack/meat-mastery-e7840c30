@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString().replace("T", " ").replace("Z", " UTC")),
-    __BUILD_FINGERPRINT__: JSON.stringify("2026-04-10-asset-check-01"),
+    __BUILD_FINGERPRINT__: JSON.stringify(`build-${Date.now()}`),
   },
   resolve: {
     alias: {

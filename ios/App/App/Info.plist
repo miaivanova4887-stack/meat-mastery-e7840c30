@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CAPACITOR_DEBUG</key>
+	<string>$(CAPACITOR_DEBUG)</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>CarnivoreX</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>CarnivoreX uses the camera to scan product barcodes and photograph meals so you can auto-log nutrients without typing everything by hand.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>CarnivoreX reads your steps, heart rate, weight, and active calories from Apple Health so you can track how the carnivore lifestyle affects your body over time. Your data stays on your device and is only synced to your account if you enable cloud sync.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>CarnivoreX does not currently write data to Apple Health. This string is required by iOS when the HealthKit capability is enabled.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>CarnivoreX uses the microphone so you can log meals and notes by speaking — your voice is transcribed on-device by iOS Speech Recognition.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>CarnivoreX uses iOS Speech Recognition to turn what you say into text when logging meals and notes hands-free.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>CarnivoreX accesses your photo library so you can pick an existing meal photo to auto-detect nutrients.</string>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+</dict>
+</plist>

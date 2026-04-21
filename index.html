@@ -2,7 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!--
+      `maximum-scale` and `user-scalable=no` are intentionally omitted so the
+      responsive `html { font-size: clamp(...) }` rule in index.css can take
+      effect on iOS. Those directives prevent rem-based layouts from scaling
+      on larger iPhones (17 Pro, Pro Max, etc).
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>CarnivoreX – Carnivore Diet Tracker</title>
     <meta name="description" content="Track your carnivore diet, plan meals, and monitor progress with CarnivoreX.">
     <meta name="author" content="Mi4Labs" />

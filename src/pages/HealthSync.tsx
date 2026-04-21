@@ -1,4 +1,4 @@
-import { ArrowLeft, Smartphone, Heart, Activity, Loader2, CheckCircle2, AlertCircle, Footprints } from "lucide-react";
+import { ArrowLeft, Smartphone, Heart, Activity, Loader2, CheckCircle2, AlertCircle, Footprints, Weight, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useHealthConnect } from "@/hooks/useHealthConnect";
@@ -18,7 +18,9 @@ const HealthSync = () => {
   const navigate = useNavigate();
   const { healthData, isConnected, isLoading, error, requestPermissions } = useHealthConnect();
   const isNative = Capacitor.isNativePlatform();
-  const isAndroid = Capacitor.getPlatform() === "android";
+  const platform = Capacitor.getPlatform();
+  const isIOS = platform === "ios";
+  const isAndroid = platform === "android";
   useScrollToTop();
 
   const toFiniteNumber = (value: unknown, fallback = 0) => {
@@ -77,13 +79,15 @@ const HealthSync = () => {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-foreground">Health Connect</p>
+                <p className="text-sm font-bold text-foreground">{isIOS ? "Apple Health" : "Health Connect"}</p>
                 {isConnected && <CheckCircle2 size={14} className="text-green-500" />}
               </div>
               <p className="text-[11px] text-muted-foreground">
                 {isConnected
                   ? "Connected — auto-refreshing every 5 min"
-                  : "Sync steps, heart rate, weight from Android Health Connect."}
+                  : isIOS
+                    ? "Sync steps, heart rate, weight from Apple Health."
+                    : "Sync steps, heart rate, weight from Android Health Connect."}
               </p>
             </div>
           </div>
@@ -96,44 +100,45 @@ const HealthSync = () => {
             </Button>
           ) : (
             <>
-              <div className="grid grid-cols-3 gap-2 mt-2">
+              {/*
+               * Metric tile styling mirrors the homepage HealthDashboard
+               * so both surfaces render identically: same four metrics
+               * (Steps, BPM, Weight, Calories), same icons, same colour
+               * tokens (`text-primary` for neutral, `text-destructive`
+               * for heart, `text-orange-500` for calories), and the same
+               * `grid-cols-4` layout. Anything that changes here should
+               * also change in `src/components/HealthDashboard.tsx`.
+               */}
+              <div className="grid grid-cols-4 gap-2 mt-2">
                 <div className="bg-muted rounded-lg p-3 text-center">
                   <Footprints size={16} className="mx-auto text-primary mb-1" />
                   <p className="text-lg font-bold text-foreground">{safeSteps.toLocaleString()}</p>
                   <p className="text-[10px] text-muted-foreground">Steps</p>
                 </div>
                 <div className="bg-muted rounded-lg p-3 text-center">
-                  <Heart size={16} className="mx-auto text-red-500 mb-1" />
+                  <Heart size={16} className="mx-auto text-destructive mb-1" />
                   <p className="text-lg font-bold text-foreground">{safeHeartRate || "—"}</p>
                   <p className="text-[10px] text-muted-foreground">BPM</p>
                 </div>
                 <div className="bg-muted rounded-lg p-3 text-center">
-                  <Activity size={16} className="mx-auto text-blue-500 mb-1" />
+                  <Weight size={16} className="mx-auto text-primary mb-1" />
                   <p className="text-lg font-bold text-foreground">
                     {safeWeight ? `${safeWeight.toFixed(1)}` : "—"}
                   </p>
                   <p className="text-[10px] text-muted-foreground">kg</p>
                 </div>
+                <div className="bg-muted rounded-lg p-3 text-center">
+                  <Flame size={16} className="mx-auto text-orange-500 mb-1" />
+                  <p className="text-lg font-bold text-foreground">
+                    {Math.round(safeRecordCalories)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">kcal</p>
+                </div>
               </div>
-            
+
             </>
           )}
         </div>
-
-        {/* Apple Health — only show on iOS */}
-        {(!isNative || !isAndroid) && Capacitor.getPlatform() === "ios" && (
-          <div className="ios-card p-4 opacity-60">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center text-red-500 bg-red-500/10">
-                <Heart size={20} />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-foreground">Apple Health</p>
-                <p className="text-[11px] text-muted-foreground">Coming soon — requires iOS build with HealthKit.</p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Sync mapping */}
         <div className="ios-card overflow-hidden">
@@ -152,7 +157,7 @@ const HealthSync = () => {
 
         {!isNative && (
           <p className="text-[11px] text-muted-foreground text-center leading-relaxed px-4">
-            Health sync requires the native Android APK. Build and install via Android Studio to use Health Connect.
+            Health sync requires the native mobile app. Build and install on iOS or Android to connect.
           </p>
         )}
       </div>

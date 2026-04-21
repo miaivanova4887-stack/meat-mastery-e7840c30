@@ -30,8 +30,13 @@ const DrawerContent = React.forwardRef<
     <DrawerOverlay />
     <DrawerPrimitive.Content
       ref={ref}
+      // Cap the drawer height to the viewport minus the top safe area so it
+      // can never slide under the status bar / dynamic island on tall iPhones.
+      // (Vaul positions the sheet bottom-up; bounding max-height here is the
+      //  reliable way to keep the drag handle + header clear of the time.)
+      style={{ maxHeight: "calc(100vh - env(safe-area-inset-top, 0px) - 12px)" }}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-xl border bg-background",
         className,
       )}
       {...props}
