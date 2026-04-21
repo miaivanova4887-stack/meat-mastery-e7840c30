@@ -64,7 +64,7 @@ describe("Feature gates by tier", () => {
   it.each(FEATURES)(
     "Free user can NOT access '$name' (requires $required)",
     ({ required }) => {
-      expect(hasAccess("free", required)).toBe(required === "free");
+      expect(hasAccess("free", required)).toBe(false);
     },
   );
 

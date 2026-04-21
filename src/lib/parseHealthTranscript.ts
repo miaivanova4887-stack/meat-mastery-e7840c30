@@ -518,7 +518,7 @@ function normaliseWordNumbers(input: string): string {
   // IMPORTANT: order matters. Compound phrases that include an article/unit
   // must run before simple "half" → "0.5" (which would otherwise leave a
   // dangling "a" in the middle of "half a litre" → "0.5 a litre").
-  const pairs: Array<[RegExp, string]> = [
+  const pairs: Array<[RegExp, string | ((substring: string, ...args: string[]) => string)]> = [
     // --- Compound + unit phrases (run FIRST) ---
     // "half a litre" → "500ml" directly, skipping the messy middle.
     // Also "half of a litre" (a voice transcript variant we've actually
@@ -622,7 +622,7 @@ function normaliseWordNumbers(input: string): string {
     [/\beleven\b/g, "11"],
     [/\btwelve\b/g, "12"],
   ];
-  for (const [re, rep] of pairs) s = s.replace(re, rep);
+  for (const [re, rep] of pairs) s = s.replace(re, rep as string);
   return s;
 }
 

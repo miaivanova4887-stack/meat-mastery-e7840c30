@@ -18,9 +18,9 @@
 // Stripe product → tier mapping is kept in sync with check-subscription/index.ts.
 
 // NOTE: these imports must match the versions used by the other edge functions
-// (esm.sh/stripe@18.5.0, npm:@supabase/supabase-js@2.57.2). Do not bump.
+// (esm.sh/stripe@18.5.0, esm.sh/@supabase/supabase-js@2). Do not bump.
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 export type SubscriptionTier = "free" | "pro" | "elite";
 
