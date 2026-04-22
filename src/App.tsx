@@ -32,6 +32,7 @@ import AthleticPerformance from "./pages/AthleticPerformance";
 import ShoppingBag from "./pages/ShoppingBag";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Community from "./pages/Community";
 import ProfilePage from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -154,6 +155,7 @@ const App = () => {
                 <Route path="/athletic" element={<AthleticPerformance />} />
                 <Route path="/shopping-bag" element={<ShoppingBag />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/community" element={<Community />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/progress" element={<ProgressPage />} />

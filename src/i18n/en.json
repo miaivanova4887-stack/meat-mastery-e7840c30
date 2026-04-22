@@ -74,7 +74,22 @@
     "enterDisplayName": "Please enter a display name",
     "passwordMin": "Password must be at least 6 characters",
     "checkEmail": "Check your email to confirm your account!",
-    "welcomeBackToast": "Welcome back!"
+    "welcomeBackToast": "Welcome back!",
+    "forgotPassword": "Forgot password?",
+    "sendResetLink": "Send reset link",
+    "resetSent": "Password reset email sent. Check your inbox.",
+    "noAccountFound": "We couldn't find an account with that email.",
+    "backToSignIn": "Back to Sign In",
+    "resetTitle": "Reset Password",
+    "resetSubtitle": "Enter your email and we'll send you a reset link.",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "passwordsDontMatch": "Passwords don't match",
+    "passwordUpdated": "Password updated.",
+    "updatePassword": "Update password",
+    "enterNewPassword": "Enter your new password below.",
+    "waitingForRecovery": "Validating your reset link…",
+    "signInWithBiometrics": "Sign in with Face ID / Touch ID"
   },
   "onboarding": {
     "continue": "Continue",

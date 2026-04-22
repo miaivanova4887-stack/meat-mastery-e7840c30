@@ -74,7 +74,22 @@
     "enterDisplayName": "Veuillez entrer un nom d'affichage",
     "passwordMin": "Le mot de passe doit contenir au moins 6 caractères",
     "checkEmail": "Vérifiez votre e-mail pour confirmer votre compte !",
-    "welcomeBackToast": "Bon retour !"
+    "welcomeBackToast": "Bon retour !",
+    "forgotPassword": "Mot de passe oublié ?",
+    "sendResetLink": "Envoyer le lien de réinitialisation",
+    "resetSent": "E-mail de réinitialisation envoyé. Vérifiez votre boîte de réception.",
+    "noAccountFound": "Aucun compte trouvé avec cette adresse e-mail.",
+    "backToSignIn": "Retour à la connexion",
+    "resetTitle": "Réinitialiser le mot de passe",
+    "resetSubtitle": "Entrez votre e-mail et nous vous enverrons un lien de réinitialisation.",
+    "newPassword": "Nouveau mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "passwordsDontMatch": "Les mots de passe ne correspondent pas",
+    "passwordUpdated": "Mot de passe mis à jour.",
+    "updatePassword": "Mettre à jour le mot de passe",
+    "enterNewPassword": "Entrez votre nouveau mot de passe ci-dessous.",
+    "waitingForRecovery": "Validation de votre lien de réinitialisation…",
+    "signInWithBiometrics": "Connexion avec Face ID / Touch ID"
   },
   "onboarding": {
     "continue": "Continuer",
