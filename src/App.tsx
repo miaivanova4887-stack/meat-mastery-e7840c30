@@ -43,6 +43,7 @@ import HealthSync from "./pages/HealthSync";
 import NewsFeed from "./pages/NewsFeed";
 import AdminNotifications from "./pages/AdminNotifications";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
 import Coaching from "./pages/Coaching";
 import { usePageViewTracker } from "./hooks/useAnalytics";
@@ -163,6 +164,7 @@ const App = () => {
                 <Route path="/cms" element={<CmsEditor />} />
                 <Route path="/p/:slug" element={<CmsPageView />} />
                 <Route path="/news" element={<NewsFeed />} />
+                <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/notifications" element={<AdminNotifications />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 <Route path="/pricing" element={<Pricing />} />
