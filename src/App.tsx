@@ -43,6 +43,7 @@ import HealthSync from "./pages/HealthSync";
 import NewsFeed from "./pages/NewsFeed";
 import AdminNotifications from "./pages/AdminNotifications";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
 import Coaching from "./pages/Coaching";
 import { usePageViewTracker } from "./hooks/useAnalytics";
