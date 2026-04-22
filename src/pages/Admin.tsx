@@ -14,25 +14,38 @@ const Admin = () => {
     document.title = "Admin · CarnivoreX";
   }, []);
 
-  // While auth or role checks are pending, show loading — never fall through to 404.
-  if (authLoading || roleLoading) {
+  // Redirect side-effects must run from useEffect, NOT during render — otherwise
+  // a transient "user resolved, role still loading" frame can fire navigate()
+  // before the role check resolves.
+  useEffect(() => {
+    if (authLoading || roleLoading) return;
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log("[Admin guard]", {
+        userId: user?.id,
+        authLoading,
+        roleLoading,
+        isAdmin,
+      });
+    }
+    if (!user) {
+      navigate("/auth?returnTo=/admin", { replace: true });
+      return;
+    }
+    if (!isAdmin) {
+      navigate("/", { replace: true });
+    }
+  }, [authLoading, roleLoading, user, isAdmin, navigate]);
+
+  // While auth or role checks are pending, show loading — never fall through to a
+  // redirect or 404. Also keep showing loading for the brief frame after resolution
+  // while the redirect effect runs.
+  if (authLoading || roleLoading || !user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
-  }
-
-  // Unauthenticated → sign in (preserve return path)
-  if (!user) {
-    navigate("/auth?returnTo=/admin", { replace: true });
-    return null;
-  }
-
-  // Authenticated but not admin → home (not 404)
-  if (!isAdmin) {
-    navigate("/", { replace: true });
-    return null;
   }
 
   const tiles = [
