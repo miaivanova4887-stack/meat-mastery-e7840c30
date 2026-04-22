@@ -708,12 +708,20 @@
   },
   "privacy": {
     "main": {
+      "title": "Politique de confidentialité",
       "body": "Politique de confidentialité\n\nDernière mise à jour : avril 2026\n\nNous respectons votre vie privée. Cette application ne collecte que les données nécessaires au fonctionnement de ses fonctionnalités, notamment vos préférences de profil, vos entrées de suivi et vos plans de repas.\n\nVos données sont stockées de manière sécurisée et ne sont jamais vendues à des tiers. Vous pouvez demander la suppression de votre compte et de toutes les données associées à tout moment en nous contactant.\n\nNous utilisons des analyses pour améliorer l'expérience de l'application. Aucune information personnellement identifiable n'est partagée avec des annonceurs."
     }
   },
   "terms": {
     "main": {
+      "title": "Conditions d'utilisation",
       "body": "Conditions d'utilisation\n\nDernière mise à jour : avril 2026\n\nEn utilisant cette application, vous acceptez ces conditions. Le contenu fourni est à titre informatif uniquement et ne constitue pas un avis médical.\n\nConsultez un professionnel de santé avant de modifier votre alimentation. Nous ne sommes pas responsables des résultats de santé résultant du suivi des informations contenues dans cette application.\n\nNous nous réservons le droit de modifier ou d'interrompre le service à tout moment. L'utilisation continue après les modifications constitue l'acceptation des nouvelles conditions."
+    }
+  },
+  "disclaimer": {
+    "main": {
+      "title": "Avertissement médical",
+      "body": "CarnivoreX est un outil de suivi du bien-être, pas un service médical. Rien dans cette application ne constitue un avis médical.\n\nConsultez votre professionnel de santé avant de commencer toute nouvelle approche alimentaire, surtout si vous avez des conditions préexistantes ou prenez des médicaments. Ce guide est éducatif — pas un avis médical.\n\nNous ne sommes pas responsables des résultats de santé résultant du suivi des informations contenues dans cette application."
     }
   }
 }

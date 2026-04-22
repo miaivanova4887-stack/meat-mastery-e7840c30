@@ -258,11 +258,11 @@ const Index = () => {
           </AccordionItem>
           <AccordionItem value="disclaimer" className="border-b-0">
             <AccordionTrigger className="py-2 text-xs text-muted-foreground hover:no-underline">
-              Disclaimer
+              {t("disclaimer.main.title")}
             </AccordionTrigger>
             <AccordionContent>
-              <div className="text-xs text-muted-foreground/80 leading-relaxed">
-                CarnivoreX is a wellness tracking tool, not a medical service. Nothing in this app constitutes medical advice — consult your physician before making any dietary changes.
+              <div className="max-h-64 overflow-y-auto text-xs text-muted-foreground/80 leading-relaxed whitespace-pre-line">
+                {t("disclaimer.main.body")}
               </div>
             </AccordionContent>
           </AccordionItem>

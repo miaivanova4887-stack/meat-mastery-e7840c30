@@ -46,6 +46,7 @@ import AdminAnalytics from "./pages/AdminAnalytics";
 import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
 import Coaching from "./pages/Coaching";
+import LegalPage from "./pages/LegalPage";
 import { usePageViewTracker } from "./hooks/useAnalytics";
 import { HealthConnectProvider } from "./contexts/HealthConnectContext";
 import { App as CapApp } from "@capacitor/app";
@@ -169,6 +170,9 @@ const App = () => {
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/coaching" element={<Coaching />} />
+                <Route path="/privacy" element={<LegalPage ns="privacy" />} />
+                <Route path="/terms" element={<LegalPage ns="terms" />} />
+                <Route path="/disclaimer" element={<LegalPage ns="disclaimer" />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav />
