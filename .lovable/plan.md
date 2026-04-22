@@ -1,296 +1,104 @@
-## Add Forgot Password + Biometric Sign-In to Auth flow
 
-### Part 1 — Forgot Password (fully functional)
 
-`**src/contexts/AuthContext.tsx**` — add a `resetPassword` method:
+## Make Privacy, Terms & Disclaimer first-class CMS pages
+
+### Goal
+
+Admins edit Privacy Policy, Terms of Service, and Disclaimer from `/cms` (the admin CMS) like any other page. Public routes `/privacy`, `/terms`, `/disclaimer` and the home-page footer accordion all render from the same CMS-managed source.
+
+### Why this is the smallest safe change
+
+The CMS already has a working override pipeline:
+
+```
+content_blocks (DB)  →  useContentOverrides  →  i18n resource bundle  →  t("privacy.main.body")
+```
+
+Long-form legal text already lives in `src/i18n/en.json` / `fr.json` (`privacy.main.body`, `terms.main.body`). The `/cms` Content tab auto-discovers any key in i18n once the page is registered in `APP_PAGES`. So we don't need a new schema, new RLS, or a new editor — we just need to: register the pages, add the missing public routes, and add a Disclaimer key.
+
+### Changes
+
+**1. Register legal pages in CMS registry — `src/components/cms/cmsPages.ts`**
+
+Append three rows to `APP_PAGES`:
 
 ```ts
-const resetPassword = async (email: string) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
-  });
-  return { error: error?.message ?? null };
-};
+{ title: "Privacy Policy",   slug: "privacy",    route: "/privacy",    contentKey: "privacy" },
+{ title: "Terms of Service", slug: "terms",      route: "/terms",      contentKey: "terms" },
+{ title: "Disclaimer",       slug: "disclaimer", route: "/disclaimer", contentKey: "disclaimer" },
 ```
 
-Expose it via the context value and `AuthContextType`.
+Result: they appear immediately in the `/cms` → Pages list and Content tab, with EN + FR editable side-by-side, saving to `content_blocks` and overriding i18n at runtime. Admin-only RLS on `content_blocks` is already enforced.
 
-`**src/pages/Auth.tsx**` — add a third mode `"forgot"`:
+**2. Add a Disclaimer i18n key — `src/i18n/en.json` and `src/i18n/fr.json`**
 
-- Add a `Forgot password?` link **below the password input, above the Sign In button**, right-aligned, only shown when `mode === "login"`. Style: `text-xs text-primary/80 self-end`.
-- Tapping it switches `mode` to `"forgot"`, hiding the password field and submit reverting to a single email input + "Send reset link" button.
-- Submitting calls `resetPassword(email)` and shows toasts:
-  - Success → `"Password reset email sent. Check your inbox."`
-  - Error (no account / generic) → map common Supabase errors:
-    - `user not found` → `"We couldn't find an account with that email."`
-    - else → raw message
-- Below the form, replace the Sign Up toggle text with a "Back to Sign In" link when in forgot mode.
-- Header title becomes `"Reset Password"` in forgot mode.
+Add a top-level block (so it's editable as its own CMS page, separate from `guide.disclaimer`):
 
-**New page `src/pages/ResetPassword.tsx**` — public route that lets the user set a new password after clicking the email link:
-
-- Reads recovery state from Supabase's auto-detected hash (no manual parsing — Supabase v2 handles it via `onAuthStateChange` `PASSWORD_RECOVERY` event).
-- Shows `New password` + `Confirm password` fields, calls `supabase.auth.updateUser({ password })`.
-- Success → toast `"Password updated."` and `navigate("/", { replace: true })`.
-- Error → toast the error message.
-- Same dark premium styling as `Auth.tsx` (sticky header, `inputClass`, primary button).
-
-`**src/App.tsx**` — register `<Route path="/reset-password" element={<ResetPassword />} />`.
-
-`**src/i18n/en.json` + `src/i18n/fr.json**` — add `auth.forgotPassword`, `auth.sendResetLink`, `auth.resetSent`, `auth.noAccountFound`, `auth.backToSignIn`, `auth.resetTitle`, `auth.newPassword`, `auth.confirmPassword`, `auth.passwordsDontMatch`, `auth.passwordUpdated`.
-
-### Part 2 — Biometric Sign-In (UI + safe stub, behind a feature flag)
-
-The current Capacitor stack does **not** include `@capacitor-community/biometric-auth` or `capacitor-native-biometric`. Per the requirement, we add the UI, storage shape, and a clean abstraction now without breaking the build, and gate it behind a feature flag so installing the plugin later flips it on.
-
-**New file `src/lib/biometricAuth.ts**` — small abstraction with a feature flag:
-
-```ts
-export const BIOMETRIC_FEATURE_ENABLED = false; // flip to true when plugin is installed
-const CRED_KEY = "biometric_email_v1";
-
-export async function isBiometricSupported(): Promise<boolean> {
-  if (!BIOMETRIC_FEATURE_ENABLED) return false;
-  // TODO: when plugin installed, call NativeBiometric.isAvailable()
-  return false;
-}
-export function rememberBiometricEmail(email: string) {
-  localStorage.setItem(CRED_KEY, email);
-}
-export function getRememberedBiometricEmail(): string | null {
-  return localStorage.getItem(CRED_KEY);
-}
-export function clearBiometricEmail() {
-  localStorage.removeItem(CRED_KEY);
-}
-export async function authenticateWithBiometrics(): Promise<{ ok: boolean; error?: string }> {
-  if (!BIOMETRIC_FEATURE_ENABLED) return { ok: false, error: "Biometrics not enabled" };
-  // TODO: NativeBiometric.verifyIdentity(...) + retrieve stored Supabase refresh token
-  return { ok: false, error: "Not implemented yet" };
+```json
+"disclaimer": {
+  "main": {
+    "title": "Medical Disclaimer",
+    "body": "The content in CarnivoreX is for informational and educational purposes only…"
+  }
 }
 ```
 
-Notes recorded in the file: when ready, install `capacitor-native-biometric`, store the Supabase **refresh token** in the secure keychain via `NativeBiometric.setCredentials`, and on success call `supabase.auth.setSession({ refresh_token, access_token: "" })`.
+(Seed with the existing `guide.disclaimer.content` text in EN and FR.)
 
-`**src/pages/Auth.tsx**` — biometric UI behind support check:
+**3. Create a single shared legal page component — `src/pages/LegalPage.tsx`**
 
-- After a successful sign-in (login mode only), call `rememberBiometricEmail(email)` so we know this device has been used by this account.
-- On mount, run `const [bioReady, setBioReady] = useState(false)` and `useEffect(() => { isBiometricSupported().then(s => setBioReady(s && !!getRememberedBiometricEmail())); }, [])`.
-- When `bioReady && mode === "login"`, render a secondary button **above** Sign In:
-  - Icon: `Fingerprint` from `lucide-react`
-  - Label: `"Sign in with Face ID / Touch ID"` (single i18n key `auth.signInWithBiometrics`)
-  - On tap → `authenticateWithBiometrics()`. On `ok`, navigate to `returnTo`. On error, toast.
-- Because `BIOMETRIC_FEATURE_ENABLED = false` for now, the button never appears in production, so the existing login flow is unchanged. UI is in place and ready.
+A minimal page that takes a content namespace and renders title + long-form body using `whitespace-pre-line` (matches the home accordion style). It uses `useTranslation`, so CMS overrides flow in automatically.
 
-### Part 3 — Acceptance criteria check
-
-- Forgot Password link sits below password / above Sign In button, right-aligned, login mode only.
-- Tapping it opens the email-only reset flow on the **same screen** (no new route for the request step).
-- Reset email sends via Supabase, redirecting users to the new `/reset-password` page where they set a new password.
-- Toasts: `"Password reset email sent. Check your inbox."` and `"We couldn't find an account with that email."`.
-- Sign In and Sign Up flows are otherwise unchanged.
-- Biometric button is fully wired but hidden until the feature flag is enabled — existing login is not affected.
-
-### Files changed
-
-1. `src/contexts/AuthContext.tsx` — add `resetPassword`
-2. `src/pages/Auth.tsx` — forgot-password mode, link, biometric button (gated), success/error toasts
-3. `src/pages/ResetPassword.tsx` — **new** page for setting a new password
-4. `src/App.tsx` — register `/reset-password` route
-5. `src/lib/biometricAuth.ts` — **new** abstraction + feature flag + TODOs
-6. `src/i18n/en.json`, `src/i18n/fr.json` — new auth strings
-
-### What stays the same
-
-- Existing Sign In / Sign Up logic, toasts, and styling
-- Header layout, input styling (`inputClass`), primary button styling
-- AuthContext signature for `signIn`, `signUp`, `signOut`
-- No new dependencies installed (biometrics is a stubbed feature flag)
-
-&nbsp;
-
-Add **Forgot Password** and **device-native biometric unlock** to the CarnivoreX auth flow.
-
-## **Part 1 — Forgot Password**
-
-Implement a fully functional password reset flow using Supabase.
-
-## `src/contexts/AuthContext.tsx`
-
-Add a `resetPassword(email: string)` method that calls:
-
-```
-ts
+```tsx
+function LegalPage({ ns }: { ns: "privacy" | "terms" | "disclaimer" }) {
+  const { t } = useTranslation();
+  return (
+    <main className="min-h-screen px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-24 max-w-2xl mx-auto">
+      <h1 className="text-2xl font-extrabold mb-4">{t(`${ns}.main.title`)}</h1>
+      <div className="text-sm text-muted-foreground/90 leading-relaxed whitespace-pre-line">
+        {t(`${ns}.main.body`)}
+      </div>
+    </main>
+  );
+}
 ```
 
-`const { error } = await supabase.auth.resetPasswordForEmail(email, {`  
-  `redirectTo: ${window.location.origin}/reset-password,`  
-`});`  
-`return { error: error?.message ?? null };`
+**4. Register public routes — `src/App.tsx`**
 
-Expose it in `AuthContextType` and the context value.
+Add (before the `*` catch-all):
 
-## `src/pages/Auth.tsx`
-
-Add a third mode: `"forgot"`.
-
-Behavior:
-
-- Show a **“Forgot password?”** link below the password input and above the Sign In button, only in login mode.
-- Right-align it and style it subtly with the current auth design.
-- Tapping it switches to forgot-password mode on the same screen.
-- In forgot mode, hide the password field and show:
-  - one email field,
-  - a **“Send reset link”** button,
-  - a **“Back to Sign In”** link below the form.
-- Change the header title to **“Reset Password”** in forgot mode.
-- On submit, call `resetPassword(email)` and show toasts:
-  - Success: **“Password reset email sent. Check your inbox.”**
-  - Error mapping:
-    - `user not found` → **“We couldn't find an account with that email.”**
-    - otherwise show the raw message.
-
-## `src/pages/ResetPassword.tsx`
-
-Create a new public route page for users who click the reset link.
-
-Behavior:
-
-- Listen for Supabase recovery state using `onAuthStateChange` and the `PASSWORD_RECOVERY` event.
-- Show:
-  - **New password**
-  - **Confirm password**
-- Validate matching passwords.
-- Call `supabase.auth.updateUser({ password })` to complete the reset.
-- On success:
-  - toast **“Password updated.”**
-  - `navigate("/", { replace: true })`
-- On error:
-  - toast the error message
-- Match the same dark premium auth styling as `Auth.tsx`.
-
-## `src/App.tsx`
-
-Register:
-
-```
-tsx
+```tsx
+<Route path="/privacy"    element={<LegalPage ns="privacy" />} />
+<Route path="/terms"      element={<LegalPage ns="terms" />} />
+<Route path="/disclaimer" element={<LegalPage ns="disclaimer" />} />
 ```
 
-`<Route path="/reset-password" element={<ResetPassword />} />`
+This also fixes the existing dead link in `ConsentBanner.tsx` which navigates to `/privacy`.
 
-## `src/i18n/en.json` **and** `src/i18n/fr.json`
+**5. Wire footer accordion to the same source — `src/pages/Index.tsx`**
 
-Add:
+Already uses `t("privacy.main.body")` and `t("terms.main.body")` — no change needed, it inherits CMS overrides automatically. Add a third accordion item for Disclaimer pulling `t("disclaimer.main.body")` so the footer matches the new page.
 
-- `auth.forgotPassword`
-- `auth.sendResetLink`
-- `auth.resetSent`
-- `auth.noAccountFound`
-- `auth.backToSignIn`
-- `auth.resetTitle`
-- `auth.newPassword`
-- `auth.confirmPassword`
-- `auth.passwordsDontMatch`
-- `auth.passwordUpdated`
+### How admins will use it
 
-## **Part 2 — Device-native biometric unlock**
+1. Open `/admin` → tap **CMS Editor** (or go directly to `/cms`).
+2. **Pages** tab → see `Privacy Policy`, `Terms of Service`, `Disclaimer` listed alongside other app pages, with a working "Preview" button (`/privacy`, `/terms`, `/disclaimer`).
+3. **Content** tab → select one of the legal pages → edit `title` and `body` in EN and FR in a multi-line textarea → **Save**. Overrides hot-reload via `reloadContentOverrides()` and emit `languageChanged` so all open tabs update.
+4. Public `/privacy`, `/terms`, `/disclaimer` and the home-page footer accordion all reflect the new text.
 
-Add biometric sign-in as **device-native unlock only**.
+### Technical notes
 
-Important:
+- No DB migration needed — `content_blocks` already supports arbitrary `page/section/key` overrides and has admin-only RLS for write operations.
+- No new dependency, no schema change, no new editor UI — the existing `CmsContentEditor` already renders `<Textarea>` for multi-line content (see line 4 import).
+- `ConsentBanner`'s broken `/privacy` link starts working as a side-effect.
+- Body text uses `whitespace-pre-line` so admins can format with blank lines without HTML.
+- Disclaimer remains separately editable from `guide.disclaimer.*` (which is the in-app Guide page note). They are intentionally two different surfaces.
 
-- The app must **never collect, store, or transmit biometric data**.
-- Biometrics must use the OS-native Face ID / Touch ID / Android biometric system only.
-- This feature is optional and only for returning users who have already signed in once.
-- Keep password sign-in as the primary method.
+### Files touched
 
-## **New file:** `src/lib/biometricAuth.ts`
+- `src/components/cms/cmsPages.ts` (3 lines added)
+- `src/i18n/en.json`, `src/i18n/fr.json` (1 block each)
+- `src/pages/LegalPage.tsx` (new, ~25 lines)
+- `src/App.tsx` (3 routes + 1 import)
+- `src/pages/Index.tsx` (1 accordion item added for Disclaimer)
 
-Create a clean abstraction with a feature flag:
-
-```
-ts
-```
-
-`export const BIOMETRIC_FEATURE_ENABLED = false;`  
-  
-`export async function isBiometricSupported(): Promise<boolean> {`  
-  `if (!BIOMETRIC_FEATURE_ENABLED) return false;`  
-  `return false;`  
-`}`  
-  
-`export function rememberBiometricEmail(email: string) {`  
-  `// optional placeholder for future secure-native implementation`  
-`}`  
-  
-`export function getRememberedBiometricEmail(): string | null {`  
-  `return null;`  
-`}`  
-  
-`export function clearBiometricEmail() {`  
-  `// placeholder`  
-`}`  
-  
-`export async function authenticateWithBiometrics(): Promise<{ ok: boolean; error?: string }> {`  
-  `if (!BIOMETRIC_FEATURE_ENABLED) return { ok: false, error: "Biometrics not enabled" };`  
-  `return { ok: false, error: "Not implemented yet" };`  
-`}`
-
-Add comments noting:
-
-- when ready, install a native biometric plugin,
-- store any required refresh token only in secure native storage,
-- do **not** use browser `localStorage` for secrets,
-- biometric verification must happen locally on-device.
-
-## `src/pages/Auth.tsx`
-
-Add the biometric UI behind support checks and the feature flag.
-
-Behavior:
-
-- After a successful login, if mode is login, record that this account has used biometrics on this device.
-- On mount, check whether biometrics are supported and whether this device/account has been used before.
-- If supported and enabled, render a secondary button above Sign In:
-  - icon: `Fingerprint` from `lucide-react`
-  - label: **“Sign in with Face ID / Touch ID”**
-- On tap, call `authenticateWithBiometrics()`.
-- On success, navigate to `returnTo`.
-- On error, show a toast.
-
-Because `BIOMETRIC_FEATURE_ENABLED = false`, this button remains hidden in production until the native plugin is actually added.
-
-## **Part 3 — Acceptance criteria**
-
-- Forgot Password link appears below password and above Sign In in login mode only.
-- Reset request happens on the same screen.
-- Reset email redirects to `/reset-password`.
-- New password page works end-to-end with Supabase.
-- Biometric unlock is device-native only.
-- No biometric data is collected, stored, or transmitted by CarnivoreX.
-- Existing sign-in/sign-up behavior remains unchanged.
-
-## **Files changed**
-
-1. `src/contexts/AuthContext.tsx`
-2. `src/pages/Auth.tsx`
-3. `src/pages/ResetPassword.tsx`
-4. `src/App.tsx`
-5. `src/lib/biometricAuth.ts`
-6. `src/i18n/en.json`
-7. `src/i18n/fr.json`
-
-## **What stays the same**
-
-- Current auth styling
-- Existing sign-in/sign-up logic
-- Primary button and input classes
-- Dark premium design
-- No new dependencies installed yet
-
-## **Policy note**
-
-Biometric unlock is **device-native only**, so CarnivoreX does not collect biometric data. That means no major Terms of Service change is needed, and the Privacy Policy only needs a brief disclosure if you want explicit transparency about optional biometric unlock.
-
-If you want, I can also turn this into a **shorter Lovable prompt** that’s optimized for direct paste-in.
