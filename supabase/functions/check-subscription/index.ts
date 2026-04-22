@@ -75,16 +75,28 @@ serve(async (req) => {
     let subscriptionEnd = null;
     let productId = null;
 
+    const getPeriodEnd = (sub: any): string | null => {
+      const ts =
+        sub.items?.data?.[0]?.current_period_end ??
+        sub.current_period_end ??
+        sub.trial_end ??
+        sub.billing_cycle_anchor ??
+        null;
+      if (!ts || typeof ts !== "number") return null;
+      const d = new Date(ts * 1000);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    };
+
     for (const sub of subscriptions.data) {
       const subProductId = sub.items.data[0]?.price?.product as string;
       if (ELITE_PRODUCTS.includes(subProductId)) {
         tier = "elite";
-        subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+        subscriptionEnd = getPeriodEnd(sub);
         productId = subProductId;
         break;
       } else if (PRO_PRODUCTS.includes(subProductId)) {
         tier = "pro";
-        subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
+        subscriptionEnd = getPeriodEnd(sub);
         productId = subProductId;
       }
     }
