@@ -54,6 +54,9 @@ export const APP_PAGES: { title: string; slug: string; route: string; contentKey
   { title: "Profile", slug: "profile", route: "/profile", contentKey: "profile" },
   { title: "Success Stories", slug: "stories", route: "/stories", contentKey: "stories" },
   { title: "Shopping Bag", slug: "shopping", route: "/shopping-bag", contentKey: "shopping" },
+  { title: "Privacy Policy", slug: "privacy", route: "/privacy", contentKey: "privacy" },
+  { title: "Terms of Service", slug: "terms", route: "/terms", contentKey: "terms" },
+  { title: "Disclaimer", slug: "disclaimer", route: "/disclaimer", contentKey: "disclaimer" },
 ];
 
 const APP_SLUG_SET = new Set(APP_PAGES.map(p => p.slug));
