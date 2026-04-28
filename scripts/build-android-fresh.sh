@@ -28,6 +28,11 @@ if [[ ! -f "$PLUGIN_GRADLE" ]]; then
   echo "   Did 'npm install' run? Aborting before Gradle."
   exit 1
 fi
+if grep -q "getDefaultProguardFile('proguard-android.txt')" "$PLUGIN_GRADLE"; then
+  echo "⚠️ patch-package did not apply (likely a strict 'patch' binary on macOS); rewriting $PLUGIN_GRADLE inline as a fallback..."
+  sed -i.bak "s/getDefaultProguardFile('proguard-android.txt')/getDefaultProguardFile('proguard-android-optimize.txt')/" "$PLUGIN_GRADLE"
+  rm -f "$PLUGIN_GRADLE.bak"
+fi
 if ! grep -q "proguard-android-optimize.txt" "$PLUGIN_GRADLE"; then
   echo "❌ Patch not applied: $PLUGIN_GRADLE still references the removed 'proguard-android.txt'."
   echo "   Expected 'proguard-android-optimize.txt' (see patches/@capacitor-community+speech-recognition+7.0.1.patch)."
