@@ -1,104 +1,85 @@
+## Activate Health Connect on Android (runtime permissions)
 
+### Root cause of "permissions denied"
 
-## Make Privacy, Terms & Disclaimer first-class CMS pages
+The Kotlin plugin (`HealthConnectPlugin.kt`) is fully written, but three things prevent it from ever showing the permission UI:
 
-### Goal
+1. It is **not registered** in `MainActivity.java` — Capacitor never instantiates it, so JS calls fall through to the web fallback (`granted: false`).
+2. `android/app/build.gradle` is **missing the Health Connect + activity-ktx dependencies**, so even if registered, the module would not compile / would runtime-crash on `HealthConnectClient.getOrCreate(...)`.
+3. `AndroidManifest.xml` declares **none** of the `android.permission.health.*` permissions, no `<queries>` for the Health Connect package, and no rationale intent-filter — so Android refuses to launch the permission controller and instantly returns "denied".
 
-Admins edit Privacy Policy, Terms of Service, and Disclaimer from `/cms` (the admin CMS) like any other page. Public routes `/privacy`, `/terms`, `/disclaimer` and the home-page footer accordion all render from the same CMS-managed source.
-
-### Why this is the smallest safe change
-
-The CMS already has a working override pipeline:
-
-```
-content_blocks (DB)  →  useContentOverrides  →  i18n resource bundle  →  t("privacy.main.body")
-```
-
-Long-form legal text already lives in `src/i18n/en.json` / `fr.json` (`privacy.main.body`, `terms.main.body`). The `/cms` Content tab auto-discovers any key in i18n once the page is registered in `APP_PAGES`. So we don't need a new schema, new RLS, or a new editor — we just need to: register the pages, add the missing public routes, and add a Disclaimer key.
+iOS files and all web/UI code stay untouched.
 
 ### Changes
 
-**1. Register legal pages in CMS registry — `src/components/cms/cmsPages.ts`**
-
-Append three rows to `APP_PAGES`:
-
-```ts
-{ title: "Privacy Policy",   slug: "privacy",    route: "/privacy",    contentKey: "privacy" },
-{ title: "Terms of Service", slug: "terms",      route: "/terms",      contentKey: "terms" },
-{ title: "Disclaimer",       slug: "disclaimer", route: "/disclaimer", contentKey: "disclaimer" },
+**1. `android/app/build.gradle`** — add dependencies
 ```
+implementation "androidx.health.connect:connect-client:1.1.0-alpha10"
+implementation "androidx.activity:activity-ktx:1.9.3"
+```
+Also add `kotlin-android` plugin apply line (Capacitor's android template usually includes Kotlin already via `capacitor.build.gradle`; verify and only add if missing — the existing `.kt` plugin file proves Kotlin already compiles in this project, so likely no change needed here).
 
-Result: they appear immediately in the `/cms` → Pages list and Content tab, with EN + FR editable side-by-side, saving to `content_blocks` and overriding i18n at runtime. Admin-only RLS on `content_blocks` is already enforced.
+**2. `android/app/src/main/AndroidManifest.xml`** — add:
+- Top-level permissions:
+  ```
+  <uses-permission android:name="android.permission.health.READ_STEPS"/>
+  <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
+  <uses-permission android:name="android.permission.health.READ_WEIGHT"/>
+  <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
+  <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
+  ```
+- `<queries><package android:name="com.google.android.apps.healthdata"/></queries>` (pre-API 34 visibility)
+- Rationale intent-filter on `MainActivity` (required so Health Connect can call back into the app to show the privacy policy/rationale):
+  ```
+  <intent-filter>
+    <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/>
+  </intent-filter>
+  ```
+- Android 14 rationale activity-alias:
+  ```
+  <activity-alias
+      android:name="ViewPermissionUsageActivity"
+      android:exported="true"
+      android:targetActivity=".MainActivity"
+      android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+    <intent-filter>
+      <action android:name="android.intent.action.VIEW_PERMISSION_USAGE"/>
+      <category android:name="android.intent.category.HEALTH_PERMISSIONS"/>
+    </intent-filter>
+  </activity-alias>
+  ```
 
-**2. Add a Disclaimer i18n key — `src/i18n/en.json` and `src/i18n/fr.json`**
+**3. `android/app/src/main/java/com/mi4labs/carnivorex/MainActivity.java`** — register the plugin:
+```java
+package com.mi4labs.carnivorex;
+import android.os.Bundle;
+import com.getcapacitor.BridgeActivity;
+import app.lovable.plugins.healthconnect.HealthConnectPlugin;
 
-Add a top-level block (so it's editable as its own CMS page, separate from `guide.disclaimer`):
-
-```json
-"disclaimer": {
-  "main": {
-    "title": "Medical Disclaimer",
-    "body": "The content in CarnivoreX is for informational and educational purposes only…"
+public class MainActivity extends BridgeActivity {
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    registerPlugin(HealthConnectPlugin.class);
+    super.onCreate(savedInstanceState);
   }
 }
 ```
 
-(Seed with the existing `guide.disclaimer.content` text in EN and FR.)
-
-**3. Create a single shared legal page component — `src/pages/LegalPage.tsx`**
-
-A minimal page that takes a content namespace and renders title + long-form body using `whitespace-pre-line` (matches the home accordion style). It uses `useTranslation`, so CMS overrides flow in automatically.
-
-```tsx
-function LegalPage({ ns }: { ns: "privacy" | "terms" | "disclaimer" }) {
-  const { t } = useTranslation();
-  return (
-    <main className="min-h-screen px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-24 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-extrabold mb-4">{t(`${ns}.main.title`)}</h1>
-      <div className="text-sm text-muted-foreground/90 leading-relaxed whitespace-pre-line">
-        {t(`${ns}.main.body`)}
-      </div>
-    </main>
-  );
-}
-```
-
-**4. Register public routes — `src/App.tsx`**
-
-Add (before the `*` catch-all):
-
-```tsx
-<Route path="/privacy"    element={<LegalPage ns="privacy" />} />
-<Route path="/terms"      element={<LegalPage ns="terms" />} />
-<Route path="/disclaimer" element={<LegalPage ns="disclaimer" />} />
-```
-
-This also fixes the existing dead link in `ConsentBanner.tsx` which navigates to `/privacy`.
-
-**5. Wire footer accordion to the same source — `src/pages/Index.tsx`**
-
-Already uses `t("privacy.main.body")` and `t("terms.main.body")` — no change needed, it inherits CMS overrides automatically. Add a third accordion item for Disclaimer pulling `t("disclaimer.main.body")` so the footer matches the new page.
-
-### How admins will use it
-
-1. Open `/admin` → tap **CMS Editor** (or go directly to `/cms`).
-2. **Pages** tab → see `Privacy Policy`, `Terms of Service`, `Disclaimer` listed alongside other app pages, with a working "Preview" button (`/privacy`, `/terms`, `/disclaimer`).
-3. **Content** tab → select one of the legal pages → edit `title` and `body` in EN and FR in a multi-line textarea → **Save**. Overrides hot-reload via `reloadContentOverrides()` and emit `languageChanged` so all open tabs update.
-4. Public `/privacy`, `/terms`, `/disclaimer` and the home-page footer accordion all reflect the new text.
-
-### Technical notes
-
-- No DB migration needed — `content_blocks` already supports arbitrary `page/section/key` overrides and has admin-only RLS for write operations.
-- No new dependency, no schema change, no new editor UI — the existing `CmsContentEditor` already renders `<Textarea>` for multi-line content (see line 4 import).
-- `ConsentBanner`'s broken `/privacy` link starts working as a side-effect.
-- Body text uses `whitespace-pre-line` so admins can format with blank lines without HTML.
-- Disclaimer remains separately editable from `guide.disclaimer.*` (which is the in-app Guide page note). They are intentionally two different surfaces.
+**4. `HealthConnectPlugin.kt`** — small hardening so the settings-fallback also fires when `launcher.launch(...)` itself throws (e.g. ActivityNotFoundException on misconfigured devices). Wrap the `launcher.launch(requestedPermissions)` call in try/catch; on failure, run the same `MANAGE_HEALTH_PERMISSIONS` / `ACTION_HEALTH_CONNECT_SETTINGS` intent path that already exists, and resolve with `{ granted: false, openedSettings: true }` instead of rejecting. The existing `getGrantedPermissions()` re-check (lines 64–80, 201–212) already correctly distinguishes "really denied" from "granted", so no change to the success path.
 
 ### Files touched
+- `android/app/build.gradle` (+2 lines)
+- `android/app/src/main/AndroidManifest.xml` (+~25 lines)
+- `android/app/src/main/java/com/mi4labs/carnivorex/MainActivity.java` (rewrite, ~10 lines)
+- `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` (small try/catch around `launcher.launch`)
 
-- `src/components/cms/cmsPages.ts` (3 lines added)
-- `src/i18n/en.json`, `src/i18n/fr.json` (1 block each)
-- `src/pages/LegalPage.tsx` (new, ~25 lines)
-- `src/App.tsx` (3 routes + 1 import)
-- `src/pages/Index.tsx` (1 accordion item added for Disclaimer)
+### Not touched
+- All `ios/**` files
+- All `src/**` web/UI code (the JS bridge, `HealthConnectContext`, `HealthDashboard` already call the plugin correctly)
+- Capacitor config, build scripts, gradle versions
 
+### After the change
+- User taps "Setup" → `checkAvailability` returns `available` → `requestPermissions` calls `getGrantedPermissions()`; if missing, launches the system Health Connect permission controller.
+- After the controller returns, the plugin re-reads `getGrantedPermissions()` and only reports `granted: false` when the user truly denied.
+- If the controller cannot launch (older OEM, missing HC app on API ≥ 34, ActivityNotFound), the fallback opens `MANAGE_HEALTH_PERMISSIONS` / `ACTION_HEALTH_CONNECT_SETTINGS` so the user can grant manually.
+- User must run `./gradlew assembleDebug` (or `scripts/build-android-fresh.sh`) to install the rebuilt APK — the JS bridge alone cannot pick up native manifest/dependency changes.

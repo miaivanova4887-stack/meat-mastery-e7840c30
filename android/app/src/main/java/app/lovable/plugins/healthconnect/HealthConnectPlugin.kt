@@ -213,10 +213,19 @@ class HealthConnectPlugin : Plugin() {
                 }
 
                 val launcher = permissionLauncher
+                var launchedController = false
                 if (launcher != null) {
-                    pendingPermissionCall = call
-                    launcher.launch(requestedPermissions)
-                } else {
+                    try {
+                        pendingPermissionCall = call
+                        launcher.launch(requestedPermissions)
+                        launchedController = true
+                    } catch (e: Exception) {
+                        Log.w(tag, "Permission launcher.launch failed, falling back to settings", e)
+                        pendingPermissionCall = null
+                    }
+                }
+
+                if (!launchedController) {
                     Log.w(tag, "Permission launcher unavailable, opening Health Connect settings")
                     try {
                         val settingsIntent = if (Build.VERSION.SDK_INT >= 34) {
@@ -234,7 +243,11 @@ class HealthConnectPlugin : Plugin() {
                         result.put("openedSettings", true)
                         call.resolve(result)
                     } catch (e: Exception) {
-                        call.reject("Cannot open Health Connect permissions: ${e.message}")
+                        val result = JSObject()
+                        result.put("granted", false)
+                        result.put("openedSettings", false)
+                        result.put("reason", "cannot_open_settings: ${e.message}")
+                        call.resolve(result)
                     }
                 }
             } catch (e: Exception) {

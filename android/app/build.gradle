@@ -57,6 +57,10 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Health Connect (runtime permission controller + record reads)
+    implementation "androidx.health.connect:connect-client:1.1.0-alpha10"
+    implementation "androidx.activity:activity-ktx:1.9.3"
 }
 
 apply from: 'capacitor.build.gradle'
