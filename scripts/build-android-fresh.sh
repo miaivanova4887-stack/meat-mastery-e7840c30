@@ -21,6 +21,25 @@ npm run build
 echo "🩹 Ensuring node_modules patches are applied..."
 (cd "$ROOT_DIR" && npx patch-package)
 
+PLUGIN_GRADLE="$ROOT_DIR/node_modules/@capacitor-community/speech-recognition/android/build.gradle"
+echo "🔎 Verifying speech-recognition ProGuard patch..."
+if [[ ! -f "$PLUGIN_GRADLE" ]]; then
+  echo "❌ Missing plugin gradle file: $PLUGIN_GRADLE"
+  echo "   Did 'npm install' run? Aborting before Gradle."
+  exit 1
+fi
+if ! grep -q "proguard-android-optimize.txt" "$PLUGIN_GRADLE"; then
+  echo "❌ Patch not applied: $PLUGIN_GRADLE still references the removed 'proguard-android.txt'."
+  echo "   Expected 'proguard-android-optimize.txt' (see patches/@capacitor-community+speech-recognition+7.0.1.patch)."
+  echo "   Try: rm -rf node_modules && npm install && npx patch-package"
+  exit 1
+fi
+if grep -q "getDefaultProguardFile('proguard-android.txt')" "$PLUGIN_GRADLE"; then
+  echo "❌ Stale reference to 'proguard-android.txt' still present in $PLUGIN_GRADLE."
+  exit 1
+fi
+echo "✅ Patch verified: proguard-android-optimize.txt present"
+
 echo "🔄 Syncing Capacitor Android project..."
 npx cap sync android
 
