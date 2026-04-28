@@ -23,6 +23,8 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -33,6 +35,17 @@ class HealthConnectPlugin : Plugin() {
     private var healthConnectClient: HealthConnectClient? = null
     private var permissionLauncher: ActivityResultLauncher<Set<String>>? = null
     private var pendingPermissionCallId: String? = null
+
+    // Lifecycle-aware scopes — cancelled in handleOnDestroy() so coroutines
+    // are not killed prematurely by GC of an ad-hoc CoroutineScope.
+    private val pluginJob = SupervisorJob()
+    private val pluginScope = CoroutineScope(Dispatchers.IO + pluginJob)
+    private val pluginMainScope = CoroutineScope(Dispatchers.Main + pluginJob)
+
+    override fun handleOnDestroy() {
+        pluginJob.cancel()
+        super.handleOnDestroy()
+    }
 
     private val samsungOriginPackages = setOf(
         "com.sec.android.app.shealth",
