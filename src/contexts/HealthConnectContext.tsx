@@ -7,6 +7,7 @@ export interface HealthData {
   steps: number;
   heartRate: number;
   weight: number;
+  weightUnit: "kg" | "lbs";
   sleep: number;
   activeCalories: number;
 }
@@ -46,7 +47,7 @@ const HC_CONNECTED_KEY = "carnivore-hc-connected";
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
-    steps: 0, heartRate: 0, weight: 0, sleep: 0, activeCalories: 0,
+    steps: 0, heartRate: 0, weight: 0, weightUnit: "lbs", sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(() => {
     try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
@@ -83,13 +84,29 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         if (hrResult.records.length > 0) heartRate = toFiniteNumber(hrResult.records[hrResult.records.length - 1].value);
       } catch (e) { console.warn("Failed to read heart rate:", e); }
 
+      // Determine display unit from the existing app-wide preference
+      // (owned by ShoppingBagContext, key "carnivore-unit-system").
+      const unitSystem: "imperial" | "metric" = (() => {
+        try {
+          const v = localStorage.getItem("carnivore-unit-system");
+          return v === "metric" ? "metric" : "imperial";
+        } catch {
+          return "imperial";
+        }
+      })();
+      const weightUnit: "kg" | "lbs" = unitSystem === "metric" ? "kg" : "lbs";
+
       try {
         // Widen weight window to 30 days — weight may not be recorded daily
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const weightTimeRange = { startTime: thirtyDaysAgo.toISOString(), endTime: now.toISOString() };
         const weightResult = await HealthConnect.readWeight(weightTimeRange);
-        if (weightResult.records.length > 0) weight = toFiniteNumber(weightResult.records[weightResult.records.length - 1].value);
+        if (weightResult.records.length > 0) {
+          const kg = toFiniteNumber(weightResult.records[weightResult.records.length - 1].value);
+          const converted = weightUnit === "lbs" ? kg * 2.2046226218 : kg;
+          weight = Math.round(converted * 10) / 10;
+        }
       } catch (e) { console.warn("Failed to read weight:", e); }
 
       try {
@@ -101,6 +118,7 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         steps: toFiniteNumber(steps),
         heartRate: toFiniteNumber(heartRate),
         weight: toFiniteNumber(weight),
+        weightUnit,
         sleep: 0,
         activeCalories: toFiniteNumber(activeCalories),
       });

@@ -81,7 +81,7 @@ export const HealthDashboard = () => {
           <p className="text-lg font-bold text-foreground">
             {safeWeight > 0 ? formatOneDecimal(safeWeight) : "—"}
           </p>
-          <p className="text-[10px] text-muted-foreground">kg</p>
+          <p className="text-[10px] text-muted-foreground">{healthData.weightUnit}</p>
         </div>
         <div className="bg-muted rounded-lg p-3 text-center">
           <Flame size={16} className="mx-auto text-orange-500 mb-1" />
