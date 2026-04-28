@@ -58,8 +58,14 @@ class HealthConnectPlugin : Plugin() {
                 permissionLauncher = componentActivity.registerForActivityResult(
                     PermissionController.createRequestPermissionResultContract()
                 ) { _ ->
-                    val call = pendingPermissionCall ?: return@registerForActivityResult
-                    pendingPermissionCall = null
+                    val callId = pendingPermissionCallId
+                    pendingPermissionCallId = null
+                    if (callId == null) return@registerForActivityResult
+                    val call = bridge.getSavedCall(callId)
+                    if (call == null) {
+                        Log.w(tag, "Saved permission call no longer available (id=$callId)")
+                        return@registerForActivityResult
+                    }
 
                     CoroutineScope(Dispatchers.Main).launch {
                         try {
@@ -75,6 +81,8 @@ class HealthConnectPlugin : Plugin() {
                         } catch (e: Exception) {
                             Log.e(tag, "Failed to verify permissions after request", e)
                             call.reject("Permission verification failed: ${e.message}")
+                        } finally {
+                            bridge.releaseCall(call)
                         }
                     }
                 }
