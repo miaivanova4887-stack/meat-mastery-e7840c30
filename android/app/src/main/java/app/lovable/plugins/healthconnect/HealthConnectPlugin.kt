@@ -80,7 +80,7 @@ class HealthConnectPlugin : Plugin() {
                         return@registerForActivityResult
                     }
 
-                    CoroutineScope(Dispatchers.Main).launch {
+                    pluginMainScope.launch {
                         try {
                             val client = healthConnectClient ?: HealthConnectClient.getOrCreate(context).also {
                                 healthConnectClient = it
@@ -224,7 +224,7 @@ class HealthConnectPlugin : Plugin() {
             return
         }
 
-        CoroutineScope(Dispatchers.Main).launch {
+        pluginMainScope.launch {
             try {
                 val granted = client.permissionController.getGrantedPermissions()
                 val hasRequired = granted.containsAll(requiredPermissions)
@@ -297,7 +297,7 @@ class HealthConnectPlugin : Plugin() {
         }
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        CoroutineScope(Dispatchers.IO).launch {
+        pluginScope.launch {
             try {
                 val stepsRecordsResponse = try {
                     client.readRecords(
@@ -372,7 +372,7 @@ class HealthConnectPlugin : Plugin() {
         }
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        CoroutineScope(Dispatchers.IO).launch {
+        pluginScope.launch {
             try {
                 val request = ReadRecordsRequest(
                     recordType = HeartRateRecord::class,
@@ -409,7 +409,7 @@ class HealthConnectPlugin : Plugin() {
         }
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        CoroutineScope(Dispatchers.IO).launch {
+        pluginScope.launch {
             try {
                 val request = ReadRecordsRequest(
                     recordType = WeightRecord::class,
@@ -449,7 +449,7 @@ class HealthConnectPlugin : Plugin() {
 
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        CoroutineScope(Dispatchers.IO).launch {
+        pluginScope.launch {
             try {
                 val records = JSArray()
                 val granted = client.permissionController.getGrantedPermissions()
