@@ -18,6 +18,9 @@ rm -rf "$ROOT_DIR/dist" "$ANDROID_DIR/app/src/main/assets/public" "$ANDROID_DIR/
 echo "📦 Building web assets..."
 npm run build
 
+echo "🩹 Ensuring node_modules patches are applied..."
+(cd "$ROOT_DIR" && npx patch-package)
+
 echo "🔄 Syncing Capacitor Android project..."
 npx cap sync android
 
