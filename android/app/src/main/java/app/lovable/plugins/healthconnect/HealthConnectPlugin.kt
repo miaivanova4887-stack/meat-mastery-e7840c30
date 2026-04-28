@@ -206,6 +206,11 @@ class HealthConnectPlugin : Plugin() {
             return
         }
 
+        if (pendingPermissionCallId != null) {
+            call.reject("Permission request already in progress")
+            return
+        }
+
         CoroutineScope(Dispatchers.Main).launch {
             try {
                 val granted = client.permissionController.getGrantedPermissions()
@@ -224,12 +229,18 @@ class HealthConnectPlugin : Plugin() {
                 var launchedController = false
                 if (launcher != null) {
                     try {
-                        pendingPermissionCall = call
+                        call.setKeepAlive(true)
+                        bridge.saveCall(call)
+                        pendingPermissionCallId = call.callbackId
                         launcher.launch(requestedPermissions)
                         launchedController = true
                     } catch (e: Exception) {
                         Log.w(tag, "Permission launcher.launch failed, falling back to settings", e)
-                        pendingPermissionCall = null
+                        val savedId = pendingPermissionCallId
+                        pendingPermissionCallId = null
+                        if (savedId != null) {
+                            bridge.getSavedCall(savedId)?.let { bridge.releaseCall(it) }
+                        }
                     }
                 }
 
