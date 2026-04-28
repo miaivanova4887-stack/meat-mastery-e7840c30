@@ -1,46 +1,46 @@
-## Fix Health Connect plugin call lifecycle on Android
+# Fix Android build failure from @capacitor-community/speech-recognition
 
-### Root cause
+## Root cause
 
-`HealthConnectPlugin.requestPermissions()` stores the `PluginCall` in a field (`pendingPermissionCall`) and then launches the system permission controller. The Activity may be paused/recreated while the user is in the Health Connect controller UI, so Capacitor logs:
+`node_modules/@capacitor-community/speech-recognition/android/build.gradle` (v7.0.1) declares:
 
-> Couldn't save last call. Make sure to use `call.setKeepAlive(true)` if you want to retrieve the call later.
+```gradle
+proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+```
 
-Because the call wasn't marked as kept-alive / saved with the bridge, Capacitor can release it before the `registerForActivityResult` callback runs — so the JS-side promise can be lost, and re-checks happen against a discarded call.
+Android Gradle Plugin 8.x (this project uses AGP 8.7.2) no longer ships `proguard-android.txt`. Only `proguard-android-optimize.txt` is bundled, so Gradle fails resolving the default proguard file for the plugin's release build.
 
-The fix is purely a Capacitor lifecycle fix in one Kotlin file. No iOS, no web, no UI changes.
+Upstream has not shipped a fixed release for v7.x, so we patch locally.
 
-### Changes — `HealthConnectPlugin.kt` only
+## Fix (smallest safe change)
 
-1. **Save the call before launching the controller**
-  - Call `call.setKeepAlive(true)` and `bridge.saveCall(call)` before `launcher.launch(requestedPermissions)`.
-  - Store only the call's `callbackId` (string) in `pendingPermissionCallId`, not the `PluginCall` instance itself, so we can retrieve it after the activity returns.
-2. **Resolve the saved call in the activity-result callback**
-  - In the `registerForActivityResult { _ -> ... }` handler, look up the call via `bridge.getSavedCall(pendingPermissionCallId)`.
-  - Re-run `client.permissionController.getGrantedPermissions()`.
-  - Resolve (or reject) that saved call with the `granted` boolean + `grantedCount`.
-  - After resolving, call `bridge.releaseCall(call)` (or `call.release(bridge)`) and clear `pendingPermissionCallId`.
-3. **Symmetric cleanup on launch failure**
-  - If `launcher.launch(...)` throws, release the saved call and clear `pendingPermissionCallId` before falling back to the settings-intent path (current settings fallback behaviour preserved).
-4. **Defensive guard**
-  - If `pendingPermissionCallId` is non-null when `requestPermissions` is invoked again (e.g. user double-taps), reject the new call with a "permission request already in progress" error rather than overwriting the saved call.
+1. Edit `node_modules/@capacitor-community/speech-recognition/android/build.gradle` — replace `'proguard-android.txt'` with `'proguard-android-optimize.txt'` (single line change inside the `release` block).
+2. Add `patch-package` so the fix survives `npm install` / CI / `cap sync`:
+  - Add `patch-package` as a devDependency.
+  - Add `"postinstall": "patch-package"` to `package.json` scripts.
+  - Generate `patches/@capacitor-community+speech-recognition+7.0.1.patch` capturing the one-line gradle change.
+3. Update `scripts/build-android-fresh.sh` so `npm install` (or an explicit `npx patch-package`) runs before `npx cap sync`, guaranteeing the patch is applied on a fresh checkout. Currently the script jumps straight from `npm run build` to `npx cap sync` without ensuring the patch step ran — we'll add an explicit `npx patch-package` call right before `cap sync` as a safety net (no-op if already applied).
+4. Re-run the existing `bash scripts/build-android-fresh.sh` to produce a fresh debug APK.
 
-### What stays the same
+## Files touched
 
-- Manifest, `build.gradle`, `MainActivity.java`, all read methods, the settings-fallback intent, the post-controller `getGrantedPermissions()` re-check semantics, and all JS / web / iOS code.
-- The JS contract (`{ granted: boolean, grantedCount?: number, openedSettings?: boolean }`) is unchanged.
+- `package.json` — add devDependency + postinstall script
+- `patches/@capacitor-community+speech-recognition+7.0.1.patch` — new patch file
+- `node_modules/@capacitor-community/speech-recognition/android/build.gradle` — apply patch
+- `scripts/build-android-fresh.sh` — add `npx patch-package` safety call
 
-### Files touched
+## Out of scope
 
-- `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` (~25 lines changed across `load()` and `requestPermissions()`, plus one field rename)
+- iOS files: untouched.
+- Health Connect plugin: untouched.
+- No web/UI changes.
 
-### After the fix
+## Verification
 
-- Tapping "Setup" saves the PluginCall with the bridge before the Health Connect UI opens, so Capacitor no longer logs the "Couldn't save last call" warning.
-- When the controller returns, the same saved call is resolved with the freshly-checked granted permissions.
-- A second "denied" result only appears when the user truly denied; transient activity recreation no longer drops the call.
+- `npm install` → confirm postinstall logs "Applying patches… @capacitor-community/[speech-recognition@7.0.1](mailto:speech-recognition@7.0.1) ✔".
+- `grep proguard-android-optimize node_modules/@capacitor-community/speech-recognition/android/build.gradle` → matches.
+- Run `bash scripts/build-android-fresh.sh`; expect a successful debug APK at `android/app/build/outputs/apk/debug/app-debug.apk` and report SHA256.
 
-**Fix the Android Health Connect permission flow in** `HealthConnectPlugin.kt` **only.**  
-**The root issue is Capacitor’s saved-call lifecycle: the plugin must call** `call.setKeepAlive(true)` **and** `bridge.saveCall(call)` **before launching the Health Connect permission controller, then recover the call with** `bridge.getSavedCall(pendingPermissionCallId)` **in the activity-result callback, re-check** `getGrantedPermissions()`**, resolve/reject the same saved call, and finally** `bridge.releaseCall(call)` **/** `bridge.releaseCall(callbackId)`**.**  
-**Also add a guard so a second permission request is rejected while one is already in progress, and make sure any launch failure releases the saved call before falling back to settings.**  
-**Do not change iOS, web UI, Gradle, or the manifest for this step.**
+&nbsp;
+
+**Fix the Android build failure caused by** `@capacitor-community/speech-recognition` **by patching its Android Gradle file to use** `getDefaultProguardFile('proguard-android-optimize.txt')` **instead of** `proguard-android.txt`**. Keep the change persistent with** `patch-package` **via a** `postinstall` **script, and add an explicit patch application step before** `npx cap sync` **in** `scripts/build-android-fresh.sh`**. Do not change iOS or the Health Connect plugin for this step.**
