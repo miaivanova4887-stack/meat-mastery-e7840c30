@@ -32,7 +32,7 @@ class HealthConnectPlugin : Plugin() {
     private val tag = "HealthConnectPlugin"
     private var healthConnectClient: HealthConnectClient? = null
     private var permissionLauncher: ActivityResultLauncher<Set<String>>? = null
-    private var pendingPermissionCall: PluginCall? = null
+    private var pendingPermissionCallId: String? = null
 
     private val samsungOriginPackages = setOf(
         "com.sec.android.app.shealth",
