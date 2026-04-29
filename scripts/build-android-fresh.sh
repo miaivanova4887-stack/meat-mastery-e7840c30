@@ -102,8 +102,22 @@ if [[ -d "$ICON_SRC" ]]; then
   echo "✅ Adaptive icon validation passed"
 fi
 
+echo "🛠️  Pre-compiling Kotlin to verify HealthConnectPlugin produces a class file..."
+(cd "$ANDROID_DIR" && ./gradlew :app:compileDebugKotlin --no-build-cache --rerun-tasks)
+
+KOTLIN_CLASS="$ANDROID_DIR/app/build/tmp/kotlin-classes/debug/app/lovable/plugins/healthconnect/HealthConnectPlugin.class"
+if [[ ! -f "$KOTLIN_CLASS" ]]; then
+  echo "❌ Kotlin compile produced no class file at:"
+  echo "   $KOTLIN_CLASS"
+  echo "   This means the .kt file is not being seen by the Kotlin compiler."
+  echo "   Check that 'apply plugin: kotlin-android' is at the top of android/app/build.gradle"
+  echo "   and that the file lives under android/app/src/main/java/app/lovable/plugins/healthconnect/."
+  exit 1
+fi
+echo "✅ HealthConnectPlugin.class generated"
+
 echo "🏗️ Assembling fresh debug APK (no cache)..."
-(cd "$ANDROID_DIR" && ./gradlew clean :app:assembleDebug --no-build-cache --rerun-tasks)
+(cd "$ANDROID_DIR" && ./gradlew :app:assembleDebug --no-build-cache --rerun-tasks)
 
 if [[ ! -f "$APK_PATH" ]]; then
   echo "❌ APK build failed. Expected file not found: $APK_PATH"
