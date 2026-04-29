@@ -998,6 +998,22 @@ const Profile = () => {
               </div>
             </div>
 
+
+            {/* User Notification Preferences */}
+            <button
+              onClick={() => setShowPushConsent(true)}
+              className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Bell size={18} className="text-primary" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="font-display font-bold text-foreground text-[15px]">Notification preferences</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Choose what reminders and updates you receive.</p>
+              </div>
+              <ChevronRight size={14} className="text-muted-foreground" />
+            </button>
+
             {/* Admin Panel */}
             {isAdmin && (
               <div className="space-y-3">
