@@ -449,6 +449,30 @@ const Onboarding = () => {
   // Progress dots
   const progressPercent = ((step + 1) / totalSteps) * 100;
 
+  const handleHcPrompt = async (connect: boolean) => {
+    if (hcBusy) return;
+    setHcBusy(true);
+    try {
+      if (connect) {
+        console.info("[Onboarding] HC prompt → user tapped Connect");
+        try {
+          await requestHcPermissions();
+          console.info("[Onboarding] HC requestPermissions returned");
+        } catch (e) {
+          console.warn("[Onboarding] HC requestPermissions threw", e);
+        }
+      } else {
+        console.info("[Onboarding] HC prompt → user tapped Skip");
+      }
+    } finally {
+      setHcBusy(false);
+      setShowHcPrompt(false);
+      // Always continue to push opt-in next.
+      console.info("[Onboarding] HC step done → opening push consent sheet");
+      setShowPushConsent(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <NotificationConsentSheet
@@ -458,6 +482,39 @@ const Onboarding = () => {
           navigate("/", { replace: true });
         }}
       />
+
+      {/* Health Connect prompt — Android-only, between step 11 and push sheet */}
+      {showHcPrompt && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-end sm:items-center justify-center p-5">
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-primary/15 flex items-center justify-center mb-4">
+              <Activity size={22} className="text-primary" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Connect Health Connect</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              Sync steps, weight, heart rate, and active calories from Health
+              Connect to personalize your dashboard. You can change this any
+              time in Settings.
+            </p>
+            <Button
+              className="w-full mb-2"
+              disabled={hcBusy}
+              onClick={() => handleHcPrompt(true)}
+            >
+              Connect
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              disabled={hcBusy}
+              onClick={() => handleHcPrompt(false)}
+            >
+              Not now
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Premium top bar */}
       <div
         className="px-5 pt-4 pb-3 flex items-center gap-4"
