@@ -43,6 +43,17 @@ android {
     kotlinOptions {
         jvmTarget = '21'
     }
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+        main.java.srcDirs += 'src/main/java'
+    }
+}
+
+// Defensive: ensure kotlin-android is applied even if a Capacitor regeneration
+// rewrote the top of this file. compileDebugJavaWithJavac will otherwise fail
+// with "cannot find symbol" for any class declared in a .kt file.
+if (!project.plugins.hasPlugin('kotlin-android')) {
+    apply plugin: 'kotlin-android'
 }
 
 repositories {
