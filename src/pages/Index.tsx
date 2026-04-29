@@ -327,6 +327,7 @@ const Index = () => {
               className="flex-1"
               onClick={() => {
                 localStorage.removeItem("carnivore-onboarding-complete");
+                localStorage.removeItem("carnivore-onboarding-complete-v2");
                 localStorage.removeItem("carnivore-onboarding-answers");
                 localStorage.removeItem("carnivore-onboarding-body");
                 navigate("/onboarding");
