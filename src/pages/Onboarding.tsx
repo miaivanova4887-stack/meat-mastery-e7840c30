@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import i18n from "@/i18n/index";
+import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 
 interface StepOption {
   label: string;
@@ -227,6 +228,7 @@ const Onboarding = () => {
   const [customCuisine, setCustomCuisine] = useState("");
   const [transitioning, setTransitioning] = useState(false);
   const [consentSaving, setConsentSaving] = useState(false);
+  const [showPushConsent, setShowPushConsent] = useState(false);
 
   // Health targets state (step 3)
   const [healthTargets, setHealthTargets] = useState<string[]>([]);
@@ -360,7 +362,8 @@ const Onboarding = () => {
           }
 
           window.dispatchEvent(new Event("profile-update"));
-          navigate("/", { replace: true });
+          // Show notification consent sheet, then navigate home on close.
+          setShowPushConsent(true);
         };
 
         saveProfile();
@@ -412,6 +415,13 @@ const Onboarding = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <NotificationConsentSheet
+        open={showPushConsent}
+        onClose={() => {
+          setShowPushConsent(false);
+          navigate("/", { replace: true });
+        }}
+      />
       {/* Premium top bar */}
       <div
         className="px-5 pt-4 pb-3 flex items-center gap-4"

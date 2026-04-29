@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import { useUserProfile, type Goal, type Experience, type ActivityLevel, type Struggle, type Interest, type Sex } from "@/contexts/UserProfileContext";
+import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 
 interface Profile {
   display_name: string | null;
@@ -81,6 +82,7 @@ const Profile = () => {
   // stay optimistic via saveField + query invalidation.
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showPushConsent, setShowPushConsent] = useState(false);
   const [tab, setTab] = useState<"feed" | "goals" | "community" | "settings">("feed");
   const userProfile = useUserProfile();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
@@ -416,6 +418,7 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
+      <NotificationConsentSheet open={showPushConsent} onClose={() => setShowPushConsent(false)} />
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 dark:border-transparent shadow-xs px-4 pb-3 flex items-center gap-3 page-header" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
@@ -997,6 +1000,22 @@ const Profile = () => {
                 ))}
               </div>
             </div>
+
+
+            {/* User Notification Preferences */}
+            <button
+              onClick={() => setShowPushConsent(true)}
+              className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Bell size={18} className="text-primary" />
+              </div>
+              <div className="flex-1 text-left">
+                <h3 className="font-display font-bold text-foreground text-[15px]">Notification preferences</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Choose what reminders and updates you receive.</p>
+              </div>
+              <ChevronRight size={14} className="text-muted-foreground" />
+            </button>
 
             {/* Admin Panel */}
             {isAdmin && (

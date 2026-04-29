@@ -29,3 +29,15 @@ verify_jwt = false
 
 [functions.create-coaching-checkout]
 verify_jwt = false
+
+[functions.push-scheduler]
+verify_jwt = false
+
+[functions.fcm-send]
+verify_jwt = false
+
+[functions.register-device-token]
+verify_jwt = false
+
+[functions.push-event-trigger]
+verify_jwt = false
