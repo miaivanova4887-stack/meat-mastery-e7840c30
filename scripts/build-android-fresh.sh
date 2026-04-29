@@ -43,6 +43,23 @@ echo "✅ Patch verified: proguard-android-optimize.txt present"
 echo "🔄 Syncing Capacitor Android project..."
 npx cap sync android
 
+# Capacitor sync regenerates android/variables.gradle with minSdkVersion = 24,
+# but androidx.health.connect:connect-client requires minSdk >= 26. Re-pin it
+# here so every fresh build self-heals.
+VARIABLES_GRADLE="$ANDROID_DIR/variables.gradle"
+echo "🔎 Pinning minSdkVersion = 26 in variables.gradle (Health Connect requirement)..."
+if [[ ! -f "$VARIABLES_GRADLE" ]]; then
+  echo "❌ Missing $VARIABLES_GRADLE after cap sync"
+  exit 1
+fi
+sed -i.bak -E 's/(minSdkVersion[[:space:]]*=[[:space:]]*)[0-9]+/\126/' "$VARIABLES_GRADLE"
+rm -f "$VARIABLES_GRADLE.bak"
+if ! grep -qE "minSdkVersion[[:space:]]*=[[:space:]]*26" "$VARIABLES_GRADLE"; then
+  echo "❌ Failed to pin minSdkVersion = 26 in $VARIABLES_GRADLE"
+  exit 1
+fi
+echo "✅ minSdkVersion = 26 confirmed"
+
 APP_GRADLE="$ANDROID_DIR/app/build.gradle"
 echo "🔎 Verifying kotlin-android plugin is applied in app/build.gradle..."
 if ! grep -q "apply plugin: 'kotlin-android'" "$APP_GRADLE"; then
