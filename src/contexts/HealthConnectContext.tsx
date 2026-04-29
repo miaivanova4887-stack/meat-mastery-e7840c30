@@ -84,28 +84,21 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         if (hrResult.records.length > 0) heartRate = toFiniteNumber(hrResult.records[hrResult.records.length - 1].value);
       } catch (e) { console.warn("Failed to read heart rate:", e); }
 
-      // Determine display unit from the existing app-wide preference
-      // (owned by ShoppingBagContext, key "carnivore-unit-system").
-      const unitSystem: "imperial" | "metric" = (() => {
-        try {
-          const v = localStorage.getItem("carnivore-unit-system");
-          return v === "metric" ? "metric" : "imperial";
-        } catch {
-          return "imperial";
-        }
-      })();
-      const weightUnit: "kg" | "lbs" = unitSystem === "metric" ? "kg" : "lbs";
+      // Body weight always in kg (matches Samsung Health source of truth).
+      // The cooking-units toggle (imperial/metric) governs ingredients only.
+      const weightUnit: "kg" | "lbs" = "kg";
 
       try {
-        // Widen weight window to 30 days — weight may not be recorded daily
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const weightTimeRange = { startTime: thirtyDaysAgo.toISOString(), endTime: now.toISOString() };
+        // Widen weight window to 365 days — fetch the most recently
+        // entered weight, as users may not log weight frequently.
+        const oneYearAgo = new Date();
+        oneYearAgo.setDate(oneYearAgo.getDate() - 365);
+        const weightTimeRange = { startTime: oneYearAgo.toISOString(), endTime: now.toISOString() };
         const weightResult = await HealthConnect.readWeight(weightTimeRange);
         if (weightResult.records.length > 0) {
+          // records are returned in chronological order — take the latest
           const kg = toFiniteNumber(weightResult.records[weightResult.records.length - 1].value);
-          const converted = weightUnit === "lbs" ? kg * 2.2046226218 : kg;
-          weight = Math.round(converted * 10) / 10;
+          weight = Math.round(kg * 10) / 10;
         }
       } catch (e) { console.warn("Failed to read weight:", e); }
 
