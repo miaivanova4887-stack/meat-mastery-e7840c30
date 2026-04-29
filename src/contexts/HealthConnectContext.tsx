@@ -176,6 +176,7 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
       }
 
       const { granted } = await HealthConnect.requestPermissions();
+      console.info("[HealthConnect] requestPermissions → granted=", granted);
       if (!granted) {
         setError("Health Connect permissions were denied.");
         setIsLoading(false);
