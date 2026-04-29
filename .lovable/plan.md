@@ -1,89 +1,72 @@
-## Goal
+# Fix voice log on Progress page (Android)
 
-Stop the anonymous push opt-in sheet from appearing instantly on app launch. Hold it behind a shared shell-level grace timer (60–250s, configurable) and add stricter eligibility checks plus rich diagnostic logging.
+## Root cause
 
-## Scope
+On Android, `useVoiceCapture` starts `SpeechRecognition` with `popup: true` (the Google system voice overlay). In this mode the plugin emits **no `partialResults` events** — only a single final transcript via the `start()` promise resolution.
 
-Only these files change:
-
-- `src/hooks/usePushConsentFallback.ts` — main logic (delay, eligibility, logs)
-- `src/components/PushConsentFallbackHost.tsx` — anchor the timer to a single shell-mounted instance and ensure source is `"shell"`
-- (No changes to onboarding, Health Connect, campaigns, AuthContext, or `pushFcm.ts`.)
-
-## Behavior changes
-
-### 1. Shared shell-level delay (single source of truth)
-
-Capture `appStartAt = Date.now()` at module load of `usePushConsentFallback.ts` (one timestamp per JS bundle / app launch — survives route changes since the hook module is shared).
-
-Add a configurable grace window:
+In `src/hooks/useVoiceCapture.ts` (lines 337–350), the final transcript is only written into state when `receivedInputRef.current === true`:
 
 ```ts
-const FALLBACK_DELAY_MIN_MS = 60_000;   // 60s floor
-const FALLBACK_DELAY_MAX_MS = 250_000;  // 250s ceiling
-const FALLBACK_DELAY_MS = 90_000;       // default ~90s
+if (finalMatch) {
+  if (receivedInputRef.current) {  // ← always false on Android popup mode
+    setTranscriptSafe(finalMatch);
+  }
+}
 ```
 
-Allow override via `localStorage["push-fallback-delay-ms"]` (clamped to [MIN, MAX]) for QA tuning, no UI.
+`receivedInputRef` is only flipped to `true` inside the `partialResults` listener. Since no partials fire on Android, the final transcript from Google's voice UI is silently dropped. The textarea stays empty, so:
 
-The hook computes `remaining = max(0, FALLBACK_DELAY_MS - (Date.now() - appStartAt))` and schedules a single `setTimeout(remaining)`. Because `appStartAt` is module-scoped, a remount on a new route does NOT restart the clock — the delay is shared regardless of route.
+- `useEffect` syncing transcript → `setTextInput` never runs
+- `stopVoice()` and the natural-stop effect both gate on `receivedInput()` and skip auto-submit
+- Result: speech is captured by Google STT, transcribed, but never committed → no meal logged, no macros
 
-Replace the existing `INITIAL_DELAY_MS = 600` short delay with this longer grace timer.
+The Type path is untouched because it bypasses the voice ref entirely.
 
-### 2. Eligibility check (run when the timer fires)
+## Fix
 
-In order, skip with a logged reason if any of these are true:
+In `src/hooks/useVoiceCapture.ts`, treat the final result of the `start()` promise as authoritative input on platforms that don't emit partials. Specifically, when we receive a non-empty `finalMatch` and the platform was started in popup mode (Android), set `receivedInputRef.current = true` and write the transcript regardless of prior partials. The iOS stale-echo guard (which is the reason that `if` exists) is only meaningful when partials are enabled, so it's safe to bypass for popup-mode Android.
 
-- not native or platform !== `"android"` → `reason=not-android`
-- `sessionStorage["push-prompt-shown"] === "1"` → `reason=already-shown-session`
-- **Authenticated branch** (`supabase.auth.getUser()` returns a user):
-  - Read `profiles.push_consent` AND `profiles.notification_preferences`.
-  - If `push_consent === "granted"` → `reason=consent-granted`
-  - If `push_consent === "denied"` → `reason=consent-denied`
-  - If `notification_preferences` shows the user already opted into any push category (any of `streaks|recipes|fasting|coaching` is `true`) AND `push_consent === "unset"` → `reason=prefs-indicate-opted-in` (skip; they implicitly want push, native permission will be asked elsewhere — don't pester now).
-  - Only open if `push_consent === "unset"` AND no truthy push category in prefs.
-- **Anonymous branch** (no signed-in user):
-  - Read `getLocalPushConsent()`. If not `"unset"` → skip with reason.
-  - Additionally require minimal "user has progressed" signal: `localStorage["carnivore-onboarding-complete-v2"] === "true"` OR `localStorage["carnivore-onboarding-complete"] === "true"`. If neither is set → `reason=anonymous-not-progressed` (skip; they haven't engaged enough yet).
-  - Otherwise open.
+Concretely, capture `usePartialResults` in the start promise closure and use it to decide:
 
-### 3. Once-per-session + dismissal guard (unchanged)
+```ts
+if (finalMatch) {
+  if (!usePartialResults) {
+    // Android popup mode: no partials ever fire, so the final match
+    // from the system voice UI is the only signal we get. Trust it.
+    receivedInputRef.current = true;
+    setTranscriptSafe(finalMatch);
+  } else if (receivedInputRef.current) {
+    // iOS: only trust the final if a real partial already arrived,
+    // otherwise it may be a cached replay from a stuck audio session.
+    setTranscriptSafe(finalMatch);
+  }
+}
+```
 
-Still set `sessionStorage["push-prompt-shown"] = "1"` the moment we open the sheet. After dismissal we do not re-open in the same session. (Onboarding-triggered sheet already sets this flag too.)
+This restores the Android voice → textarea → auto-submit → parse → log flow without changing iOS behavior or the typed path.
 
-### 4. Single-host enforcement
+## Diagnostics
 
-Update `PushConsentFallbackHost.tsx` to use a module-level boolean `mounted` so a second mount becomes a no-op (defensive — prevents double timers if anything ever re-mounts the host). The hook already uses a module-shared `appStartAt`, but this is a small extra safety net.
+Add `console.info` logs to make this verifiable in logcat:
 
-### 5. Logging (logcat-friendly, prefix `[Push] fallback`)
+- `src/components/progress/VoiceRecognition.tsx`
+  - on mic tap (`handleStartListening`): `[VoiceLog] mic tap`
+  - inside `stopVoice`: `[VoiceLog] stop captured=<len> heard=<bool>`
+  - inside the natural-stop effect just before `submitText`: `[VoiceLog] natural stop submitting len=<len>`
+  - inside `submitText`: `[VoiceLog] submit input=<len> entries=<n>`
+  - inside `logEntries`: `[VoiceLog] saving entries=<n>` and on success `[VoiceLog] save success` / on failure `[VoiceLog] save failed`
+- `src/hooks/useVoiceCapture.ts`
+  - in the native start promise `.then` when `finalMatch` is non-empty: `[VoiceLog] native final received len=<len> usePartialResults=<bool>`
+  - in `partialResults` listener when accepting: `[VoiceLog] native partial accepted len=<len>`
 
-On hook mount log:
+## Files to change
 
-- `appStartAt`, `now`, `elapsed`, `delayMs`, `remaining`, `source`
+- `src/hooks/useVoiceCapture.ts` — adjust the final-match acceptance logic; add logs
+- `src/components/progress/VoiceRecognition.tsx` — add logs only
 
-When the timer fires log:
+## Out of scope
 
-- `native`, `platform`, `alreadyShown`, `userPresent`, `branch`, `consent`, `prefsOptedIn`, `onboardingProgressed`
-
-When opening: `reason=open branch=... consent=...`
-When skipping: `reason=<one of above> branch=... details=...`
-
-All logs use `console.info` so they appear in logcat at default verbosity.
-
-## Non-goals
-
-- Do NOT change `Onboarding.tsx`, `AuthContext.tsx`, `pushFcm.ts`, `pushConsentLocal.ts`, route guards, Health Connect, or campaign code.
-- Do NOT change the onboarding-triggered push sheet behavior.
-- Do NOT request native permissions during the eligibility check (still done only when user taps Enable).
-
-## Acceptance
-
-- Cold launch on Android: no push sheet for at least 60s (default 90s) regardless of route.
-- After delay: sheet only opens if Android + session-not-shown + (authenticated→consent unset & no prefs opted-in) OR (anonymous→onboarding-complete flag set & local consent unset).
-- Logcat shows `[Push] fallback` lines covering app-start time, elapsed delay, profile presence, consent state, and an explicit open/skip reason.
-- No regressions on web, iOS, or the in-onboarding push sheet.
-
-- I would make the shell host the only active prompt source and avoid leaving any page-level fallback hooks in place, unless they are fully disabled. That reduces surprise re-triggers.
-- I would keep the default at **90 seconds** and use the 60–250 second range only as a QA override, not as a live user-visible range.
-- For anonymous users, the “onboarding complete” requirement is good, but make sure it’s the same versioned key you already migrated to, so it doesn’t regress on older installs.
-- The plan says “if `notification_preferences` shows the user already opted into any push category, skip because native permission will be asked elsewhere.” That’s fine only if there is actually another later prompt path. If not, it could accidentally suppress the only chance to ask
+- iOS partials / stale-echo behavior (unchanged)
+- Typed input path (unchanged)
+- Parser (`parseHealthTranscript`) and `useAddEntry` mutation (unchanged)
+- Onboarding, Health Connect, push, campaign code (unchanged)

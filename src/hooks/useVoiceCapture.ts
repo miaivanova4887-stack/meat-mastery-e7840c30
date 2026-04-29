@@ -301,6 +301,7 @@ export const useVoiceCapture = ({
         // know the session is genuine and not a stuck-audio-session
         // replay of cached text.
         receivedInputRef.current = true;
+        console.info("[VoiceLog] native partial accepted len=", partialMatch.length);
         setTranscriptSafe(partialMatch);
       });
       listenerHandles.push(partialResultsHandle);
@@ -339,12 +340,24 @@ export const useVoiceCapture = ({
           if (sessionId !== sessionIdRef.current) return;
           const finalMatch = extractFirstMatch(result);
           if (finalMatch) {
-            // Only trust a final result if we also received at least one
-            // partial for this session. On iPhone, a stuck audio session
-            // can resolve the native start promise with CACHED transcript
-            // from the previous run, which would otherwise reappear in
-            // the UI as if the user said it again.
-            if (receivedInputRef.current) {
+            console.info(
+              "[VoiceLog] native final received len=",
+              finalMatch.length,
+              "usePartialResults=",
+              usePartialResults,
+            );
+            // Android (popup=true) uses Google's system voice UI which
+            // emits NO partialResults events — the only signal we ever
+            // get is this final match. We must trust it; otherwise the
+            // transcript is silently dropped and no meal gets logged.
+            //
+            // iOS keeps the original guard: only trust the final if a
+            // real partial already arrived, otherwise it may be a cached
+            // replay from a stuck audio session.
+            if (!usePartialResults) {
+              receivedInputRef.current = true;
+              setTranscriptSafe(finalMatch);
+            } else if (receivedInputRef.current) {
               setTranscriptSafe(finalMatch);
             }
           }
