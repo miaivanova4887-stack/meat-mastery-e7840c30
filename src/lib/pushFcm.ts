@@ -4,15 +4,23 @@
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "@/integrations/supabase/client";
+import { setLocalPushConsent } from "@/lib/pushConsentLocal";
 
 export type PushConsentState = "unset" | "granted" | "denied";
 
-/** Persist consent + (optional) preferences to the user profile. */
+/**
+ * Persist consent + (optional) preferences.
+ * Always writes a local mirror so anonymous users' choices survive until
+ * sign-in, when AuthContext reconciles the value into profiles.push_consent.
+ */
 export async function savePushConsent(
   state: PushConsentState,
   preferences?: Record<string, boolean>,
 ): Promise<void> {
+  // Local mirror — works even when no user is signed in.
+  setLocalPushConsent(state);
   const { data: { user } } = await supabase.auth.getUser();
+  console.info("[Push] savePushConsent local=", state, "userPresent=", !!user);
   if (!user) return;
   const patch = {
     push_consent: state,
