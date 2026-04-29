@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { getLocalPushConsent } from "@/lib/pushConsentLocal";
 
 interface AuthContextType {
   user: User | null;
@@ -14,22 +15,92 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const ONBOARDING_COMPLETE_KEY = "carnivore-onboarding-complete-v2";
+const RECONCILE_RETRY_DELAYS_MS = [500, 1500, 4000];
+
+/**
+ * Reconcile the anonymous local push-consent marker into the user's
+ * profile row. Retries a few times because handle_new_user() inserts
+ * the profile asynchronously after sign-up; if the row isn't there yet
+ * we wait and try again rather than dropping the local consent.
+ */
+async function reconcileLocalConsent(userId: string, attempt = 0): Promise<void> {
+  const local = getLocalPushConsent();
+  // Always log the onboarding flag presence so logcat confirms continuity.
+  if (attempt === 0) {
+    try {
+      const onb = localStorage.getItem(ONBOARDING_COMPLETE_KEY) === "1";
+      console.info("[Onboarding] local flag carried into session present=", onb);
+    } catch {}
+  }
+  if (local === "unset") {
+    console.info("[Push] reconcile skipped reason=local-unset");
+    return;
+  }
+  try {
+    const { data, error } = await (supabase as any)
+      .from("profiles")
+      .select("push_consent")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) {
+      if (attempt < RECONCILE_RETRY_DELAYS_MS.length) {
+        const delay = RECONCILE_RETRY_DELAYS_MS[attempt];
+        console.info("[Push] reconcile waiting for profile attempt=", attempt, "delayMs=", delay);
+        setTimeout(() => { void reconcileLocalConsent(userId, attempt + 1); }, delay);
+      } else {
+        console.warn("[Push] reconcile gave up after retries error=", error);
+      }
+      return;
+    }
+    const remote = data.push_consent ?? "unset";
+    if (remote !== "unset") {
+      console.info("[Push] reconcile skipped reason=remote-already-set remote=", remote);
+      return;
+    }
+    const { error: updErr } = await supabase
+      .from("profiles")
+      .update({ push_consent: local, push_consent_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (updErr) {
+      console.warn("[Push] reconcile update failed", updErr);
+      return;
+    }
+    console.info("[Push] reconciled local→profile consent=", local);
+  } catch (e) {
+    console.warn("[Push] reconcile threw", e);
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const reconciledForUserRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const maybeReconcile = (nextUser: User | null) => {
+      if (!nextUser) return;
+      if (reconciledForUserRef.current === nextUser.id) return;
+      reconciledForUserRef.current = nextUser.id;
+      // Defer so we never block auth state propagation.
+      setTimeout(() => { void reconcileLocalConsent(nextUser.id); }, 0);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      const nextUser = session?.user ?? null;
+      setUser(nextUser);
       setLoading(false);
+      maybeReconcile(nextUser);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      const nextUser = session?.user ?? null;
+      setUser(nextUser);
       setLoading(false);
+      maybeReconcile(nextUser);
     });
 
     return () => subscription.unsubscribe();
