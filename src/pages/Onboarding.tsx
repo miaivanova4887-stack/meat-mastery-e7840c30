@@ -395,6 +395,9 @@ const Onboarding = () => {
             "android=", isAndroid,
             "→ next=", isAndroid ? "HC prompt" : "push sheet",
           );
+          // Mark the session-once flag so the App-level
+          // PushConsentFallbackHost cannot also fire on this same launch.
+          try { sessionStorage.setItem("push-prompt-shown", "1"); } catch {}
           if (isAndroid) {
             setShowHcPrompt(true);
           } else {
