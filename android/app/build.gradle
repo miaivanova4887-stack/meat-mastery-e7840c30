@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 android {
     namespace = "com.mi4labs.carnivorex"
@@ -39,6 +40,9 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    kotlinOptions {
+        jvmTarget = '21'
+    }
 }
 
 repositories {
@@ -61,6 +65,9 @@ dependencies {
     // Health Connect (runtime permission controller + record reads)
     implementation "androidx.health.connect:connect-client:1.1.0-alpha10"
     implementation "androidx.activity:activity-ktx:1.9.3"
+
+    // Kotlin standard library (required because the Health Connect plugin is written in Kotlin)
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 }
 
 apply from: 'capacitor.build.gradle'
