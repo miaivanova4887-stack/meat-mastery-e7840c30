@@ -415,6 +415,13 @@ const Onboarding = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <NotificationConsentSheet
+        open={showPushConsent}
+        onClose={() => {
+          setShowPushConsent(false);
+          navigate("/", { replace: true });
+        }}
+      />
       {/* Premium top bar */}
       <div
         className="px-5 pt-4 pb-3 flex items-center gap-4"
