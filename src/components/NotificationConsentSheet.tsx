@@ -46,12 +46,15 @@ export default function NotificationConsentSheet({
     setBusy(true);
     try {
       let granted = false;
-      if (Capacitor.isNativePlatform()) {
+      const native = Capacitor.isNativePlatform();
+      console.info("[Push] sheet Enable tapped native=", native);
+      if (native) {
         const result = await requestNativePush();
         granted = result === "granted";
       } else {
         granted = await subscribeToPush();
       }
+      console.info("[Push] sheet Enable result granted=", granted);
       // Save preferences alongside consent
       await savePushConsent(granted ? "granted" : "denied", prefs);
       if (granted) toast.success("Notifications enabled");
@@ -59,7 +62,7 @@ export default function NotificationConsentSheet({
       onComplete?.(granted);
       onClose();
     } catch (e) {
-      console.error(e);
+      console.error("[Push] sheet Enable error", e);
       toast.error("Could not enable notifications");
     } finally {
       setBusy(false);

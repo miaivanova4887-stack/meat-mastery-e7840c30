@@ -43,7 +43,11 @@ export const useHealthConnectContext = () => {
   return ctx;
 };
 
-const HC_CONNECTED_KEY = "carnivore-hc-connected";
+// Versioned key — anything restored from a previous Android Auto Backup
+// under the legacy key is intentionally ignored so a fresh install must
+// re-prompt for Health Connect.
+const HC_CONNECTED_KEY = "carnivore-hc-connected-v2";
+const LEGACY_HC_CONNECTED_KEY = "carnivore-hc-connected";
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
@@ -53,7 +57,12 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
     steps: 0, heartRate: 0, weight: 0, weightUnit: "kg", sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(() => {
-    try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
+    try {
+      // Always purge the legacy key — it may have been restored from
+      // a backup of a previous install.
+      localStorage.removeItem(LEGACY_HC_CONNECTED_KEY);
+      return localStorage.getItem(HC_CONNECTED_KEY) === "true";
+    } catch { return false; }
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +176,7 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
       }
 
       const { granted } = await HealthConnect.requestPermissions();
+      console.info("[HealthConnect] requestPermissions → granted=", granted);
       if (!granted) {
         setError("Health Connect permissions were denied.");
         setIsLoading(false);
@@ -182,28 +192,49 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
     }
   }, [fetchHealthData]);
 
-  // Auto-reconnect on app resume when previously connected
+  // Auto-reconnect on app resume when previously connected.
+  // Always verify against the OS — never trust the cached flag alone.
   useEffect(() => {
-    if (!isConnected || !Capacitor.isNativePlatform()) return;
+    const cached = isConnected;
+    console.info(
+      "[HealthConnect] mount native=", Capacitor.isNativePlatform(),
+      "cachedConnected=", cached,
+    );
+    if (!Capacitor.isNativePlatform()) return;
 
     const tryReconnect = async () => {
       try {
-        if (!Capacitor.isPluginAvailable("HealthConnect")) return;
+        if (!Capacitor.isPluginAvailable("HealthConnect")) {
+          console.info("[HealthConnect] plugin unavailable in this build");
+          if (cached) setIsConnected(false);
+          return;
+        }
         const { status } = await HealthConnect.checkAvailability();
-        if (status === "available") {
+        console.info("[HealthConnect] availability status=", status);
+        if (status !== "available") {
+          if (cached) setIsConnected(false);
+          return;
+        }
+        if (!cached) {
+          // Not previously connected — wait for explicit user prompt.
+          return;
+        }
+        // Probe with a real read; if it throws (perms revoked or
+        // never granted on this fresh install), drop the cached flag
+        // so the UI re-prompts.
+        try {
           await fetchHealthData();
-        } else {
+        } catch (e) {
+          console.warn("[HealthConnect] probe read failed → clearing cached connection", e);
           setIsConnected(false);
         }
-      } catch {
-        // silently fail — will retry on next resume
+      } catch (e) {
+        console.warn("[HealthConnect] tryReconnect error", e);
       }
     };
 
-    // Fetch immediately on mount
     tryReconnect();
 
-    // Listen for app resume (Capacitor App plugin)
     let removeListener: (() => void) | null = null;
     import("@capacitor/app").then(({ App }) => {
       App.addListener("resume", tryReconnect).then((handle) => {

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Auto Backup rules for Android < 12.
+  Exclude WebView storage, databases, and shared prefs so a fresh install
+  always starts with a clean slate (no restored localStorage / cookies).
+-->
+<full-backup-content>
+    <exclude domain="file" path="app_webview/" />
+    <exclude domain="database" path="." />
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="root" path="." />
+</full-backup-content>

@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair, Heart, Flame, Leaf, Zap, Scale } from "lucide-react";
+import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair, Heart, Flame, Leaf, Zap, Scale, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import i18n from "@/i18n/index";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
+import { Capacitor } from "@capacitor/core";
+import { useHealthConnect } from "@/hooks/useHealthConnect";
 
 interface StepOption {
   label: string;
@@ -217,10 +219,15 @@ const steps: OnboardingStep[] = [
   },
 ];
 
-const STORAGE_KEY = "carnivore-onboarding-complete";
+// Versioned key — anything restored from a previous Android Auto Backup
+// under the legacy "carnivore-onboarding-complete" key is intentionally
+// ignored so a fresh install always shows onboarding.
+const STORAGE_KEY = "carnivore-onboarding-complete-v2";
+const LEGACY_STORAGE_KEY = "carnivore-onboarding-complete";
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { requestPermissions: requestHcPermissions } = useHealthConnect();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number | number[]>>({});
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -229,10 +236,24 @@ const Onboarding = () => {
   const [transitioning, setTransitioning] = useState(false);
   const [consentSaving, setConsentSaving] = useState(false);
   const [showPushConsent, setShowPushConsent] = useState(false);
+  const [showHcPrompt, setShowHcPrompt] = useState(false);
+  const [hcBusy, setHcBusy] = useState(false);
 
   // Health targets state (step 3)
   const [healthTargets, setHealthTargets] = useState<string[]>([]);
   const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(new Map());
+
+  // First-mount diagnostics for logcat — confirms whether the gate
+  // actually let onboarding render and what the persisted flag was.
+  useEffect(() => {
+    console.info(
+      "[Onboarding] mount native=", Capacitor.isNativePlatform(),
+      "completeFlag=", localStorage.getItem(STORAGE_KEY),
+      "legacyFlag=", localStorage.getItem(LEGACY_STORAGE_KEY),
+    );
+    // Clear any restored legacy flag so it can't leak back into v2.
+    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+  }, []);
 
   // Fetch health target labels from content_blocks
   useEffect(() => {
@@ -362,8 +383,23 @@ const Onboarding = () => {
           }
 
           window.dispatchEvent(new Event("profile-update"));
-          // Show notification consent sheet, then navigate home on close.
-          setShowPushConsent(true);
+
+          // On native Android, prompt for Health Connect first; the
+          // push opt-in sheet is shown right after (regardless of HC
+          // grant). On web/iOS we skip straight to the push step (the
+          // sheet itself short-circuits to web push there).
+          const isAndroid =
+            Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+          console.info(
+            "[Onboarding] step11 done — native=", Capacitor.isNativePlatform(),
+            "android=", isAndroid,
+            "→ next=", isAndroid ? "HC prompt" : "push sheet",
+          );
+          if (isAndroid) {
+            setShowHcPrompt(true);
+          } else {
+            setShowPushConsent(true);
+          }
         };
 
         saveProfile();
@@ -413,6 +449,30 @@ const Onboarding = () => {
   // Progress dots
   const progressPercent = ((step + 1) / totalSteps) * 100;
 
+  const handleHcPrompt = async (connect: boolean) => {
+    if (hcBusy) return;
+    setHcBusy(true);
+    try {
+      if (connect) {
+        console.info("[Onboarding] HC prompt → user tapped Connect");
+        try {
+          await requestHcPermissions();
+          console.info("[Onboarding] HC requestPermissions returned");
+        } catch (e) {
+          console.warn("[Onboarding] HC requestPermissions threw", e);
+        }
+      } else {
+        console.info("[Onboarding] HC prompt → user tapped Skip");
+      }
+    } finally {
+      setHcBusy(false);
+      setShowHcPrompt(false);
+      // Always continue to push opt-in next.
+      console.info("[Onboarding] HC step done → opening push consent sheet");
+      setShowPushConsent(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <NotificationConsentSheet
@@ -422,6 +482,39 @@ const Onboarding = () => {
           navigate("/", { replace: true });
         }}
       />
+
+      {/* Health Connect prompt — Android-only, between step 11 and push sheet */}
+      {showHcPrompt && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-sm flex items-end sm:items-center justify-center p-5">
+          <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-primary/15 flex items-center justify-center mb-4">
+              <Activity size={22} className="text-primary" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Connect Health Connect</h2>
+            <p className="text-sm text-muted-foreground mb-5">
+              Sync steps, weight, heart rate, and active calories from Health
+              Connect to personalize your dashboard. You can change this any
+              time in Settings.
+            </p>
+            <Button
+              className="w-full mb-2"
+              disabled={hcBusy}
+              onClick={() => handleHcPrompt(true)}
+            >
+              Connect
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              disabled={hcBusy}
+              onClick={() => handleHcPrompt(false)}
+            >
+              Not now
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Premium top bar */}
       <div
         className="px-5 pt-4 pb-3 flex items-center gap-4"
