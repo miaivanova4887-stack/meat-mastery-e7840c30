@@ -269,6 +269,25 @@ class HealthConnectPlugin : Plugin() {
         }
     }
 
+    @ActivityCallback
+    private fun healthPermissionResult(call: PluginCall, result: ActivityResult) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val client = healthConnectClient ?: HealthConnectClient.getOrCreate(context).also {
+                    healthConnectClient = it
+                }
+                val latestGranted = client.permissionController.getGrantedPermissions()
+                val ret = JSObject()
+                ret.put("granted", latestGranted.containsAll(requiredPermissions))
+                ret.put("grantedCount", latestGranted.size)
+                call.resolve(ret)
+            } catch (e: Exception) {
+                Log.e(tag, "healthPermissionResult verification failed", e)
+                call.reject("Permission verification failed: ${e.message}")
+            }
+        }
+    }
+
     @PluginMethod
     fun readSteps(call: PluginCall) {
         val client = healthConnectClient ?: run {
