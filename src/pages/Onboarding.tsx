@@ -383,8 +383,23 @@ const Onboarding = () => {
           }
 
           window.dispatchEvent(new Event("profile-update"));
-          // Show notification consent sheet, then navigate home on close.
-          setShowPushConsent(true);
+
+          // On native Android, prompt for Health Connect first; the
+          // push opt-in sheet is shown right after (regardless of HC
+          // grant). On web/iOS we skip straight to the push step (the
+          // sheet itself short-circuits to web push there).
+          const isAndroid =
+            Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+          console.info(
+            "[Onboarding] step11 done — native=", Capacitor.isNativePlatform(),
+            "android=", isAndroid,
+            "→ next=", isAndroid ? "HC prompt" : "push sheet",
+          );
+          if (isAndroid) {
+            setShowHcPrompt(true);
+          } else {
+            setShowPushConsent(true);
+          }
         };
 
         saveProfile();
