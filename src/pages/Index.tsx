@@ -29,9 +29,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal } from "@/contexts/UserProfileContext";
-import { Capacitor } from "@capacitor/core";
-import { supabase } from "@/integrations/supabase/client";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
+import { usePushConsentFallback } from "@/hooks/usePushConsentFallback";
 import {
   Drawer,
   DrawerClose,
@@ -82,40 +81,7 @@ const Index = () => {
   const [coachingInitialScreen, setCoachingInitialScreen] = useState<"info" | "calcom">("info");
   const { t } = useTranslation();
   const { hasAccess } = useSubscription();
-  const [showPushFallback, setShowPushFallback] = useState(false);
-
-  // Post-restore safety net: if a returning user (or one whose
-  // localStorage was restored from Android Auto Backup before the
-  // manifest fix) lands on Home with push_consent still 'unset',
-  // surface the consent sheet exactly once per browser session on
-  // native Android. Never blocks the page.
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    if (Capacitor.getPlatform() !== "android") return;
-    if (sessionStorage.getItem("push-prompt-shown") === "1") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || cancelled) return;
-        const { data } = await (supabase as any)
-          .from("profiles")
-          .select("push_consent")
-          .eq("id", user.id)
-          .maybeSingle();
-        const consent = data?.push_consent ?? "unset";
-        const show = consent === "unset";
-        console.info("[Index] push_consent=", consent, "→ showSheet=", show);
-        if (show && !cancelled) {
-          sessionStorage.setItem("push-prompt-shown", "1");
-          setShowPushFallback(true);
-        }
-      } catch (e) {
-        console.warn("[Index] push fallback check failed", e);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+  const pushFallback = usePushConsentFallback("home");
 
   // Handle coaching payment return URL params
   useEffect(() => {
@@ -165,8 +131,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
       <NotificationConsentSheet
-        open={showPushFallback}
-        onClose={() => setShowPushFallback(false)}
+        open={pushFallback.open}
+        onClose={pushFallback.onClose}
       />
       {/* Hero */}
       <div className="relative h-[58vh] overflow-hidden">
