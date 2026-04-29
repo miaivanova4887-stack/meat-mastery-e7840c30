@@ -60,6 +60,26 @@ if [[ -f "$PLUGIN_SRC" ]]; then
   echo "🧩 Copying native Health Connect plugin..."
   mkdir -p "$PLUGIN_DEST_DIR"
   cp "$PLUGIN_SRC" "$PLUGIN_DEST_DIR/HealthConnectPlugin.kt"
+
+  # Guard against stale native source — fail loudly if the latest fixes
+  # (365-day weight window + latest-record diagnostic + safe permission
+  # contract) didn't make it into the copied file.
+  COPIED="$PLUGIN_DEST_DIR/HealthConnectPlugin.kt"
+  for marker in "readWeight latest" "365L \* 24L \* 60L \* 60L" "PermissionController.createRequestPermissionResultContract"; do
+    if ! grep -q "$marker" "$COPIED"; then
+      echo "❌ Native HealthConnectPlugin.kt is missing required fix marker: $marker"
+      echo "   Source: $PLUGIN_SRC"
+      echo "   Aborting before producing a stale APK."
+      exit 1
+    fi
+  done
+  # Reject the broken Android-14 manual intent path
+  if grep -q "REQUEST_HEALTH_PERMISSIONS" "$COPIED"; then
+    echo "❌ Native plugin still contains the manual REQUEST_HEALTH_PERMISSIONS intent."
+    echo "   This causes a SecurityException on Samsung Android 14 devices."
+    exit 1
+  fi
+  echo "✅ Native HealthConnectPlugin.kt fix markers present"
 fi
 
 echo "🎨 Copying app launcher icons..."
