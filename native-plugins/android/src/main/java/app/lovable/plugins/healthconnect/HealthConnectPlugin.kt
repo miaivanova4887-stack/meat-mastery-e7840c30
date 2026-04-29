@@ -227,25 +227,20 @@ class HealthConnectPlugin : Plugin() {
                     return@launch
                 }
 
-                // API < 34: legacy launcher path (Health Connect APK handles UI)
-                val launcher = permissionLauncher
-                if (launcher != null) {
-                    pendingPermissionCall = call
-                    launcher.launch(requestedPermissions)
-                } else {
-                    Log.w(tag, "Permission launcher unavailable, opening Health Connect settings")
-                    try {
-                        val settingsIntent = Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
-                        settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(settingsIntent)
+                // Fallback: launcher unavailable (rare). Open Health Connect
+                // settings so the user can grant permissions manually.
+                Log.w(tag, "Permission launcher unavailable, opening Health Connect settings")
+                try {
+                    val settingsIntent = Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
+                    settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    context.startActivity(settingsIntent)
 
-                        val result = JSObject()
-                        result.put("granted", false)
-                        result.put("openedSettings", true)
-                        call.resolve(result)
-                    } catch (e: Exception) {
-                        call.reject("Cannot open Health Connect permissions: ${e.message}")
-                    }
+                    val result = JSObject()
+                    result.put("granted", false)
+                    result.put("openedSettings", true)
+                    call.resolve(result)
+                } catch (e: Exception) {
+                    call.reject("Cannot open Health Connect permissions: ${e.message}")
                 }
             } catch (e: Exception) {
                 Log.e(tag, "Permission request failed", e)
