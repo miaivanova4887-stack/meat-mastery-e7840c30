@@ -57,7 +57,9 @@ fi
 echo "✅ kotlin-android plugin present"
 
 if [[ -f "$PLUGIN_SRC" ]]; then
-  echo "🧩 Copying native Health Connect plugin..."
+  # NOTE: The destination file is GENERATED on every build and is git-ignored
+  # (see .gitignore). Never edit it directly — edit $PLUGIN_SRC instead.
+  echo "🧩 Copying native Health Connect plugin (generated, do not edit destination)..."
   mkdir -p "$PLUGIN_DEST_DIR"
   cp "$PLUGIN_SRC" "$PLUGIN_DEST_DIR/HealthConnectPlugin.kt"
 
