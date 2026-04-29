@@ -1,70 +1,104 @@
-## Problem
+I found two concrete problems behind the repeated lbs/kg issue.
 
-After successful build, Health Connect is wired up correctly — **steps** and **calories** populate, but:
+Do I know what the issue is? Yes.
 
-1. **Weight is empty** on both Home and Progress.
-2. **Unit mismatch**: Home shows `lbs`, Progress shows `kg`, but Samsung Health stores the value in **kg**. Progress is actually displaying the lbs-converted number under a hardcoded `kg` label — so the displayed value is wrong, not just the label. Units need to show as entered on the user device
+1. The installed app is still running stale weight code: your logcat shows `readWeight` being called with a 30-day window:
 
-## Root Causes
-
-### A) Unit mismatch / wrong number on Progress
-
-- `HealthConnectContext` reads weight in kg (correct), then converts to lbs if `localStorage["carnivore-unit-system"]` is `"imperial"` (the default). It exposes the *converted* number plus a `weightUnit` field.
-- `HealthDashboard` (Home) correctly renders `{healthData.weightUnit}`.
-- `Progress.tsx` (line 142) hardcodes the label as `"kg"` while showing the already-converted lbs value → **wrong number under a wrong label**.
-- Default unit is `imperial`, so on a fresh install Android/Samsung users see lbs even though their data is metric.
-
-### B) Weight empty
-
-- Samsung Health does **not** write WeightRecord to Health Connect unless the user manually toggles "Body composition → Weight" sharing in Samsung Health → Settings → Health Connect. Most users miss this. --> this is not the case, data entered. Update on function - once user updated weight on Samsung helth - it fetches to our app. Weight data need not to be updated every time, see if there's a last entered fetch possibility. 
-- The Kotlin `readWeight` does no Samsung-aware fallback or diagnostic logging — when no record exists we silently return `[]` with no signal to the user about why.
-- The 30-day window is fine, but a bug-resistant fix is 90 days plus a clear empty-state message.
-
-## Plan
-
-### 1. Fix Progress page unit label (`src/pages/Progress.tsx`)
-
-Replace the hardcoded `"kg"` label with `{healthData.weightUnit}` so Progress matches Home and is internally consistent.
-
-### 2. Default Health Connect users to kg (no app-wide change)
-
-The shopping bag's `unitSystem` toggle (imperial/metric) should NOT govern body weight from Samsung Health — Samsung stores in kg and most Android users expect kg.
-
-Change `HealthConnectContext` to:
-
-- **Always emit weight in kg** (no conversion). 
-- Set `weightUnit` to `"kg"` unconditionally.
-
-Rationale: the cooking-units toggle is for ingredients (oz vs g), not body weight. This eliminates the conversion confusion entirely and matches what the user sees in Samsung Health. (The Profile/onboarding has its own height/weight unit preference for manual entry; that flow is unchanged.)
-
-### 3. Make weight read more resilient (`HealthConnectPlugin.kt`)
-
-In `readWeight`:
-
-- Widen window to **90 days** on the native side as a safety net.
-- Add `Log.i` diagnostics: number of records found + their dataOrigin packages, so future debugging is trivial via `adb logcat`.
-- No behavior change when records exist.
-
-### 4. Surface a helpful empty-state for weight
-
-In the dashboard tiles, when `weight === 0` and the user is connected, show `"—"` (already done) and add a one-time toast / inline hint on the **Progress** page: *"To see weight here, open Samsung Health → Settings → Health Connect → enable Weight."*
-
-Implementation: add a small dismissible banner under the Health Connect grid in `Progress.tsx`, only visible when `isConnected && healthData.weight === 0`. Persist dismissal in localStorage so it doesn't nag.
-
-### 5. After deploy
-
-User runs:
-
+```text
+"startTime":"2026-03-30..."
 ```
+
+The latest intended JS fix should send a 365-day window. So the current APK is not executing the fixed JS bundle.
+
+2. The Android build script copies the native plugin from:
+
+```text
+native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+```
+
+into:
+
+```text
+android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+```
+
+after `npx cap sync android`. The copied source is still the older version: it does not include the 365-day weight safety window and does not include the `readWeight` diagnostic log. That explains why your grep only shows the Capacitor bridge call, not the expected `readWeight: ... records, origins=...` line.
+
+There is also a third issue in the log:
+
+```text
+requires android.permission.GRANT_RUNTIME_PERMISSIONS
+```
+
+The app is trying to manually launch Android 14's platform Health Connect permission activity. Official Health Connect docs show the correct approach is the Health Connect permission result contract (`PermissionController.createRequestPermissionResultContract()`), not manually starting `android.health.connect.action.REQUEST_HEALTH_PERMISSIONS`. The manual path is what triggers this Samsung/Android security exception.
+
+Plan to fix it:
+
+1. Make kilograms the only Health Connect body-weight unit in the React layer
+  - Change initial `HealthConnectContext` state from `weightUnit: "lbs"` to `"kg"`.
+  - Narrow the app's synced-weight type so Health Connect weight cannot present as lbs.
+  - Keep recipe/shopping imperial settings separate; they must not affect health body weight.
+2. Add defensive weight normalization
+  - When reading records from the native plugin, trust `unit: "kg"`.
+  - If any future/native/web fallback ever returns `lb`/`lbs`, convert it back to kg before storing/displaying. -- no, use units per user entry in Samsung Health
+  - Ensure Homepage, Progress, and Health Sync all render the same value and label.
+3. Fix the real native source of truth
+  - Update both native plugin copies, especially `native-plugins/android/.../HealthConnectPlugin.kt`, because the build script copies from there.
+  - Keep `android/app/.../HealthConnectPlugin.kt` in sync so local inspection and Android Studio both show the same code.
+4. Add the requested origin confirmation in logcat
+  - In `readWeight`, sort records by timestamp and log the latest record as:
+
+```text
+HealthConnectPlugin: readWeight latest: valueKg=55.1, unit=kg, time=..., origin=com.sec.android.app.shealth, isSamsungOrigin=true
+```
+
+- Also log record count and all package origins, for example:
+
+```text
+HealthConnectPlugin: readWeight: 3 records, origins=[com.sec.android.app.shealth], window=...
+```
+
+5. Widen native weight lookup to 365 days regardless of JS input
+  - Even if old JS passes a 30-day range, native Kotlin will force the lookup back to 365 days.
+  - This prevents weight from disappearing when the user has not logged weight recently.
+6. Fix Health Connect permission request flow
+  - Remove the manual Android 14 `REQUEST_HEALTH_PERMISSIONS` intent branch that causes the `GRANT_RUNTIME_PERMISSIONS` denial.
+  - Use the official Health Connect permission contract consistently.
+  - Keep the fallback to open Health Connect settings only when the permission launcher is unavailable.
+7. Harden the Android build script against stale native code
+  - After copying the plugin from `native-plugins`, verify the destination file contains the new diagnostic marker (`readWeight latest`) and 365-day safety logic.
+  - If not, fail the build with a clear message instead of producing another APK with stale code.
+8. Add a visible/debuggable build fingerprint for this fix
+  - Log from JS when fetching weight so it is obvious the installed web bundle is the kg-only build.
+  - This makes it much easier to prove the phone is not running cached assets.
+
+After approval, I will implement these changes. Then your verification command should show the actual latest weight origin:
+
+```bash
+adb logcat -c
+adb logcat | grep -E "HealthConnectPlugin|readWeight|HealthConnectContext"
+```
+
+Expected result after the fix:
+
+```text
+HealthConnectPlugin: readWeight latest: valueKg=55.1, unit=kg, origin=com.sec.android.app.shealth, isSamsungOrigin=true
+```
+
+Recommended reinstall sequence after the patch lands:
+
+```bash
+cd ~/Desktop/carnivore-coach-pro
 git pull
-rm -rf android/.gradle android/app/build
+npm install
+adb uninstall com.mi4labs.carnivorex 2>/dev/null || true
+rm -rf dist android/.gradle android/app/build android/app/src/main/assets/public
 bash scripts/build-android-fresh.sh
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Reinstall the APK. Open the app — weight should now display in **kg** on both Home and Progress. If it's still empty, the new banner will guide the user to enable weight sharing in Samsung Health.
+Then reopen the app and reconnect Health Connect if Android asks.
 
-## Files Changed
+View HistoryTroubleshooting docs
 
-- `src/contexts/HealthConnectContext.tsx` — always kg, no conversion
-- `src/pages/Progress.tsx` — use `healthData.weightUnit`; add empty-state banner
-- `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` — 90-day window + diagnostic logging in `readWeight`
+**Fix the remaining weight issues without forcing kilograms. The app should read the latest Samsung Health weight record from Health Connect, preserve the record’s actual unit, and render the same value and unit consistently on Home, Progress, and Health Sync. Do not hardcode kg or lbs in the React layer; instead, use the unit returned by Health Connect so the app matches the user’s Samsung Health / Health Connect weight setting. Keep the 365-day native lookup, latest-record sorting, and logcat diagnostics. Also keep the Health Connect permission-flow fix that avoids the** `GRANT_RUNTIME_PERMISSIONS` **crash. Do not change unrelated features**

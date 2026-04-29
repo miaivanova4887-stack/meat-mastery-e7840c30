@@ -214,31 +214,16 @@ class HealthConnectPlugin : Plugin() {
                     return@launch
                 }
 
-                // API 34+: Health Connect is part of the Android platform.
-                // The legacy createRequestPermissionResultContract() launcher silently
-                // no-ops because it targets the standalone Health Connect APK.
-                // We must launch the platform REQUEST_HEALTH_PERMISSIONS intent
-                // through Capacitor's saved-call activity-result bridge.
-                if (Build.VERSION.SDK_INT >= 34) {
-                    try {
-                        val permsArray = requestedPermissions.toTypedArray()
-                        val intent = Intent("android.health.connect.action.REQUEST_HEALTH_PERMISSIONS").apply {
-                            putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
-                            putExtra("android.health.connect.extra.PERMISSIONS", permsArray)
-                            putExtra("androidx.health.connect.action.REQUEST_PERMISSIONS_PERMISSIONS", permsArray)
-                        }
-                        startActivityForResult(call, intent, "healthPermissionResult")
-                    } catch (e: Exception) {
-                        Log.e(tag, "Platform health permission request failed, falling back", e)
-                        // Fall back to launcher path
-                        val launcher = permissionLauncher
-                        if (launcher != null) {
-                            pendingPermissionCall = call
-                            launcher.launch(requestedPermissions)
-                        } else {
-                            call.reject("Cannot request Health Connect permissions: ${e.message}")
-                        }
-                    }
+                // Use the official Health Connect permission contract for ALL
+                // API levels. The previous manual REQUEST_HEALTH_PERMISSIONS
+                // intent triggered a SecurityException on Samsung devices:
+                //   "requires android.permission.GRANT_RUNTIME_PERMISSIONS"
+                // The PermissionController contract is the documented path
+                // and works on Android 14+ via the platform Health Connect.
+                val launcher = permissionLauncher
+                if (launcher != null) {
+                    pendingPermissionCall = call
+                    launcher.launch(requestedPermissions)
                     return@launch
                 }
 
@@ -406,7 +391,13 @@ class HealthConnectPlugin : Plugin() {
             call.reject("HealthConnect not initialized")
             return
         }
-        val (startTime, endTime) = parseTimeRange(call) ?: return
+        val (jsStartTime, endTime) = parseTimeRange(call) ?: return
+
+        // Safety net: even if the JS layer narrows the window, always look back
+        // at least 365 days for the most recent weight entry. Weight is logged
+        // infrequently and we want the *last entered* value, not just today's.
+        val oneYearAgo = endTime.minusSeconds(365L * 24L * 60L * 60L)
+        val startTime = if (jsStartTime.isAfter(oneYearAgo)) oneYearAgo else jsStartTime
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -416,13 +407,29 @@ class HealthConnectPlugin : Plugin() {
                 )
 
                 val response = client.readRecords(request)
+                val origins = response.records.mapNotNull { it.metadata.dataOrigin.packageName }.distinct()
+                Log.i(tag, "readWeight: ${response.records.size} records, origins=$origins, window=$startTime..$endTime")
+
+                // Sort chronologically so the JS layer's "last record" is truly latest
+                val sorted = response.records.sortedBy { it.time }
                 val records = JSArray()
-                for (record in response.records) {
+                for (record in sorted) {
                     val obj = JSObject()
                     obj.put("value", record.weight.inKilograms)
                     obj.put("unit", "kg")
                     obj.put("timestamp", record.time.toString())
                     records.put(obj)
+                }
+
+                if (sorted.isNotEmpty()) {
+                    val latest = sorted.last()
+                    val originPkg = latest.metadata.dataOrigin.packageName
+                    Log.i(
+                        tag,
+                        "readWeight latest: valueKg=${latest.weight.inKilograms}, unit=kg, " +
+                            "time=${latest.time}, origin=$originPkg, " +
+                            "isSamsungOrigin=${isSamsungOrigin(originPkg)}"
+                    )
                 }
 
                 val result = JSObject()

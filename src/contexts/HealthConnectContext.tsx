@@ -47,7 +47,10 @@ const HC_CONNECTED_KEY = "carnivore-hc-connected";
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
-    steps: 0, heartRate: 0, weight: 0, weightUnit: "lbs", sleep: 0, activeCalories: 0,
+    // Default to kg because Health Connect's WeightRecord native source is
+    // always in kilograms. The actual unit is overwritten on every fetch
+    // from the unit string returned by the native plugin.
+    steps: 0, heartRate: 0, weight: 0, weightUnit: "kg", sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(() => {
     try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
@@ -84,9 +87,11 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         if (hrResult.records.length > 0) heartRate = toFiniteNumber(hrResult.records[hrResult.records.length - 1].value);
       } catch (e) { console.warn("Failed to read heart rate:", e); }
 
-      // Body weight always in kg (matches Samsung Health source of truth).
-      // The cooking-units toggle (imperial/metric) governs ingredients only.
-      const weightUnit: "kg" | "lbs" = "kg";
+      // Trust the unit returned by the native plugin. Health Connect's
+      // WeightRecord is always in kg natively, but we still derive the
+      // label from the record so any future provider that returns lbs
+      // can be displayed correctly. We never silently convert.
+      let weightUnit: "kg" | "lbs" = "kg";
 
       try {
         // Widen weight window to 365 days — fetch the most recently
@@ -97,8 +102,18 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
         const weightResult = await HealthConnect.readWeight(weightTimeRange);
         if (weightResult.records.length > 0) {
           // records are returned in chronological order — take the latest
-          const kg = toFiniteNumber(weightResult.records[weightResult.records.length - 1].value);
-          weight = Math.round(kg * 10) / 10;
+          const latest = weightResult.records[weightResult.records.length - 1];
+          const value = toFiniteNumber(latest.value);
+          const reportedUnit = (latest.unit || "kg").toLowerCase();
+          weightUnit = reportedUnit === "lb" || reportedUnit === "lbs" ? "lbs" : "kg";
+          weight = Math.round(value * 10) / 10;
+          // Build fingerprint so we can prove the kg-aware bundle is live
+          console.info(
+            `[HealthConnectContext] weight build=v3 latest=${weight}${weightUnit} ` +
+            `records=${weightResult.records.length} ts=${latest.timestamp}`
+          );
+        } else {
+          console.info("[HealthConnectContext] weight build=v3 no records in 365d window");
         }
       } catch (e) { console.warn("Failed to read weight:", e); }
 
