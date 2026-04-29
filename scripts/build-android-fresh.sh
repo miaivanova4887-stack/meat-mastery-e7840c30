@@ -12,8 +12,8 @@ if [[ ! -d "$ANDROID_DIR" ]]; then
   exit 1
 fi
 
-echo "🧹 Cleaning web + Android build artifacts..."
-rm -rf "$ROOT_DIR/dist" "$ANDROID_DIR/app/src/main/assets/public" "$ANDROID_DIR/app/build"
+echo "🧹 Cleaning web + Android build artifacts (incl. Gradle project cache)..."
+rm -rf "$ROOT_DIR/dist" "$ANDROID_DIR/app/src/main/assets/public" "$ANDROID_DIR/app/build" "$ANDROID_DIR/.gradle"
 
 echo "📦 Building web assets..."
 npm run build
@@ -42,6 +42,19 @@ echo "✅ Patch verified: proguard-android-optimize.txt present"
 
 echo "🔄 Syncing Capacitor Android project..."
 npx cap sync android
+
+APP_GRADLE="$ANDROID_DIR/app/build.gradle"
+echo "🔎 Verifying kotlin-android plugin is applied in app/build.gradle..."
+if ! grep -q "apply plugin: 'kotlin-android'" "$APP_GRADLE"; then
+  echo "⚠️  kotlin-android plugin missing after cap sync — restoring it."
+  # Insert right after the com.android.application apply line
+  awk 'NR==1 && /com.android.application/ {print; print "apply plugin: '\''kotlin-android'\''"; next} {print}' "$APP_GRADLE" > "$APP_GRADLE.tmp" && mv "$APP_GRADLE.tmp" "$APP_GRADLE"
+  if ! grep -q "apply plugin: 'kotlin-android'" "$APP_GRADLE"; then
+    echo "❌ Could not restore kotlin-android plugin in $APP_GRADLE"
+    exit 1
+  fi
+fi
+echo "✅ kotlin-android plugin present"
 
 if [[ -f "$PLUGIN_SRC" ]]; then
   echo "🧩 Copying native Health Connect plugin..."
@@ -89,8 +102,22 @@ if [[ -d "$ICON_SRC" ]]; then
   echo "✅ Adaptive icon validation passed"
 fi
 
+echo "🛠️  Pre-compiling Kotlin to verify HealthConnectPlugin produces a class file..."
+(cd "$ANDROID_DIR" && ./gradlew :app:compileDebugKotlin --no-build-cache --rerun-tasks)
+
+KOTLIN_CLASS="$ANDROID_DIR/app/build/tmp/kotlin-classes/debug/app/lovable/plugins/healthconnect/HealthConnectPlugin.class"
+if [[ ! -f "$KOTLIN_CLASS" ]]; then
+  echo "❌ Kotlin compile produced no class file at:"
+  echo "   $KOTLIN_CLASS"
+  echo "   This means the .kt file is not being seen by the Kotlin compiler."
+  echo "   Check that 'apply plugin: kotlin-android' is at the top of android/app/build.gradle"
+  echo "   and that the file lives under android/app/src/main/java/app/lovable/plugins/healthconnect/."
+  exit 1
+fi
+echo "✅ HealthConnectPlugin.class generated"
+
 echo "🏗️ Assembling fresh debug APK (no cache)..."
-(cd "$ANDROID_DIR" && ./gradlew clean :app:assembleDebug --no-build-cache --rerun-tasks)
+(cd "$ANDROID_DIR" && ./gradlew :app:assembleDebug --no-build-cache --rerun-tasks)
 
 if [[ ! -f "$APK_PATH" ]]; then
   echo "❌ APK build failed. Expected file not found: $APK_PATH"
