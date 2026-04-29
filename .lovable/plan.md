@@ -1,74 +1,78 @@
-## Diagnosis
+## Root cause
 
-### Issue 1 — Health Connect permission prompt never appears
+The Java compiler error `cannot find symbol class HealthConnectPlugin` is **not** about the plugin file — the file exists at the right path. The cause is that **the Android project has no Kotlin support configured**:
 
-The plugin file is back to its original 499-line shape, identical to the very first commit. The bug is **not in the plugin lifecycle** — it's in the permission API path combined with the dependency version.
+- `android/build.gradle` (root) has no `kotlin-gradle-plugin` classpath
+- `android/app/build.gradle` does not apply `kotlin-android`
+- No `kotlinOptions { jvmTarget }` block anywhere
 
-Findings:
-- `android/app/build.gradle` uses `androidx.health.connect:connect-client:1.1.0-alpha10`.
-- The plugin uses `PermissionController.createRequestPermissionResultContract()` from that library.
-- On Android **14+ (API 34)** Health Connect is part of the platform, not the standalone "Health Connect" APK. The legacy `createRequestPermissionResultContract()` launcher silently no-ops in that environment because it targets the standalone APK's intent.
-- Result: `launcher.launch(requestedPermissions)` returns immediately with no system UI shown, the activity-result callback never fires, and `pendingPermissionCall` stays orphaned. From the user's perspective: "tap Connect, nothing happens."
+So Gradle never compiles `HealthConnectPlugin.kt`. From Java's perspective the package `app.lovable.plugins.healthconnect` is empty, hence `cannot find symbol`.
 
-The fallback path in the plugin (open Health Connect settings) only triggers when `permissionLauncher == null`, which is not the failure case here.
-
-### Issue 2 — Medical disclaimer not visible in Android APK
-
-The disclaimer accordion is correctly present in `src/pages/Index.tsx` (lines 259-269), and `disclaimer.main.title` / `disclaimer.main.body` are populated in both `src/i18n/en.json` and `src/i18n/fr.json`. There is no platform-specific gate around it.
-
-The most likely cause is a stale APK on the device. The repo currently has no built APK output (`android/app/build/outputs/apk/debug/` does not exist), so whatever is installed predates the recent commits. We will add a visible verification stamp tied to disclaimer rendering and instruct a clean reinstall.
+This is a regression — Kotlin support was lost when the Capacitor Android project was regenerated. We need to put it back.
 
 ---
 
 ## Plan
 
-### Step 1 — Patch Health Connect permission flow for API 34+
+### Edit 1 — `android/build.gradle`
+Add a Kotlin version variable and the `kotlin-gradle-plugin` classpath inside `buildscript`:
 
-In both `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` and `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`:
+```gradle
+buildscript {
+    ext.kotlin_version = '1.9.25'
 
-1. Keep the existing `permissionLauncher` (legacy path, still works for Android 13).
-2. In `requestPermissions`, before calling `launcher.launch(...)`, branch on `Build.VERSION.SDK_INT >= 34`:
-   - **API 34+**: start an explicit Intent for `android.health.connect.action.REQUEST_HEALTH_PERMISSIONS` with `EXTRA_PACKAGE_NAME = context.packageName` and `EXTRA_PERMISSIONS = arrayOf(... permission strings ...)`. Use `bridge.saveCall(call)` + `startActivityForResult(call, intent, "healthPermissionResult")` so the result fires `@ActivityCallback fun healthPermissionResult(call, result)`.
-   - In the callback, re-query `client.permissionController.getGrantedPermissions()` and resolve the JS call with `granted` / `grantedCount`.
-   - **API < 34**: keep the existing `permissionLauncher.launch(requestedPermissions)` flow.
-3. Keep the existing settings-fallback for the unlikely case both paths fail (`call.reject` instead of falling silent).
+    repositories { google(); mavenCentral() }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.13.0'
+        classpath 'com.google.gms:google-services:4.4.4'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+```
 
-This preserves the existing JS-side API (`requestPermissions` resolves with `{ granted, grantedCount }`) so no UI changes are needed.
+### Edit 2 — `android/app/build.gradle`
+- Apply the `kotlin-android` plugin at the top.
+- Add a `kotlinOptions { jvmTarget = '21' }` block inside `android {}` so Kotlin matches the existing Java 21 compileOptions in `capacitor.build.gradle`.
+- Add `org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version` to dependencies.
 
-### Step 2 — Add disclaimer-render assertion to BuildStamp
+```gradle
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
-Tiny non-visible change to confirm the disclaimer accordion item mounted:
-- Read the rendered `disclaimer.main.title` from i18n on Index, and append the first 4 chars to `BuildStamp` (e.g. `Build 04-29-1430 · android · D:Medi`).
-- This lets the user verify at a glance whether the new bundle is actually installed and whether the i18n key resolved.
+android {
+    // ... existing config ...
+    kotlinOptions { jvmTarget = '21' }
+}
 
-### Step 3 — Force-clean rebuild instructions
+dependencies {
+    // ... existing ...
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+}
+```
 
-Provide commands the user runs locally:
+### Why this is safe
+- Kotlin 1.9.25 is the version already pinned in project memory (Android Platform Constraints).
+- JVM target 21 matches `capacitor.build.gradle`'s `sourceCompatibility VERSION_21`.
+- AGP 8.13 supports Kotlin Gradle Plugin 1.9.x.
+- No source files change — only Gradle wiring is restored so the existing `.kt` plugin compiles.
 
+### Verification commands the user runs
 ```bash
+cd ~/Desktop/carnivore-coach-pro
 git pull
-adb uninstall app.lovable.8cc4469115e240ab844ff90c5fa95cc6 || true
-chmod +x scripts/build-android-fresh.sh
+cd android && ./gradlew :app:compileDebugKotlin --no-daemon
+# expect: BUILD SUCCESSFUL
+cd ..
 bash scripts/build-android-fresh.sh
 ```
 
-The `adb uninstall` step ensures Android does not keep cached HTML/JS from the previous APK and resets the Health Connect permission grant state for the package (necessary so the new request flow is exercised from a clean state).
-
----
-
-## Constraints respected
-- No changes to React UI (HealthConnectContext, Health screen, accordion layout).
-- No refactor to `pluginScope`/`handleOnDestroy` — the `coroutine-pattern` constraint memory is honored.
-- No edits to `src/integrations/supabase/*`, `.env`, `supabase/config.toml`.
+After install, top-right corner should show `Build … · android · D:Medi`. Tap Setup on Sync Smart Devices → Android system Health permission dialog appears.
 
 ## Files touched
-- `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`
-- `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`
-- `src/components/BuildStamp.tsx`
-- `src/pages/Index.tsx` (one-line prop/import to surface i18n probe — non-visual)
+- `android/build.gradle` — add Kotlin classpath
+- `android/app/build.gradle` — apply `kotlin-android`, add `kotlinOptions`, add stdlib dependency
 
-## Verification after build
-1. BuildStamp shows new timestamp + `D:Medi` suffix → bundle is fresh and i18n resolved.
-2. Scroll to bottom of Home → "Medical Disclaimer" accordion is present.
-3. Open Health screen → tap Connect → Android system permission dialog appears (API 34+) or Health Connect APK dialog appears (API 33-).
-4. After granting, app reads steps/weight without further prompts.
+## Constraints respected
+- Kotlin 1.9.25 (matches platform-constraints memory).
+- No edits to Supabase config, .env, types, or any source code.
+- The recently-patched `HealthConnectPlugin.kt` is left untouched — it will simply now be compiled.
