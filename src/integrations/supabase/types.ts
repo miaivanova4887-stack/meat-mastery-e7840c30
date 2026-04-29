@@ -233,6 +233,36 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          app_version: string | null
+          created_at: string
+          id: string
+          last_seen_at: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform: string
+          token: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       page_layouts: {
         Row: {
           blocks: Json
@@ -275,6 +305,9 @@ export type Database = {
           display_name: string | null
           health_targets: string[]
           id: string
+          notification_preferences: Json
+          push_consent: string
+          push_consent_at: string | null
           updated_at: string
           user_attributes: Json
           username: string | null
@@ -290,6 +323,9 @@ export type Database = {
           display_name?: string | null
           health_targets?: string[]
           id: string
+          notification_preferences?: Json
+          push_consent?: string
+          push_consent_at?: string | null
           updated_at?: string
           user_attributes?: Json
           username?: string | null
@@ -305,6 +341,9 @@ export type Database = {
           display_name?: string | null
           health_targets?: string[]
           id?: string
+          notification_preferences?: Json
+          push_consent?: string
+          push_consent_at?: string | null
           updated_at?: string
           user_attributes?: Json
           username?: string | null
@@ -380,6 +419,92 @@ export type Database = {
           unit?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      push_campaign_runs: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          current_step: number
+          id: string
+          last_error: string | null
+          next_send_at: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_error?: string | null
+          next_send_at?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_error?: string | null
+          next_send_at?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_campaign_runs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "push_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_campaigns: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          segment: Json
+          steps: Json
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          segment?: Json
+          steps?: Json
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          segment?: Json
+          steps?: Json
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
         }
         Relationships: []
       }
