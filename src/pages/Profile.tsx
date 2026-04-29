@@ -16,6 +16,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import { useUserProfile, type Goal, type Experience, type ActivityLevel, type Struggle, type Interest, type Sex } from "@/contexts/UserProfileContext";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
+import { usePushConsentFallback } from "@/hooks/usePushConsentFallback";
 
 interface Profile {
   display_name: string | null;
@@ -83,6 +84,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPushConsent, setShowPushConsent] = useState(false);
+  const pushFallback = usePushConsentFallback("profile");
   const [tab, setTab] = useState<"feed" | "goals" | "community" | "settings">("feed");
   const userProfile = useUserProfile();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
@@ -418,7 +420,13 @@ const Profile = () => {
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
-      <NotificationConsentSheet open={showPushConsent} onClose={() => setShowPushConsent(false)} />
+      <NotificationConsentSheet
+        open={showPushConsent || pushFallback.open}
+        onClose={() => {
+          setShowPushConsent(false);
+          pushFallback.onClose();
+        }}
+      />
       {/* Header */}
       <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 dark:border-transparent shadow-xs px-4 pb-3 flex items-center gap-3 page-header" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
