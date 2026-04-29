@@ -149,6 +149,23 @@ const Progress = () => {
                 <p className="text-[10px] text-muted-foreground">kcal</p>
               </div>
             </div>
+            {healthData.weight === 0 && !weightHintDismissed && (
+              <div className="relative mt-3 flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-2.5">
+                <p className="flex-1 text-[11px] leading-snug text-muted-foreground">
+                  Weight not showing? Open <span className="font-semibold text-foreground">Samsung Health → Settings → Health Connect</span> and enable <span className="font-semibold text-foreground">Weight</span> sharing.
+                </p>
+                <button
+                  onClick={() => {
+                    try { localStorage.setItem("carnivore-weight-hint-dismissed", "true"); } catch {}
+                    setWeightHintDismissed(true);
+                  }}
+                  className="shrink-0 text-[10px] font-medium text-primary hover:underline"
+                  aria-label="Dismiss"
+                >
+                  Got it
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="relative overflow-hidden bg-card rounded-xl p-4 border border-border flex items-center gap-3">
