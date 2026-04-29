@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import { useUserProfile, type Goal, type Experience, type ActivityLevel, type Struggle, type Interest, type Sex } from "@/contexts/UserProfileContext";
+import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 
 interface Profile {
   display_name: string | null;
@@ -81,6 +82,7 @@ const Profile = () => {
   // stay optimistic via saveField + query invalidation.
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showPushConsent, setShowPushConsent] = useState(false);
   const [tab, setTab] = useState<"feed" | "goals" | "community" | "settings">("feed");
   const userProfile = useUserProfile();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
