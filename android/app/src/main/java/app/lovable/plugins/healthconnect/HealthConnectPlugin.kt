@@ -15,11 +15,13 @@ import androidx.health.connect.client.records.metadata.DataOrigin
 import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import androidx.activity.result.ActivityResult
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
+import com.getcapacitor.annotation.ActivityCallback
 import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -212,6 +214,35 @@ class HealthConnectPlugin : Plugin() {
                     return@launch
                 }
 
+                // API 34+: Health Connect is part of the Android platform.
+                // The legacy createRequestPermissionResultContract() launcher silently
+                // no-ops because it targets the standalone Health Connect APK.
+                // We must launch the platform REQUEST_HEALTH_PERMISSIONS intent
+                // through Capacitor's saved-call activity-result bridge.
+                if (Build.VERSION.SDK_INT >= 34) {
+                    try {
+                        val permsArray = requestedPermissions.toTypedArray()
+                        val intent = Intent("android.health.connect.action.REQUEST_HEALTH_PERMISSIONS").apply {
+                            putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
+                            putExtra("android.health.connect.extra.PERMISSIONS", permsArray)
+                            putExtra("androidx.health.connect.action.REQUEST_PERMISSIONS_PERMISSIONS", permsArray)
+                        }
+                        startActivityForResult(call, intent, "healthPermissionResult")
+                    } catch (e: Exception) {
+                        Log.e(tag, "Platform health permission request failed, falling back", e)
+                        // Fall back to launcher path
+                        val launcher = permissionLauncher
+                        if (launcher != null) {
+                            pendingPermissionCall = call
+                            launcher.launch(requestedPermissions)
+                        } else {
+                            call.reject("Cannot request Health Connect permissions: ${e.message}")
+                        }
+                    }
+                    return@launch
+                }
+
+                // API < 34: legacy launcher path (Health Connect APK handles UI)
                 val launcher = permissionLauncher
                 if (launcher != null) {
                     pendingPermissionCall = call
@@ -219,13 +250,7 @@ class HealthConnectPlugin : Plugin() {
                 } else {
                     Log.w(tag, "Permission launcher unavailable, opening Health Connect settings")
                     try {
-                        val settingsIntent = if (Build.VERSION.SDK_INT >= 34) {
-                            Intent("android.health.connect.action.MANAGE_HEALTH_PERMISSIONS").apply {
-                                putExtra(Intent.EXTRA_PACKAGE_NAME, context.packageName)
-                            }
-                        } else {
-                            Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
-                        }
+                        val settingsIntent = Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS)
                         settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         context.startActivity(settingsIntent)
 
@@ -240,6 +265,25 @@ class HealthConnectPlugin : Plugin() {
             } catch (e: Exception) {
                 Log.e(tag, "Permission request failed", e)
                 call.reject("Permission request failed: ${e.message}")
+            }
+        }
+    }
+
+    @ActivityCallback
+    private fun healthPermissionResult(call: PluginCall, result: ActivityResult) {
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                val client = healthConnectClient ?: HealthConnectClient.getOrCreate(context).also {
+                    healthConnectClient = it
+                }
+                val latestGranted = client.permissionController.getGrantedPermissions()
+                val ret = JSObject()
+                ret.put("granted", latestGranted.containsAll(requiredPermissions))
+                ret.put("grantedCount", latestGranted.size)
+                call.resolve(ret)
+            } catch (e: Exception) {
+                Log.e(tag, "healthPermissionResult verification failed", e)
+                call.reject("Permission verification failed: ${e.message}")
             }
         }
     }

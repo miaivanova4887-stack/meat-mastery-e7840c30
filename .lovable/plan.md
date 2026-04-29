@@ -1,69 +1,74 @@
-## Diagnosis (corrected)
+## Diagnosis
 
-You're right. I checked the git history of `HealthConnectPlugin.kt`:
+### Issue 1 — Health Connect permission prompt never appears
 
-| Commit | Date | Content | State |
-|---|---|---|---|
-| `b4f673a` "Fix origin null-safety" | 2026-03-22 | 499 lines, ad-hoc `CoroutineScope(Dispatchers.IO).launch` | **Last known good** |
-| `2e4bdba` "Add iOS + Android Capacitor projects..." | 2026-04-21 | **identical content**, just promoted into `android/app/...` too | **Still good** |
-| `6110948` and follow-ups (incl. current `002b3a1`) | 2026-04-28 | 544 lines, rewritten to use `pluginJob` + `pluginScope` + `pluginMainScope` + `handleOnDestroy()` | **Broken — never produced a working APK** |
+The plugin file is back to its original 499-line shape, identical to the very first commit. The bug is **not in the plugin lifecycle** — it's in the permission API path combined with the dependency version.
 
-So the "lifecycle-aware coroutine fix" I kept reinforcing yesterday was the regression. The April 21 / March 22 file (byte-identical, sha256 `37e2674e…`) is what was on disk during the last working build, and matches the file you have locally on your Mac.
+Findings:
+- `android/app/build.gradle` uses `androidx.health.connect:connect-client:1.1.0-alpha10`.
+- The plugin uses `PermissionController.createRequestPermissionResultContract()` from that library.
+- On Android **14+ (API 34)** Health Connect is part of the platform, not the standalone "Health Connect" APK. The legacy `createRequestPermissionResultContract()` launcher silently no-ops in that environment because it targets the standalone APK's intent.
+- Result: `launcher.launch(requestedPermissions)` returns immediately with no system UI shown, the activity-result callback never fires, and `pendingPermissionCall` stays orphaned. From the user's perspective: "tap Connect, nothing happens."
 
-The April 28 rewrite is what introduced the `Unresolved reference 'coroutineScope'` family of failures. I will revert the plugin to that proven version.
+The fallback path in the plugin (open Health Connect settings) only triggers when `permissionLauncher == null`, which is not the failure case here.
 
-## What I will change
+### Issue 2 — Medical disclaimer not visible in Android APK
 
-Restore both copies of the plugin to the April 21 content (commit `2e4bdba`, identical to March 22 `b4f673a`):
+The disclaimer accordion is correctly present in `src/pages/Index.tsx` (lines 259-269), and `disclaimer.main.title` / `disclaimer.main.body` are populated in both `src/i18n/en.json` and `src/i18n/fr.json`. There is no platform-specific gate around it.
 
-- `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` → 499-line known-good version
-- `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` → identical 499-line version
+The most likely cause is a stale APK on the device. The repo currently has no built APK output (`android/app/build/outputs/apk/debug/` does not exist), so whatever is installed predates the recent commits. We will add a visible verification stamp tied to disclaimer rendering and instruct a clean reinstall.
 
-Both will be byte-identical to each other and to what was last shipped. The build script's `cp` step will then be a no-op rather than a regression.
+---
 
-## What I will NOT change
+## Plan
 
-- No UI changes anywhere — the React/TypeScript bridge (`src/plugins/HealthConnectPlugin.ts`) and `src/contexts/HealthConnectContext.tsx` already match the API surface of the 499-line plugin (`checkAvailability`, `requestPermissions`, `readSteps`, `readHeartRate`, `readWeight`, `readActiveCalories`). The visible Health screen, icons, layout, sync flow — all untouched.
-- No change to `scripts/build-android-fresh.sh`.
-- No change to `AndroidManifest.xml`, `build.gradle`, or the speech-recognition patch.
-- No change to iOS or web code.
+### Step 1 — Patch Health Connect permission flow for API 34+
 
-## Why the original "fix" was wrong
+In both `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` and `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`:
 
-The April 28 rewrite assumed the ad-hoc `CoroutineScope(Dispatchers.IO).launch` blocks were leaking and getting GC'd. In practice the plugin's calls await results via Capacitor's `PluginCall`, which holds the JS-side promise alive — so the coroutines complete fine. Replacing them with a `pluginScope` tied to `handleOnDestroy()` introduced symbol-resolution and lifecycle issues that have prevented the APK from compiling at all.
+1. Keep the existing `permissionLauncher` (legacy path, still works for Android 13).
+2. In `requestPermissions`, before calling `launcher.launch(...)`, branch on `Build.VERSION.SDK_INT >= 34`:
+   - **API 34+**: start an explicit Intent for `android.health.connect.action.REQUEST_HEALTH_PERMISSIONS` with `EXTRA_PACKAGE_NAME = context.packageName` and `EXTRA_PERMISSIONS = arrayOf(... permission strings ...)`. Use `bridge.saveCall(call)` + `startActivityForResult(call, intent, "healthPermissionResult")` so the result fires `@ActivityCallback fun healthPermissionResult(call, result)`.
+   - In the callback, re-query `client.permissionController.getGrantedPermissions()` and resolve the JS call with `granted` / `grantedCount`.
+   - **API < 34**: keep the existing `permissionLauncher.launch(requestedPermissions)` flow.
+3. Keep the existing settings-fallback for the unlikely case both paths fail (`call.reject` instead of falling silent).
 
-## After approval — what to run on your Mac
+This preserves the existing JS-side API (`requestPermissions` resolves with `{ granted, grantedCount }`) so no UI changes are needed.
 
-Once Lovable commits the revert, on your Mac:
+### Step 2 — Add disclaimer-render assertion to BuildStamp
 
-```bash
-cd ~/Desktop/carnivore-coach-pro
-git fetch origin
-git pull   # if your branch tracks the right remote; otherwise git checkout origin/<branch> -- <paths>
-git checkout -- android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
-git checkout -- native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+Tiny non-visible change to confirm the disclaimer accordion item mounted:
+- Read the rendered `disclaimer.main.title` from i18n on Index, and append the first 4 chars to `BuildStamp` (e.g. `Build 04-29-1430 · android · D:Medi`).
+- This lets the user verify at a glance whether the new bundle is actually installed and whether the i18n key resolved.
 
-# Sanity check — both should print 499 and 0
-wc -l android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
-grep -c "pluginScope\|handleOnDestroy" android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+### Step 3 — Force-clean rebuild instructions
 
-npm install
-./scripts/build-android-fresh.sh
-```
-
-If `git pull` still complains about no upstream, use the explicit form:
+Provide commands the user runs locally:
 
 ```bash
-git fetch origin
-git checkout origin/legal-region-segregation -- \
-  android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt \
-  native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+git pull
+adb uninstall app.lovable.8cc4469115e240ab844ff90c5fa95cc6 || true
+chmod +x scripts/build-android-fresh.sh
+bash scripts/build-android-fresh.sh
 ```
 
-(Substitute `main` for `legal-region-segregation` if Lovable is committing to `main`.)
+The `adb uninstall` step ensures Android does not keep cached HTML/JS from the previous APK and resets the Health Connect permission grant state for the package (necessary so the new request flow is exercised from a clean state).
 
-## Memory updates I'll make alongside the revert
+---
 
-Add a constraint memory: "Health Connect Kotlin plugin must use ad-hoc `CoroutineScope(Dispatchers.IO/Main).launch` blocks. Do not rewrite to a `pluginScope` + `handleOnDestroy()` pattern — the April 2026 attempt broke the Android build for 8+ days. Known-good sha256: `37e2674ed361cc8cc6b6c088669272dc52854933354e7c9059d7785d937ea1ad` (499 lines)."
+## Constraints respected
+- No changes to React UI (HealthConnectContext, Health screen, accordion layout).
+- No refactor to `pluginScope`/`handleOnDestroy` — the `coroutine-pattern` constraint memory is honored.
+- No edits to `src/integrations/supabase/*`, `.env`, `supabase/config.toml`.
 
-This stops me (or any future agent) from re-doing the same regression.
+## Files touched
+- `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`
+- `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`
+- `src/components/BuildStamp.tsx`
+- `src/pages/Index.tsx` (one-line prop/import to surface i18n probe — non-visual)
+
+## Verification after build
+1. BuildStamp shows new timestamp + `D:Medi` suffix → bundle is fresh and i18n resolved.
+2. Scroll to bottom of Home → "Medical Disclaimer" accordion is present.
+3. Open Health screen → tap Connect → Android system permission dialog appears (API 34+) or Health Connect APK dialog appears (API 33-).
+4. After granting, app reads steps/weight without further prompts.
