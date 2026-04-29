@@ -406,7 +406,13 @@ class HealthConnectPlugin : Plugin() {
             call.reject("HealthConnect not initialized")
             return
         }
-        val (startTime, endTime) = parseTimeRange(call) ?: return
+        val (jsStartTime, endTime) = parseTimeRange(call) ?: return
+
+        // Safety net: even if the JS layer narrows the window, always look back
+        // at least 365 days for the most recent weight entry. Weight is logged
+        // infrequently and we want the *last entered* value, not just today's.
+        val oneYearAgo = endTime.minusSeconds(365L * 24L * 60L * 60L)
+        val startTime = if (jsStartTime.isAfter(oneYearAgo)) oneYearAgo else jsStartTime
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -416,8 +422,13 @@ class HealthConnectPlugin : Plugin() {
                 )
 
                 val response = client.readRecords(request)
+                val origins = response.records.mapNotNull { it.metadata.dataOrigin.packageName }.distinct()
+                Log.i(tag, "readWeight: ${response.records.size} records, origins=$origins, window=$startTime..$endTime")
+
+                // Sort chronologically so the JS layer's "last record" is truly latest
+                val sorted = response.records.sortedBy { it.time }
                 val records = JSArray()
-                for (record in response.records) {
+                for (record in sorted) {
                     val obj = JSObject()
                     obj.put("value", record.weight.inKilograms)
                     obj.put("unit", "kg")
