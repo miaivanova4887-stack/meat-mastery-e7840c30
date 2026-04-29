@@ -81,6 +81,7 @@ const VoiceRecognition = () => {
       return false;
     }
     const result = parseHealthTranscript(input);
+    console.info("[VoiceLog] submit input=", input.length, "entries=", result.entries.length);
     if (result.entries.length === 0) {
       toast.error(result.summary);
       return false;
@@ -94,6 +95,7 @@ const VoiceRecognition = () => {
   }, [submitText]);
 
   const handleStartListening = useCallback(async () => {
+    console.info("[VoiceLog] mic tap");
     setParsedResult(null);
     setIsStopping(false);
     autoProcessPendingRef.current = false;
@@ -148,6 +150,7 @@ const VoiceRecognition = () => {
     }
     setIsStopping(false);
     stopInProgressRef.current = false;
+    console.info("[VoiceLog] stop captured=", captured.length, "heard=", heardSomething);
     if (shouldAutoSubmit && captured) {
       submitText(captured);
     } else if (shouldAutoSubmit && !heardSomething) {
@@ -179,6 +182,7 @@ const VoiceRecognition = () => {
       if (!receivedInput()) return;
       const captured = getTranscript().trim();
       if (captured) {
+        console.info("[VoiceLog] natural stop submitting len=", captured.length);
         setTextInput(captured);
         submitText(captured);
       }
@@ -190,6 +194,7 @@ const VoiceRecognition = () => {
   const logEntries = useCallback(async () => {
     if (!parsedResult?.entries?.length) return;
     const now = new Date().toISOString();
+    console.info("[VoiceLog] saving entries=", parsedResult.entries.length);
     try {
       await Promise.all(
         parsedResult.entries.map((e) =>
@@ -203,12 +208,14 @@ const VoiceRecognition = () => {
           })
         )
       );
+      console.info("[VoiceLog] save success");
       toast.success("All entries logged!");
       setParsedResult(null);
       setTextInput("");
       resetTranscript();
       setExpanded(false);
-    } catch {
+    } catch (err) {
+      console.info("[VoiceLog] save failed", err);
       toast.error("Failed to log entries");
     }
   }, [parsedResult, addEntry, textInput, resetTranscript]);
