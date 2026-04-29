@@ -17,13 +17,13 @@ describe("isOnboardingComplete", () => {
   });
 
   it("returns true after onboarding completion writes 'true'", () => {
-    localStorage.setItem("carnivore-onboarding-complete", "true");
+    localStorage.setItem("carnivore-onboarding-complete-v2", "true");
     expect(isOnboardingComplete()).toBe(true);
   });
 
   it("returns false after the Profile 'Reset onboarding' button removes the key", () => {
-    localStorage.setItem("carnivore-onboarding-complete", "true");
-    localStorage.removeItem("carnivore-onboarding-complete");
+    localStorage.setItem("carnivore-onboarding-complete-v2", "true");
+    localStorage.removeItem("carnivore-onboarding-complete-v2");
     localStorage.removeItem("carnivore-onboarding-answers");
     localStorage.removeItem("carnivore-onboarding-body");
     expect(isOnboardingComplete()).toBe(false);
@@ -32,7 +32,7 @@ describe("isOnboardingComplete", () => {
   it.each(["1", "yes", "TRUE", "completed", ""])(
     "returns false for non-'true' value %j (strict equality guards against accidental truthy writes)",
     (value) => {
-      localStorage.setItem("carnivore-onboarding-complete", value);
+      localStorage.setItem("carnivore-onboarding-complete-v2", value);
       expect(isOnboardingComplete()).toBe(false);
     },
   );
