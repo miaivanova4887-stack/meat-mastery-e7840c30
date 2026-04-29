@@ -228,6 +228,7 @@ const Onboarding = () => {
   const [customCuisine, setCustomCuisine] = useState("");
   const [transitioning, setTransitioning] = useState(false);
   const [consentSaving, setConsentSaving] = useState(false);
+  const [showPushConsent, setShowPushConsent] = useState(false);
 
   // Health targets state (step 3)
   const [healthTargets, setHealthTargets] = useState<string[]>([]);
@@ -361,7 +362,8 @@ const Onboarding = () => {
           }
 
           window.dispatchEvent(new Event("profile-update"));
-          navigate("/", { replace: true });
+          // Show notification consent sheet, then navigate home on close.
+          setShowPushConsent(true);
         };
 
         saveProfile();
