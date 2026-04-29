@@ -35,10 +35,15 @@ async function registerToken(token: string, platform: "android" | "ios") {
  * Returns the resulting consent state. Safe to call multiple times.
  */
 export async function requestNativePush(): Promise<PushConsentState> {
-  if (!Capacitor.isNativePlatform()) return "unset";
+  if (!Capacitor.isNativePlatform()) {
+    console.info("[Push] requestNativePush skipped — not native");
+    return "unset";
+  }
 
   const platform = Capacitor.getPlatform() as "android" | "ios";
+  console.info("[Push] requestNativePush start platform=", platform);
   const perm = await PushNotifications.requestPermissions();
+  console.info("[Push] requestPermissions result receive=", perm.receive);
   if (perm.receive !== "granted") {
     await savePushConsent("denied");
     return "denied";
@@ -47,16 +52,18 @@ export async function requestNativePush(): Promise<PushConsentState> {
   // Listen for the token (async event)
   PushNotifications.addListener("registration", async (t) => {
     try {
+      console.info("[Push] FCM token registered len=", t.value?.length ?? 0);
       await registerToken(t.value, platform);
     } catch (e) {
-      console.error("token register failed", e);
+      console.error("[Push] token register failed", e);
     }
   });
   PushNotifications.addListener("registrationError", (err) => {
-    console.error("FCM registration error", err);
+    console.error("[Push] FCM registration error", err);
   });
 
   await PushNotifications.register();
+  console.info("[Push] PushNotifications.register() called");
   await savePushConsent("granted");
   return "granted";
 }
