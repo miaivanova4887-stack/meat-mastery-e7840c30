@@ -15,12 +15,15 @@ const SESSION_FLAG = "push-prompt-shown";
 // Short delay so onboarding-triggered sheet wins on the same launch.
 const INITIAL_DELAY_MS = 600;
 
-export type PushFallbackSource = "home" | "profile";
+export type PushFallbackSource = "home" | "profile" | "shell";
 
 export function usePushConsentFallback(source: PushFallbackSource) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
+    // Immediate mount log — fires before any guards so logcat confirms
+    // the hook is at least being evaluated on this route/launch.
+    console.info("[Push] fallback hook mounted source=", source);
     const native = Capacitor.isNativePlatform();
     const platform = native ? Capacitor.getPlatform() : "web";
     const alreadyShown = sessionStorage.getItem(SESSION_FLAG) === "1";

@@ -29,8 +29,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal } from "@/contexts/UserProfileContext";
-import NotificationConsentSheet from "@/components/NotificationConsentSheet";
-import { usePushConsentFallback } from "@/hooks/usePushConsentFallback";
+// Push consent fallback is now hosted globally via PushConsentFallbackHost in App.tsx.
 import {
   Drawer,
   DrawerClose,
@@ -81,7 +80,6 @@ const Index = () => {
   const [coachingInitialScreen, setCoachingInitialScreen] = useState<"info" | "calcom">("info");
   const { t } = useTranslation();
   const { hasAccess } = useSubscription();
-  const pushFallback = usePushConsentFallback("home");
 
   // Handle coaching payment return URL params
   useEffect(() => {
@@ -130,10 +128,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
-      <NotificationConsentSheet
-        open={pushFallback.open}
-        onClose={pushFallback.onClose}
-      />
       {/* Hero */}
       <div className="relative h-[58vh] overflow-hidden">
         <img src={heroImage} alt="Athletic motivation" className="absolute inset-0 w-full h-full object-cover scale-105" />

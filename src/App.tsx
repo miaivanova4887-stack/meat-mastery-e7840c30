@@ -54,6 +54,7 @@ import { useScrollToTop } from "./hooks/useScrollToTop";
 import { useContentOverrides } from "./hooks/useContentOverrides";
 import { useEdgeSwipeBack } from "./hooks/useEdgeSwipeBack";
 import { useTabSwipe } from "./hooks/useTabSwipe";
+import PushConsentFallbackHost from "./components/PushConsentFallbackHost";
 
 const queryClient = new QueryClient();
 
@@ -135,6 +136,7 @@ const App = () => {
               <BackButtonHandler />
               <EdgeSwipeBackHandler />
               <TabSwipeHandler />
+              <PushConsentFallbackHost />
               <Routes>
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/" element={<Index />} />
