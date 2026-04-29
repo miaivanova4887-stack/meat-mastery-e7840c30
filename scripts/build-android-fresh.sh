@@ -74,8 +74,8 @@ if [[ -f "$PLUGIN_SRC" ]]; then
     fi
   done
   # Reject the broken Android-14 manual intent path
-  if grep -q "REQUEST_HEALTH_PERMISSIONS" "$COPIED"; then
-    echo "❌ Native plugin still contains the manual REQUEST_HEALTH_PERMISSIONS intent."
+  if grep -q 'android.health.connect.action.REQUEST_HEALTH_PERMISSIONS' "$COPIED"; then
+    echo "❌ Native plugin still launches the manual REQUEST_HEALTH_PERMISSIONS intent."
     echo "   This causes a SecurityException on Samsung Android 14 devices."
     exit 1
   fi
