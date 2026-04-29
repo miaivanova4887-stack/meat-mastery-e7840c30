@@ -1,11 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair, Heart, Flame, Leaf, Zap, Scale } from "lucide-react";
+import { ArrowLeft, ChevronRight, Target, Dumbbell, TrendingUp, Shield, Brain, Check, User, Ruler, Crosshair, Heart, Flame, Leaf, Zap, Scale, Activity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import i18n from "@/i18n/index";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
+import { Capacitor } from "@capacitor/core";
+import { useHealthConnect } from "@/hooks/useHealthConnect";
 
 interface StepOption {
   label: string;
@@ -217,10 +219,15 @@ const steps: OnboardingStep[] = [
   },
 ];
 
-const STORAGE_KEY = "carnivore-onboarding-complete";
+// Versioned key — anything restored from a previous Android Auto Backup
+// under the legacy "carnivore-onboarding-complete" key is intentionally
+// ignored so a fresh install always shows onboarding.
+const STORAGE_KEY = "carnivore-onboarding-complete-v2";
+const LEGACY_STORAGE_KEY = "carnivore-onboarding-complete";
 
 const Onboarding = () => {
   const navigate = useNavigate();
+  const { requestPermissions: requestHcPermissions } = useHealthConnect();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number | number[]>>({});
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
@@ -229,10 +236,20 @@ const Onboarding = () => {
   const [transitioning, setTransitioning] = useState(false);
   const [consentSaving, setConsentSaving] = useState(false);
   const [showPushConsent, setShowPushConsent] = useState(false);
+  const [showHcPrompt, setShowHcPrompt] = useState(false);
+  const [hcBusy, setHcBusy] = useState(false);
 
-  // Health targets state (step 3)
-  const [healthTargets, setHealthTargets] = useState<string[]>([]);
-  const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(new Map());
+  // First-mount diagnostics for logcat — confirms whether the gate
+  // actually let onboarding render and what the persisted flag was.
+  useEffect(() => {
+    console.info(
+      "[Onboarding] mount native=", Capacitor.isNativePlatform(),
+      "completeFlag=", localStorage.getItem(STORAGE_KEY),
+      "legacyFlag=", localStorage.getItem(LEGACY_STORAGE_KEY),
+    );
+    // Clear any restored legacy flag so it can't leak back into v2.
+    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+  }, []);
 
   // Fetch health target labels from content_blocks
   useEffect(() => {
