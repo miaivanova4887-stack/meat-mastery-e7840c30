@@ -14,11 +14,11 @@ export async function savePushConsent(
 ): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-  const patch: Record<string, unknown> = {
+  const patch = {
     push_consent: state,
     push_consent_at: new Date().toISOString(),
+    ...(preferences ? { notification_preferences: preferences } : {}),
   };
-  if (preferences) patch.notification_preferences = preferences;
   await supabase.from("profiles").update(patch).eq("id", user.id);
 }
 
