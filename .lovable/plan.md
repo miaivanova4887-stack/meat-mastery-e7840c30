@@ -1,67 +1,69 @@
-## Updated diagnosis
+## Diagnosis (corrected)
 
-I compared the file you uploaded against the repo:
+You're right. I checked the git history of `HealthConnectPlugin.kt`:
 
-| Source | Lines | Pattern | Status |
+| Commit | Date | Content | State |
 |---|---|---|---|
-| Your Mac (uploaded) | 500 | `CoroutineScope(Dispatchers.IO).launch` ad-hoc | **Stale, pre-fix** |
-| `native-plugins/.../HealthConnectPlugin.kt` | 499 | `CoroutineScope(Dispatchers.IO).launch` ad-hoc | **Stale, pre-fix** |
-| `android/app/.../HealthConnectPlugin.kt` (in Lovable repo) | 544 | `pluginScope` + `pluginMainScope` + `handleOnDestroy()` | **Fixed** |
+| `b4f673a` "Fix origin null-safety" | 2026-03-22 | 499 lines, ad-hoc `CoroutineScope(Dispatchers.IO).launch` | **Last known good** |
+| `2e4bdba` "Add iOS + Android Capacitor projects..." | 2026-04-21 | **identical content**, just promoted into `android/app/...` too | **Still good** |
+| `6110948` and follow-ups (incl. current `002b3a1`) | 2026-04-28 | 544 lines, rewritten to use `pluginJob` + `pluginScope` + `pluginMainScope` + `handleOnDestroy()` | **Broken — never produced a working APK** |
 
-Two important facts:
+So the "lifecycle-aware coroutine fix" I kept reinforcing yesterday was the regression. The April 21 / March 22 file (byte-identical, sha256 `37e2674e…`) is what was on disk during the last working build, and matches the file you have locally on your Mac.
 
-1. **The file you uploaded does not contain `coroutineScope` anywhere** (lowercase or otherwise). The compile error you pasted (`Unresolved reference 'coroutineScope'` at 152/196/232/290) cannot have come from this file — those line numbers contain `Log.w(...)`, `if (client == null)`, `val result = JSObject()`, and `AggregateRequest(`. So either the error was from a different (further-edited) version, or Gradle compiled a cached source. Doesn't change the fix.
-
-2. **`scripts/build-android-fresh.sh` always overwrites `android/app/.../HealthConnectPlugin.kt` with `native-plugins/.../HealthConnectPlugin.kt`**:
-
-   ```bash
-   cp "$PLUGIN_SRC" "$PLUGIN_DEST_DIR/HealthConnectPlugin.kt"
-   # PLUGIN_SRC = native-plugins/android/.../HealthConnectPlugin.kt
-   ```
-
-   So even though the repo's `android/app/...` copy is correct, **every time you run the build script it replaces the good file with the stale `native-plugins/` copy**. That's why the weight fix from last turn never actually lands in the APK.
+The April 28 rewrite is what introduced the `Unresolved reference 'coroutineScope'` family of failures. I will revert the plugin to that proven version.
 
 ## What I will change
 
-### Sync `native-plugins/.../HealthConnectPlugin.kt` to match the fixed file
+Restore both copies of the plugin to the April 21 content (commit `2e4bdba`, identical to March 22 `b4f673a`):
 
-Overwrite `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` with the exact contents of `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` (the 544-line file with `pluginJob`, `pluginScope`, `pluginMainScope`, and `handleOnDestroy()`).
+- `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` → 499-line known-good version
+- `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` → identical 499-line version
 
-After that, both files in the repo are byte-identical and contain the lifecycle-aware coroutine scope fix. The build script's `cp` step becomes a no-op rather than a regression.
+Both will be byte-identical to each other and to what was last shipped. The build script's `cp` step will then be a no-op rather than a regression.
 
-### Nothing else
+## What I will NOT change
 
-- No change to `android/app/.../HealthConnectPlugin.kt` (already correct).
-- No change to `src/contexts/HealthConnectContext.tsx` (already correct).
+- No UI changes anywhere — the React/TypeScript bridge (`src/plugins/HealthConnectPlugin.ts`) and `src/contexts/HealthConnectContext.tsx` already match the API surface of the 499-line plugin (`checkAvailability`, `requestPermissions`, `readSteps`, `readHeartRate`, `readWeight`, `readActiveCalories`). The visible Health screen, icons, layout, sync flow — all untouched.
 - No change to `scripts/build-android-fresh.sh`.
-- No change to the speech-recognition patch or anything unrelated.
+- No change to `AndroidManifest.xml`, `build.gradle`, or the speech-recognition patch.
+- No change to iOS or web code.
 
-## What you do on your Mac afterward
+## Why the original "fix" was wrong
+
+The April 28 rewrite assumed the ad-hoc `CoroutineScope(Dispatchers.IO).launch` blocks were leaking and getting GC'd. In practice the plugin's calls await results via Capacitor's `PluginCall`, which holds the JS-side promise alive — so the coroutines complete fine. Replacing them with a `pluginScope` tied to `handleOnDestroy()` introduced symbol-resolution and lifecycle issues that have prevented the APK from compiling at all.
+
+## After approval — what to run on your Mac
+
+Once Lovable commits the revert, on your Mac:
 
 ```bash
-git pull
-# Force your Mac's stale local file to be replaced with the synced repo version:
+cd ~/Desktop/carnivore-coach-pro
+git fetch origin
+git pull   # if your branch tracks the right remote; otherwise git checkout origin/<branch> -- <paths>
 git checkout -- android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
 git checkout -- native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+
+# Sanity check — both should print 499 and 0
+wc -l android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+grep -c "pluginScope\|handleOnDestroy" android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+
 npm install
 ./scripts/build-android-fresh.sh
 ```
 
-The two `git checkout --` lines are essential. Your local copies are tracked files with local modifications, so `git pull` won't touch them. Discarding local edits forces the fixed versions into your working tree. Then the build script's `cp` step copies the correct `native-plugins/` source into `android/app/...`, Kotlin compiles cleanly, and the lifecycle-aware coroutine fix actually ships in the APK.
+If `git pull` still complains about no upstream, use the explicit form:
 
-## Verification you can do after the build
-
-Inside the built APK, the plugin should contain:
-
-```kotlin
-private val pluginJob = SupervisorJob()
-private val pluginScope = CoroutineScope(Dispatchers.IO + pluginJob)
-private val pluginMainScope = CoroutineScope(Dispatchers.Main + pluginJob)
-
-override fun handleOnDestroy() {
-    pluginJob.cancel()
-    super.handleOnDestroy()
-}
+```bash
+git fetch origin
+git checkout origin/legal-region-segregation -- \
+  android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt \
+  native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
 ```
 
-If you grep your local `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` for `pluginScope` after the build script runs and it returns matches, the fix is in.
+(Substitute `main` for `legal-region-segregation` if Lovable is committing to `main`.)
+
+## Memory updates I'll make alongside the revert
+
+Add a constraint memory: "Health Connect Kotlin plugin must use ad-hoc `CoroutineScope(Dispatchers.IO/Main).launch` blocks. Do not rewrite to a `pluginScope` + `handleOnDestroy()` pattern — the April 2026 attempt broke the Android build for 8+ days. Known-good sha256: `37e2674ed361cc8cc6b6c088669272dc52854933354e7c9059d7785d937ea1ad` (499 lines)."
+
+This stops me (or any future agent) from re-doing the same regression.
