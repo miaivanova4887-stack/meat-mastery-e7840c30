@@ -28,6 +28,9 @@ const Progress = () => {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [category, setCategory] = useState<ProgressCategory>("diet_trends");
+  const [weightHintDismissed, setWeightHintDismissed] = useState<boolean>(() => {
+    try { return localStorage.getItem("carnivore-weight-hint-dismissed") === "true"; } catch { return false; }
+  });
   const { healthData, isConnected: isHealthConnected } = useHealthConnect();
 
   if (!user) {
