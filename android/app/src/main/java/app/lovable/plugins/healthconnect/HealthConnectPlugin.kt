@@ -23,8 +23,6 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -34,18 +32,7 @@ class HealthConnectPlugin : Plugin() {
     private val tag = "HealthConnectPlugin"
     private var healthConnectClient: HealthConnectClient? = null
     private var permissionLauncher: ActivityResultLauncher<Set<String>>? = null
-    private var pendingPermissionCallId: String? = null
-
-    // Lifecycle-aware scopes — cancelled in handleOnDestroy() so coroutines
-    // are not killed prematurely by GC of an ad-hoc CoroutineScope.
-    private val pluginJob = SupervisorJob()
-    private val pluginScope = CoroutineScope(Dispatchers.IO + pluginJob)
-    private val pluginMainScope = CoroutineScope(Dispatchers.Main + pluginJob)
-
-    override fun handleOnDestroy() {
-        pluginJob.cancel()
-        super.handleOnDestroy()
-    }
+    private var pendingPermissionCall: PluginCall? = null
 
     private val samsungOriginPackages = setOf(
         "com.sec.android.app.shealth",
@@ -71,16 +58,10 @@ class HealthConnectPlugin : Plugin() {
                 permissionLauncher = componentActivity.registerForActivityResult(
                     PermissionController.createRequestPermissionResultContract()
                 ) { _ ->
-                    val callId = pendingPermissionCallId
-                    pendingPermissionCallId = null
-                    if (callId == null) return@registerForActivityResult
-                    val call = bridge.getSavedCall(callId)
-                    if (call == null) {
-                        Log.w(tag, "Saved permission call no longer available (id=$callId)")
-                        return@registerForActivityResult
-                    }
+                    val call = pendingPermissionCall ?: return@registerForActivityResult
+                    pendingPermissionCall = null
 
-                    pluginMainScope.launch {
+                    CoroutineScope(Dispatchers.Main).launch {
                         try {
                             val client = healthConnectClient ?: HealthConnectClient.getOrCreate(context).also {
                                 healthConnectClient = it
@@ -94,8 +75,6 @@ class HealthConnectPlugin : Plugin() {
                         } catch (e: Exception) {
                             Log.e(tag, "Failed to verify permissions after request", e)
                             call.reject("Permission verification failed: ${e.message}")
-                        } finally {
-                            bridge.releaseCall(call)
                         }
                     }
                 }
@@ -219,12 +198,7 @@ class HealthConnectPlugin : Plugin() {
             return
         }
 
-        if (pendingPermissionCallId != null) {
-            call.reject("Permission request already in progress")
-            return
-        }
-
-        pluginMainScope.launch {
+        CoroutineScope(Dispatchers.Main).launch {
             try {
                 val granted = client.permissionController.getGrantedPermissions()
                 val hasRequired = granted.containsAll(requiredPermissions)
@@ -239,25 +213,10 @@ class HealthConnectPlugin : Plugin() {
                 }
 
                 val launcher = permissionLauncher
-                var launchedController = false
                 if (launcher != null) {
-                    try {
-                        call.setKeepAlive(true)
-                        bridge.saveCall(call)
-                        pendingPermissionCallId = call.callbackId
-                        launcher.launch(requestedPermissions)
-                        launchedController = true
-                    } catch (e: Exception) {
-                        Log.w(tag, "Permission launcher.launch failed, falling back to settings", e)
-                        val savedId = pendingPermissionCallId
-                        pendingPermissionCallId = null
-                        if (savedId != null) {
-                            bridge.getSavedCall(savedId)?.let { bridge.releaseCall(it) }
-                        }
-                    }
-                }
-
-                if (!launchedController) {
+                    pendingPermissionCall = call
+                    launcher.launch(requestedPermissions)
+                } else {
                     Log.w(tag, "Permission launcher unavailable, opening Health Connect settings")
                     try {
                         val settingsIntent = if (Build.VERSION.SDK_INT >= 34) {
@@ -275,11 +234,7 @@ class HealthConnectPlugin : Plugin() {
                         result.put("openedSettings", true)
                         call.resolve(result)
                     } catch (e: Exception) {
-                        val result = JSObject()
-                        result.put("granted", false)
-                        result.put("openedSettings", false)
-                        result.put("reason", "cannot_open_settings: ${e.message}")
-                        call.resolve(result)
+                        call.reject("Cannot open Health Connect permissions: ${e.message}")
                     }
                 }
             } catch (e: Exception) {
@@ -297,7 +252,7 @@ class HealthConnectPlugin : Plugin() {
         }
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        pluginScope.launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val stepsRecordsResponse = try {
                     client.readRecords(
@@ -372,7 +327,7 @@ class HealthConnectPlugin : Plugin() {
         }
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        pluginScope.launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = ReadRecordsRequest(
                     recordType = HeartRateRecord::class,
@@ -409,7 +364,7 @@ class HealthConnectPlugin : Plugin() {
         }
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        pluginScope.launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val request = ReadRecordsRequest(
                     recordType = WeightRecord::class,
@@ -449,7 +404,7 @@ class HealthConnectPlugin : Plugin() {
 
         val (startTime, endTime) = parseTimeRange(call) ?: return
 
-        pluginScope.launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val records = JSArray()
                 val granted = client.permissionController.getGrantedPermissions()
