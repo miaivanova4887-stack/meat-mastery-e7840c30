@@ -43,7 +43,11 @@ export const useHealthConnectContext = () => {
   return ctx;
 };
 
-const HC_CONNECTED_KEY = "carnivore-hc-connected";
+// Versioned key — anything restored from a previous Android Auto Backup
+// under the legacy key is intentionally ignored so a fresh install must
+// re-prompt for Health Connect.
+const HC_CONNECTED_KEY = "carnivore-hc-connected-v2";
+const LEGACY_HC_CONNECTED_KEY = "carnivore-hc-connected";
 
 export const HealthConnectProvider = ({ children }: { children: ReactNode }) => {
   const [healthData, setHealthData] = useState<HealthData>({
@@ -53,7 +57,12 @@ export const HealthConnectProvider = ({ children }: { children: ReactNode }) => 
     steps: 0, heartRate: 0, weight: 0, weightUnit: "kg", sleep: 0, activeCalories: 0,
   });
   const [isConnected, setIsConnected] = useState(() => {
-    try { return localStorage.getItem(HC_CONNECTED_KEY) === "true"; } catch { return false; }
+    try {
+      // Always purge the legacy key — it may have been restored from
+      // a backup of a previous install.
+      localStorage.removeItem(LEGACY_HC_CONNECTED_KEY);
+      return localStorage.getItem(HC_CONNECTED_KEY) === "true";
+    } catch { return false; }
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
