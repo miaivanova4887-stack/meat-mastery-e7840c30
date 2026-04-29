@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import i18n from "@/i18n/index";
+import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 
 interface StepOption {
   label: string;
