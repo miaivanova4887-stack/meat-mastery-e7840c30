@@ -239,6 +239,10 @@ const Onboarding = () => {
   const [showHcPrompt, setShowHcPrompt] = useState(false);
   const [hcBusy, setHcBusy] = useState(false);
 
+  // Health targets state (step 3)
+  const [healthTargets, setHealthTargets] = useState<string[]>([]);
+  const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(new Map());
+
   // First-mount diagnostics for logcat — confirms whether the gate
   // actually let onboarding render and what the persisted flag was.
   useEffect(() => {
