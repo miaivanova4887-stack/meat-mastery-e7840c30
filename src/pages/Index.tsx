@@ -93,7 +93,9 @@ const Index = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  if (!isOnboardingComplete()) {
+  const onbComplete = isOnboardingComplete();
+  console.info("[Index] gate: onboardingComplete=", onbComplete);
+  if (!onbComplete) {
     return <Navigate to="/onboarding" replace />;
   }
 
