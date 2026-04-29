@@ -1,34 +1,33 @@
 ## Diagnosis
 
-Your `git pull` is blocked because `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` is tracked by Git, but the Android build script also rewrites that same file from `native-plugins/.../HealthConnectPlugin.kt` every time you build.
-
-That means the file is acting like a generated copy, but Git treats it like a normal source file. After a local build, Git sees it as locally changed, so future pulls fail with:
+The clean build wiped `android/.gradle` and ran `npx cap sync android`, which regenerated `android/variables.gradle` with Capacitor 7's default `minSdkVersion = 24`. Health Connect's `connect-client:1.1.0-alpha10` requires `minSdk ≥ 26`, so manifest merging fails:
 
 ```text
-Your local changes to the following files would be overwritten by merge:
-  android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt
+uses-sdk:minSdkVersion 24 cannot be smaller than version 26
+declared in library [androidx.health.connect:connect-client:1.1.0-alpha10]
 ```
 
-The permanent fix is to make there be one canonical source of truth and make the generated Android copy untracked/ignored.
+This is the same root-cause family as the previous Health Connect plugin issue: Capacitor sync overwrites a tracked Android file, and our build pipeline didn't enforce the override afterwards.
 
-## Plan
+## Permanent fix
 
-1. Treat `native-plugins/android/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt` as the only canonical Health Connect plugin source.
-2. Stop tracking the generated copy under `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`.
-3. Add that generated copy path to `.gitignore` so builds can rewrite it without dirtying the repo.
-4. Keep `scripts/build-android-fresh.sh` copying the canonical native plugin into the Android project before compilation.
-5. Add/keep build guard checks so the script still fails if the copied plugin is stale or missing the weight/permission fixes.
-6. Provide a one-time cleanup command for your Mac to clear the existing local conflict safely.
+Make the build script enforce `minSdkVersion = 26` after `npx cap sync`, the same way it already enforces the kotlin-android plugin and copies the Health Connect plugin. That way every fresh build self-heals, even if `variables.gradle` is reset by Capacitor or by a future `cap update`.
 
-## Files to change after approval
+## Files to change
 
-- `.gitignore`
-- Git tracking state for `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`
-- Possibly `scripts/build-android-fresh.sh` only if it needs a clearer message around generated-file behavior
+1. `scripts/build-android-fresh.sh`
+   - After the `npx cap sync android` step (and before Kotlin precompile), patch `android/variables.gradle`:
+     - If `minSdkVersion = 24` (or anything < 26), rewrite to `minSdkVersion = 26`.
+     - Verify with `grep` afterwards and fail loudly if the value isn't 26.
+   - Use a portable `sed -i.bak` (works on macOS 11) and remove the backup.
 
-## One-time command you will run locally after the fix lands
+2. `android/variables.gradle`
+   - Set `minSdkVersion = 26` directly (so even non-script local builds in Android Studio work).
 
-After the change is merged to GitHub, your local machine may still have the previously modified tracked file. The cleanest recovery will be:
+3. `mem://constraints/android-min-sdk` (new memory)
+   - Record: minSdkVersion must stay ≥ 26 because of Health Connect; build script enforces this after every `cap sync`.
+
+## What you'll do locally after this lands
 
 ```bash
 cd ~/Desktop/carnivore-coach-pro
@@ -39,18 +38,10 @@ npm install
 bash scripts/build-android-fresh.sh
 ```
 
-Important: this discards local uncommitted changes in that folder. Based on the error, the local change is the generated Health Connect plugin copy from the Android build, so this is the right cleanup. If you have any unrelated manual work in that folder, copy it elsewhere first.
+The script will set `minSdkVersion = 26` after Capacitor sync, then proceed to Kotlin precompile and APK assembly. The Health Connect manifest-merger error will be gone.
 
-## Expected permanent outcome
+## Notes
 
-After this, building Android may still generate or overwrite the plugin inside `android/app/...`, but Git will ignore that generated copy. Future `git pull` should no longer be blocked by the Health Connect plugin file.
-
-For native Android changes, continue using the clean flow:
-
-```bash
-git pull
-npm install
-bash scripts/build-android-fresh.sh
-```
-
-No manual edits should be made in `android/app/src/main/java/app/lovable/plugins/healthconnect/HealthConnectPlugin.kt`; all plugin edits should happen in `native-plugins/android/.../HealthConnectPlugin.kt`.
+- Bumping `minSdk` from 24 → 26 (Android 8.0+) is safe: Health Connect itself already required 26, and 99%+ of active Android devices are on 26+.
+- This does not change `targetSdkVersion` (already 36) or `compileSdkVersion` (already 36).
+- No JS/UI changes needed.
