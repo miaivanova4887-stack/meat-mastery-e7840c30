@@ -1,75 +1,84 @@
-## Root cause
+# Anonymous-friendly push consent fallback
 
-`src/pages/Index.tsx` runs `if (!onbComplete) return <Navigate to="/onboarding" replace />;` on **line 101-103**. Any user whose `carnivore-onboarding-complete-v2` flag is missing — including users who haven't completed onboarding yet — is bounced to `/onboarding` before `usePushConsentFallback("home")` mounts. Profile is reachable via `BottomNav` (no gate), but if the user never taps the Profile tab the hook never gets a chance to run there either. Net effect: the fallback never fires for anyone whose onboarding is incomplete.
+## Problem
 
-The skip path is fine — there is no "skip whole flow" button; reaching Step 11 (Wellness consent) writes `STORAGE_KEY = "carnivore-onboarding-complete-v2"` (Onboarding.tsx line 317). So the only fix needed is to make the fallback mount independent of route.
+`usePushConsentFallback` (in `src/hooks/usePushConsentFallback.ts`) currently bails out as soon as `supabase.auth.getUser()` returns no user (`reason=no-signed-in-user`). Since profile rows only exist after signup, anonymous users — who make up the entire pre-onboarding flow — never see the fallback sheet. The consent state lives only on `profiles.push_consent`, so there is also no place to record an anonymous user's choice for later reconciliation.
 
-## Fix
+## Fix overview
 
-### 1. New always-mounted shell component
+Introduce a local-storage push-consent marker that mirrors `profiles.push_consent` for anonymous users. Update the fallback hook to use it when no auth user exists. After a user later signs in/up, reconcile the local marker into their profile (and treat the local onboarding-complete flag the same way).
 
-Create `src/components/PushConsentFallbackHost.tsx`:
+The existing once-per-session sessionStorage guard, native-Android guard, and onboarding-triggered sheet are unchanged.
 
-- Mounts once inside `<BrowserRouter>` at the App level (alongside `BackButtonHandler`, etc.), so it runs on every route including `/onboarding`, `/auth`, `/recipes`, etc.
-- Calls `usePushConsentFallback("shell")` and renders `<NotificationConsentSheet open={...} onClose={...} />`.
-- Returns `null` apart from the sheet portal.
+## Changes
 
-### 2. Wire it in `src/App.tsx`
+### 1. New local push-consent helpers — `src/lib/pushConsentLocal.ts` (new)
 
-Add `<PushConsentFallbackHost />` next to the other handler components inside `<BrowserRouter>`. It sits inside `<AuthProvider>` / `<UserProfileProvider>` which already wrap `<BrowserRouter>`, so `supabase.auth.getUser()` works.
+Small module so all readers/writers stay consistent:
 
-### 3. Remove the now-redundant per-page hook calls
+- Key: `carnivore-push-consent-v1` → `"unset" | "granted" | "denied"`
+- Key: `carnivore-push-consent-at-v1` → ISO timestamp
+- Exports: `getLocalPushConsent()`, `setLocalPushConsent(state)`, `clearLocalPushConsent()`.
 
-- `src/pages/Index.tsx`: remove `usePushConsentFallback("home")` call, the `pushFallback` variable, and the `<NotificationConsentSheet open={pushFallback.open} ... />` mount. Keep the import-free file.
-- `src/pages/Profile.tsx`: remove `usePushConsentFallback("profile")` call and its sheet mount (if present). Leave the manual-trigger sheet (the one tied to a settings button) alone if it exists separately.
+### 2. `src/lib/pushFcm.ts` — record locally too
 
-This guarantees the fallback runs exactly once per session from a single source, with no double-mounts racing each other.
+In `savePushConsent(state, preferences?)`:
 
-### 4. Update the hook itself
+- Always call `setLocalPushConsent(state)` first (works whether or not a user is signed in).
+- Keep the existing `supabase.from("profiles").update(...)` path, but only run it when `getUser()` returns a user (already the case via the early `return`).
+- Add `console.info("[Push] savePushConsent local=", state, "userPresent=", !!user)`.
 
-`src/hooks/usePushConsentFallback.ts`:
+This means both onboarding-triggered and shell-triggered sheets persist the choice locally, even for anonymous users.
 
-- Add an immediate mount log **before any guards or async work**:
-  ```ts
-  console.info("[Push] fallback hook mounted source=", source);
-  ```
-- Widen the `PushFallbackSource` type to include `"shell"`.
-- Keep the existing 600ms delay, native-Android guard, session flag, and `consent === 'unset'` check unchanged.
-- Keep all existing `console.info("[Push] ...")` logs.
+### 3. `src/hooks/usePushConsentFallback.ts` — anonymous path
 
-### 5. Race protection with onboarding-triggered sheet
+Replace the "no user → skip" branch:
 
-The onboarding flow opens its own `NotificationConsentSheet` on Step 11 completion. To prevent the shell fallback from also opening on the same launch:
+- Keep mount log + native/platform/sessionStorage guards as-is.
+- After the 600ms delay, call `supabase.auth.getUser()`:
+  - **If user exists** (current path): read `profiles.push_consent`, fall back to `getLocalPushConsent()` if the row is missing. Decision uses whichever is "set" (non-`unset`).
+  - **If no user** (new path): read `getLocalPushConsent()`. If `"unset"`, set the session flag and open the sheet. Log `console.info("[Push] anonymous fallback trigger fired source=", source)`. If already `granted`/`denied`, log skip with reason `consent-already-set-local`.
+- Re-check the session flag right before `setOpen(true)` (already done) to keep multi-mount safety.
 
-- The onboarding flow's push sheet open path should set `sessionStorage["push-prompt-shown"] = "1"` at the moment it opens (one-line addition in `src/pages/Onboarding.tsx` where `setShowPushConsent(true)` is called, and likewise after the HC prompt path opens it). The hook already re-checks the session flag immediately before opening, so this fully prevents a double-prompt within the same launch.
+Add explicit logs for the new branches:
 
-### Out of scope
+- `console.info("[Push] anonymous fallback check source=", source, "localConsent=", consent)`
+- `console.info("[Push] anonymous fallback skipped reason=", reason, "source=", source)`
 
-- No changes to onboarding step logic, Health Connect prompt, push scheduler, or campaign code.
-- No changes to `NotificationConsentSheet` internals.
-- No changes to auth or routing gates.
+### 4. Reconcile on login/signup — `src/contexts/AuthContext.tsx`
 
-## Files
+In the `onAuthStateChange` handler, when `event === "SIGNED_IN"` (or session transitions from null → present), schedule a reconcile (microtask, so we don't block auth state):
 
-- new: `src/components/PushConsentFallbackHost.tsx`
-- edit: `src/App.tsx` (mount the host inside `<BrowserRouter>`)
-- edit: `src/hooks/usePushConsentFallback.ts` (immediate mount log, add `"shell"` to source type)
-- edit: `src/pages/Index.tsx` (remove hook call + sheet mount)
-- edit: `src/pages/Profile.tsx` (remove fallback hook call + its sheet mount)
-- edit: `src/pages/Onboarding.tsx` (set `push-prompt-shown` session flag when onboarding-driven sheet opens, to prevent same-launch double-prompt)
+- Read `getLocalPushConsent()`. If it is `"granted"` or `"denied"` AND the user's `profiles.push_consent` is still `"unset"`, update the profile row with the local value + `push_consent_at`. Log `[Push] reconciled local→profile consent=`.
+- Read the local onboarding-complete flag (`carnivore-onboarding-complete-v2`, the existing key per memory). No DB write is needed today since onboarding completion is read from localStorage by `Index.tsx`; just log `[Onboarding] local flag carried into session present=` so we can confirm in logcat that the post-signup user keeps onboarding state.
 
-## Verification
+We do **not** clear the local consent marker after reconcile — it stays as a cache so subsequent anonymous launches (e.g., signed-out reinstall edge cases) still behave correctly.
 
-After install + skip-through-onboarding (or even before reaching Step 11), `adb logcat | grep "\[Push\]"` should show:
+### 5. No changes to:
+
+- `Onboarding.tsx` flow/steps, Health Connect prompts, push campaign code, `NotificationConsentSheet` UI, `App.tsx` shell host wiring.
+- The `carnivore-onboarding-complete-v2` write site in `Onboarding.tsx` (already local, already anonymous-friendly).
+
+## Verification (logcat)
+
+Fresh install, no signup, open app → after splash:
 
 ```
 [Push] fallback hook mounted source= shell
-[Push] fallback check source= shell ...
-[Push] fallback trigger fired source= shell consent= unset
+[Push] fallback check source= shell { native:true, platform:'android', alreadyShown:false }
+[Push] anonymous fallback check source= shell localConsent= unset
+[Push] anonymous fallback trigger fired source= shell
 ```
 
-on first eligible native launch, regardless of which route is active.
+Tap "Not now" → log shows `savePushConsent local= denied userPresent= false`.
 
-&nbsp;
+Later sign up → log shows `[Push] reconciled local→profile consent= denied`.
 
-make the shell host the **primary** fallback and keep page-level hooks only if they’re harmless. That gives you one reliable place that always runs, while preserving the existing flow
+## Files
+
+- new: `src/lib/pushConsentLocal.ts`
+- edit: `src/lib/pushFcm.ts` (write local mirror in `savePushConsent`)
+- edit: `src/hooks/usePushConsentFallback.ts` (anonymous branch + logs)
+- edit: `src/contexts/AuthContext.tsx` (reconcile on `SIGNED_IN`)
+
+**Add a safe retry in the auth reconcile step so if the profile row isn’t created yet at the exact moment of** `SIGNED_IN`**, the local consent is reconciled on the next profile load rather than being lost. Keep the local consent mirror, keep the session guard, and keep the anonymous fallback path**
