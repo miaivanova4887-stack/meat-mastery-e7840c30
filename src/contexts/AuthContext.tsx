@@ -4,14 +4,14 @@ import type { User, Session } from "@supabase/supabase-js";
 import { Capacitor } from "@capacitor/core";
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
 
-/** Where verification / recovery emails should send users back to. */
+/** Where verification / recovery emails should send users back to.
+ * Always app.carnivorex.app so the link works for both the installed
+ * Android app (via App Links) and the published web app. The bare
+ * lovable.app preview origin is intentionally NOT used because the
+ * marketing site sits on the root carnivorex.app domain and we keep
+ * a single canonical auth-callback host. */
 function resolveAuthRedirect(path: "/auth/callback" | "/reset-password"): string {
-  // On native we want the Android App Link to route into the installed app.
-  // On web we stay on the current origin so previews / publish work too.
-  if (Capacitor.isNativePlatform()) {
-    return `https://app.carnivorex.app${path}`;
-  }
-  return `${window.location.origin}${path}`;
+  return `https://app.carnivorex.app${path}`;
 }
 
 interface AuthContextType {
