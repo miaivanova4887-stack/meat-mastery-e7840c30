@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 /**
  * Landing page hit by the auth verification email link
- * (https://carnivorex.app/auth/callback#access_token=...).
+ * (https://app.carnivorex.app/auth/callback#access_token=...).
  *
  * On native (Android App Link), the OS routes this URL straight into the app
  * via the intent-filter on MainActivity. On web it simply loads in the SPA.
