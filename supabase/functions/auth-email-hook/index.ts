@@ -36,7 +36,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "carnivore-coach-pro"
+const SITE_NAME = "CarnivoreX"
 const SENDER_DOMAIN = "notify.carnivorex.app"
 const ROOT_DOMAIN = "carnivorex.app"
 const FROM_DOMAIN = "notify.carnivorex.app" // Domain shown in From address (may be root or sender subdomain)
