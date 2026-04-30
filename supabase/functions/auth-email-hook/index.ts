@@ -17,12 +17,12 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Activate your CarnivoreX account',
-  invite: "You're invited to join CarnivoreX",
-  magiclink: 'Your CarnivoreX sign-in link',
-  recovery: 'Reset your CarnivoreX password',
-  email_change: 'Confirm your new CarnivoreX email',
-  reauthentication: 'Your CarnivoreX verification code',
+  signup: 'Confirm your email',
+  invite: "You've been invited",
+  magiclink: 'Your login link',
+  recovery: 'Reset your password',
+  email_change: 'Confirm your new email',
+  reauthentication: 'Your verification code',
 }
 
 // Template mapping
@@ -36,7 +36,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "CarnivoreX"
+const SITE_NAME = "carnivore-coach-pro"
 const SENDER_DOMAIN = "notify.carnivorex.app"
 const ROOT_DOMAIN = "carnivorex.app"
 const FROM_DOMAIN = "notify.carnivorex.app" // Domain shown in From address (may be root or sender subdomain)
