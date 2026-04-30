@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => ({
       // Post-build assertion: fail loudly if assetlinks.json is missing from dist.
       // Prevents silent regressions of Android App Link verification.
       name: "assert-wellknown-assetlinks",
-      apply: "build",
+      apply: "build" as const,
       closeBundle() {
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const fs = require("fs");
