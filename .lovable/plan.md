@@ -1,74 +1,53 @@
+## Goal
 
-# Fix `assetlinks.json` 404 for Android App Links
+Serve this app (and its `assetlinks.json`) at **`app.carnivorex.app`**, while leaving the marketing site untouched at `carnivorex.app`. Update the Android App Link host to match, so deep-link verification succeeds.
 
-## Root cause (verified, not what the bug report assumed)
+## Why
 
-- `public/.well-known/assetlinks.json` exists in the repo with the correct SHA-256 fingerprint.
-- Hitting `https://carnivore-coach-pro.lovable.app/.well-known/assetlinks.json` returns plain `Not found` (NOT the SPA's `index.html`). So the SPA catch-all is **not** intercepting it — the file is simply missing from the deployed bundle.
-- Hitting `https://carnivorex.app/.well-known/assetlinks.json` also returns `Not found`. That domain is **not connected as a custom domain** on this Lovable project (only `carnivore-coach-pro.lovable.app` is published).
-- Lovable hosting does **not** process `_redirects` or `vercel.json`. Those files would be no-ops here, so steps 2–3 of the bug report don't apply.
+A Lovable domain can only point to one project. `carnivorex.app` is already serving the marketing project, which is why `/.well-known/assetlinks.json` returns 404 here. Using a dedicated subdomain cleanly separates concerns and is the standard pattern (Google, Notion, Linear all do this).
 
-Two real problems to fix:
+## Steps
 
-1. The published build doesn't include `.well-known/assetlinks.json` (likely because the site was last published before this file was added, and/or Vite/the build pipeline isn't picking up the dotfile dir).
-2. Even once it's served, Android validates against `https://carnivorex.app/...`, which isn't a domain on this project yet.
+### 1. Code changes in this project
 
-## Changes
-
-### 1. Guarantee Vite ships the dotfile directory
-
-Update `vite.config.ts` to explicitly include `public/.well-known/**` as a static asset. Vite's default `publicDir` copy normally handles this, but to be defensive (and to make the intent explicit) add:
-
-```ts
-// vite.config.ts
-build: {
-  // ensures dot-prefixed paths under public/ are emitted to dist/
-  copyPublicDir: true,
-  assetsInclude: ['**/.well-known/**'],
-},
-publicDir: 'public',
+**`android/app/src/main/AndroidManifest.xml`** — change the App Link host:
+```xml
+<data android:scheme="https"
+      android:host="app.carnivorex.app"
+      android:pathPrefix="/auth/callback" />
 ```
 
-Also add a tiny build-time sanity script (logged in the plugin output) that fails the build if `dist/.well-known/assetlinks.json` is missing after build, so this regression can't happen silently again.
+**`src/hooks/useDeepLinks.ts`** — update any hardcoded `carnivorex.app` host check to `app.carnivorex.app` (verify and adjust).
 
-### 2. Verify the file is byte-perfect
+**`src/contexts/AuthContext.tsx`** — if `emailRedirectTo` / `redirectTo` URLs reference `https://carnivorex.app/...`, update them to `https://app.carnivorex.app/...`.
 
-Re-confirm `public/.well-known/assetlinks.json` matches Google's expected schema (it already does: array root, `delegate_permission/common.handle_all_urls`, correct package name `com.mi4labs.carnivorex`, 32-pair SHA-256 fingerprint). No edit needed to the file itself unless the SHA-256 below is the **debug** keystore rather than the **release/upload** keystore — see "User actions" §2.
+**Supabase auth redirect allow-list** — add `https://app.carnivorex.app/**` (and the `/auth/callback` path) under Auth → URL Configuration. Site URL stays as the app URL.
 
-### 3. NOT changing
+**Email templates / `_brand.ts`** — update any `appUrl` constant from `carnivorex.app` to `app.carnivorex.app` so verification links open the app, not the marketing site.
 
-- No `_redirects` file (Lovable hosting ignores it).
-- No `vercel.json` (not used).
-- No SPA route exception in `App.tsx` — React Router never sees `/.well-known/...`; that path is handled by the static file server before SPA fallback.
+`public/.well-known/assetlinks.json` — no content change needed (the SHA-256 fingerprint stays the same; only the *serving host* changes).
 
-## User actions required (cannot be done from code)
+### 2. Domain connection (user action, in Lovable UI)
 
-1. **Republish** the project (Publish → Update) so the new `dist/.well-known/assetlinks.json` is uploaded to the CDN.
-2. **Confirm the SHA-256 fingerprint** in `public/.well-known/assetlinks.json` matches the keystore that signs the APK uploaded to Play Console:
-   - For Play-signed apps, get the SHA-256 from **Play Console → Setup → App integrity → App signing key certificate**.
-   - For self-signed APKs, run: `keytool -list -v -keystore <release.keystore> -alias <alias>` and copy the SHA256.
-   - The current file has `A7:2B:BF:...:CE:A1` — verify this is the **release/upload** key, not the debug key.
-3. **Connect `carnivorex.app` as a custom domain** on this Lovable project (Project Settings → Domains). Android verifies App Links against the exact host configured in `AndroidManifest.xml` (`carnivorex.app`), so until that domain serves the file, deep-link auto-verification will not pass and Android will keep showing the "Open with…" chooser.
+1. Open **Project Settings → Domains** in **this** project.
+2. Click **Connect Domain**, enter `app.carnivorex.app`.
+3. At your DNS provider (or Lovable DNS manager if `carnivorex.app` was bought through Lovable), add the records Lovable shows — typically an `A` record `app → 185.158.133.1` plus the `_lovable` TXT verification record.
+4. Wait for status to flip to **Active**, then click **Publish** in this project.
 
-## Verification
+### 3. Verification
 
-After republish + domain connection:
+After republish:
+- `curl -i https://app.carnivorex.app/.well-known/assetlinks.json` → must return `HTTP 200` with `content-type: application/json`.
+- `curl -i https://carnivorex.app/` → still serves marketing site unchanged.
+- Rebuild and reinstall the Android APK (the manifest changed). Android verifies App Links against the new host on install.
+- Test the email-verification deep link: tapping the link in a verification email on a device with the app installed should open the app at `/auth/callback`, not the browser.
 
-```bash
-curl -i https://carnivorex.app/.well-known/assetlinks.json
-# expect: HTTP/2 200, content-type: application/json, JSON body
-```
+### 4. Memory update
 
-Then on the device:
+Update `mem://features/auth/verification-deep-link` to record the new host (`app.carnivorex.app`).
 
-```bash
-adb shell pm verify-app-links --re-verify com.mi4labs.carnivorex
-adb shell pm get-app-links com.mi4labs.carnivorex
-# expect: carnivorex.app  verified
-```
+## Out of scope
 
-## Files touched
-
-- `vite.config.ts` — explicit `copyPublicDir` + post-build assertion.
-
-No other code changes needed. The bug as described (SPA catch-all eating the request) isn't what's happening; the fix is build-output + domain wiring.
+- No changes to the marketing project.
+- No changes to the Android package name, keystore, or SHA-256 fingerprint.
+- Push-notification (FCM) config is unaffected.

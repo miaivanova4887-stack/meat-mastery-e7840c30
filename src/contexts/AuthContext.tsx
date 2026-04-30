@@ -9,7 +9,7 @@ function resolveAuthRedirect(path: "/auth/callback" | "/reset-password"): string
   // On native we want the Android App Link to route into the installed app.
   // On web we stay on the current origin so previews / publish work too.
   if (Capacitor.isNativePlatform()) {
-    return `https://carnivorex.app${path}`;
+    return `https://app.carnivorex.app${path}`;
   }
   return `${window.location.origin}${path}`;
 }
