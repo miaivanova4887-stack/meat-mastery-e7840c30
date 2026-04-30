@@ -1,81 +1,74 @@
-# Fix CarnivoreX Auth Email Branding + Android Verification Deep Link
 
-## Current state (verified)
+# Fix `assetlinks.json` 404 for Android App Links
 
-- Email domain `notify.carnivorex.app` is **already verified** in Lovable Cloud — no DNS work needed.
-- No `auth-email-hook` edge function exists yet, so signup emails currently go out as default `no-reply@auth.lovable.cloud` with generic "Confirm your signup" copy.
-- Capacitor `appId` is `com.mi4labs.carnivorex`, `appName` is `CarnivoreX` — no legacy "Carnivore Coach" strings left in source.
-- `AndroidManifest.xml` has **no deep link / App Link intent filter**, so verification links open the browser/web app, never the installed app.
-- `signUp()` uses `emailRedirectTo: window.location.origin` — fine for web, wrong for native.
+## Root cause (verified, not what the bug report assumed)
 
-## A. Brand auth emails as CarnivoreX
+- `public/.well-known/assetlinks.json` exists in the repo with the correct SHA-256 fingerprint.
+- Hitting `https://carnivore-coach-pro.lovable.app/.well-known/assetlinks.json` returns plain `Not found` (NOT the SPA's `index.html`). So the SPA catch-all is **not** intercepting it — the file is simply missing from the deployed bundle.
+- Hitting `https://carnivorex.app/.well-known/assetlinks.json` also returns `Not found`. That domain is **not connected as a custom domain** on this Lovable project (only `carnivore-coach-pro.lovable.app` is published).
+- Lovable hosting does **not** process `_redirects` or `vercel.json`. Those files would be no-ops here, so steps 2–3 of the bug report don't apply.
 
-1. Scaffold Lovable auth email templates (creates `supabase/functions/auth-email-hook/` + 6 React Email templates in `_shared/email-templates/`). Sender will be `CarnivoreX <no-reply@notify.carnivorex.app>`.
-2. Restyle the 6 templates with CarnivoreX branding:
-   - White email body background, primary button using brand red (read from `src/index.css` `--primary`), Inter font stack.
-   - Header: "CarnivoreX" wordmark (text-only — no logo asset needed for v1, keeps emails light).
-   - Subject lines: "Verify your CarnivoreX account", "Reset your CarnivoreX password", etc.
-   - Footer: "© CarnivoreX · The carnivore lifestyle, simplified."
-   - Replace every "Confirm signup / Verify email" CTA with "Activate my CarnivoreX account".
-3. Deploy `auth-email-hook` so the Lovable auth pipeline starts using it.
+Two real problems to fix:
 
-## B. Sender / domain
+1. The published build doesn't include `.well-known/assetlinks.json` (likely because the site was last published before this file was added, and/or Vite/the build pipeline isn't picking up the dotfile dir).
+2. Even once it's served, Android validates against `https://carnivorex.app/...`, which isn't a domain on this project yet.
 
-- Already covered by step A — `notify.carnivorex.app` is verified and will be auto-detected by the scaffold tool. From-name = `CarnivoreX`, reply-to = same. No additional DNS.
+## Changes
 
-## C. Android deep link (App Link) for verification
+### 1. Guarantee Vite ships the dotfile directory
 
-1. Add a verification redirect route in the SPA: `/auth/callback` that:
-   - Reads the recovery / verification tokens from the URL hash.
-   - Calls `supabase.auth.getSession()` to materialize the session, then navigates to `/` (or the original `returnTo`).
-2. Update `src/contexts/AuthContext.tsx` `signUp()` to use a deep-link-aware redirect:
-   ```ts
-   emailRedirectTo: Capacitor.isNativePlatform()
-     ? "https://carnivorex.app/auth/callback"
-     : `${window.location.origin}/auth/callback`
-   ```
-3. Add Android App Link intent filter in `AndroidManifest.xml` on `MainActivity`:
-   ```xml
-   <intent-filter android:autoVerify="true">
-     <action android:name="android.intent.action.VIEW" />
-     <category android:name="android.intent.category.DEFAULT" />
-     <category android:name="android.intent.category.BROWSABLE" />
-     <data android:scheme="https"
-           android:host="carnivorex.app"
-           android:pathPrefix="/auth/callback" />
-   </intent-filter>
-   ```
-4. Note for the user: full App Links auto-verify additionally requires a `.well-known/assetlinks.json` hosted on `https://carnivorex.app/` containing the app's SHA-256 cert fingerprint. Until that file is published, Android will show the "Open with…" chooser the first time but will still route into the app once the user picks CarnivoreX. We will document the assetlinks step in the plan output and provide a template file in `public/.well-known/assetlinks.json` with a placeholder for the SHA-256 the user must paste in.
-5. Wire Capacitor `App.addListener('appUrlOpen', ...)` in `src/main.tsx` (or a small `useDeepLinks` hook mounted in `App.tsx`) to:
-   - Parse the incoming URL.
-   - If path starts with `/auth/callback`, push it into the React Router history so `/auth/callback` runs.
+Update `vite.config.ts` to explicitly include `public/.well-known/**` as a static asset. Vite's default `publicDir` copy normally handles this, but to be defensive (and to make the intent explicit) add:
 
-## D. App-side session refresh
+```ts
+// vite.config.ts
+build: {
+  // ensures dot-prefixed paths under public/ are emitted to dist/
+  copyPublicDir: true,
+  assetsInclude: ['**/.well-known/**'],
+},
+publicDir: 'public',
+```
 
-1. In the new `/auth/callback` page:
-   - On mount, `await supabase.auth.refreshSession()` then `getUser()`.
-   - If `user.email_confirmed_at` is set, toast "Email verified — welcome to CarnivoreX" and `navigate('/', { replace: true })`.
-   - If not yet verified, show a "Refresh verification status" button that re-runs the same flow.
-2. In `AuthContext`, also call `supabase.auth.refreshSession()` on Capacitor `App` `resume` event so returning from the browser handoff re-hydrates the session even without hitting `/auth/callback`.
+Also add a tiny build-time sanity script (logged in the plugin output) that fails the build if `dist/.well-known/assetlinks.json` is missing after build, so this regression can't happen silently again.
 
-## E. Diagnostics (`[AuthVerify]` prefix)
+### 2. Verify the file is byte-perfect
 
-Add `console.info` logs at:
-- `signUp()` — "signup requested email=…, redirect=…"
-- `/auth/callback` mount — "deep link hit url=…"
-- `appUrlOpen` listener — "native deep link received url=…"
-- Before/after `refreshSession()` — "session refresh before verified=… after verified=…"
-- App `resume` handler — "app resumed, refreshing session"
+Re-confirm `public/.well-known/assetlinks.json` matches Google's expected schema (it already does: array root, `delegate_permission/common.handle_all_urls`, correct package name `com.mi4labs.carnivorex`, 32-pair SHA-256 fingerprint). No edit needed to the file itself unless the SHA-256 below is the **debug** keystore rather than the **release/upload** keystore — see "User actions" §2.
 
-## Technical notes
+### 3. NOT changing
 
-- Files to create: `supabase/functions/auth-email-hook/{index.ts,deno.json}`, `supabase/functions/_shared/email-templates/*.tsx` (6 files via scaffold), `src/pages/AuthCallback.tsx`, `src/hooks/useDeepLinks.ts`, `public/.well-known/assetlinks.json` (placeholder).
-- Files to edit: `src/contexts/AuthContext.tsx` (redirect URL, resume listener), `src/App.tsx` (mount `useDeepLinks`, add `/auth/callback` route), `android/app/src/main/AndroidManifest.xml` (intent-filter).
-- After edits the user must run `npx cap sync android` and rebuild the APK; the manifest change requires a native rebuild.
-- No DB migrations. No new secrets. `LOVABLE_API_KEY` is already provisioned.
+- No `_redirects` file (Lovable hosting ignores it).
+- No `vercel.json` (not used).
+- No SPA route exception in `App.tsx` — React Router never sees `/.well-known/...`; that path is handled by the static file server before SPA fallback.
 
-## Out of scope
+## User actions required (cannot be done from code)
 
-- iOS Universal Links (no iOS deep link work requested).
-- Changing onboarding, Health Connect, push, or campaign logic.
-- Email logo image (deferred — text wordmark keeps payload light and avoids a storage upload round-trip; can add later).
+1. **Republish** the project (Publish → Update) so the new `dist/.well-known/assetlinks.json` is uploaded to the CDN.
+2. **Confirm the SHA-256 fingerprint** in `public/.well-known/assetlinks.json` matches the keystore that signs the APK uploaded to Play Console:
+   - For Play-signed apps, get the SHA-256 from **Play Console → Setup → App integrity → App signing key certificate**.
+   - For self-signed APKs, run: `keytool -list -v -keystore <release.keystore> -alias <alias>` and copy the SHA256.
+   - The current file has `A7:2B:BF:...:CE:A1` — verify this is the **release/upload** key, not the debug key.
+3. **Connect `carnivorex.app` as a custom domain** on this Lovable project (Project Settings → Domains). Android verifies App Links against the exact host configured in `AndroidManifest.xml` (`carnivorex.app`), so until that domain serves the file, deep-link auto-verification will not pass and Android will keep showing the "Open with…" chooser.
+
+## Verification
+
+After republish + domain connection:
+
+```bash
+curl -i https://carnivorex.app/.well-known/assetlinks.json
+# expect: HTTP/2 200, content-type: application/json, JSON body
+```
+
+Then on the device:
+
+```bash
+adb shell pm verify-app-links --re-verify com.mi4labs.carnivorex
+adb shell pm get-app-links com.mi4labs.carnivorex
+# expect: carnivorex.app  verified
+```
+
+## Files touched
+
+- `vite.config.ts` — explicit `copyPublicDir` + post-build assertion.
+
+No other code changes needed. The bug as described (SPA catch-all eating the request) isn't what's happening; the fix is build-output + domain wiring.
