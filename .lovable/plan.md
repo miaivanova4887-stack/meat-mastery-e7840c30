@@ -1,53 +1,95 @@
-## Goal
+# Fix: Verification emails never reach the branded hook
 
-Serve this app (and its `assetlinks.json`) at **`app.carnivorex.app`**, while leaving the marketing site untouched at `carnivorex.app`. Update the Android App Link host to match, so deep-link verification succeeds.
+## Diagnosis (from live system)
 
-## Why
+- Domain `notify.carnivorex.app` is **Verified** (SPF/DKIM/DMARC pass).
+- Latest signup attempt (`carnivorex.app@gmail.com`, 19:39:23 UTC) returned 200 in Supabase Auth as `user_repeated_signup` — meaning the address was already registered (still unconfirmed). Supabase Auth does **not** re-issue a confirmation email on repeated signup of an existing address.
+- More importantly, the `auth-email-hook` Edge Function has **zero invocations** since deploy:
+  - `email_send_log` is empty (0 rows ever).
+  - `auth_emails` pgmq queue is empty (0 total messages).
+  - No edge logs for `auth-email-hook`.
+- The dispatcher (`process-email-queue`) cron is healthy and scheduled every 5s — it just has nothing to dispatch.
 
-A Lovable domain can only point to one project. `carnivorex.app` is already serving the marketing project, which is why `/.well-known/assetlinks.json` returns 404 here. Using a dedicated subdomain cleanly separates concerns and is the standard pattern (Google, Notion, Linear all do this).
+So even when a *new* address signs up, Supabase Auth is using its **default email path**, never invoking our branded hook.
 
-## Steps
+## Two things to fix
 
-### 1. Code changes in this project
+### 1. Force the hook re-bind (root cause of zero invocations)
 
-**`android/app/src/main/AndroidManifest.xml`** — change the App Link host:
-```xml
-<data android:scheme="https"
-      android:host="app.carnivorex.app"
-      android:pathPrefix="/auth/callback" />
-```
+Re-scaffold `auth-email-hook` and redeploy. Lovable's setup reconcile re-binds the hook into Supabase Auth's "Send Email" webhook config when the function is (re)deployed. This is the supported recovery path when no invocations are observed.
 
-**`src/hooks/useDeepLinks.ts`** — update any hardcoded `carnivorex.app` host check to `app.carnivorex.app` (verify and adjust).
+Steps (default mode):
 
-**`src/contexts/AuthContext.tsx`** — if `emailRedirectTo` / `redirectTo` URLs reference `https://carnivorex.app/...`, update them to `https://app.carnivorex.app/...`.
+1. Run `email_domain--scaffold_auth_email_templates` with `confirm_overwrite: true` (templates already exist; we keep the current branding by re-checking the file diff before accepting).
+2. Run `supabase--deploy_edge_functions` for `["auth-email-hook"]`.
+3. Lovable's Cloud → Emails reconcile loop re-binds the hook automatically.
 
-**Supabase auth redirect allow-list** — add `https://app.carnivorex.app/**` (and the `/auth/callback` path) under Auth → URL Configuration. Site URL stays as the app URL.
+Note on branding: the existing templates in `supabase/functions/_shared/email-templates/` already use the CarnivoreX brand. After re-scaffold, diff `signup.tsx` etc. and re-apply the brand styling if the scaffold reset it. No template content changes are required for delivery.
 
-**Email templates / `_brand.ts`** — update any `appUrl` constant from `carnivorex.app` to `app.carnivorex.app` so verification links open the app, not the marketing site.
+### 2. Force a real test (the 19:39 signup will never email)
 
-`public/.well-known/assetlinks.json` — no content change needed (the SHA-256 fingerprint stays the same; only the *serving host* changes).
+Because `carnivorex.app@gmail.com` is already in `auth.users` as unconfirmed, Supabase will keep returning 200 with no email. Two options:
 
-### 2. Domain connection (user action, in Lovable UI)
+- **Recommended:** sign up with a brand-new address (e.g. `+test1@gmail.com` alias) after the redeploy. Then check:
+  - `email_send_log` — should show a `pending` then `sent` row with `template_name='auth_emails'`.
+  - `auth-email-hook` edge logs — should show `Auth email enqueued`.
+- **Alternative:** delete the existing unconfirmed user from `auth.users` so the address can sign up fresh.
 
-1. Open **Project Settings → Domains** in **this** project.
-2. Click **Connect Domain**, enter `app.carnivorex.app`.
-3. At your DNS provider (or Lovable DNS manager if `carnivorex.app` was bought through Lovable), add the records Lovable shows — typically an `A` record `app → 185.158.133.1` plus the `_lovable` TXT verification record.
-4. Wait for status to flip to **Active**, then click **Publish** in this project.
+## Verification checklist (run after redeploy)
 
-### 3. Verification
+1. `email_send_log` has a new `pending` row within seconds of the signup.
+2. Within ~5–10s, that row's latest status flips to `sent` (deduped by `message_id`).
+3. `auth-email-hook` logs show `Auth email enqueued`.
+4. `process-email-queue` logs show a successful drain of `auth_emails`.
+5. Email arrives in inbox from `CarnivoreX <noreply@notify.carnivorex.app>`.
 
-After republish:
-- `curl -i https://app.carnivorex.app/.well-known/assetlinks.json` → must return `HTTP 200` with `content-type: application/json`.
-- `curl -i https://carnivorex.app/` → still serves marketing site unchanged.
-- Rebuild and reinstall the Android APK (the manifest changed). Android verifies App Links against the new host on install.
-- Test the email-verification deep link: tapping the link in a verification email on a device with the app installed should open the app at `/auth/callback`, not the browser.
+If after redeploy the hook still shows zero invocations on a fresh signup, the failure is in Supabase Auth's webhook binding itself — at that point the only fix is to re-run `setup_email_infra` (idempotent) to refresh the vault secret + reconcile, which is the documented recovery for `function_not_found` / unbound state.
 
-### 4. Memory update
+## Why the 6 secondary checks passed but emails still failed
 
-Update `mem://features/auth/verification-deep-link` to record the new host (`app.carnivorex.app`).
 
-## Out of scope
+| Check                | Status  | Why it didn't help                                                       |
+| -------------------- | ------- | ------------------------------------------------------------------------ |
+| Domain verified      | ✅       | Verification only matters once an email is actually sent — none ever was |
+| From address correct | ✅       | Set in `auth-email-hook/index.ts`, never executed                        |
+| Templates deployed   | ✅       | Files exist; hook isn't called to render them                            |
+| Rate limit           | ✅ Clear | Zero sends ≠ throttled                                                   |
+| Right environment    | ✅       | Single Supabase project; no env mismatch                                 |
+| Auth event firing    | ✅       | Yes, but routed to default email path, not hook                          |
 
-- No changes to the marketing project.
-- No changes to the Android package name, keystore, or SHA-256 fingerprint.
-- Push-notification (FCM) config is unaffected.
+
+Approved. Please proceed with the re-scaffold and redeploy to rebind 
+
+the auth-email-hook.
+
+One additional fix required after redeploy:
+
+The test email for [johnathangoldsmith112@gmail.com](mailto:johnathangoldsmith112@gmail.com) arrived but the 
+
+verification link redirected to [carnivore-coach-pro.lovable.app](http://carnivore-coach-pro.lovable.app) 
+
+instead of [https://app.carnivorex.app/auth/callback](https://app.carnivorex.app/auth/callback).
+
+Please confirm:
+
+1. emailRedirectTo in AuthContext.tsx is set to 
+
+   [https://app.carnivorex.app/auth/callback](https://app.carnivorex.app/auth/callback) for native platform.
+
+2. No email template (signup.tsx or others) hardcodes 
+
+   [carnivore-coach-pro.lovable.app](http://carnivore-coach-pro.lovable.app) in any CTA button URL.
+
+3. After redeploy, test with a fresh email address and confirm 
+
+   the verification link in the email points to 
+
+   [https://app.carnivorex.app/auth/callback](https://app.carnivorex.app/auth/callback).
+
+&nbsp;
+
+## What the user should do after I redeploy
+
+1. Sign up with a **new** email address (not the previously-attempted one).
+2. Watch inbox + spam folder.
+3. If still nothing arrives in 60s, ping me — I'll pull the fresh logs.
