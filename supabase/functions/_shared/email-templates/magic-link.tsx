@@ -9,45 +9,34 @@ import {
   Head,
   Heading,
   Html,
-  Link,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
-import { BRAND, styles } from './_brand.ts'
 
 interface MagicLinkEmailProps {
   siteName: string
   confirmationUrl: string
 }
 
-export const MagicLinkEmail = ({ confirmationUrl }: MagicLinkEmailProps) => (
+export const MagicLinkEmail = ({
+  siteName,
+  confirmationUrl,
+}: MagicLinkEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your {BRAND.name} sign-in link</Preview>
-    <Body style={styles.main}>
-      <Container style={styles.container}>
-        <Text style={styles.brandRow}>
-          Carnivore<span style={styles.brandAccent}>X</span>
+    <Preview>Your login link for {siteName}</Preview>
+    <Body style={main}>
+      <Container style={container}>
+        <Heading style={h1}>Your login link</Heading>
+        <Text style={text}>
+          Click the button below to log in to {siteName}. This link will expire
+          shortly.
         </Text>
-        <Heading style={styles.h1}>Sign in to {BRAND.name}</Heading>
-        <Text style={styles.text}>
-          Tap the button below to sign in. This link expires shortly for your security.
-        </Text>
-        <div style={styles.buttonWrap}>
-          <Button style={styles.button} href={confirmationUrl}>
-            Sign in to CarnivoreX
-          </Button>
-        </div>
-        <Text style={styles.text}>
-          Button not working? Paste this into your browser:
-          <br />
-          <Link href={confirmationUrl} style={styles.link}>{confirmationUrl}</Link>
-        </Text>
-        <div style={styles.divider} />
-        <Text style={styles.footer}>
-          Didn’t request this link? You can safely ignore this email.
-          <br /><br />
-          © {new Date().getFullYear()} {BRAND.name} · {BRAND.tagline}
+        <Button style={button} href={confirmationUrl}>
+          Log In
+        </Button>
+        <Text style={footer}>
+          If you didn't request this link, you can safely ignore this email.
         </Text>
       </Container>
     </Body>
@@ -55,3 +44,27 @@ export const MagicLinkEmail = ({ confirmationUrl }: MagicLinkEmailProps) => (
 )
 
 export default MagicLinkEmail
+
+const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const container = { padding: '20px 25px' }
+const h1 = {
+  fontSize: '22px',
+  fontWeight: 'bold' as const,
+  color: '#000000',
+  margin: '0 0 20px',
+}
+const text = {
+  fontSize: '14px',
+  color: '#55575d',
+  lineHeight: '1.5',
+  margin: '0 0 25px',
+}
+const button = {
+  backgroundColor: '#000000',
+  color: '#ffffff',
+  fontSize: '14px',
+  borderRadius: '8px',
+  padding: '12px 20px',
+  textDecoration: 'none',
+}
+const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
