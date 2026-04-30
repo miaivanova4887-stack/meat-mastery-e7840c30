@@ -3,6 +3,9 @@
   "target": {
     "namespace": "android_app",
     "package_name": "com.mi4labs.carnivorex",
-    "sha256_cert_fingerprints": ["A7:2B:BF:99:5D:D5:1D:0C:03:F0:4B:4F:24:CF:BF:93:7A:9B:6E:7F:FD:60:EB:00:B0:F7:83:4C:9F:F2:CE:A1"]
+    "sha256_cert_fingerprints": [
+      "A7:2B:BF:99:5D:D5:1D:0C:03:F0:4B:4F:24:CF:BF:93:7A:9B:6E:7F:FD:60:EB:00:B0:F7:83:4C:9F:F2:CE:A1",
+      "85:EE:54:F9:DF:23:B5:F7:87:D8:6F:0C:95:EE:27:46:8F:3C:53:D6:9B:FA:15:D9:B9:B1:FA:43:76:6A:94:B8"
+    ]
   }
 }]
