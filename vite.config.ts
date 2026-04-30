@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "fs";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
@@ -25,8 +26,6 @@ export default defineConfig(({ mode }) => ({
       name: "assert-wellknown-assetlinks",
       apply: "build" as const,
       closeBundle() {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const fs = require("fs");
         const p = path.resolve(__dirname, "dist/.well-known/assetlinks.json");
         if (!fs.existsSync(p)) {
           throw new Error(
