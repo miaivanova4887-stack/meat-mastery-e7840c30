@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
-import { Capacitor } from "@capacitor/core";
+
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
 
 /** Where verification / recovery emails should send users back to.
