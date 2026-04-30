@@ -29,6 +29,16 @@
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
 
+            <!-- Android App Link: deep link auth verification back into the installed app. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="carnivorex.app"
+                      android:pathPrefix="/auth/callback" />
+            </intent-filter>
+
         </activity>
 
         <!-- Android 14+ (API 34+) Health Connect permission usage rationale -->

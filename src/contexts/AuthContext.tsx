@@ -1,7 +1,18 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { Capacitor } from "@capacitor/core";
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
+
+/** Where verification / recovery emails should send users back to. */
+function resolveAuthRedirect(path: "/auth/callback" | "/reset-password"): string {
+  // On native we want the Android App Link to route into the installed app.
+  // On web we stay on the current origin so previews / publish work too.
+  if (Capacitor.isNativePlatform()) {
+    return `https://carnivorex.app${path}`;
+  }
+  return `${window.location.origin}${path}`;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -107,14 +118,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signUp = async (email: string, password: string, displayName: string) => {
+    const redirect = resolveAuthRedirect("/auth/callback");
+    console.info("[AuthVerify] signup requested email=", email, "redirect=", redirect);
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { display_name: displayName },
-        emailRedirectTo: window.location.origin,
+        emailRedirectTo: redirect,
       },
     });
+    if (error) console.warn("[AuthVerify] signup error", error.message);
     return { error: error?.message ?? null };
   };
 
@@ -129,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: resolveAuthRedirect("/reset-password"),
     });
     return { error: error?.message ?? null };
   };

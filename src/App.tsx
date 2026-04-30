@@ -32,6 +32,7 @@ import AthleticPerformance from "./pages/AthleticPerformance";
 import ShoppingBag from "./pages/ShoppingBag";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
+import AuthCallback from "./pages/AuthCallback";
 import ResetPassword from "./pages/ResetPassword";
 import Community from "./pages/Community";
 import ProfilePage from "./pages/Profile";
@@ -54,6 +55,7 @@ import { useScrollToTop } from "./hooks/useScrollToTop";
 import { useContentOverrides } from "./hooks/useContentOverrides";
 import { useEdgeSwipeBack } from "./hooks/useEdgeSwipeBack";
 import { useTabSwipe } from "./hooks/useTabSwipe";
+import { useDeepLinks } from "./hooks/useDeepLinks";
 import PushConsentFallbackHost from "./components/PushConsentFallbackHost";
 
 const queryClient = new QueryClient();
@@ -82,6 +84,12 @@ function EdgeSwipeBackHandler() {
 /** Horizontal swipe to cycle between the four bottom-nav tabs. */
 function TabSwipeHandler() {
   useTabSwipe();
+  return null;
+}
+
+/** Routes Android App Link / appUrlOpen events into React Router. */
+function DeepLinkHandler() {
+  useDeepLinks();
   return null;
 }
 
@@ -136,6 +144,7 @@ const App = () => {
               <BackButtonHandler />
               <EdgeSwipeBackHandler />
               <TabSwipeHandler />
+              <DeepLinkHandler />
               <PushConsentFallbackHost />
               <Routes>
                 <Route path="/onboarding" element={<Onboarding />} />
@@ -159,6 +168,7 @@ const App = () => {
                 <Route path="/athletic" element={<AthleticPerformance />} />
                 <Route path="/shopping-bag" element={<ShoppingBag />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/community" element={<Community />} />
                 <Route path="/profile" element={<ProfilePage />} />
