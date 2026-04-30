@@ -12,7 +12,34 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  // Explicitly set publicDir + copyPublicDir so dotfile dirs (e.g. .well-known/)
+  // under public/ are guaranteed to be emitted to dist/. Required for Android
+  // App Links auto-verification (assetlinks.json) and similar.
+  publicDir: "public",
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+    {
+      // Post-build assertion: fail loudly if assetlinks.json is missing from dist.
+      // Prevents silent regressions of Android App Link verification.
+      name: "assert-wellknown-assetlinks",
+      apply: "build",
+      closeBundle() {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const fs = require("fs");
+        const p = path.resolve(__dirname, "dist/.well-known/assetlinks.json");
+        if (!fs.existsSync(p)) {
+          throw new Error(
+            "[build] dist/.well-known/assetlinks.json missing — Android App Links will fail. " +
+              "Ensure public/.well-known/assetlinks.json is present."
+          );
+        }
+      },
+    },
+  ].filter(Boolean),
+  build: {
+    copyPublicDir: true,
+  },
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString().replace("T", " ").replace("Z", " UTC")),
     __BUILD_FINGERPRINT__: JSON.stringify(`build-${Date.now()}`),
