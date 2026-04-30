@@ -1,12 +1,8 @@
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "com.mi4labs.carnivorex",
-      "sha256_cert_fingerprints": [
-        "REPLACE_WITH_YOUR_APK_SIGNING_CERT_SHA256_FINGERPRINT"
-      ]
-    }
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.mi4labs.carnivorex",
+    "sha256_cert_fingerprints": ["A7:2B:BF:99:5D:D5:1D:0C:03:F0:4B:4F:24:CF:BF:93:7A:9B:6E:7F:FD:60:EB:00:B0:F7:83:4C:9F:F2:CE:A1"]
   }
-]
+}]
