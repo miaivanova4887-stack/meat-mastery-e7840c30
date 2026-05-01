@@ -119,8 +119,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
       const nextUser = session?.user ?? null;
+      const onCallback = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
+      if (nextUser && !nextUser.email_confirmed_at && !onCallback) {
+        console.warn("[AuthVerify] initial session unconfirmed, signing out", nextUser.email);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        void supabase.auth.signOut();
+        return;
+      }
+      setSession(session);
       setUser(nextUser);
       setLoading(false);
       maybeReconcile(nextUser);
