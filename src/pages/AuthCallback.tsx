@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -9,6 +11,27 @@ import {
   copyAuthDiagToClipboard,
   redactUrl,
 } from "@/lib/authDiagnostics";
+import {
+  beginAuthCallback,
+  endAuthCallback,
+} from "@/lib/authCallbackGuard";
+
+/**
+ * Accepted callback formats (any one is enough to install a session):
+ *   - carnivorex://callback#access_token=...&refresh_token=...
+ *   - carnivorex:///callback#access_token=...&refresh_token=...
+ *   - carnivorex://auth/callback#access_token=...&refresh_token=...
+ *   - https://app.carnivorex.app/auth/callback?code=... (PKCE web flow)
+ *
+ * Expected good log sequence:
+ *   [BuildInfo] ... authFlow=v8-normalized-callback-parser
+ *   oauth:redirect-uri {"redirectTo":"carnivorex://callback"}
+ *   deeplink:appUrlOpen ...
+ *   deeplink:received ... "normalizedPath":"/callback","isAuthRoute":true
+ *   callback:setSession-start
+ *   callback:setSession-success
+ *   navigation to /
+ */
 
 type EmailOtpType =
   | "signup"
