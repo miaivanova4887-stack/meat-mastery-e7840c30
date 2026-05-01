@@ -107,24 +107,27 @@ const Auth = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleOAuthSignIn = async (provider: "google" | "apple") => {
     setLoading(true);
     try {
-      const result = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri: `${window.location.origin}/auth/callback`,
       });
       if (result.error) {
-        toast.error(result.error.message || "Google sign-in failed");
+        toast.error(result.error.message || `${provider === "google" ? "Google" : "Apple"} sign-in failed`);
         setLoading(false);
         return;
       }
       if (result.redirected) return;
       navigate(returnTo, { replace: true });
     } catch (err) {
-      toast.error("Google sign-in failed");
+      toast.error(`${provider === "google" ? "Google" : "Apple"} sign-in failed`);
       setLoading(false);
     }
   };
+
+  const handleGoogleSignIn = () => handleOAuthSignIn("google");
+  const handleAppleSignIn = () => handleOAuthSignIn("apple");
 
   const handleBiometric = async () => {
     const result = await authenticateWithBiometrics();
@@ -273,6 +276,17 @@ const Auth = () => {
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
                 Continue with Google
+              </button>
+              <button
+                type="button"
+                onClick={handleAppleSignIn}
+                disabled={loading}
+                className="w-full py-3 rounded-2xl bg-foreground text-background font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-3"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M17.05 12.04c-.03-2.95 2.41-4.36 2.52-4.43-1.37-2.01-3.51-2.28-4.27-2.31-1.82-.18-3.55 1.07-4.47 1.07-.93 0-2.36-1.05-3.88-1.02-2 .03-3.84 1.16-4.87 2.95-2.08 3.6-.53 8.93 1.5 11.85.99 1.43 2.17 3.04 3.71 2.98 1.49-.06 2.05-.96 3.85-.96 1.79 0 2.31.96 3.88.93 1.6-.03 2.62-1.46 3.6-2.9 1.13-1.66 1.6-3.27 1.62-3.36-.04-.02-3.11-1.19-3.14-4.72zM14.16 3.4c.82-.99 1.37-2.37 1.22-3.74-1.18.05-2.6.78-3.45 1.77-.76.87-1.42 2.27-1.24 3.62 1.31.1 2.65-.66 3.47-1.65z"/>
+                </svg>
+                Continue with Apple
               </button>
             </>
           )}
