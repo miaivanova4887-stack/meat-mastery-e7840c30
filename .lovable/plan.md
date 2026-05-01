@@ -1,50 +1,46 @@
-I verified the current source and live email logs in read-only mode. The frontend already sends `emailRedirectTo: https://app.carnivorex.app/auth/callback`, and the signup email template uses the rendered `confirmationUrl` prop rather than `siteUrl`/`.SiteURL`. The live `auth-email-hook` is receiving signup events and enqueuing messages, but the recent logs do not show the expected apex-to-subdomain rewrite log, which means we need to prove whether the active deployed function is the latest code and what host it receives from the auth system.
+I found why the latest confirmation email is still wrong:
 
-Plan to finish the fix after approval:
+- The active hook is running and enqueueing the email.
+- The URL being inserted into the email is the backend verify URL:
+  `.../auth/v1/verify?redirect_to=https%3A%2F%2Fcarnivorex.app%2Fauth%2Fcallback...`
+- The current rewrite only changes the top-level URL hostname. In this case the top-level hostname is the backend auth host, so it leaves the nested `redirect_to` value untouched.
+- The email template then prints that backend verify URL as the actual button/link, so users see and click the long backend URL instead of the verified App Link host.
 
-1. Verify the live auth configuration
-  - Check the project auth URL configuration from Lovable Cloud.
-  - Ensure the Site URL is exactly:
-  `https://app.carnivorex.app`
-  - Ensure the redirect allowlist includes:
-  `https://app.carnivorex.app/**`
-  - If the old apex domain is still the Site URL, update it to the verified subdomain.
-2. Make the active email hook self-verifying and safer to debug
-  - Update `supabase/functions/auth-email-hook/index.ts` to log a safe, token-redacted diagnostic for every auth email render:
-    - incoming URL host/path
-    - normalized URL host/path
-    - whether a rewrite happened
-    - action type and run id
-  - Keep secrets out of logs by redacting the query/hash token values.
-  - Make the rewrite more robust by using `u.hostname` instead of only `u.host`, and normalizing any of these to `app.carnivorex.app`:
-    - `carnivorex.app`
-    - `www.carnivorex.app`
-  - Preserve the full path, query string, and hash in the actual email link.
-3. Confirm templates use the right source of truth
-  - Confirm the active React email templates render `confirmationUrl` for buttons and fallback links.
-  - Ensure no auth template uses `siteUrl`, `.SiteURL`, or a static apex URL for the confirmation action.
-  - If needed, update any remaining auth templates so signup, magic link, invite, email change, and recovery all use the normalized action URL.
-4. Redeploy the active email rendering function
-  - Deploy the updated `auth-email-hook` so the backend uses the latest normalization code immediately.
-  - Check fresh function logs after deployment to confirm the new diagnostic line appears.
-5. Trigger and verify a fresh signup/resend
-  - Trigger a new confirmation email using a fresh test address or a resend for the test user.
-  - Inspect the outgoing render diagnostics/logs.
-  - Confirm the generated confirmation link is now:
-  `https://app.carnivorex.app/auth/callback#...`
-  and not:
-  `https://carnivorex.app/auth/callback#...`
-6. Report the verification result safely
-  - I will paste the exact host/path and a token-redacted version of the generated link, for example:
-   `https://app.carnivorex.app/auth/callback#access_token=[redacted]&refresh_token=[redacted]&type=signup`
-  - I will not paste raw access or refresh tokens into chat, because that confirmation link is a live credential.
-7. The only refinement I’d suggest is: don’t bundle the “block unconfirmed users” change into the same pass unless they already know exactly how they want that UX to work. It’s a valid improvement, but it’s separate from the broken host issue, so the cleanest path is:
-  1. fix auth config + hook diagnostics/rewrite,
-  2. verify a fresh email uses `app.carnivorex.app`,
-  3. then ship the unconfirmed-login hardening.
+Plan to fix it:
 
-Expected outcome:
+1. Normalize nested auth redirect parameters
+   - Update the auth email hook URL normalizer so it also inspects `redirect_to`, `redirectTo`, and similar redirect parameters inside the generated auth URL.
+   - If any nested redirect points to `https://carnivorex.app/...` or `https://www.carnivorex.app/...`, rewrite it to `https://app.carnivorex.app/...` while preserving path, query, and hash.
+   - Keep safe redacted logging so we can confirm `incomingHost`, `outgoingHost`, nested redirect host, and whether rewriting happened without exposing tokens.
 
-- Fresh signup emails use the verified App Link host `app.carnivorex.app`.
-- Android intercepts `/auth/callback` directly into the installed app.
-- Unconfirmed users remain blocked from logging in until the email verification completes.
+2. Render user-facing email links as clean App Link URLs
+   - For signup, recovery, magic-link, invite, and email-change emails, generate the visible CTA/link as a clean `https://app.carnivorex.app/...` URL that Android can intercept.
+   - Preserve the original backend verify URL internally by placing it in a safe query parameter on the clean app URL, for example:
+     `https://app.carnivorex.app/auth/callback?verify_url=<encoded backend verify URL>`
+   - This means the email no longer exposes `gueosugzlebbaijzcxgh.../auth/v1/verify` as the clickable link, while the app can still complete verification by calling the original verify URL.
+
+3. Teach `/auth/callback` to complete backend verification URLs
+   - Update the callback page so if it receives `?verify_url=...`, it fetches that URL first without following the final redirect manually.
+   - Then it extracts the redirected callback URL/tokens and installs the session in the app.
+   - Keep the existing hash-token path working for any older emails that already contain `https://app.carnivorex.app/auth/callback#...`.
+
+4. Keep reset-password behavior compatible
+   - For recovery emails, route the clean visible link to `/reset-password?verify_url=...` when the auth action is password recovery.
+   - Update the reset-password page to process `verify_url` before showing the new-password form, while keeping existing hash-token recovery links working.
+
+5. Deploy and verify live behavior
+   - Redeploy the updated auth email hook after changing files under `supabase/functions`.
+   - Trigger or inspect a fresh signup path and confirm the generated email link now starts with:
+     `https://app.carnivorex.app/auth/callback...`
+   - Confirm the nested redirect inside the encoded backend verify URL is also rewritten to:
+     `https://app.carnivorex.app/auth/callback`
+
+Technical details:
+
+- Files to update:
+  - `supabase/functions/auth-email-hook/index.ts`
+  - `src/pages/AuthCallback.tsx`
+  - `src/pages/ResetPassword.tsx`
+- I will not edit the generated backend client/types files.
+- No database schema change is needed.
+- The current app-side signup code already passes `emailRedirectTo: https://app.carnivorex.app/auth/callback`; the problem is in the active email rendering path and nested redirect normalization.

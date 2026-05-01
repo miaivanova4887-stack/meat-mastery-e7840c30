@@ -15,6 +15,31 @@ const ResetPassword = () => {
   const [recoveryReady, setRecoveryReady] = useState(false);
 
   useEffect(() => {
+    // If the recovery email wraps a backend verify URL as ?verify_url=...,
+    // follow it first so we land on a URL that contains the recovery tokens
+    // in the hash. supabase-js will then auto-parse the hash and emit
+    // PASSWORD_RECOVERY.
+    const params = new URLSearchParams(window.location.search);
+    const verifyUrl = params.get("verify_url");
+    if (verifyUrl) {
+      (async () => {
+        try {
+          const resp = await fetch(verifyUrl, { method: "GET", redirect: "follow" });
+          const parsed = new URL(resp.url);
+          if (parsed.hash && parsed.hash.includes("access_token")) {
+            window.location.replace(`/reset-password${parsed.hash}`);
+            return;
+          }
+          if (parsed.searchParams.get("error_description")) {
+            toast.error(parsed.searchParams.get("error_description") || "Reset link invalid");
+          }
+          window.history.replaceState(null, "", "/reset-password");
+        } catch (e) {
+          console.warn("[ResetPassword] verify_url fetch failed", e);
+        }
+      })();
+    }
+
     // Supabase v2 auto-detects the recovery token from the URL hash.
     // The PASSWORD_RECOVERY event signals we're in a valid reset flow.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {

@@ -23,6 +23,34 @@ const AuthCallback = () => {
     try {
       console.info("[AuthVerify] callback mount url=", window.location.href);
 
+      // If the email link wraps a backend verify URL as ?verify_url=...,
+      // hit it first. The backend will redirect to a URL that contains
+      // the access/refresh tokens in the hash; we then install those into
+      // the current location so supabase-js can parse them.
+      const params = new URLSearchParams(window.location.search);
+      const verifyUrl = params.get("verify_url");
+      if (verifyUrl) {
+        console.info("[AuthVerify] following verify_url");
+        try {
+          const resp = await fetch(verifyUrl, { method: "GET", redirect: "follow" });
+          const finalUrl = resp.url;
+          console.info("[AuthVerify] verify_url final=", finalUrl);
+          const parsed = new URL(finalUrl);
+          // Some flows put tokens in the hash, others put an error in the query.
+          if (parsed.hash && parsed.hash.includes("access_token")) {
+            window.location.replace(`/auth/callback${parsed.hash}`);
+            return;
+          }
+          if (parsed.searchParams.get("error_description")) {
+            throw new Error(parsed.searchParams.get("error_description") || "Verification failed");
+          }
+          // Strip the verify_url param so we don't loop on retry.
+          window.history.replaceState(null, "", "/auth/callback");
+        } catch (e) {
+          console.warn("[AuthVerify] verify_url fetch failed", e);
+        }
+      }
+
       // supabase-js auto-parses tokens from window.location.hash on load,
       // but make sure we trigger the session install before refreshing.
       const { data: sessionData } = await supabase.auth.getSession();
