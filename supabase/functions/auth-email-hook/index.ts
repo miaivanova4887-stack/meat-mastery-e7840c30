@@ -67,33 +67,93 @@ function redactUrl(rawUrl: string): string {
 }
 
 /**
- * Defensive: if Supabase Auth generated a confirmation URL pointing at the
- * bare apex (carnivorex.app or www.carnivorex.app) — e.g. because Site URL
- * is still misconfigured — rewrite the host to the verified subdomain
- * (app.carnivorex.app) while preserving path, query, and the
- * #access_token=… fragment.
+ * Rewrite a single redirect target so its host is always the verified
+ * App Link host (app.carnivorex.app), regardless of what Site URL or the
+ * caller's emailRedirectTo set.
  */
-function normalizeCallbackUrl(rawUrl: string): string {
+function rewriteRedirectHost(value: string): { value: string; rewritten: boolean; host: string } {
   try {
-    const u = new URL(rawUrl)
+    const u = new URL(value)
     const incomingHost = u.hostname
     let rewritten = false
-    if (incomingHost === ROOT_DOMAIN || incomingHost === `www.${ROOT_DOMAIN}`) {
-      u.hostname = AUTH_CALLBACK_HOST
-      rewritten = true
+    if (incomingHost === ROOT_DOMAIN || incomingHost === `www.${ROOT_DOMAIN}` || incomingHost === AUTH_CALLBACK_HOST) {
+      if (incomingHost !== AUTH_CALLBACK_HOST) {
+        u.hostname = AUTH_CALLBACK_HOST
+        rewritten = true
+      }
+      return { value: u.toString(), rewritten, host: u.hostname }
     }
-    console.log('[auth-email-hook] callback url', {
-      incomingHost,
-      outgoingHost: u.hostname,
-      path: u.pathname,
-      rewritten,
-      redacted: redactUrl(u.toString()),
-    })
-    return u.toString()
-  } catch (e) {
-    console.warn('[auth-email-hook] could not parse confirmation url, leaving unchanged', { error: String(e) })
-    return rawUrl
+    return { value, rewritten: false, host: incomingHost }
+  } catch {
+    return { value, rewritten: false, host: '' }
   }
+}
+
+/**
+ * Build the user-facing email link.
+ *
+ * Supabase generates a backend verify URL like:
+ *   https://<project>.supabase.co/auth/v1/verify
+ *     ?token=...&type=signup&redirect_to=https://carnivorex.app/auth/callback
+ *
+ * We do two things:
+ *   1. Normalize the nested `redirect_to` to https://app.carnivorex.app/...
+ *      so the final landing page is on the verified App Link host.
+ *   2. Wrap the entire (normalized) verify URL inside a clean app URL:
+ *        https://app.carnivorex.app/auth/callback?verify_url=<encoded>
+ *      (or /reset-password?verify_url=... for recovery)
+ *      so the visible link in the email is on app.carnivorex.app —
+ *      which Android intercepts via App Links and which is what the user
+ *      actually sees and trusts.
+ */
+function buildEmailLink(rawUrl: string, emailType: string): string {
+  let normalized = rawUrl
+  let nestedHost = ''
+  let nestedRewritten = false
+  try {
+    const u = new URL(rawUrl)
+    const REDIRECT_KEYS = ['redirect_to', 'redirectTo', 'redirect']
+    for (const key of REDIRECT_KEYS) {
+      const v = u.searchParams.get(key)
+      if (!v) continue
+      const r = rewriteRedirectHost(v)
+      if (r.host) nestedHost = r.host
+      if (r.rewritten) {
+        u.searchParams.set(key, r.value)
+        nestedRewritten = true
+      }
+    }
+    normalized = u.toString()
+  } catch (e) {
+    console.warn('[auth-email-hook] could not parse confirmation url', { error: String(e) })
+  }
+
+  // Top-level rewrite (covers the rare case Supabase emits a direct app URL).
+  const top = rewriteRedirectHost(normalized)
+  if (top.rewritten) normalized = top.value
+
+  // Wrap into a clean visible app URL.
+  const path = emailType === 'recovery' ? '/reset-password' : '/auth/callback'
+  const wrapped = new URL(`https://${AUTH_CALLBACK_HOST}${path}`)
+  wrapped.searchParams.set('verify_url', normalized)
+
+  console.log('[auth-email-hook] email link built', {
+    emailType,
+    incomingTopHost: (() => { try { return new URL(rawUrl).hostname } catch { return '' } })(),
+    nestedRedirectHost: nestedHost,
+    nestedRewritten,
+    visibleHost: wrapped.hostname,
+    visiblePath: wrapped.pathname,
+    redactedVerify: redactUrl(normalized),
+    redactedVisible: redactUrl(wrapped.toString()),
+  })
+
+  return wrapped.toString()
+}
+
+// Backwards-compatible alias for any callers still using the old name.
+function normalizeCallbackUrl(rawUrl: string): string {
+  return buildEmailLink(rawUrl, 'signup')
 }
 
 // Sample data for preview mode ONLY (not used in actual email sending).
