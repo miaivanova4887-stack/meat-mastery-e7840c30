@@ -1,46 +1,42 @@
-I found why the latest confirmation email is still wrong:
-
-- The active hook is running and enqueueing the email.
-- The URL being inserted into the email is the backend verify URL:
-  `.../auth/v1/verify?redirect_to=https%3A%2F%2Fcarnivorex.app%2Fauth%2Fcallback...`
-- The current rewrite only changes the top-level URL hostname. In this case the top-level hostname is the backend auth host, so it leaves the nested `redirect_to` value untouched.
-- The email template then prints that backend verify URL as the actual button/link, so users see and click the long backend URL instead of the verified App Link host.
+The wrapped email link is now on the correct `app.carnivorex.app` host, so Android App Links are working. The remaining failure is inside the app: `AuthCallback` tries to `fetch()` the backend verification URL and follow the redirect, but auth verify redirects are not reliable to consume this way in a mobile WebView/browser context. The app ends up with no installed session, so it shows the stale “couldn’t confirm” state and the CTA repeats the same failing path.
 
 Plan to fix it:
 
-1. Normalize nested auth redirect parameters
-   - Update the auth email hook URL normalizer so it also inspects `redirect_to`, `redirectTo`, and similar redirect parameters inside the generated auth URL.
-   - If any nested redirect points to `https://carnivorex.app/...` or `https://www.carnivorex.app/...`, rewrite it to `https://app.carnivorex.app/...` while preserving path, query, and hash.
-   - Keep safe redacted logging so we can confirm `incomingHost`, `outgoingHost`, nested redirect host, and whether rewriting happened without exposing tokens.
+1. Update the email hook to wrap token data in an app-native callback URL
+   - Continue sending visible links as `https://app.carnivorex.app/auth/callback?...` for signup/magic link/invite/email-change and `https://app.carnivorex.app/reset-password?...` for recovery.
+   - Instead of only wrapping the entire backend `verify_url`, parse the backend verify URL and copy the important auth fields directly into the app URL:
+     - `token` or `token_hash`
+     - `type`
+     - optional `email`
+     - optional normalized `redirect_to`
+   - Keep `verify_url` as a temporary backward-compatible fallback for any emails already sent.
 
-2. Render user-facing email links as clean App Link URLs
-   - For signup, recovery, magic-link, invite, and email-change emails, generate the visible CTA/link as a clean `https://app.carnivorex.app/...` URL that Android can intercept.
-   - Preserve the original backend verify URL internally by placing it in a safe query parameter on the clean app URL, for example:
-     `https://app.carnivorex.app/auth/callback?verify_url=<encoded backend verify URL>`
-   - This means the email no longer exposes `gueosugzlebbaijzcxgh.../auth/v1/verify` as the clickable link, while the app can still complete verification by calling the original verify URL.
+2. Update `AuthCallback.tsx` to verify directly with the auth SDK
+   - Detect `token` / `token_hash` + `type` in the URL.
+   - Call `supabase.auth.verifyOtp(...)` directly from the app instead of `fetch(verify_url)`.
+   - If a session is returned, explicitly install it with `supabase.auth.setSession(...)` when needed.
+   - Refresh/read the user after verification and route home when `email_confirmed_at` is present.
+   - Keep a fallback for older links that only contain `verify_url`, but parse the nested URL locally and then run the same direct verification path.
+   - Make the CTA re-run this direct verification, so tapping it actually performs work instead of repeating a stale session refresh.
 
-3. Teach `/auth/callback` to complete backend verification URLs
-   - Update the callback page so if it receives `?verify_url=...`, it fetches that URL first without following the final redirect manually.
-   - Then it extracts the redirected callback URL/tokens and installs the session in the app.
-   - Keep the existing hash-token path working for any older emails that already contain `https://app.carnivorex.app/auth/callback#...`.
+3. Update `ResetPassword.tsx` with the same direct verification pattern
+   - For recovery links, parse `token` / `token_hash` + `type=recovery`.
+   - Call `supabase.auth.verifyOtp(...)` to establish the recovery session.
+   - Once verified, show the new-password form as it does today.
+   - Preserve fallback handling for already-sent `verify_url` recovery emails.
 
-4. Keep reset-password behavior compatible
-   - For recovery emails, route the clean visible link to `/reset-password?verify_url=...` when the auth action is password recovery.
-   - Update the reset-password page to process `verify_url` before showing the new-password form, while keeping existing hash-token recovery links working.
+4. Expand native deep-link routing
+   - Update `useDeepLinks` so Android App Links to `/reset-password` are routed into React Router too, not only `/auth/callback`.
+   - Keep search params and hash intact.
 
-5. Deploy and verify live behavior
-   - Redeploy the updated auth email hook after changing files under `supabase/functions`.
-   - Trigger or inspect a fresh signup path and confirm the generated email link now starts with:
-     `https://app.carnivorex.app/auth/callback...`
-   - Confirm the nested redirect inside the encoded backend verify URL is also rewritten to:
-     `https://app.carnivorex.app/auth/callback`
+5. Update Android App Link intent filters for password reset
+   - Add `/reset-password` to the Android manifest intent filters so recovery emails also open the installed app directly.
 
-Technical details:
+6. Deploy the updated auth email function
+   - Deploy the changed `auth-email-hook` so future emails contain the direct token callback parameters.
 
-- Files to update:
-  - `supabase/functions/auth-email-hook/index.ts`
-  - `src/pages/AuthCallback.tsx`
-  - `src/pages/ResetPassword.tsx`
-- I will not edit the generated backend client/types files.
-- No database schema change is needed.
-- The current app-side signup code already passes `emailRedirectTo: https://app.carnivorex.app/auth/callback`; the problem is in the active email rendering path and nested redirect normalization.
+Expected result:
+- Fresh signup emails still start with `https://app.carnivorex.app/auth/callback`.
+- Opening the email link in Android opens CarnivoreX directly.
+- The app verifies the token itself, creates the session, and navigates into the app.
+- The “Refresh verification status” screen should only appear for genuinely expired/invalid links, and its CTA will retry the actual token verification.
