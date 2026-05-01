@@ -1,68 +1,50 @@
-I’ll implement the Android Google OAuth fix by changing only the native OAuth path while leaving web behavior intact.
+# Fix: native OAuth callback path mismatch (`/callback` vs `/auth/callback`)
 
-Plan:
+Logcat confirmed Google OAuth returns to `carnivorex:///callback#access_token=...`, but `useDeepLinks` only treats `/auth/callback` as auth, so the deep link is dropped and the session is never installed.
 
-1. Add the Capacitor Browser plugin if missing
-   - `@capacitor/browser` is not currently in `package.json` or `node_modules`.
-   - I’ll add it as a dependency so native code can open/close the in-app browser correctly.
+## Changes
 
-2. Update `src/pages/Auth.tsx`
-   - Import `Browser` from `@capacitor/browser`.
-   - Import the existing auth client from `@/integrations/supabase/client` for the native-only manual OAuth URL flow.
-   - Keep Apple hidden on Android exactly as it is now.
-   - Keep the web path unchanged, using the current `lovable.auth.signInWithOAuth(...)` flow and web redirect URL.
-   - For native platforms:
-     - Use `redirectTo = "carnivorex://auth/callback"`.
-     - Call:
-       ```ts
-       supabase.auth.signInWithOAuth({
-         provider,
-         options: {
-           redirectTo,
-           skipBrowserRedirect: true,
-         },
-       })
-       ```
-     - Log the native OAuth result/error, including whether `data.url` exists.
-     - If `data.url` exists, call:
-       ```ts
-       await Browser.open({ url: data.url, windowName: "_self" })
-       ```
-     - Log:
-       ```ts
-       oauth:browser-open { url: redacted }
-       ```
-   - I’ll use the existing `redactUrl` helper so OAuth URLs are not printed raw.
+### 1. `src/hooks/useDeepLinks.ts`
+- Treat `/callback` as an auth route alongside `/auth/callback` (and `/reset-password`).
+- Close the in-app `Browser` for either OAuth callback path (`/callback` or `/auth/callback`).
+- Route the deep link into React Router exactly as today (preserving `search` + `hash`, replacing history first when a hash is present so `AuthCallback` can read it via `window.location.hash`).
 
-3. Update `src/hooks/useDeepLinks.ts`
-   - Import `Browser` from `@capacitor/browser`.
-   - When `appUrlOpen` / launch URL routes an auth callback with `pathname === "/auth/callback"`, call `Browser.close()` after the callback is received and before/around routing into React Router.
-   - Add a diagnostic log for the browser close outcome, e.g. `oauth:browser-close` or `oauth:browser-close-error`.
-   - Keep the existing `appUrlOpen`, `deeplink:received`, and `/auth/callback` routing logic intact.
+### 2. `src/App.tsx`
+- Add a second route `<Route path="/callback" element={<AuthCallback />} />` so React Router renders the same component for the new path. (Required — currently only `/auth/callback` is registered.)
 
-4. Bump build markers
-   - Update `src/main.tsx`:
-     - `authFlow=v5-manifest-fix` → `authFlow=v6-browser-plugin`
-   - Update `scripts/build-android-fresh.sh`:
-     - Required marker changes to `authFlow=v6-browser-plugin`.
-     - Post-install hint changes to `v6-browser-plugin`.
-     - Add `oauth:browser-open` to required markers so stale APKs fail early.
+### 3. `src/pages/AuthCallback.tsx`
+- No path-specific logic exists today; it already reads `window.location.hash` and `originalUrlRef.current`, so both PKCE `?code=` and hash-token (`#access_token=…`) flows already work regardless of the pathname.
+- Update the two `window.history.replaceState(null, "", "/auth/callback")` calls to preserve the current pathname instead of hard-coding `/auth/callback`, so a `/callback` URL stays `/callback` after token cleanup. Use `window.location.pathname` as the target.
 
-5. Native sync consideration
-   - Adding `@capacitor/browser` requires the native Android project to be synced before rebuilding.
-   - I’ll update the project files here; after approval and implementation, you should run your fresh APK script as usual. If your local checkout doesn’t automatically sync native dependencies, run `npx cap sync android` before the APK build.
+### 4. `src/pages/Auth.tsx`
+- For native (`isNative`) Google/Apple OAuth, change `redirectTo` from `"carnivorex://auth/callback"` to `"carnivorex://callback"`.
+- Web path (`platform === "web"`) stays on `${window.location.origin}/auth/callback` — unchanged.
+- Leave the email-resend `emailRedirectTo` (`https://app.carnivorex.app/auth/callback`) unchanged — that's an HTTPS App Link for email confirmation, not the native OAuth callback.
 
-Expected log path after rebuild:
+### 5. `src/main.tsx`
+- Bump build marker string: `authFlow=v6-browser-plugin` → `authFlow=v7-callback-path-fix`. Keep `authVerifyTag=oauth:exchange-call`.
 
-```text
-[BuildInfo] ... authFlow=v6-browser-plugin
-[AuthVerify] oauth:click {"provider":"google","platform":"android","isNative":true}
-[AuthVerify] oauth:redirect-uri {"redirectTo":"carnivorex://auth/callback"}
-[AuthVerify] oauth:signIn-result {"provider":"google","hasUrl":true,...}
-[AuthVerify] oauth:browser-open {"url":"https://...redacted..."}
-[AuthVerify] deeplink:appUrlOpen {"redacted":"carnivorex://auth/callback?code=[redacted:...]"}
-[AuthVerify] deeplink:received {"pathname":"/auth/callback","isAuthRoute":true,...}
-[AuthVerify] oauth:browser-close {...}
-[AuthVerify] oauth:exchange-call {...}
-[AuthVerify] oauth:exchange-result {"hasSession":true,...}
+### 6. `scripts/build-android-fresh.sh`
+- In `REQUIRED_MARKERS`, replace `"authFlow=v6-browser-plugin"` with `"authFlow=v7-callback-path-fix"` so a stale bundle aborts the build.
+
+## Out of scope / NOT changed
+- Supabase Auth → URL Configuration must include `carnivorex://callback` in the Redirect URLs allowlist. (User-side dashboard config — flag this in the follow-up message; no code change can fix it.)
+- `AndroidManifest.xml` intent filters: the existing `carnivorex://` scheme filter already matches both `/callback` and `/auth/callback` (path is not constrained for the custom scheme), so no manifest edit is needed. Will verify during implementation; if the filter pins a path, add `<data android:scheme="carnivorex" android:host="callback" />`.
+- No changes to `AuthContext`, edge functions, or email templates.
+
+## Expected logs after rebuild
 ```
+[BuildInfo] ... authFlow=v7-callback-path-fix
+[AuthVerify] oauth:redirect-uri {"redirectTo":"carnivorex://callback"}
+[AuthVerify] deeplink:appUrlOpen {"redacted":"carnivorex://callback#access_token=..."}
+[AuthVerify] deeplink:received {"pathname":"/callback","isAuthRoute":true,...}
+[AuthVerify] callback:start ...
+[AuthVerify] callback:hash-refresh {"hasSession":true,...}
+```
+
+## Action required from you (parallel to code change)
+In Lovable Cloud → Auth → URL Configuration → Redirect URLs, add:
+```
+carnivorex://callback
+```
+(keep `carnivorex://auth/callback` too for safety during the transition).
