@@ -98,13 +98,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setTimeout(() => { void reconcileLocalConsent(nextUser.id); }, 0);
     };
 
+    const isCallbackPath = () => {
+      if (typeof window === "undefined") return false;
+      const p = window.location.pathname;
+      return p.startsWith("/auth/callback") || p.startsWith("/callback");
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user ?? null;
       // Defensive: if a persisted session belongs to a user who never
       // confirmed their email, drop it. Skip the check while we're on
-      // /auth/callback so the verification flow can complete.
-      const onCallback = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
-      if (nextUser && !nextUser.email_confirmed_at && !onCallback) {
+      // /callback or /auth/callback so the verification flow can complete.
+      if (nextUser && !nextUser.email_confirmed_at && !isCallbackPath()) {
         console.warn("[AuthVerify] dropping unconfirmed session for", nextUser.email);
         setSession(null);
         setUser(null);
@@ -118,22 +123,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       maybeReconcile(nextUser);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const nextUser = session?.user ?? null;
-      const onCallback = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
-      if (nextUser && !nextUser.email_confirmed_at && !onCallback) {
-        console.warn("[AuthVerify] initial session unconfirmed, signing out", nextUser.email);
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        const nextUser = session?.user ?? null;
+        if (nextUser && !nextUser.email_confirmed_at && !isCallbackPath()) {
+          console.warn("[AuthVerify] initial session unconfirmed, signing out", nextUser.email);
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          void supabase.auth.signOut();
+          return;
+        }
+        setSession(session);
+        setUser(nextUser);
+        setLoading(false);
+        maybeReconcile(nextUser);
+      })
+      .catch((e) => {
+        console.warn("[AuthVerify] getSession failed", e);
+        // Never leave the app in a stale Loading state if bootstrap fails.
         setSession(null);
         setUser(null);
         setLoading(false);
-        void supabase.auth.signOut();
-        return;
-      }
-      setSession(session);
-      setUser(nextUser);
-      setLoading(false);
-      maybeReconcile(nextUser);
-    });
+      });
 
     return () => subscription.unsubscribe();
   }, []);

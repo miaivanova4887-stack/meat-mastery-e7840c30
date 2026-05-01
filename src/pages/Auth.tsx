@@ -119,10 +119,11 @@ const Auth = () => {
     // Web: hosted /auth/callback page runs the PKCE code exchange.
     // Native (android/ios): use the custom URL scheme so the OAuth broker
     // hands the callback directly to the app via the Capacitor intent filter.
-    // The HTTPS App Link path was unreliable (resume fired with no session,
-    // appUrlOpen never logged), so we route through the custom scheme instead.
-    // NOTE: "carnivorex://auth/callback" must be added to the Supabase
-    // Auth → URL Configuration → Redirect URLs allowlist.
+    //
+    // Required Supabase Auth → URL Configuration → Redirect URLs:
+    //   - carnivorex://callback           (current canonical native callback)
+    //   - carnivorex://auth/callback      (legacy, kept for backward compatibility)
+    //   - https://app.carnivorex.app/auth/callback (web + email confirmation)
     const redirectTo =
       platform === "web"
         ? `${window.location.origin}/auth/callback`
