@@ -44,23 +44,54 @@ const FROM_DOMAIN = "notify.carnivorex.app" // Domain shown in From address (may
 // so the installed app intercepts the link instead of opening the browser.
 const AUTH_CALLBACK_HOST = "app.carnivorex.app"
 
+/** Build a token-redacted version of a URL for safe logging. */
+function redactUrl(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl)
+    const redactQuery = (qs: string) =>
+      qs
+        .split('&')
+        .map((p) => {
+          const [k, v] = p.split('=')
+          if (!v) return p
+          if (/token|code|secret|otp/i.test(k)) return `${k}=[redacted]`
+          return `${k}=${v}`
+        })
+        .join('&')
+    const search = u.search ? '?' + redactQuery(u.search.slice(1)) : ''
+    const hash = u.hash ? '#' + redactQuery(u.hash.slice(1)) : ''
+    return `${u.origin}${u.pathname}${search}${hash}`
+  } catch {
+    return '[unparseable url]'
+  }
+}
+
 /**
  * Defensive: if Supabase Auth generated a confirmation URL pointing at the
- * bare apex (carnivorex.app) — e.g. because Site URL is still misconfigured —
- * rewrite the host to the verified subdomain (app.carnivorex.app) while
- * preserving path, query, and the #access_token=… fragment.
+ * bare apex (carnivorex.app or www.carnivorex.app) — e.g. because Site URL
+ * is still misconfigured — rewrite the host to the verified subdomain
+ * (app.carnivorex.app) while preserving path, query, and the
+ * #access_token=… fragment.
  */
 function normalizeCallbackUrl(rawUrl: string): string {
   try {
     const u = new URL(rawUrl)
-    if (u.host === ROOT_DOMAIN || u.host === `www.${ROOT_DOMAIN}`) {
-      const original = u.toString()
-      u.host = AUTH_CALLBACK_HOST
-      console.log('[auth-email-hook] rewrote callback host', { from: original, to: u.toString() })
+    const incomingHost = u.hostname
+    let rewritten = false
+    if (incomingHost === ROOT_DOMAIN || incomingHost === `www.${ROOT_DOMAIN}`) {
+      u.hostname = AUTH_CALLBACK_HOST
+      rewritten = true
     }
+    console.log('[auth-email-hook] callback url', {
+      incomingHost,
+      outgoingHost: u.hostname,
+      path: u.pathname,
+      rewritten,
+      redacted: redactUrl(u.toString()),
+    })
     return u.toString()
   } catch (e) {
-    console.warn('[auth-email-hook] could not parse confirmation url, leaving unchanged', { rawUrl, error: String(e) })
+    console.warn('[auth-email-hook] could not parse confirmation url, leaving unchanged', { error: String(e) })
     return rawUrl
   }
 }
