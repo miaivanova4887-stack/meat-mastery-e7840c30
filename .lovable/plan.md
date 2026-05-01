@@ -1,73 +1,69 @@
 ## Goal
 
-Get full visibility into the Android Google sign-in failure by tagging every hop with `[AuthVerify]` logs that already pipe into logcat (visible via `adb logcat | grep AuthVerify`) and into the on-screen diagnostics panel on `/auth/callback`.
+Fix Android Google sign-in by routing the OAuth callback through the custom URL scheme `carnivorex://auth/callback` instead of the HTTPS App Link `https://app.carnivorex.app/auth/callback`. The HTTPS App Link path is failing to deliver the callback back into the WebView (the resume event fires with no session and `deeplink:appUrlOpen` never logs).
 
-Apple button visibility is already correctly gated to iOS only — no UI changes.
+The custom scheme is already wired up in `android/app/src/main/AndroidManifest.xml` via the standard Capacitor intent filter, and `useDeepLinks` already routes `/auth/callback` deep links into the React app, so no native changes are needed.
 
-## What gets logged
+## Changes
 
-For each Google sign-in attempt, the user (and adb) will see a sequence like:
+### 1. `src/pages/Auth.tsx` — `handleOAuthSignIn` (lines 113–153)
 
-```text
-[AuthVerify] oauth:click            { provider: "google", platform: "android", isNative: true }
-[AuthVerify] oauth:redirect-uri     { redirectTo: "https://app.carnivorex.app/auth/callback" }
-[AuthVerify] oauth:signIn-result    { redirected: true,  hasError: false, hasTokens: false }
-[AuthVerify] deeplink:appUrlOpen    { redacted: "carnivorex://auth/callback?code=[redacted:...]" }
-[AuthVerify] callback:start         { url: "...", hashHasAccessToken: false }
-[AuthVerify] oauth:exchange-call    { hasCode: true, codeFp: "len=43 head=4/0…" }
-[AuthVerify] oauth:exchange-result  { hasSession: true,  hasUser: true,  errMessage: null }
+Replace the current `redirectTo` computation with explicit per-platform branching:
+
+```ts
+const platform = Capacitor.getPlatform(); // "web" | "android" | "ios"
+const redirectTo =
+  platform === "web"
+    ? `${window.location.origin}/auth/callback`
+    : "carnivorex://auth/callback"; // android + ios
 ```
 
-If anything fails, the matching line carries `errName / errStatus / errCode / errMessage` so we can pinpoint whether the breakage is at the click, the redirect, the broker, the deep link, or the PKCE code exchange.
+Everything else in the function (logging, `lovable.auth.signInWithOAuth`, error toast, navigation) stays the same. The existing `oauth:redirect-uri` log will now show `carnivorex://auth/callback` on device, which is the verification signal.
 
-## Files to change
+### 2. `src/main.tsx` — bump build marker
 
-1. **`src/pages/Auth.tsx`** — `handleOAuthSignIn`
-   - Import `Capacitor` (already imported for the Apple gate) and `logAuthDiag` from `@/lib/authDiagnostics`.
-   - Compute `redirectTo` once and log it before calling `lovable.auth.signInWithOAuth`.
-     - Native Android: keep custom-scheme deep link `carnivorex://auth/callback` (matches the `assetlinks.json` / intent filter you already verified).
-     - Web: `${window.location.origin}/auth/callback`.
-   - Log `oauth:click`, `oauth:redirect-uri`, then `oauth:signIn-result` with `{ redirected, hasError, hasTokens, errMessage }`.
-   - Apply the same change to both `google` and `apple` paths (Apple stays hidden on Android, so this only fires on iOS).
+Change `authFlow=v3-oauth-diag` → `authFlow=v4-custom-scheme` so we can confirm the new bundle is what's running on device (the failing log shows `v3-oauth-diag`, proving the build marker check is the reliable way to verify the install).
 
-2. **`src/integrations/lovable/index.ts`**
-   - This file is auto-generated and must not be hand-edited. Instead, the diagnostics for the inner `setSession` step are captured indirectly: the wrapper returns `{ error }` on failure, which `Auth.tsx` already surfaces via `oauth:signIn-result`. No edit here.
+### 3. `scripts/build-android-fresh.sh` — update `REQUIRED_MARKERS`
 
-3. **`src/hooks/useDeepLinks.ts`**
-   - Already logs `deeplink:appUrlOpen` and `deeplink:launch-url` (raw OAuth callback URL is captured in redacted form). No change needed — these entries cover the "raw OAuth callback URL received by the app" requirement.
+Update the expected marker string to `authFlow=v4-custom-scheme` so the post-build assertion fails loudly if the new bundle isn't packaged.
 
-4. **`src/pages/AuthCallback.tsx`**
-   - Add a new branch at the top of `finalize()` that detects an OAuth `code` query param (PKCE) and logs the exchange:
-     - `oauth:exchange-call` with `{ hasCode, codeFp }` (uses existing `fingerprint` helper, never logs the raw code).
-     - Calls `supabase.auth.exchangeCodeForSession(window.location.href)`.
-     - `oauth:exchange-result` with `{ hasSession, hasUser, userVerified, errName, errStatus, errCode, errMessage }`.
-     - On success, navigate to `/` (same pattern as the existing hash-token branch).
-   - This branch runs before the existing `verifyOtp` path so email-link verification is unaffected.
+## Out of scope (no code change needed)
 
-5. **`src/main.tsx`**
-   - Bump the build marker from `authFlow=v2-verifyOtp` to `authFlow=v3-oauth-diag` so the build script's `REQUIRED_MARKERS` check confirms the new bundle is the one running on device.
+- `src/pages/AuthCallback.tsx` already handles the PKCE `?code=…` exchange added in the previous round — it will run as soon as `useDeepLinks` forwards `carnivorex://auth/callback?code=…` to the in-app `/auth/callback` route.
+- `useDeepLinks` already listens for `appUrlOpen` and routes `/auth/callback` paths.
+- `AndroidManifest.xml` already declares the `com.mi4labs.carnivorex` / `carnivorex` custom scheme intent filter from Capacitor defaults.
+- iOS: the same custom scheme will work once iOS is built; no separate logic needed.
 
-6. **`scripts/build-android-fresh.sh`**
-   - Update `REQUIRED_MARKERS` to expect `authFlow=v3-oauth-diag`.
+## Required Supabase configuration (manual, outside the codebase)
 
-## How to verify after rebuild
+In **Lovable Cloud → Authentication → URL Configuration → Redirect URLs**, add:
 
-1. `npm run apk:fresh:debug && adb install -r android/app/build/outputs/apk/debug/app-debug.apk`
-2. `adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify'`
-3. Tap **Continue with Google** on Android.
-4. Expected log sequence:
-   - `BuildInfo … authFlow=v3-oauth-diag`
-   - `oauth:click platform=android`
-   - `oauth:redirect-uri redirectTo=…`
-   - `oauth:signIn-result redirected=true` (browser opens)
-   - After Google consent: `deeplink:appUrlOpen` with the redacted callback URL
-   - `callback:start`
-   - `oauth:exchange-call` + `oauth:exchange-result`
-5. Whichever line shows `hasError:true` / non-null `errMessage` identifies the failure point. Share that block and we'll fix it next.
+```
+carnivorex://auth/callback
+```
 
-## What is NOT changing
+Keep the existing `https://app.carnivorex.app/auth/callback` and `https://carnivore-coach-pro.lovable.app/auth/callback` entries for web. Without this allowlist entry, the OAuth broker will reject the redirect and the user will land on an error page instead of the app.
 
-- Apple button visibility (already iOS-only).
-- Email verification flow (`verifyOtp` branch is untouched).
-- `src/integrations/lovable/index.ts` (auto-generated).
-- Any RLS, edge function, or database config.
+## Verification after rebuild
+
+```
+npm run apk:fresh:debug
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|oauth:'
+```
+
+Tap **Continue with Google**. Expected new log sequence:
+
+```text
+BuildInfo … authFlow=v4-custom-scheme
+oauth:click          { provider: "google", platform: "android", isNative: true }
+oauth:redirect-uri   { redirectTo: "carnivorex://auth/callback" }   ← key change
+oauth:signIn-result  { redirected: true, hasError: false }
+deeplink:appUrlOpen  { redacted: "carnivorex://auth/callback?code=[redacted:…]" }
+callback:start
+oauth:exchange-call  { hasCode: true, codeFp: "len=… head=…" }
+oauth:exchange-result{ hasSession: true, hasUser: true, errMessage: null }
+```
+
+If `deeplink:appUrlOpen` still doesn't fire after the redirect, the failure is on the Supabase Redirect URL allowlist (step above) — the broker will have refused to redirect to the custom scheme.
