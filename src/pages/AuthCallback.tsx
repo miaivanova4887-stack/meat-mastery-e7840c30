@@ -3,76 +3,124 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+type EmailOtpType =
+  | "signup"
+  | "magiclink"
+  | "recovery"
+  | "invite"
+  | "email_change"
+  | "email";
+
 /**
  * Landing page hit by the auth verification email link
- * (https://app.carnivorex.app/auth/callback#access_token=...).
+ * (https://app.carnivorex.app/auth/callback?token=...&type=signup&email=...).
  *
  * On native (Android App Link), the OS routes this URL straight into the app
- * via the intent-filter on MainActivity. On web it simply loads in the SPA.
+ * via the intent-filter on MainActivity. On web it loads in the SPA.
  *
- * Either way we let supabase-js pick the tokens out of the URL hash, then
- * force a session refresh so `email_confirmed_at` is up to date.
+ * We verify the token directly with supabase.auth.verifyOtp so we don't have
+ * to follow a backend redirect chain (which fails inside Android WebViews).
  */
 const AuthCallback = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"working" | "verified" | "stale" | "error">("working");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  /** Extract token + type from the current URL. Supports the new direct
+   * params and the legacy `verify_url` wrapper for already-sent emails. */
+  const extractAuthParams = (): {
+    token?: string;
+    tokenHash?: string;
+    type?: EmailOtpType;
+    email?: string;
+  } => {
+    const search = new URLSearchParams(window.location.search);
+    let token = search.get("token") ?? undefined;
+    let tokenHash = search.get("token_hash") ?? undefined;
+    let type = (search.get("type") as EmailOtpType | null) ?? undefined;
+    let email = search.get("email") ?? undefined;
+
+    if ((!token && !tokenHash) || !type) {
+      // Legacy: parse verify_url (the Supabase backend verify URL).
+      const verifyUrl = search.get("verify_url");
+      if (verifyUrl) {
+        try {
+          const v = new URL(verifyUrl);
+          token = token ?? v.searchParams.get("token") ?? undefined;
+          tokenHash = tokenHash ?? v.searchParams.get("token_hash") ?? undefined;
+          type = type ?? ((v.searchParams.get("type") as EmailOtpType | null) ?? undefined);
+        } catch {
+          /* noop */
+        }
+      }
+    }
+
+    return { token, tokenHash, type, email };
+  };
+
   const finalize = async () => {
     setStatus("working");
+    setErrorMsg(null);
     try {
       console.info("[AuthVerify] callback mount url=", window.location.href);
 
-      // If the email link wraps a backend verify URL as ?verify_url=...,
-      // hit it first. The backend will redirect to a URL that contains
-      // the access/refresh tokens in the hash; we then install those into
-      // the current location so supabase-js can parse them.
-      const params = new URLSearchParams(window.location.search);
-      const verifyUrl = params.get("verify_url");
-      if (verifyUrl) {
-        console.info("[AuthVerify] following verify_url");
-        try {
-          const resp = await fetch(verifyUrl, { method: "GET", redirect: "follow" });
-          const finalUrl = resp.url;
-          console.info("[AuthVerify] verify_url final=", finalUrl);
-          const parsed = new URL(finalUrl);
-          // Some flows put tokens in the hash, others put an error in the query.
-          if (parsed.hash && parsed.hash.includes("access_token")) {
-            window.location.replace(`/auth/callback${parsed.hash}`);
-            return;
-          }
-          if (parsed.searchParams.get("error_description")) {
-            throw new Error(parsed.searchParams.get("error_description") || "Verification failed");
-          }
-          // Strip the verify_url param so we don't loop on retry.
+      // 1. If the URL hash already contains tokens (some flows), supabase-js
+      //    will have auto-installed the session. Check first.
+      if (window.location.hash.includes("access_token")) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        if (refreshed.session?.user?.email_confirmed_at) {
           window.history.replaceState(null, "", "/auth/callback");
-        } catch (e) {
-          console.warn("[AuthVerify] verify_url fetch failed", e);
+          setStatus("verified");
+          toast.success("Email verified — welcome to CarnivoreX");
+          setTimeout(() => navigate("/", { replace: true }), 600);
+          return;
         }
       }
 
-      // supabase-js auto-parses tokens from window.location.hash on load,
-      // but make sure we trigger the session install before refreshing.
-      const { data: sessionData } = await supabase.auth.getSession();
-      const before = sessionData.session?.user?.email_confirmed_at ?? null;
-      console.info("[AuthVerify] session before refresh verified=", before);
+      const { token, tokenHash, type, email } = extractAuthParams();
+      console.info("[AuthVerify] params hasToken=", Boolean(token), "hasHash=", Boolean(tokenHash), "type=", type);
 
-      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
-      if (refreshErr) {
-        console.warn("[AuthVerify] refreshSession error", refreshErr);
+      if ((token || tokenHash) && type) {
+        // Direct verification — works in WebView with no redirects.
+        const verifyArgs: any = tokenHash
+          ? { token_hash: tokenHash, type }
+          : { token, type, email };
+        const { data, error } = await supabase.auth.verifyOtp(verifyArgs);
+        if (error) {
+          console.warn("[AuthVerify] verifyOtp error", error);
+          throw error;
+        }
+        const verified = data.session?.user?.email_confirmed_at ?? null;
+        console.info("[AuthVerify] verifyOtp ok verified=", verified);
+        if (data.session) {
+          // verifyOtp installs the session automatically, but re-set to be safe.
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+          setStatus("verified");
+          toast.success("Email verified — welcome to CarnivoreX");
+          window.history.replaceState(null, "", "/auth/callback");
+          setTimeout(() => navigate("/", { replace: true }), 600);
+          return;
+        }
       }
-      const after = refreshed.session?.user?.email_confirmed_at ?? null;
-      console.info("[AuthVerify] session after refresh verified=", after);
 
+      // 2. Last resort: maybe a session is already installed (e.g. user
+      //    verified earlier). Refresh and check.
+      const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
+      if (refreshErr) console.warn("[AuthVerify] refreshSession error", refreshErr);
+      const after = refreshed.session?.user?.email_confirmed_at ?? null;
+      console.info("[AuthVerify] fallback session verified=", after);
       if (after) {
         setStatus("verified");
         toast.success("Email verified — welcome to CarnivoreX");
-        // Clean the hash and bounce home.
         window.history.replaceState(null, "", "/auth/callback");
         setTimeout(() => navigate("/", { replace: true }), 600);
-      } else {
-        setStatus("stale");
+        return;
       }
+
+      setStatus("stale");
     } catch (e: any) {
       console.warn("[AuthVerify] callback threw", e);
       setErrorMsg(e?.message ?? "Verification failed");
@@ -101,13 +149,13 @@ const AuthCallback = () => {
         {status === "stale" && (
           <>
             <p className="text-sm text-muted-foreground">
-              We couldn’t confirm your verification yet. Tap below to refresh.
+              We couldn’t confirm your verification yet. Tap below to try again.
             </p>
             <button
               onClick={() => void finalize()}
               className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm"
             >
-              Refresh verification status
+              Retry verification
             </button>
             <button
               onClick={() => navigate("/auth", { replace: true })}
@@ -125,6 +173,12 @@ const AuthCallback = () => {
               className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm"
             >
               Try again
+            </button>
+            <button
+              onClick={() => navigate("/auth", { replace: true })}
+              className="text-xs text-muted-foreground underline"
+            >
+              Back to sign in
             </button>
           </>
         )}
