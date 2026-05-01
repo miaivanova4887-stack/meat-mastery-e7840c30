@@ -110,12 +110,14 @@ function buildEmailLink(
   rawUrl: string,
   emailType: string,
   recipientEmail?: string,
+  payloadTokenHash?: string,
+  payloadToken?: string,
 ): string {
   let normalized = rawUrl
   let nestedHost = ''
   let nestedRewritten = false
-  let token = ''
-  let tokenHash = ''
+  let urlToken = ''
+  let urlTokenHash = ''
   let verifyType = emailType
   try {
     const u = new URL(rawUrl)
@@ -130,39 +132,49 @@ function buildEmailLink(
         nestedRewritten = true
       }
     }
-    token = u.searchParams.get('token') ?? ''
-    tokenHash = u.searchParams.get('token_hash') ?? ''
+    urlToken = u.searchParams.get('token') ?? ''
+    urlTokenHash = u.searchParams.get('token_hash') ?? ''
     verifyType = u.searchParams.get('type') ?? emailType
     normalized = u.toString()
   } catch (e) {
     console.warn('[auth-email-hook] could not parse confirmation url', { error: String(e) })
   }
 
-  // Top-level rewrite (covers the rare case Supabase emits a direct app URL).
   const top = rewriteRedirectHost(normalized)
   if (top.rewritten) normalized = top.value
 
-  // Wrap into a clean visible app URL with token data inline so the app
-  // can verify directly via supabase.auth.verifyOtp without needing to
-  // fetch the backend verify URL (which fails inside WebViews).
-  //
-  // Supabase puts {{ .TokenHash }} into the `token` query param of the
-  // backend verify URL. That is the email-link token hash, not a 6-digit
-  // OTP. Expose it as `token_hash` so the app can pass it directly to
-  // verifyOtp({ token_hash, type }).
+  // Source priority for token_hash (the value verifyOtp({ token_hash }) wants):
+  //   1. payload.data.token_hash  ← authoritative, comes straight from Supabase Auth hook
+  //   2. URL token_hash query param (if Supabase ever decides to put it there)
+  //   3. URL token query param IF it's not a 6-digit OTP (legacy / fallback only)
+  // Previously we relied on (3), which silently passed the /auth/v1/verify
+  // confirmation token to verifyOtp and made every link "expired/invalid".
   const path = emailType === 'recovery' ? '/reset-password' : '/auth/callback'
   const wrapped = new URL(`https://${AUTH_CALLBACK_HOST}${path}`)
-  const isShortOtp = /^[0-9]{4,8}$/.test(token)
-  if (tokenHash) {
-    wrapped.searchParams.set('token_hash', tokenHash)
-  } else if (token && !isShortOtp) {
-    wrapped.searchParams.set('token_hash', token)
-  } else if (token) {
-    wrapped.searchParams.set('token', token)
+  const isShortUrlToken = /^[0-9]{4,8}$/.test(urlToken)
+  let tokenHashSource = 'none'
+  let chosenTokenHash = ''
+  if (payloadTokenHash) {
+    chosenTokenHash = payloadTokenHash
+    tokenHashSource = 'payload.token_hash'
+  } else if (urlTokenHash) {
+    chosenTokenHash = urlTokenHash
+    tokenHashSource = 'url.token_hash'
+  } else if (urlToken && !isShortUrlToken) {
+    chosenTokenHash = urlToken
+    tokenHashSource = 'url.token(promoted)'
+  }
+
+  if (chosenTokenHash) {
+    wrapped.searchParams.set('token_hash', chosenTokenHash)
+  } else if (payloadToken && /^[0-9]{4,8}$/.test(payloadToken)) {
+    wrapped.searchParams.set('token', payloadToken)
+  } else if (urlToken) {
+    wrapped.searchParams.set('token', urlToken)
   }
   if (verifyType) wrapped.searchParams.set('type', verifyType)
   if (recipientEmail) wrapped.searchParams.set('email', recipientEmail)
-  // Backward-compat fallback so older clients can still follow the verify URL.
+  // Backward-compat fallback so the verify URL still works if needed.
   wrapped.searchParams.set('verify_url', normalized)
 
   console.log('[auth-email-hook] email link built', {
@@ -170,9 +182,11 @@ function buildEmailLink(
     incomingTopHost: (() => { try { return new URL(rawUrl).hostname } catch { return '' } })(),
     nestedRedirectHost: nestedHost,
     nestedRewritten,
-    hasToken: Boolean(token),
-    hasTokenHash: Boolean(tokenHash),
-    promotedTokenToHash: Boolean(token && !tokenHash && !isShortOtp),
+    hasUrlToken: Boolean(urlToken),
+    hasUrlTokenHash: Boolean(urlTokenHash),
+    hasPayloadToken: Boolean(payloadToken),
+    hasPayloadTokenHash: Boolean(payloadTokenHash),
+    tokenHashSource,
     verifyType,
     visibleHost: wrapped.hostname,
     visiblePath: wrapped.pathname,
