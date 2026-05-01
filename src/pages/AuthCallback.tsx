@@ -279,11 +279,26 @@ const AuthCallback = () => {
       }
       setErrorMsg(msg);
       setStatus("error");
+    } finally {
+      endAuthCallback();
     }
   };
 
   useEffect(() => {
     void finalize();
+    // 8-second failsafe so the app NEVER sits on indefinite Loading.
+    const failsafe = window.setTimeout(() => {
+      setStatus((prev) => {
+        if (prev === "working") {
+          logAuthDiag("callback:failsafe-timeout");
+          setErrorMsg("Sign-in is taking longer than expected. Please retry or return to sign in.");
+          endAuthCallback();
+          return "error";
+        }
+        return prev;
+      });
+    }, 8000);
+    return () => window.clearTimeout(failsafe);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
