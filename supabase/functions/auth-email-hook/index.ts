@@ -106,10 +106,17 @@ function rewriteRedirectHost(value: string): { value: string; rewritten: boolean
  *      which Android intercepts via App Links and which is what the user
  *      actually sees and trusts.
  */
-function buildEmailLink(rawUrl: string, emailType: string): string {
+function buildEmailLink(
+  rawUrl: string,
+  emailType: string,
+  recipientEmail?: string,
+): string {
   let normalized = rawUrl
   let nestedHost = ''
   let nestedRewritten = false
+  let token = ''
+  let tokenHash = ''
+  let verifyType = emailType
   try {
     const u = new URL(rawUrl)
     const REDIRECT_KEYS = ['redirect_to', 'redirectTo', 'redirect']
@@ -123,6 +130,9 @@ function buildEmailLink(rawUrl: string, emailType: string): string {
         nestedRewritten = true
       }
     }
+    token = u.searchParams.get('token') ?? ''
+    tokenHash = u.searchParams.get('token_hash') ?? ''
+    verifyType = u.searchParams.get('type') ?? emailType
     normalized = u.toString()
   } catch (e) {
     console.warn('[auth-email-hook] could not parse confirmation url', { error: String(e) })
@@ -132,9 +142,16 @@ function buildEmailLink(rawUrl: string, emailType: string): string {
   const top = rewriteRedirectHost(normalized)
   if (top.rewritten) normalized = top.value
 
-  // Wrap into a clean visible app URL.
+  // Wrap into a clean visible app URL with token data inline so the app
+  // can verify directly via supabase.auth.verifyOtp without needing to
+  // fetch the backend verify URL (which fails inside WebViews).
   const path = emailType === 'recovery' ? '/reset-password' : '/auth/callback'
   const wrapped = new URL(`https://${AUTH_CALLBACK_HOST}${path}`)
+  if (token) wrapped.searchParams.set('token', token)
+  if (tokenHash) wrapped.searchParams.set('token_hash', tokenHash)
+  if (verifyType) wrapped.searchParams.set('type', verifyType)
+  if (recipientEmail) wrapped.searchParams.set('email', recipientEmail)
+  // Backward-compat fallback so older clients can still follow the verify URL.
   wrapped.searchParams.set('verify_url', normalized)
 
   console.log('[auth-email-hook] email link built', {
@@ -142,6 +159,9 @@ function buildEmailLink(rawUrl: string, emailType: string): string {
     incomingTopHost: (() => { try { return new URL(rawUrl).hostname } catch { return '' } })(),
     nestedRedirectHost: nestedHost,
     nestedRewritten,
+    hasToken: Boolean(token),
+    hasTokenHash: Boolean(tokenHash),
+    verifyType,
     visibleHost: wrapped.hostname,
     visiblePath: wrapped.pathname,
     redactedVerify: redactUrl(normalized),
@@ -341,7 +361,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     siteName: SITE_NAME,
     siteUrl: `https://${AUTH_CALLBACK_HOST}`,
     recipient: payload.data.email,
-    confirmationUrl: buildEmailLink(payload.data.url, emailType),
+    confirmationUrl: buildEmailLink(payload.data.url, emailType, payload.data.email),
     token: payload.data.token,
     email: payload.data.email,
     oldEmail: payload.data.old_email,

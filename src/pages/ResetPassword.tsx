@@ -15,42 +15,71 @@ const ResetPassword = () => {
   const [recoveryReady, setRecoveryReady] = useState(false);
 
   useEffect(() => {
-    // If the recovery email wraps a backend verify URL as ?verify_url=...,
-    // follow it first so we land on a URL that contains the recovery tokens
-    // in the hash. supabase-js will then auto-parse the hash and emit
-    // PASSWORD_RECOVERY.
-    const params = new URLSearchParams(window.location.search);
-    const verifyUrl = params.get("verify_url");
-    if (verifyUrl) {
-      (async () => {
-        try {
-          const resp = await fetch(verifyUrl, { method: "GET", redirect: "follow" });
-          const parsed = new URL(resp.url);
-          if (parsed.hash && parsed.hash.includes("access_token")) {
-            window.location.replace(`/reset-password${parsed.hash}`);
-            return;
-          }
-          if (parsed.searchParams.get("error_description")) {
-            toast.error(parsed.searchParams.get("error_description") || "Reset link invalid");
-          }
-          window.history.replaceState(null, "", "/reset-password");
-        } catch (e) {
-          console.warn("[ResetPassword] verify_url fetch failed", e);
-        }
-      })();
-    }
+    // Direct verification: parse token + type from email link query params.
+    // Falls back to a wrapped verify_url for older recovery emails.
+    const verifyRecoveryToken = async () => {
+      const search = new URLSearchParams(window.location.search);
+      let token = search.get("token") ?? undefined;
+      let tokenHash = search.get("token_hash") ?? undefined;
+      let type = (search.get("type") ?? undefined) as
+        | "recovery"
+        | "magiclink"
+        | "email"
+        | undefined;
+      const email = search.get("email") ?? undefined;
 
-    // Supabase v2 auto-detects the recovery token from the URL hash.
-    // The PASSWORD_RECOVERY event signals we're in a valid reset flow.
+      if ((!token && !tokenHash) || !type) {
+        const verifyUrl = search.get("verify_url");
+        if (verifyUrl) {
+          try {
+            const v = new URL(verifyUrl);
+            token = token ?? v.searchParams.get("token") ?? undefined;
+            tokenHash = tokenHash ?? v.searchParams.get("token_hash") ?? undefined;
+            type =
+              type ??
+              ((v.searchParams.get("type") ?? undefined) as
+                | "recovery"
+                | "magiclink"
+                | "email"
+                | undefined);
+          } catch {
+            /* noop */
+          }
+        }
+      }
+
+      if ((token || tokenHash) && type) {
+        const args: any = tokenHash
+          ? { token_hash: tokenHash, type }
+          : { token, type, email };
+        const { data, error } = await supabase.auth.verifyOtp(args);
+        if (error) {
+          console.warn("[ResetPassword] verifyOtp error", error);
+          toast.error(error.message || "Reset link invalid or expired");
+          return;
+        }
+        if (data.session) {
+          await supabase.auth.setSession({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token,
+          });
+          setRecoveryReady(true);
+          window.history.replaceState(null, "", "/reset-password");
+          return;
+        }
+      }
+
+      // Existing session may already be in recovery mode
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) setRecoveryReady(true);
+    };
+
+    void verifyRecoveryToken();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
         setRecoveryReady(true);
       }
-    });
-
-    // Also check existing session — user may already be in recovery state
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setRecoveryReady(true);
     });
 
     return () => subscription.unsubscribe();
