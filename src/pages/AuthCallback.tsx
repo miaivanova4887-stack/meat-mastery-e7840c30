@@ -96,7 +96,7 @@ const AuthCallback = () => {
           errMessage: exErr?.message ?? null,
         });
         if (!exErr && exData?.session) {
-          window.history.replaceState(null, "", "/auth/callback");
+          window.history.replaceState(null, "", window.location.pathname);
           setStatus("verified");
           toast.success("Signed in — welcome to CarnivoreX");
           setTimeout(() => navigate("/", { replace: true }), 600);
@@ -114,7 +114,7 @@ const AuthCallback = () => {
           error: refErr?.message ?? null,
         });
         if (refreshed.session?.user?.email_confirmed_at) {
-          window.history.replaceState(null, "", "/auth/callback");
+          window.history.replaceState(null, "", window.location.pathname);
           setStatus("verified");
           toast.success("Email verified — welcome to CarnivoreX");
           setTimeout(() => navigate("/", { replace: true }), 600);
@@ -160,7 +160,7 @@ const AuthCallback = () => {
           });
           setStatus("verified");
           toast.success("Email verified — welcome to CarnivoreX");
-          window.history.replaceState(null, "", "/auth/callback");
+          window.history.replaceState(null, "", window.location.pathname);
           setTimeout(() => navigate("/", { replace: true }), 600);
           return;
         }
@@ -169,7 +169,7 @@ const AuthCallback = () => {
           logAuthDiag("callback:verified-no-session");
           setStatus("verified");
           toast.success("Email verified — please sign in to continue");
-          window.history.replaceState(null, "", "/auth/callback");
+          window.history.replaceState(null, "", window.location.pathname);
           setTimeout(() => navigate("/auth", { replace: true }), 800);
           return;
         }
@@ -187,7 +187,7 @@ const AuthCallback = () => {
       if (refreshed.session?.user?.email_confirmed_at) {
         setStatus("verified");
         toast.success("Email verified — welcome to CarnivoreX");
-        window.history.replaceState(null, "", "/auth/callback");
+        window.history.replaceState(null, "", window.location.pathname);
         setTimeout(() => navigate("/", { replace: true }), 600);
         return;
       }
