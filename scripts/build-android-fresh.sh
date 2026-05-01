@@ -55,16 +55,35 @@ if [[ ! -d "$SYNCED_ASSETS_DIR" ]]; then
 fi
 REQUIRED_MARKERS=(
   "callback:verifyOtp-call"
+  "callback:verifyOtp-result"
   "deeplink:launch-url"
   "BuildInfo"
   "build-version"
+  "authFlow=v2-verifyOtp"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
     echo "❌ Synced bundle is MISSING required marker: $marker"
     echo "   Searched: $SYNCED_ASSETS_DIR"
     echo "   This means the APK would ship stale JS. Aborting."
-    echo "   Likely causes: dist/ not rebuilt, or cap sync used a cached copy."
+    echo "   Likely causes: dist/ not rebuilt, or cap sync used a cached copy,"
+    echo "   or your local checkout is behind the latest Lovable changes (git pull?)."
+    exit 1
+  fi
+done
+# Reject KNOWN-STALE auth strings from earlier callback implementation. If any
+# of these survive into the synced bundle, the APK would silently ship the old
+# refresh-only flow that fails with AuthSessionMissingError.
+FORBIDDEN_STALE=(
+  "native deep link received"
+  "app resumed, refreshing session"
+  "session before refresh"
+)
+for stale in "${FORBIDDEN_STALE[@]}"; do
+  if grep -qrl "$stale" "$SYNCED_ASSETS_DIR"; then
+    echo "❌ Synced bundle contains FORBIDDEN stale auth string: \"$stale\""
+    echo "   Your local checkout is behind. Run: git pull && rm -rf dist node_modules/.vite"
+    echo "   Then re-run this script."
     exit 1
   fi
 done
