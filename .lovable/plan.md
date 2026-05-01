@@ -1,67 +1,77 @@
-The new logs show two important facts:
+## Problem
 
-1. The installed APK is still running an older JavaScript auth flow (`native deep link received`, `app resumed, refreshing session`, `session before refresh`) that no longer exists in the current source files.
-2. The visible email link is now intercepted by Android correctly and lands on `/auth/callback` with `token_hash`, but the old callback code only calls `refreshSession()`. That fails with `AuthSessionMissingError` because there is no session yet. The callback must call `verifyOtp({ token_hash, type })` first.
+`public/.well-known/assetlinks.json` exists in source, but `vite build` does not emit it to `dist/.well-known/assetlinks.json`. Vite's built-in `publicDir` copier skips dotfile directories (entries starting with `.`), so the existing `copyPublicDir: true` setting is not enough. The downstream `assert-wellknown-assetlinks` plugin then fails (or, if bypassed, `cap sync` ships an APK without App Link verification).
 
-Plan:
+## Fix
 
-1. Make the Android build fail if it contains the old auth flow
-   - Add stale-string rejection checks to `scripts/build-android-fresh.sh` for:
-     - `native deep link received`
-     - `app resumed, refreshing session`
-     - `session before refresh`
-     - `refreshSession error`
-   - Keep required positive markers for the new flow:
-     - `callback:verifyOtp-call`
-     - `callback:verifyOtp-result`
-     - `deeplink:launch-url`
-     - `BuildInfo`
-     - `build-version`
-   - This prevents another APK from silently shipping the old refresh-only callback.
+Add a small Vite plugin that explicitly copies `public/.well-known/` → `dist/.well-known/` after the bundle is written, and place it BEFORE the existing assertion plugin so the assert runs against a populated `dist/`.
 
-2. Make the installed app visibly and logcat-verifiably identify the new bundle
-   - Ensure `BuildStamp` stays mounted.
-   - Add a clearly searchable build marker to the app UI/logs, for example `authFlow=v2-verifyOtp`.
-   - Update the script instructions so the first verification step is to launch the app and confirm `[BuildInfo] ... authFlow=v2-verifyOtp` appears in logcat.
+### Changes to `vite.config.ts`
 
-3. Remove the last hardcoded wrong auth callback host in the app code
-   - In `src/contexts/AuthContext.tsx`, `resolveAuthRedirect()` already returns `https://app.carnivorex.app/auth/callback`.
-   - But the installed logs show signup used `https://carnivorex.app/auth/callback`, and `src/pages/Auth.tsx` has a separate resend path.
-   - I will centralize or mirror the redirect helper so all signup/resend/password-reset paths use `https://app.carnivorex.app/...` consistently.
+Insert a new plugin `copy-wellknown` directly above `assert-wellknown-assetlinks` in the `plugins` array:
 
-4. Harden `AuthCallback` against Android resume races
-   - Do not call `refreshSession()` when there is no session just because the app resumed.
-   - Keep the callback’s primary path as:
-     - parse `token_hash` and `type`
-     - call `supabase.auth.verifyOtp({ token_hash, type })`
-     - only after success, call `getUser()` / navigate
-   - Keep the fallback refresh only after the token path has been attempted, and log it as fallback only.
-
-5. Check the auth email hook once more before redeploying if needed
-   - The latest function logs still show `tokenHashSource: "url.token(promoted)"`, not `payload.token_hash`.
-   - If Lovable Cloud’s auth email payload truly does not include `token_hash`, the current wrapped link still supplies a `token_hash` value equal to the backend verify token. The next implementation pass should either:
-     - verify that `verifyOtp(token_hash)` accepts this exact value for email signup links in this setup, or
-     - switch the app callback to consume `verify_url` as the primary path by opening/calling the backend verification URL in a controlled way, then returning to the app.
-   - I will preserve redacted logging so the next test tells us exactly whether `verifyOtp-result` succeeds or reports `otp_expired` / invalid token.
-
-After approval, I’ll apply these changes. Then rebuild with `npm run apk:fresh:debug` (or `bash scripts/build-android-fresh.sh`), install the APK, launch the app once, and check:
-
-```text
-adb logcat -c
-adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow|verifyOtp-result|deeplink'
+```ts
+{
+  // Vite's built-in publicDir copier skips dotfile directories (e.g. .well-known/),
+  // so we copy it explicitly. Required for Android App Links (assetlinks.json).
+  name: "copy-wellknown",
+  apply: "build" as const,
+  closeBundle() {
+    const srcDir = path.resolve(__dirname, "public/.well-known");
+    const destDir = path.resolve(__dirname, "dist/.well-known");
+    if (!fs.existsSync(srcDir)) {
+      throw new Error(
+        "[build] public/.well-known/ missing in source — cannot emit assetlinks.json"
+      );
+    }
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const entry of fs.readdirSync(srcDir)) {
+      const from = path.join(srcDir, entry);
+      const to = path.join(destDir, entry);
+      if (fs.statSync(from).isFile()) {
+        fs.copyFileSync(from, to);
+      }
+    }
+  },
+},
 ```
 
-Expected first sign that the correct APK is installed:
+The existing `assert-wellknown-assetlinks` plugin remains immediately after it as a safety net — if the copy ever silently fails, the assert still aborts the build.
 
-```text
-[BuildInfo] ... authFlow=v2-verifyOtp
+### Why plugin order matters
+
+Vite runs `closeBundle` hooks in plugin-array order. The copier must run before the asserter; otherwise the assert sees an empty `dist/.well-known/` and aborts.
+
+### Defense in depth — `scripts/build-android-fresh.sh`
+
+After `npm run build`, add an explicit existence check before `cap sync`, so a regression surfaces with a clear message rather than as a missing asset on device:
+
+```bash
+ASSETLINKS="$ROOT_DIR/dist/.well-known/assetlinks.json"
+if [[ ! -f "$ASSETLINKS" ]]; then
+  echo "❌ Missing $ASSETLINKS after npm run build."
+  echo "   The copy-wellknown Vite plugin did not run. Check vite.config.ts."
+  exit 1
+fi
+echo "✅ assetlinks.json present in dist/"
 ```
 
-Expected verification flow after tapping a fresh email link:
+Insert this immediately after the `npm run build` line and before `npx cap sync android`.
 
-```text
-[AuthVerify] deeplink:received ...
-[AuthVerify] callback:parsed {"hasTokenHash":true,...}
-[AuthVerify] callback:verifyOtp-call ...
-[AuthVerify] callback:verifyOtp-result ...
-```
+## Verification (after approval & build)
+
+1. `rm -rf dist && npm run build`
+2. `ls -la dist/.well-known/` → must show `assetlinks.json`
+3. `npm run apk:fresh:debug` — must complete without hitting the assert or the new bash guard
+4. After install, `adb shell pm get-app-links com.mi4labs.carnivorex` should report `verified` for `app.carnivorex.app`
+
+- Add the `copy-wellknown` plugin to `vite.config.ts`.
+- Put it **immediately above** `assert-wellknown-assetlinks`.
+- Add the post-build bash guard in `scripts/build-android-fresh.sh`.
+
+## Files to edit
+
+- `vite.config.ts` — add `copy-wellknown` plugin before `assert-wellknown-assetlinks`
+- `scripts/build-android-fresh.sh` — add post-build assetlinks existence guard
+
+No other files affected. No runtime app code changes.
