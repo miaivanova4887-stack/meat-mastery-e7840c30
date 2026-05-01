@@ -3,5 +3,5 @@
     <string name="app_name">CarnivoreX</string>
     <string name="title_activity_main">CarnivoreX</string>
     <string name="package_name">com.mi4labs.carnivorex</string>
-    <string name="custom_url_scheme">com.mi4labs.carnivorex</string>
+    <string name="custom_url_scheme">carnivorex</string>
 </resources>

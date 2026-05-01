@@ -1,69 +1,82 @@
-## Goal
+## Problem
 
-Fix Android Google sign-in by routing the OAuth callback through the custom URL scheme `carnivorex://auth/callback` instead of the HTTPS App Link `https://app.carnivorex.app/auth/callback`. The HTTPS App Link path is failing to deliver the callback back into the WebView (the resume event fires with no session and `deeplink:appUrlOpen` never logs).
+Logs confirm `oauth:redirect-uri = carnivorex://auth/callback` and `oauth:signIn-result.redirected = true` — the browser opens Google consent — but `deeplink:appUrlOpen` never fires. Cause: Android has no intent-filter registered for the `carnivorex://` custom scheme, so the OS doesn't know to route that URL back to MainActivity. The current manifest only handles HTTPS App Links for `app.carnivorex.app`.
 
-The custom scheme is already wired up in `android/app/src/main/AndroidManifest.xml` via the standard Capacitor intent filter, and `useDeepLinks` already routes `/auth/callback` deep links into the React app, so no native changes are needed.
+A second contributing issue: `strings.xml` sets `custom_url_scheme` to `com.mi4labs.carnivorex` (the package name). Capacitor's auto-generated scheme handling reads this string; it must match the scheme we actually use (`carnivorex`).
 
 ## Changes
 
-### 1. `src/pages/Auth.tsx` — `handleOAuthSignIn` (lines 113–153)
+### 1. `android/app/src/main/AndroidManifest.xml`
 
-Replace the current `redirectTo` computation with explicit per-platform branching:
+Add a new, separate `<intent-filter>` block inside the MainActivity `<activity>` (do NOT merge it with the existing https App Link filter — combining schemes in one filter breaks autoVerify).
 
-```ts
-const platform = Capacitor.getPlatform(); // "web" | "android" | "ios"
-const redirectTo =
-  platform === "web"
-    ? `${window.location.origin}/auth/callback`
-    : "carnivorex://auth/callback"; // android + ios
+Insert this block right after the existing `autoVerify="true"` https intent-filter:
+
+```xml
+<!-- Custom scheme deep link for OAuth callback (Google sign-in) -->
+<intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="carnivorex" android:host="auth" />
+</intent-filter>
 ```
 
-Everything else in the function (logging, `lovable.auth.signInWithOAuth`, error toast, navigation) stays the same. The existing `oauth:redirect-uri` log will now show `carnivorex://auth/callback` on device, which is the verification signal.
+Final intent-filter section of MainActivity will contain (in order):
+1. MAIN / LAUNCHER
+2. Health Connect rationale (`androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE`)
+3. https App Link with `autoVerify="true"` for `app.carnivorex.app` (`/auth/callback`, `/reset-password`) — unchanged
+4. **NEW** custom scheme `carnivorex://auth/...`
 
-### 2. `src/main.tsx` — bump build marker
+### 2. `android/app/src/main/res/values/strings.xml`
 
-Change `authFlow=v3-oauth-diag` → `authFlow=v4-custom-scheme` so we can confirm the new bundle is what's running on device (the failing log shows `v3-oauth-diag`, proving the build marker check is the reliable way to verify the install).
-
-### 3. `scripts/build-android-fresh.sh` — update `REQUIRED_MARKERS`
-
-Update the expected marker string to `authFlow=v4-custom-scheme` so the post-build assertion fails loudly if the new bundle isn't packaged.
-
-## Out of scope (no code change needed)
-
-- `src/pages/AuthCallback.tsx` already handles the PKCE `?code=…` exchange added in the previous round — it will run as soon as `useDeepLinks` forwards `carnivorex://auth/callback?code=…` to the in-app `/auth/callback` route.
-- `useDeepLinks` already listens for `appUrlOpen` and routes `/auth/callback` paths.
-- `AndroidManifest.xml` already declares the `com.mi4labs.carnivorex` / `carnivorex` custom scheme intent filter from Capacitor defaults.
-- iOS: the same custom scheme will work once iOS is built; no separate logic needed.
-
-## Required Supabase configuration (manual, outside the codebase)
-
-In **Lovable Cloud → Authentication → URL Configuration → Redirect URLs**, add:
-
+Change:
+```xml
+<string name="custom_url_scheme">com.mi4labs.carnivorex</string>
 ```
-carnivorex://auth/callback
+To:
+```xml
+<string name="custom_url_scheme">carnivorex</string>
 ```
 
-Keep the existing `https://app.carnivorex.app/auth/callback` and `https://carnivore-coach-pro.lovable.app/auth/callback` entries for web. Without this allowlist entry, the OAuth broker will reject the redirect and the user will land on an error page instead of the app.
+Leave `package_name` (`com.mi4labs.carnivorex`) and `app_name` unchanged.
 
-## Verification after rebuild
+### 3. `src/main.tsx`
 
+Bump the build marker:
+- `authFlow=v4-custom-scheme` → `authFlow=v5-manifest-fix`
+
+### 4. `scripts/build-android-fresh.sh`
+
+Update `REQUIRED_MARKERS` (line 70):
+- `"authFlow=v4-custom-scheme"` → `"authFlow=v5-manifest-fix"`
+
+Also update the post-install hint strings (lines 240) so they reference `v5-manifest-fix`.
+
+## Why this works
+
+- The new intent-filter tells Android: "When any app (including Chrome Custom Tabs returning from Google's OAuth redirect) launches a `carnivorex://auth/...` URL, deliver it to MainActivity." Capacitor's `App` plugin then fires the `appUrlOpen` event, which `useDeepLinks` already routes to `/auth/callback`, where `AuthCallback.tsx` calls `exchangeCodeForSession`.
+- `singleTask` launchMode (already set) ensures the existing app instance receives the intent rather than spawning a new one.
+- The string-resource fix prevents Capacitor's bridge from advertising the wrong scheme to itself.
+
+## Post-deploy verification
+
+After running `npm run apk:fresh:debug` and reinstalling, expect logs to show:
 ```
-npm run apk:fresh:debug
-adb install -r android/app/build/outputs/apk/debug/app-debug.apk
-adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|oauth:'
+[BuildInfo] ... authFlow=v5-manifest-fix
+[AuthVerify] oauth:click ...
+[AuthVerify] oauth:redirect-uri {"redirectTo":"carnivorex://auth/callback"}
+[AuthVerify] oauth:signIn-result {... redirected:true}
+[AuthVerify] deeplink:appUrlOpen {"redacted":"carnivorex://auth/callback?code=[redacted:...]"}
+[AuthVerify] deeplink:received {"source":"live","pathname":"/auth/callback", ...}
+[AuthVerify] oauth:exchange-call ...
+[AuthVerify] oauth:exchange-result {"hasSession":true, ...}
 ```
 
-Tap **Continue with Google**. Expected new log sequence:
+The critical new line is `deeplink:appUrlOpen` arriving within ~1s of returning from the browser. If it still does not fire after this fix, Supabase's allowlist for `carnivorex://auth/callback` must be confirmed (Authentication → URL Configuration → Redirect URLs).
 
-```text
-BuildInfo … authFlow=v4-custom-scheme
-oauth:click          { provider: "google", platform: "android", isNative: true }
-oauth:redirect-uri   { redirectTo: "carnivorex://auth/callback" }   ← key change
-oauth:signIn-result  { redirected: true, hasError: false }
-deeplink:appUrlOpen  { redacted: "carnivorex://auth/callback?code=[redacted:…]" }
-callback:start
-oauth:exchange-call  { hasCode: true, codeFp: "len=… head=…" }
-oauth:exchange-result{ hasSession: true, hasUser: true, errMessage: null }
-```
-
-If `deeplink:appUrlOpen` still doesn't fire after the redirect, the failure is on the Supabase Redirect URL allowlist (step above) — the broker will have refused to redirect to the custom scheme.
+## Files touched
+- `android/app/src/main/AndroidManifest.xml`
+- `android/app/src/main/res/values/strings.xml`
+- `src/main.tsx`
+- `scripts/build-android-fresh.sh`
