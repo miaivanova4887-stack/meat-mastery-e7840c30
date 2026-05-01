@@ -115,6 +115,26 @@ const Auth = () => {
     }
   };
 
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail) return;
+    setResending(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: unconfirmedEmail,
+        options: { emailRedirectTo: "https://app.carnivorex.app/auth/callback" },
+      });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success(`Confirmation link sent to ${unconfirmedEmail}`);
+      }
+    } finally {
+      setResending(false);
+    }
+  };
+
   const headerTitle =
     mode === "login"
       ? t("auth.signIn")
