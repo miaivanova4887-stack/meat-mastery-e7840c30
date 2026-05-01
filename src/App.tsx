@@ -170,6 +170,7 @@ const App = () => {
                 <Route path="/shopping-bag" element={<ShoppingBag />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/callback" element={<AuthCallback />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/community" element={<Community />} />
                 <Route path="/profile" element={<ProfilePage />} />

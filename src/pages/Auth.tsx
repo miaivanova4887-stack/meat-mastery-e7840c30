@@ -126,7 +126,7 @@ const Auth = () => {
     const redirectTo =
       platform === "web"
         ? `${window.location.origin}/auth/callback`
-        : "carnivorex://auth/callback";
+        : "carnivorex://callback";
     logAuthDiag("oauth:click", { provider, platform, isNative });
     logAuthDiag("oauth:redirect-uri", { redirectTo });
     try {

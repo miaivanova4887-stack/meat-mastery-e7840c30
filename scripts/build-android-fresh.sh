@@ -67,7 +67,7 @@ REQUIRED_MARKERS=(
   "deeplink:launch-url"
   "BuildInfo"
   "build-version"
-  "authFlow=v6-browser-plugin"
+  "authFlow=v7-callback-path-fix"
   "oauth:exchange-call"
   "oauth:redirect-uri"
   "oauth:browser-open"
@@ -238,7 +238,7 @@ if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="de
   echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
   echo ""
   echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow|oauth:'"
-  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v6-browser-plugin"
+  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v7-callback-path-fix"
   echo "   If that line is missing or the timestamp is older than this build,"
   echo "   the install did not take or your local checkout is behind (git pull)."
 else
