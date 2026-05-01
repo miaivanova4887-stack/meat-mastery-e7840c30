@@ -67,7 +67,7 @@ REQUIRED_MARKERS=(
   "deeplink:launch-url"
   "BuildInfo"
   "build-version"
-  "authFlow=v4-custom-scheme"
+  "authFlow=v5-manifest-fix"
   "oauth:exchange-call"
   "oauth:redirect-uri"
 )
@@ -237,7 +237,7 @@ if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="de
   echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
   echo ""
   echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow|oauth:'"
-  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v4-custom-scheme"
+  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v5-manifest-fix"
   echo "   If that line is missing or the timestamp is older than this build,"
   echo "   the install did not take or your local checkout is behind (git pull)."
 else

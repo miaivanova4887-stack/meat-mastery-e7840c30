@@ -10,7 +10,7 @@ window.__BUILD_FINGERPRINT__ = __BUILD_FINGERPRINT__ ?? "unknown";
 console.info(
   `[BuildInfo] fingerprint=${window.__BUILD_FINGERPRINT__} ts=${
     typeof __BUILD_TIMESTAMP__ === "string" ? __BUILD_TIMESTAMP__ : "unknown"
-  } authFlow=v4-custom-scheme authVerifyTag=oauth:exchange-call`
+  } authFlow=v5-manifest-fix authVerifyTag=oauth:exchange-call`
 );
 
 createRoot(document.getElementById("root")!).render(<App />);
