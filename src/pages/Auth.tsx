@@ -1,6 +1,7 @@
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Fingerprint } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { lovable } from "@/integrations/lovable";
+import { logAuthDiag } from "@/lib/authDiagnostics";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -111,9 +112,27 @@ const Auth = () => {
 
   const handleOAuthSignIn = async (provider: "google" | "apple") => {
     setLoading(true);
+    const platform = Capacitor.getPlatform();
+    const isNative = Capacitor.isNativePlatform();
+    // Web: hit the hosted /auth/callback page so PKCE code exchange runs there.
+    // Native: same HTTPS callback — assetlinks.json routes it back into the app
+    // via the App Link intent filter, then useDeepLinks forwards to /auth/callback.
+    const redirectTo = isNative
+      ? "https://app.carnivorex.app/auth/callback"
+      : `${window.location.origin}/auth/callback`;
+    logAuthDiag("oauth:click", { provider, platform, isNative });
+    logAuthDiag("oauth:redirect-uri", { redirectTo });
     try {
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: `${window.location.origin}/auth/callback`,
+        redirect_uri: redirectTo,
+      });
+      logAuthDiag("oauth:signIn-result", {
+        provider,
+        redirected: Boolean((result as any)?.redirected),
+        hasError: Boolean(result.error),
+        hasTokens: Boolean((result as any)?.tokens),
+        errName: (result.error as any)?.name ?? null,
+        errMessage: result.error?.message ?? null,
       });
       if (result.error) {
         toast.error(result.error.message || `${provider === "google" ? "Google" : "Apple"} sign-in failed`);
@@ -122,7 +141,12 @@ const Auth = () => {
       }
       if (result.redirected) return;
       navigate(returnTo, { replace: true });
-    } catch (err) {
+    } catch (err: any) {
+      logAuthDiag("oauth:signIn-threw", {
+        provider,
+        name: err?.name ?? null,
+        message: err?.message ?? String(err),
+      });
       toast.error(`${provider === "google" ? "Google" : "Apple"} sign-in failed`);
       setLoading(false);
     }

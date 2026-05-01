@@ -1,77 +1,73 @@
-## Problem
+## Goal
 
-`public/.well-known/assetlinks.json` exists in source, but `vite build` does not emit it to `dist/.well-known/assetlinks.json`. Vite's built-in `publicDir` copier skips dotfile directories (entries starting with `.`), so the existing `copyPublicDir: true` setting is not enough. The downstream `assert-wellknown-assetlinks` plugin then fails (or, if bypassed, `cap sync` ships an APK without App Link verification).
+Get full visibility into the Android Google sign-in failure by tagging every hop with `[AuthVerify]` logs that already pipe into logcat (visible via `adb logcat | grep AuthVerify`) and into the on-screen diagnostics panel on `/auth/callback`.
 
-## Fix
+Apple button visibility is already correctly gated to iOS only — no UI changes.
 
-Add a small Vite plugin that explicitly copies `public/.well-known/` → `dist/.well-known/` after the bundle is written, and place it BEFORE the existing assertion plugin so the assert runs against a populated `dist/`.
+## What gets logged
 
-### Changes to `vite.config.ts`
+For each Google sign-in attempt, the user (and adb) will see a sequence like:
 
-Insert a new plugin `copy-wellknown` directly above `assert-wellknown-assetlinks` in the `plugins` array:
-
-```ts
-{
-  // Vite's built-in publicDir copier skips dotfile directories (e.g. .well-known/),
-  // so we copy it explicitly. Required for Android App Links (assetlinks.json).
-  name: "copy-wellknown",
-  apply: "build" as const,
-  closeBundle() {
-    const srcDir = path.resolve(__dirname, "public/.well-known");
-    const destDir = path.resolve(__dirname, "dist/.well-known");
-    if (!fs.existsSync(srcDir)) {
-      throw new Error(
-        "[build] public/.well-known/ missing in source — cannot emit assetlinks.json"
-      );
-    }
-    fs.mkdirSync(destDir, { recursive: true });
-    for (const entry of fs.readdirSync(srcDir)) {
-      const from = path.join(srcDir, entry);
-      const to = path.join(destDir, entry);
-      if (fs.statSync(from).isFile()) {
-        fs.copyFileSync(from, to);
-      }
-    }
-  },
-},
+```text
+[AuthVerify] oauth:click            { provider: "google", platform: "android", isNative: true }
+[AuthVerify] oauth:redirect-uri     { redirectTo: "https://app.carnivorex.app/auth/callback" }
+[AuthVerify] oauth:signIn-result    { redirected: true,  hasError: false, hasTokens: false }
+[AuthVerify] deeplink:appUrlOpen    { redacted: "carnivorex://auth/callback?code=[redacted:...]" }
+[AuthVerify] callback:start         { url: "...", hashHasAccessToken: false }
+[AuthVerify] oauth:exchange-call    { hasCode: true, codeFp: "len=43 head=4/0…" }
+[AuthVerify] oauth:exchange-result  { hasSession: true,  hasUser: true,  errMessage: null }
 ```
 
-The existing `assert-wellknown-assetlinks` plugin remains immediately after it as a safety net — if the copy ever silently fails, the assert still aborts the build.
+If anything fails, the matching line carries `errName / errStatus / errCode / errMessage` so we can pinpoint whether the breakage is at the click, the redirect, the broker, the deep link, or the PKCE code exchange.
 
-### Why plugin order matters
+## Files to change
 
-Vite runs `closeBundle` hooks in plugin-array order. The copier must run before the asserter; otherwise the assert sees an empty `dist/.well-known/` and aborts.
+1. **`src/pages/Auth.tsx`** — `handleOAuthSignIn`
+   - Import `Capacitor` (already imported for the Apple gate) and `logAuthDiag` from `@/lib/authDiagnostics`.
+   - Compute `redirectTo` once and log it before calling `lovable.auth.signInWithOAuth`.
+     - Native Android: keep custom-scheme deep link `carnivorex://auth/callback` (matches the `assetlinks.json` / intent filter you already verified).
+     - Web: `${window.location.origin}/auth/callback`.
+   - Log `oauth:click`, `oauth:redirect-uri`, then `oauth:signIn-result` with `{ redirected, hasError, hasTokens, errMessage }`.
+   - Apply the same change to both `google` and `apple` paths (Apple stays hidden on Android, so this only fires on iOS).
 
-### Defense in depth — `scripts/build-android-fresh.sh`
+2. **`src/integrations/lovable/index.ts`**
+   - This file is auto-generated and must not be hand-edited. Instead, the diagnostics for the inner `setSession` step are captured indirectly: the wrapper returns `{ error }` on failure, which `Auth.tsx` already surfaces via `oauth:signIn-result`. No edit here.
 
-After `npm run build`, add an explicit existence check before `cap sync`, so a regression surfaces with a clear message rather than as a missing asset on device:
+3. **`src/hooks/useDeepLinks.ts`**
+   - Already logs `deeplink:appUrlOpen` and `deeplink:launch-url` (raw OAuth callback URL is captured in redacted form). No change needed — these entries cover the "raw OAuth callback URL received by the app" requirement.
 
-```bash
-ASSETLINKS="$ROOT_DIR/dist/.well-known/assetlinks.json"
-if [[ ! -f "$ASSETLINKS" ]]; then
-  echo "❌ Missing $ASSETLINKS after npm run build."
-  echo "   The copy-wellknown Vite plugin did not run. Check vite.config.ts."
-  exit 1
-fi
-echo "✅ assetlinks.json present in dist/"
-```
+4. **`src/pages/AuthCallback.tsx`**
+   - Add a new branch at the top of `finalize()` that detects an OAuth `code` query param (PKCE) and logs the exchange:
+     - `oauth:exchange-call` with `{ hasCode, codeFp }` (uses existing `fingerprint` helper, never logs the raw code).
+     - Calls `supabase.auth.exchangeCodeForSession(window.location.href)`.
+     - `oauth:exchange-result` with `{ hasSession, hasUser, userVerified, errName, errStatus, errCode, errMessage }`.
+     - On success, navigate to `/` (same pattern as the existing hash-token branch).
+   - This branch runs before the existing `verifyOtp` path so email-link verification is unaffected.
 
-Insert this immediately after the `npm run build` line and before `npx cap sync android`.
+5. **`src/main.tsx`**
+   - Bump the build marker from `authFlow=v2-verifyOtp` to `authFlow=v3-oauth-diag` so the build script's `REQUIRED_MARKERS` check confirms the new bundle is the one running on device.
 
-## Verification (after approval & build)
+6. **`scripts/build-android-fresh.sh`**
+   - Update `REQUIRED_MARKERS` to expect `authFlow=v3-oauth-diag`.
 
-1. `rm -rf dist && npm run build`
-2. `ls -la dist/.well-known/` → must show `assetlinks.json`
-3. `npm run apk:fresh:debug` — must complete without hitting the assert or the new bash guard
-4. After install, `adb shell pm get-app-links com.mi4labs.carnivorex` should report `verified` for `app.carnivorex.app`
+## How to verify after rebuild
 
-- Add the `copy-wellknown` plugin to `vite.config.ts`.
-- Put it **immediately above** `assert-wellknown-assetlinks`.
-- Add the post-build bash guard in `scripts/build-android-fresh.sh`.
+1. `npm run apk:fresh:debug && adb install -r android/app/build/outputs/apk/debug/app-debug.apk`
+2. `adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify'`
+3. Tap **Continue with Google** on Android.
+4. Expected log sequence:
+   - `BuildInfo … authFlow=v3-oauth-diag`
+   - `oauth:click platform=android`
+   - `oauth:redirect-uri redirectTo=…`
+   - `oauth:signIn-result redirected=true` (browser opens)
+   - After Google consent: `deeplink:appUrlOpen` with the redacted callback URL
+   - `callback:start`
+   - `oauth:exchange-call` + `oauth:exchange-result`
+5. Whichever line shows `hasError:true` / non-null `errMessage` identifies the failure point. Share that block and we'll fix it next.
 
-## Files to edit
+## What is NOT changing
 
-- `vite.config.ts` — add `copy-wellknown` plugin before `assert-wellknown-assetlinks`
-- `scripts/build-android-fresh.sh` — add post-build assetlinks existence guard
-
-No other files affected. No runtime app code changes.
+- Apple button visibility (already iOS-only).
+- Email verification flow (`verifyOtp` branch is untouched).
+- `src/integrations/lovable/index.ts` (auto-generated).
+- Any RLS, edge function, or database config.

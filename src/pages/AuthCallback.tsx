@@ -74,6 +74,37 @@ const AuthCallback = () => {
     });
 
     try {
+      // 0. OAuth (PKCE) code exchange — Google/Apple sign-in returns ?code=...
+      let oauthCode: string | null = null;
+      try {
+        oauthCode = new URL(sourceUrl).searchParams.get("code");
+      } catch { /* noop */ }
+      if (oauthCode) {
+        logAuthDiag("oauth:exchange-call", {
+          hasCode: true,
+          codeFp: fingerprint(oauthCode),
+        });
+        const { data: exData, error: exErr } =
+          await supabase.auth.exchangeCodeForSession(sourceUrl);
+        logAuthDiag("oauth:exchange-result", {
+          hasSession: Boolean(exData?.session),
+          hasUser: Boolean(exData?.user),
+          userVerified: exData?.user?.email_confirmed_at ?? null,
+          errName: (exErr as any)?.name ?? null,
+          errStatus: (exErr as any)?.status ?? null,
+          errCode: (exErr as any)?.code ?? null,
+          errMessage: exErr?.message ?? null,
+        });
+        if (!exErr && exData?.session) {
+          window.history.replaceState(null, "", "/auth/callback");
+          setStatus("verified");
+          toast.success("Signed in — welcome to CarnivoreX");
+          setTimeout(() => navigate("/", { replace: true }), 600);
+          return;
+        }
+        if (exErr) throw exErr;
+      }
+
       // 1. Hash-style session install (OAuth/legacy).
       if (window.location.hash.includes("access_token")) {
         const { data: refreshed, error: refErr } = await supabase.auth.refreshSession();

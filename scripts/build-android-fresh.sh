@@ -67,7 +67,9 @@ REQUIRED_MARKERS=(
   "deeplink:launch-url"
   "BuildInfo"
   "build-version"
-  "authFlow=v2-verifyOtp"
+  "authFlow=v3-oauth-diag"
+  "oauth:exchange-call"
+  "oauth:redirect-uri"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
@@ -234,8 +236,8 @@ if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="de
   INSTALLED_VERSION=$(adb shell dumpsys package com.mi4labs.carnivorex 2>/dev/null | awk -F'=' '/versionName=/{print $2; exit}')
   echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
   echo ""
-  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow'"
-  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v2-verifyOtp"
+  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow|oauth:'"
+  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v3-oauth-diag"
   echo "   If that line is missing or the timestamp is older than this build,"
   echo "   the install did not take or your local checkout is behind (git pull)."
 else
