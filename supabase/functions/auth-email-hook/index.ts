@@ -145,10 +145,21 @@ function buildEmailLink(
   // Wrap into a clean visible app URL with token data inline so the app
   // can verify directly via supabase.auth.verifyOtp without needing to
   // fetch the backend verify URL (which fails inside WebViews).
+  //
+  // Supabase puts {{ .TokenHash }} into the `token` query param of the
+  // backend verify URL. That is the email-link token hash, not a 6-digit
+  // OTP. Expose it as `token_hash` so the app can pass it directly to
+  // verifyOtp({ token_hash, type }).
   const path = emailType === 'recovery' ? '/reset-password' : '/auth/callback'
   const wrapped = new URL(`https://${AUTH_CALLBACK_HOST}${path}`)
-  if (token) wrapped.searchParams.set('token', token)
-  if (tokenHash) wrapped.searchParams.set('token_hash', tokenHash)
+  const isShortOtp = /^[0-9]{4,8}$/.test(token)
+  if (tokenHash) {
+    wrapped.searchParams.set('token_hash', tokenHash)
+  } else if (token && !isShortOtp) {
+    wrapped.searchParams.set('token_hash', token)
+  } else if (token) {
+    wrapped.searchParams.set('token', token)
+  }
   if (verifyType) wrapped.searchParams.set('type', verifyType)
   if (recipientEmail) wrapped.searchParams.set('email', recipientEmail)
   // Backward-compat fallback so older clients can still follow the verify URL.
@@ -161,6 +172,7 @@ function buildEmailLink(
     nestedRewritten,
     hasToken: Boolean(token),
     hasTokenHash: Boolean(tokenHash),
+    promotedTokenToHash: Boolean(token && !tokenHash && !isShortOtp),
     verifyType,
     visibleHost: wrapped.hostname,
     visiblePath: wrapped.pathname,
