@@ -1,50 +1,153 @@
-# Fix: native OAuth callback path mismatch (`/callback` vs `/auth/callback`)
+I’ll implement a focused hardening pass across the existing Capacitor + auth flow to eliminate stale callback behavior and prevent indefinite loading.
 
-Logcat confirmed Google OAuth returns to `carnivorex:///callback#access_token=...`, but `useDeepLinks` only treats `/auth/callback` as auth, so the deep link is dropped and the session is never installed.
+## Planned changes
 
-## Changes
+1. Normalize all native OAuth callback formats
 
-### 1. `src/hooks/useDeepLinks.ts`
-- Treat `/callback` as an auth route alongside `/auth/callback` (and `/reset-password`).
-- Close the in-app `Browser` for either OAuth callback path (`/callback` or `/auth/callback`).
-- Route the deep link into React Router exactly as today (preserving `search` + `hash`, replacing history first when a hash is present so `AuthCallback` can read it via `window.location.hash`).
+- Add an exported `normalizeAuthCallbackUrl(rawUrl)` helper in `src/hooks/useDeepLinks.ts`.
+- It will recognize and normalize all accepted native callback shapes:
+  - `carnivorex://callback#...` → `/callback`
+  - `carnivorex:///callback#...` → `/callback`
+  - `carnivorex://auth/callback#...` → `/callback` or `/auth/callback` as a valid auth route
+- It will not rely only on `new URL(...).pathname`; it will inspect `protocol`, `host`, `pathname`, and a raw-string fallback for `carnivorex:///callback`.
+- Deep-link logs will include `protocol`, `host`, `pathname`, `normalizedPath`, and `isAuthRoute`.
 
-### 2. `src/App.tsx`
-- Add a second route `<Route path="/callback" element={<AuthCallback />} />` so React Router renders the same component for the new path. (Required — currently only `/auth/callback` is registered.)
+2. Keep redirect source-of-truth strict
 
-### 3. `src/pages/AuthCallback.tsx`
-- No path-specific logic exists today; it already reads `window.location.hash` and `originalUrlRef.current`, so both PKCE `?code=` and hash-token (`#access_token=…`) flows already work regardless of the pathname.
-- Update the two `window.history.replaceState(null, "", "/auth/callback")` calls to preserve the current pathname instead of hard-coding `/auth/callback`, so a `/callback` URL stays `/callback` after token cleanup. Use `window.location.pathname` as the target.
+- In `src/pages/Auth.tsx`, ensure native OAuth always uses exactly:
+  - `carnivorex://callback`
+- Keep web OAuth on:
+  - `${window.location.origin}/auth/callback`
+- Update comments to document the required backend redirect allowlist entries:
+  - `carnivorex://callback`
+  - `carnivorex://auth/callback`
 
-### 4. `src/pages/Auth.tsx`
-- For native (`isNative`) Google/Apple OAuth, change `redirectTo` from `"carnivorex://auth/callback"` to `"carnivorex://callback"`.
-- Web path (`platform === "web"`) stays on `${window.location.origin}/auth/callback` — unchanged.
-- Leave the email-resend `emailRedirectTo` (`https://app.carnivorex.app/auth/callback`) unchanged — that's an HTTPS App Link for email confirmation, not the native OAuth callback.
+3. Route both current and legacy callbacks
 
-### 5. `src/main.tsx`
-- Bump build marker string: `authFlow=v6-browser-plugin` → `authFlow=v7-callback-path-fix`. Keep `authVerifyTag=oauth:exchange-call`.
+- Keep `src/App.tsx` routes for both:
+  - `/callback`
+  - `/auth/callback`
+- Keep AndroidManifest support for both custom scheme hosts:
+  - `scheme=carnivorex host=callback`
+  - `scheme=carnivorex host=auth`
+- Add/update native comments so future builds do not remove either host.
 
-### 6. `scripts/build-android-fresh.sh`
-- In `REQUIRED_MARKERS`, replace `"authFlow=v6-browser-plugin"` with `"authFlow=v7-callback-path-fix"` so a stale bundle aborts the build.
+4. Install OAuth sessions from callback tokens immediately
 
-## Out of scope / NOT changed
-- Supabase Auth → URL Configuration must include `carnivorex://callback` in the Redirect URLs allowlist. (User-side dashboard config — flag this in the follow-up message; no code change can fix it.)
-- `AndroidManifest.xml` intent filters: the existing `carnivorex://` scheme filter already matches both `/callback` and `/auth/callback` (path is not constrained for the custom scheme), so no manifest edit is needed. Will verify during implementation; if the filter pins a path, add `<data android:scheme="carnivorex" android:host="callback" />`.
-- No changes to `AuthContext`, edge functions, or email templates.
+- In `src/pages/AuthCallback.tsx`, parse `access_token` and `refresh_token` from both hash and query string.
+- If both tokens exist, immediately call:
+  - `supabase.auth.setSession({ access_token, refresh_token })`
+- Log:
+  - `callback:setSession-start`
+  - `callback:setSession-success`
+  - `callback:setSession-error`
+- On success, close the native browser, clean token fragments from history, clear the loading state, and navigate to `/`.
+- Only fall back to code exchange / OTP verification / getSession / refreshSession when direct tokens are not present.
 
-## Expected logs after rebuild
-```
-[BuildInfo] ... authFlow=v7-callback-path-fix
-[AuthVerify] oauth:redirect-uri {"redirectTo":"carnivorex://callback"}
-[AuthVerify] deeplink:appUrlOpen {"redacted":"carnivorex://callback#access_token=..."}
-[AuthVerify] deeplink:received {"pathname":"/callback","isAuthRoute":true,...}
-[AuthVerify] callback:start ...
-[AuthVerify] callback:hash-refresh {"hasSession":true,...}
-```
+5. Prevent resume refresh from racing callback processing
 
-## Action required from you (parallel to code change)
-In Lovable Cloud → Auth → URL Configuration → Redirect URLs, add:
-```
-carnivorex://callback
-```
-(keep `carnivorex://auth/callback` too for safety during the transition).
+- Add a small shared auth-callback-in-progress guard, likely in `src/lib/authDiagnostics.ts` or a dedicated auth-flow utility.
+- `AuthCallback.tsx` will mark callback processing active while it parses and installs tokens.
+- `useDeepLinks.ts` resume handler will skip `supabase.auth.refreshSession()` while this flag is active, preventing `Auth session missing!` from racing and corrupting the flow.
+
+6. Add an 8-second failsafe instead of infinite Loading
+
+- `AuthCallback.tsx` will switch from endless `working` to a visible recoverable error after 8 seconds.
+- The UI will provide:
+  - Retry
+  - Back to Sign In
+  - diagnostics panel already used by the page
+- I’ll also review `AuthContext.tsx` bootstrap so it clears loading after `getSession()` failure/no-session and treats both `/auth/callback` and `/callback` as callback routes.
+
+7. Protect email/password recovery path
+
+- Confirm `signInWithPassword` does not depend on deep-link state.
+- Add/adjust defensive logging and error handling so successful email/password sign-in clears component loading and navigates normally.
+- If no session exists, the app should render sign-in state instead of stale loading.
+
+8. Stronger stale-build detection
+
+- In `src/main.tsx`, bump the log marker to exactly:
+  - `authFlow=v8-normalized-callback-parser`
+- In `scripts/build-android-fresh.sh`, update required marker checks and install instructions to require v8 and the new callback markers, so stale v6/v7 bundles fail the script.
+- Keep the script checking for stale auth markers where useful.
+
+9. Verification comments and expected logs
+
+- Add concise comments near the auth callback code with the accepted callback formats and expected good log sequence:
+  - `[BuildInfo] ... authFlow=v8-normalized-callback-parser`
+  - `oauth:redirect-uri {"redirectTo":"carnivorex://callback"}`
+  - `deeplink:appUrlOpen ...`
+  - `deeplink:received ... "normalizedPath":"/callback","isAuthRoute":true`
+  - `callback:setSession-start`
+  - `callback:setSession-success`
+  - navigation to authenticated route
+
+## Files to modify
+
+- `src/hooks/useDeepLinks.ts`
+- `src/pages/AuthCallback.tsx`
+- `src/pages/Auth.tsx`
+- `src/App.tsx`
+- `src/main.tsx`
+- `android/app/src/main/AndroidManifest.xml`
+- `scripts/build-android-fresh.sh`
+- `src/contexts/AuthContext.tsx` if needed for callback-route and bootstrap failsafe hardening
+- `src/lib/authDiagnostics.ts` or a small utility file for the shared callback-in-progress guard
+
+Proceed and apply the code changes now.
+
+Two priorities:
+
+1. Make the runtime log show:
+
+   [BuildInfo] ... authFlow=v8-normalized-callback-parser
+
+   oauth:redirect-uri {"redirectTo":"carnivorex://callback"}
+
+   deeplink:received ... "normalizedPath":"/callback","isAuthRoute":true
+
+   callback:setSession-start
+
+   callback:setSession-success
+
+2. Prevent infinite loading no matter what:
+
+   if callback processing fails or times out, render a recoverable error UI and return to sign-in cleanly.
+
+After editing, return:
+
+- file-by-file summary
+
+- exact lines/strings added for:
+
+  - v8-normalized-callback-parser
+
+  - carnivorex://callback
+
+  - Route path="/callback"
+
+  - normalizeAuthCallbackUrl
+
+  - callback:setSession-start
+
+  - callback:setSession-success
+
+- any required Supabase dashboard redirect URLs
+
+Do not stop at the plan stage; modify the files directly.
+
+## After implementation
+
+I’ll provide a concise summary with:
+
+- each file changed
+- exact native `redirectTo`
+- exact build marker
+- exact callback patterns recognized
+- exact expected adb log lines
+
+You’ll still need the backend redirect allowlist to include both custom scheme entries:
+
+- `carnivorex://callback`
+- `carnivorex://auth/callback`
