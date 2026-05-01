@@ -67,10 +67,12 @@ REQUIRED_MARKERS=(
   "deeplink:launch-url"
   "BuildInfo"
   "build-version"
-  "authFlow=v7-callback-path-fix"
+  "authFlow=v8-normalized-callback-parser"
   "oauth:exchange-call"
   "oauth:redirect-uri"
   "oauth:browser-open"
+  "callback:setSession-start"
+  "normalizeAuthCallbackUrl"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
@@ -238,7 +240,7 @@ if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="de
   echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
   echo ""
   echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow|oauth:'"
-  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v7-callback-path-fix"
+  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v8-normalized-callback-parser"
   echo "   If that line is missing or the timestamp is older than this build,"
   echo "   the install did not take or your local checkout is behind (git pull)."
 else

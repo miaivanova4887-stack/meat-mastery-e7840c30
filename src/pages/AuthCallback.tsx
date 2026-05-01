@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -9,6 +11,27 @@ import {
   copyAuthDiagToClipboard,
   redactUrl,
 } from "@/lib/authDiagnostics";
+import {
+  beginAuthCallback,
+  endAuthCallback,
+} from "@/lib/authCallbackGuard";
+
+/**
+ * Accepted callback formats (any one is enough to install a session):
+ *   - carnivorex://callback#access_token=...&refresh_token=...
+ *   - carnivorex:///callback#access_token=...&refresh_token=...
+ *   - carnivorex://auth/callback#access_token=...&refresh_token=...
+ *   - https://app.carnivorex.app/auth/callback?code=... (PKCE web flow)
+ *
+ * Expected good log sequence:
+ *   [BuildInfo] ... authFlow=v8-normalized-callback-parser
+ *   oauth:redirect-uri {"redirectTo":"carnivorex://callback"}
+ *   deeplink:appUrlOpen ...
+ *   deeplink:received ... "normalizedPath":"/callback","isAuthRoute":true
+ *   callback:setSession-start
+ *   callback:setSession-success
+ *   navigation to /
+ */
 
 type EmailOtpType =
   | "signup"
@@ -73,7 +96,56 @@ const AuthCallback = () => {
       hashHasAccessToken: window.location.hash.includes("access_token"),
     });
 
+    beginAuthCallback();
     try {
+      // 0a. Hash/query token install — native OAuth callback returns
+      //     #access_token=...&refresh_token=... directly. Install the session
+      //     IMMEDIATELY rather than waiting on resume/refreshSession (which
+      //     races and logs "Auth session missing!").
+      let access_token: string | null = null;
+      let refresh_token: string | null = null;
+      try {
+        const u = new URL(sourceUrl);
+        const fromHash = new URLSearchParams(
+          (u.hash || window.location.hash || "").replace(/^#/, ""),
+        );
+        const fromQuery = u.searchParams;
+        access_token = fromHash.get("access_token") || fromQuery.get("access_token");
+        refresh_token = fromHash.get("refresh_token") || fromQuery.get("refresh_token");
+      } catch { /* noop */ }
+
+      if (access_token && refresh_token) {
+        logAuthDiag("callback:setSession-start", {
+          accessTokenFp: fingerprint(access_token),
+          refreshTokenFp: fingerprint(refresh_token),
+        });
+        const { data: ssData, error: ssErr } = await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+        if (ssErr || !ssData?.session) {
+          logAuthDiag("callback:setSession-error", {
+            errName: (ssErr as any)?.name ?? null,
+            errMessage: ssErr?.message ?? null,
+            hasSession: Boolean(ssData?.session),
+          });
+          throw ssErr ?? new Error("setSession returned no session");
+        }
+        logAuthDiag("callback:setSession-success", {
+          hasUser: Boolean(ssData.user),
+          userVerified: ssData.user?.email_confirmed_at ?? null,
+        });
+        if (Capacitor.isNativePlatform()) {
+          void Browser.close().catch(() => { /* noop */ });
+        }
+        window.history.replaceState(null, "", window.location.pathname);
+        setStatus("verified");
+        toast.success("Signed in — welcome to CarnivoreX");
+        setTimeout(() => navigate("/", { replace: true }), 400);
+        endAuthCallback();
+        return;
+      }
+
       // 0. OAuth (PKCE) code exchange — Google/Apple sign-in returns ?code=...
       let oauthCode: string | null = null;
       try {
@@ -207,11 +279,26 @@ const AuthCallback = () => {
       }
       setErrorMsg(msg);
       setStatus("error");
+    } finally {
+      endAuthCallback();
     }
   };
 
   useEffect(() => {
     void finalize();
+    // 8-second failsafe so the app NEVER sits on indefinite Loading.
+    const failsafe = window.setTimeout(() => {
+      setStatus((prev) => {
+        if (prev === "working") {
+          logAuthDiag("callback:failsafe-timeout");
+          setErrorMsg("Sign-in is taking longer than expected. Please retry or return to sign in.");
+          endAuthCallback();
+          return "error";
+        }
+        return prev;
+      });
+    }, 8000);
+    return () => window.clearTimeout(failsafe);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
