@@ -1,6 +1,7 @@
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Fingerprint } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { lovable } from "@/integrations/lovable";
+import { logAuthDiag } from "@/lib/authDiagnostics";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
