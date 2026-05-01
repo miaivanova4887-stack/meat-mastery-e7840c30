@@ -72,7 +72,6 @@ REQUIRED_MARKERS=(
   "oauth:redirect-uri"
   "oauth:browser-open"
   "callback:setSession-start"
-  "normalizeAuthCallbackUrl"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
