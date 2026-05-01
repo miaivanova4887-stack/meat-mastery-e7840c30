@@ -195,8 +195,25 @@ fi
 
 echo "✅ Fresh APK ready: $APK_PATH"
 if command -v shasum >/dev/null 2>&1; then
-  echo "🔐 SHA256:"
+  echo "🔐 APK SHA256:"
   shasum -a 256 "$APK_PATH"
 fi
 
-echo "Tip: uninstall old app from device before installing this APK."
+# Optional: install + verify on a connected device. Skip silently if no adb/device.
+if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="device"{print $1}')" ]]; then
+  echo "📲 Installing APK on connected device..."
+  adb install -r "$APK_PATH" >/dev/null
+  INSTALLED_VERSION=$(adb shell dumpsys package com.mi4labs.carnivorex 2>/dev/null | awk -F'=' '/versionName=/{print $2; exit}')
+  echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
+  echo ""
+  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify'"
+  echo "   Open the app — you MUST see [BuildInfo] fingerprint=build-<timestamp>"
+  echo "   If the fingerprint is older than this build, the install did not take."
+else
+  echo ""
+  echo "ℹ️  No adb device detected — install manually with:"
+  echo "    adb install -r $APK_PATH"
+fi
+
+echo ""
+echo "Tip: uninstall old app from device before installing this APK if you see stale behavior."
