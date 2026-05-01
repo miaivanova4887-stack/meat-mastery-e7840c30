@@ -43,6 +43,36 @@ echo "✅ Patch verified: proguard-android-optimize.txt present"
 echo "🔄 Syncing Capacitor Android project..."
 npx cap sync android
 
+# CRITICAL: verify the synced JS bundle actually contains the latest auth-callback
+# fixes. If `dist/` was stale or `cap sync` copied the wrong tree, the APK would
+# silently ship old JS and we'd debug ghosts (see prior incident: stale APK ran
+# old refreshSession-only callback for 3 build cycles).
+SYNCED_ASSETS_DIR="$ANDROID_DIR/app/src/main/assets/public/assets"
+echo "🔎 Verifying synced web bundle contains latest auth-callback code..."
+if [[ ! -d "$SYNCED_ASSETS_DIR" ]]; then
+  echo "❌ Synced assets directory missing: $SYNCED_ASSETS_DIR"
+  exit 1
+fi
+REQUIRED_MARKERS=(
+  "callback:verifyOtp-call"
+  "deeplink:launch-url"
+  "BuildInfo"
+)
+for marker in "${REQUIRED_MARKERS[@]}"; do
+  if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
+    echo "❌ Synced bundle is MISSING required marker: $marker"
+    echo "   Searched: $SYNCED_ASSETS_DIR"
+    echo "   This means the APK would ship stale JS. Aborting."
+    echo "   Likely causes: dist/ not rebuilt, or cap sync used a cached copy."
+    exit 1
+  fi
+done
+SYNCED_BUNDLE=$(ls -1 "$SYNCED_ASSETS_DIR"/index-*.js 2>/dev/null | head -1 || true)
+echo "✅ Synced bundle verified: $(basename "${SYNCED_BUNDLE:-unknown}")"
+if [[ -n "$SYNCED_BUNDLE" ]] && command -v shasum >/dev/null 2>&1; then
+  echo "🔐 Bundle SHA256: $(shasum -a 256 "$SYNCED_BUNDLE" | awk '{print $1}')"
+fi
+
 # Capacitor sync regenerates android/variables.gradle with minSdkVersion = 24,
 # but androidx.health.connect:connect-client requires minSdk >= 26. Re-pin it
 # here so every fresh build self-heals.
@@ -165,8 +195,25 @@ fi
 
 echo "✅ Fresh APK ready: $APK_PATH"
 if command -v shasum >/dev/null 2>&1; then
-  echo "🔐 SHA256:"
+  echo "🔐 APK SHA256:"
   shasum -a 256 "$APK_PATH"
 fi
 
-echo "Tip: uninstall old app from device before installing this APK."
+# Optional: install + verify on a connected device. Skip silently if no adb/device.
+if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="device"{print $1}')" ]]; then
+  echo "📲 Installing APK on connected device..."
+  adb install -r "$APK_PATH" >/dev/null
+  INSTALLED_VERSION=$(adb shell dumpsys package com.mi4labs.carnivorex 2>/dev/null | awk -F'=' '/versionName=/{print $2; exit}')
+  echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
+  echo ""
+  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify'"
+  echo "   Open the app — you MUST see [BuildInfo] fingerprint=build-<timestamp>"
+  echo "   If the fingerprint is older than this build, the install did not take."
+else
+  echo ""
+  echo "ℹ️  No adb device detected — install manually with:"
+  echo "    adb install -r $APK_PATH"
+fi
+
+echo ""
+echo "Tip: uninstall old app from device before installing this APK if you see stale behavior."
