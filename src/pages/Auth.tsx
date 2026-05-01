@@ -31,6 +31,7 @@ const Auth = () => {
   const [bioReady, setBioReady] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
+  const showApple = Capacitor.getPlatform() === "ios";
 
   useEffect(() => {
     isBiometricSupported().then((supported) => {
