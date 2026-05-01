@@ -211,6 +211,9 @@ const AuthCallback = () => {
 
   const renderDiagPanel = () => (
     <div className="mt-6 text-left">
+      <div className="text-[10px] font-mono text-muted-foreground mb-2 break-all">
+        url: {redactUrl(originalUrlRef.current)}
+      </div>
       <div className="flex items-center gap-2 mb-2">
         <button
           onClick={handleShowDiag}
