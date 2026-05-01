@@ -114,12 +114,17 @@ const Auth = () => {
     setLoading(true);
     const platform = Capacitor.getPlatform();
     const isNative = Capacitor.isNativePlatform();
-    // Web: hit the hosted /auth/callback page so PKCE code exchange runs there.
-    // Native: same HTTPS callback — assetlinks.json routes it back into the app
-    // via the App Link intent filter, then useDeepLinks forwards to /auth/callback.
-    const redirectTo = isNative
-      ? "https://app.carnivorex.app/auth/callback"
-      : `${window.location.origin}/auth/callback`;
+    // Web: hosted /auth/callback page runs the PKCE code exchange.
+    // Native (android/ios): use the custom URL scheme so the OAuth broker
+    // hands the callback directly to the app via the Capacitor intent filter.
+    // The HTTPS App Link path was unreliable (resume fired with no session,
+    // appUrlOpen never logged), so we route through the custom scheme instead.
+    // NOTE: "carnivorex://auth/callback" must be added to the Supabase
+    // Auth → URL Configuration → Redirect URLs allowlist.
+    const redirectTo =
+      platform === "web"
+        ? `${window.location.origin}/auth/callback`
+        : "carnivorex://auth/callback";
     logAuthDiag("oauth:click", { provider, platform, isNative });
     logAuthDiag("oauth:redirect-uri", { redirectTo });
     try {
