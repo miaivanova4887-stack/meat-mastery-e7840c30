@@ -18,6 +18,14 @@ rm -rf "$ROOT_DIR/dist" "$ANDROID_DIR/app/src/main/assets/public" "$ANDROID_DIR/
 echo "📦 Building web assets..."
 npm run build
 
+ASSETLINKS="$ROOT_DIR/dist/.well-known/assetlinks.json"
+if [[ ! -f "$ASSETLINKS" ]]; then
+  echo "❌ Missing $ASSETLINKS after npm run build."
+  echo "   The copy-wellknown Vite plugin did not run. Check vite.config.ts."
+  exit 1
+fi
+echo "✅ assetlinks.json present in dist/"
+
 echo "🩹 Ensuring node_modules patches are applied..."
 (cd "$ROOT_DIR" && npx patch-package)
 
