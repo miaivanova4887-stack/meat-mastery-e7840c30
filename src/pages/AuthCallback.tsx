@@ -1,7 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  logAuthDiag,
+  fingerprint,
+  formatAuthDiag,
+  copyAuthDiagToClipboard,
+  redactUrl,
+} from "@/lib/authDiagnostics";
 
 type EmailOtpType =
   | "signup"
@@ -11,86 +18,70 @@ type EmailOtpType =
   | "email_change"
   | "email";
 
-/**
- * Landing page hit by the auth verification email link
- * (https://app.carnivorex.app/auth/callback?token=...&type=signup&email=...).
- *
- * On native (Android App Link), the OS routes this URL straight into the app
- * via the intent-filter on MainActivity. On web it loads in the SPA.
- *
- * We verify the token directly with supabase.auth.verifyOtp so we don't have
- * to follow a backend redirect chain (which fails inside Android WebViews).
- *
- * IMPORTANT: Supabase confirmation emails embed `{{ .TokenHash }}` as the
- * `token` query param of the backend `/auth/v1/verify` URL. That value is
- * the email-link **token hash**, NOT a 6-digit OTP. The SDK requires it to
- * be passed as `{ token_hash, type }`. Passing it as `{ email, token, type }`
- * fails silently for email-link verification.
- */
 const AuthCallback = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"working" | "verified" | "stale" | "error">("working");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showDiag, setShowDiag] = useState(false);
+  const [diagText, setDiagText] = useState("");
+  // Preserve the original URL so Retry still works after replaceState clears params.
+  const originalUrlRef = useRef<string>(window.location.href);
 
-  /** A short numeric OTP code (6-8 digits) is the only case we treat the
-   * `token` value as a literal one-time-password; anything longer is the
-   * confirmation token hash from the email link. */
   const looksLikeOtpCode = (s: string | undefined): boolean =>
     !!s && /^[0-9]{4,8}$/.test(s);
 
-  const fingerprint = (s: string | undefined): string => {
-    if (!s) return "none";
-    return `len=${s.length} head=${s.slice(0, 4)}…`;
-  };
+  const extractAuthParams = (sourceUrl: string) => {
+    let token: string | undefined;
+    let tokenHash: string | undefined;
+    let type: EmailOtpType | undefined;
+    let email: string | undefined;
+    try {
+      const u = new URL(sourceUrl);
+      const search = u.searchParams;
+      token = search.get("token") ?? undefined;
+      tokenHash = search.get("token_hash") ?? undefined;
+      type = (search.get("type") as EmailOtpType | null) ?? undefined;
+      email = search.get("email") ?? undefined;
 
-  /** Extract token + type from the current URL. Supports the new direct
-   * params and the legacy `verify_url` wrapper for already-sent emails. */
-  const extractAuthParams = (): {
-    token?: string;
-    tokenHash?: string;
-    type?: EmailOtpType;
-    email?: string;
-  } => {
-    const search = new URLSearchParams(window.location.search);
-    let token = search.get("token") ?? undefined;
-    let tokenHash = search.get("token_hash") ?? undefined;
-    let type = (search.get("type") as EmailOtpType | null) ?? undefined;
-    let email = search.get("email") ?? undefined;
-
-    if ((!token && !tokenHash) || !type) {
-      const verifyUrl = search.get("verify_url");
-      if (verifyUrl) {
-        try {
-          const v = new URL(verifyUrl);
-          token = token ?? v.searchParams.get("token") ?? undefined;
-          tokenHash = tokenHash ?? v.searchParams.get("token_hash") ?? undefined;
-          type = type ?? ((v.searchParams.get("type") as EmailOtpType | null) ?? undefined);
-        } catch {
-          /* noop */
+      if ((!token && !tokenHash) || !type) {
+        const verifyUrl = search.get("verify_url");
+        if (verifyUrl) {
+          try {
+            const v = new URL(verifyUrl);
+            token = token ?? v.searchParams.get("token") ?? undefined;
+            tokenHash = tokenHash ?? v.searchParams.get("token_hash") ?? undefined;
+            type = type ?? ((v.searchParams.get("type") as EmailOtpType | null) ?? undefined);
+          } catch {/* noop */}
         }
       }
+      if (token && !tokenHash && !looksLikeOtpCode(token)) {
+        tokenHash = token;
+        token = undefined;
+      }
+    } catch (e) {
+      logAuthDiag("callback:parse-url-error", { error: String(e) });
     }
-
-    // If token is a long hex string, it's actually the token hash from the
-    // email confirmation URL — promote it.
-    if (token && !tokenHash && !looksLikeOtpCode(token)) {
-      tokenHash = token;
-      token = undefined;
-    }
-
     return { token, tokenHash, type, email };
   };
 
   const finalize = async () => {
     setStatus("working");
     setErrorMsg(null);
-    try {
-      console.info("[AuthVerify] callback start url=", window.location.pathname + window.location.search.replace(/(token(?:_hash)?=)[^&]+/g, "$1[redacted]"));
+    const sourceUrl = originalUrlRef.current;
+    logAuthDiag("callback:start", {
+      url: redactUrl(sourceUrl),
+      hashHasAccessToken: window.location.hash.includes("access_token"),
+    });
 
-      // 1. If the URL hash already contains tokens (some flows), supabase-js
-      //    will have auto-installed the session. Check first.
+    try {
+      // 1. Hash-style session install (OAuth/legacy).
       if (window.location.hash.includes("access_token")) {
-        const { data: refreshed } = await supabase.auth.refreshSession();
+        const { data: refreshed, error: refErr } = await supabase.auth.refreshSession();
+        logAuthDiag("callback:hash-refresh", {
+          hasSession: Boolean(refreshed.session),
+          verified: refreshed.session?.user?.email_confirmed_at ?? null,
+          error: refErr?.message ?? null,
+        });
         if (refreshed.session?.user?.email_confirmed_at) {
           window.history.replaceState(null, "", "/auth/callback");
           setStatus("verified");
@@ -100,8 +91,8 @@ const AuthCallback = () => {
         }
       }
 
-      const { token, tokenHash, type, email } = extractAuthParams();
-      console.info("[AuthVerify] parsed params", {
+      const { token, tokenHash, type, email } = extractAuthParams(sourceUrl);
+      logAuthDiag("callback:parsed", {
         hasToken: Boolean(token),
         hasTokenHash: Boolean(tokenHash),
         type,
@@ -111,37 +102,30 @@ const AuthCallback = () => {
       });
 
       if ((token || tokenHash) && type) {
-        // Prefer token_hash (the canonical email-link verification path).
+        const mode = tokenHash ? "token_hash" : "token+email";
         const verifyArgs: any = tokenHash
           ? { token_hash: tokenHash, type }
           : { token, type, email };
-        console.info("[AuthVerify] verifyOtp call", {
-          mode: tokenHash ? "token_hash" : "token+email",
-          type,
-          hasEmail: Boolean(email),
-        });
+        logAuthDiag("callback:verifyOtp-call", { mode, type, hasEmail: Boolean(email) });
 
         const { data, error } = await supabase.auth.verifyOtp(verifyArgs);
-        if (error) {
-          console.warn("[AuthVerify] verifyOtp error", {
-            name: (error as any)?.name,
-            status: (error as any)?.status,
-            code: (error as any)?.code,
-            message: error.message,
-          });
-          throw error;
-        }
-        console.info("[AuthVerify] verifyOtp result", {
-          hasSession: Boolean(data.session),
-          hasUser: Boolean(data.user),
-          userVerified: data.user?.email_confirmed_at ?? null,
+        logAuthDiag("callback:verifyOtp-result", {
+          mode,
+          hasSession: Boolean(data?.session),
+          hasUser: Boolean(data?.user),
+          userVerified: data?.user?.email_confirmed_at ?? null,
+          errName: (error as any)?.name ?? null,
+          errStatus: (error as any)?.status ?? null,
+          errCode: (error as any)?.code ?? null,
+          errMessage: error?.message ?? null,
         });
+        if (error) throw error;
 
         if (data.session) {
-          // Session installed by SDK; re-confirm and navigate.
-          const { data: check } = await supabase.auth.getUser();
-          console.info("[AuthVerify] post-verify getUser", {
+          const { data: check, error: getErr } = await supabase.auth.getUser();
+          logAuthDiag("callback:getUser", {
             verified: check.user?.email_confirmed_at ?? null,
+            error: getErr?.message ?? null,
           });
           setStatus("verified");
           toast.success("Email verified — welcome to CarnivoreX");
@@ -150,23 +134,26 @@ const AuthCallback = () => {
           return;
         }
 
-        // Verified but no session — treat as success and route to sign in.
         if (data.user) {
-          console.info("[AuthVerify] verified without session, sending to /auth");
+          logAuthDiag("callback:verified-no-session");
           setStatus("verified");
           toast.success("Email verified — please sign in to continue");
           window.history.replaceState(null, "", "/auth/callback");
           setTimeout(() => navigate("/auth", { replace: true }), 800);
           return;
         }
+      } else {
+        logAuthDiag("callback:no-params");
       }
 
-      // 2. Last resort: maybe a session is already installed.
+      // 2. Last resort
       const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
-      if (refreshErr) console.warn("[AuthVerify] refreshSession error", refreshErr.message);
-      const after = refreshed.session?.user?.email_confirmed_at ?? null;
-      console.info("[AuthVerify] fallback session verified=", after);
-      if (after) {
+      logAuthDiag("callback:fallback-refresh", {
+        hasSession: Boolean(refreshed.session),
+        verified: refreshed.session?.user?.email_confirmed_at ?? null,
+        error: refreshErr?.message ?? null,
+      });
+      if (refreshed.session?.user?.email_confirmed_at) {
         setStatus("verified");
         toast.success("Email verified — welcome to CarnivoreX");
         window.history.replaceState(null, "", "/auth/callback");
@@ -176,11 +163,11 @@ const AuthCallback = () => {
 
       setStatus("stale");
     } catch (e: any) {
-      console.warn("[AuthVerify] callback threw", {
-        name: e?.name,
-        status: e?.status,
-        code: e?.code,
-        message: e?.message,
+      logAuthDiag("callback:threw", {
+        name: e?.name ?? null,
+        status: e?.status ?? null,
+        code: e?.code ?? null,
+        message: e?.message ?? null,
       });
       const code = e?.code as string | undefined;
       let msg = e?.message ?? "Verification failed";
@@ -198,9 +185,48 @@ const AuthCallback = () => {
   }, []);
 
   const handleRetry = () => {
-    console.info("[AuthVerify] retry tapped");
+    logAuthDiag("callback:retry");
     void finalize();
   };
+
+  const handleShowDiag = () => {
+    setDiagText(formatAuthDiag());
+    setShowDiag(true);
+  };
+
+  const handleCopy = async () => {
+    const ok = await copyAuthDiagToClipboard();
+    if (ok) toast.success("Diagnostics copied");
+    else toast.error("Couldn’t copy — long-press the text below to copy");
+  };
+
+  const renderDiagPanel = () => (
+    <div className="mt-6 text-left">
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={handleShowDiag}
+          className="text-xs underline text-muted-foreground"
+        >
+          {showDiag ? "Refresh diagnostics" : "Show diagnostics"}
+        </button>
+        {showDiag && (
+          <button
+            onClick={handleCopy}
+            className="text-xs px-2 py-1 rounded-md bg-secondary text-foreground border border-border/40"
+          >
+            Copy
+          </button>
+        )}
+      </div>
+      {showDiag && (
+        <textarea
+          readOnly
+          value={diagText}
+          className="w-full h-56 text-[10px] font-mono p-2 rounded-md bg-secondary text-foreground border border-border/40"
+        />
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-background text-foreground">
@@ -232,6 +258,7 @@ const AuthCallback = () => {
             >
               Back to sign in
             </button>
+            {renderDiagPanel()}
           </>
         )}
         {status === "error" && (
@@ -249,6 +276,7 @@ const AuthCallback = () => {
             >
               Back to sign in
             </button>
+            {renderDiagPanel()}
           </>
         )}
       </div>
