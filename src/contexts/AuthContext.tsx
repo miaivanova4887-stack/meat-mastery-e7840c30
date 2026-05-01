@@ -99,8 +99,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
       const nextUser = session?.user ?? null;
+      // Defensive: if a persisted session belongs to a user who never
+      // confirmed their email, drop it. Skip the check while we're on
+      // /auth/callback so the verification flow can complete.
+      const onCallback = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
+      if (nextUser && !nextUser.email_confirmed_at && !onCallback) {
+        console.warn("[AuthVerify] dropping unconfirmed session for", nextUser.email);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        void supabase.auth.signOut();
+        return;
+      }
+      setSession(session);
       setUser(nextUser);
       setLoading(false);
       maybeReconcile(nextUser);
