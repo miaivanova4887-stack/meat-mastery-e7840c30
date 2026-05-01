@@ -5,15 +5,22 @@ import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
+import {
+  isAuthCallbackInProgress,
+  normalizeAuthCallbackUrl,
+} from "@/lib/authCallbackGuard";
 
 /**
- * Wires native deep-link handling for Android App Links.
+ * Wires native deep-link handling for Android App Links + custom scheme.
  *
- * Two delivery paths exist on Android:
- *  - "live link"  : app already running -> appUrlOpen event fires.
- *  - "cold start" : app launched by the link -> URL is on getLaunchUrl(),
- *                   and the appUrlOpen listener may attach AFTER the
- *                   intent fired, so we have to read launch URL ourselves.
+ * Accepted native OAuth callback shapes (all normalized to an auth route):
+ *   - carnivorex://callback#access_token=...
+ *   - carnivorex:///callback#access_token=...
+ *   - carnivorex://auth/callback#access_token=...
+ *
+ * Required Supabase Auth → URL Configuration → Redirect URLs allowlist:
+ *   - carnivorex://callback
+ *   - carnivorex://auth/callback
  */
 export function useDeepLinks() {
   const navigate = useNavigate();
@@ -26,20 +33,20 @@ export function useDeepLinks() {
 
     const routeAuthUrl = (rawUrl: string, source: "live" | "cold") => {
       try {
-        const url = new URL(rawUrl);
-        const isOAuthCallback =
-          url.pathname.startsWith("/auth/callback") ||
-          url.pathname.startsWith("/callback");
-        const isAuth = isOAuthCallback || url.pathname.startsWith("/reset-password");
+        const parsed = normalizeAuthCallbackUrl(rawUrl);
         logAuthDiag("deeplink:received", {
           source,
-          pathname: url.pathname,
-          isAuthRoute: isAuth,
+          protocol: parsed.protocol,
+          host: parsed.host,
+          pathname: parsed.pathname,
+          normalizedPath: parsed.normalizedPath,
+          isAuthRoute: parsed.isAuthRoute,
           redacted: redactUrl(rawUrl),
         });
-        if (!isAuth) return;
-        // Close the in-app browser opened for OAuth so the app comes to the
-        // foreground while the callback finishes the PKCE exchange.
+        if (!parsed.isAuthRoute) return;
+        const isOAuthCallback =
+          parsed.normalizedPath === "/callback" ||
+          parsed.normalizedPath === "/auth/callback";
         if (isOAuthCallback) {
           void Browser.close()
             .then(() => logAuthDiag("oauth:browser-close"))
@@ -47,8 +54,8 @@ export function useDeepLinks() {
               logAuthDiag("oauth:browser-close-error", { error: String(e) }),
             );
         }
-        const target = `${url.pathname}${url.search}${url.hash}`;
-        if (url.hash) {
+        const target = `${parsed.normalizedPath}${parsed.search}${parsed.hash}`;
+        if (parsed.hash) {
           window.history.replaceState(null, "", target);
         }
         navigate(target, { replace: true });
@@ -57,8 +64,6 @@ export function useDeepLinks() {
       }
     };
 
-    // Cold-start: capture the launch URL even if appUrlOpen never fires
-    // because the listener attached too late.
     void CapApp.getLaunchUrl()
       .then((res) => {
         if (res?.url) {
@@ -76,6 +81,13 @@ export function useDeepLinks() {
     });
 
     const resumeSub = CapApp.addListener("resume", () => {
+      // Skip resume-time refresh while AuthCallback is actively installing
+      // a session — otherwise refreshSession() races setSession() and logs
+      // "Auth session missing!" which corrupts the loading state.
+      if (isAuthCallbackInProgress()) {
+        logAuthDiag("deeplink:resume-skip-callback-in-progress");
+        return;
+      }
       logAuthDiag("deeplink:resume-refresh");
       void supabase.auth.refreshSession().then(({ data, error }) => {
         if (error) {
