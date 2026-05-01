@@ -341,7 +341,7 @@ async function handleWebhook(req: Request): Promise<Response> {
     siteName: SITE_NAME,
     siteUrl: `https://${AUTH_CALLBACK_HOST}`,
     recipient: payload.data.email,
-    confirmationUrl: normalizeCallbackUrl(payload.data.url),
+    confirmationUrl: buildEmailLink(payload.data.url, emailType),
     token: payload.data.token,
     email: payload.data.email,
     oldEmail: payload.data.old_email,
