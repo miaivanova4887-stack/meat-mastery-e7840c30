@@ -49,6 +49,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="carnivorex" android:host="auth" />
+                <data android:scheme="carnivorex" android:host="callback" />
             </intent-filter>
 
         </activity>

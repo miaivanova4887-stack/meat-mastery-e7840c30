@@ -27,9 +27,10 @@ export function useDeepLinks() {
     const routeAuthUrl = (rawUrl: string, source: "live" | "cold") => {
       try {
         const url = new URL(rawUrl);
-        const isAuth =
+        const isOAuthCallback =
           url.pathname.startsWith("/auth/callback") ||
-          url.pathname.startsWith("/reset-password");
+          url.pathname.startsWith("/callback");
+        const isAuth = isOAuthCallback || url.pathname.startsWith("/reset-password");
         logAuthDiag("deeplink:received", {
           source,
           pathname: url.pathname,
@@ -39,7 +40,7 @@ export function useDeepLinks() {
         if (!isAuth) return;
         // Close the in-app browser opened for OAuth so the app comes to the
         // foreground while the callback finishes the PKCE exchange.
-        if (url.pathname.startsWith("/auth/callback")) {
+        if (isOAuthCallback) {
           void Browser.close()
             .then(() => logAuthDiag("oauth:browser-close"))
             .catch((e) =>
