@@ -40,6 +40,30 @@ const SITE_NAME = "CarnivoreX"
 const SENDER_DOMAIN = "notify.carnivorex.app"
 const ROOT_DOMAIN = "carnivorex.app"
 const FROM_DOMAIN = "notify.carnivorex.app" // Domain shown in From address (may be root or sender subdomain)
+// Verified Android App Link host. All auth callback URLs must use this host
+// so the installed app intercepts the link instead of opening the browser.
+const AUTH_CALLBACK_HOST = "app.carnivorex.app"
+
+/**
+ * Defensive: if Supabase Auth generated a confirmation URL pointing at the
+ * bare apex (carnivorex.app) — e.g. because Site URL is still misconfigured —
+ * rewrite the host to the verified subdomain (app.carnivorex.app) while
+ * preserving path, query, and the #access_token=… fragment.
+ */
+function normalizeCallbackUrl(rawUrl: string): string {
+  try {
+    const u = new URL(rawUrl)
+    if (u.host === ROOT_DOMAIN || u.host === `www.${ROOT_DOMAIN}`) {
+      const original = u.toString()
+      u.host = AUTH_CALLBACK_HOST
+      console.log('[auth-email-hook] rewrote callback host', { from: original, to: u.toString() })
+    }
+    return u.toString()
+  } catch (e) {
+    console.warn('[auth-email-hook] could not parse confirmation url, leaving unchanged', { rawUrl, error: String(e) })
+    return rawUrl
+  }
+}
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
@@ -218,12 +242,15 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
-  // Build template props from payload.data (HookData structure)
+  // Build template props from payload.data (HookData structure).
+  // confirmationUrl is normalized so it always points at the verified
+  // App Link host (app.carnivorex.app), regardless of what Supabase
+  // Auth's Site URL setting currently is.
   const templateProps = {
     siteName: SITE_NAME,
-    siteUrl: `https://${ROOT_DOMAIN}`,
+    siteUrl: `https://${AUTH_CALLBACK_HOST}`,
     recipient: payload.data.email,
-    confirmationUrl: payload.data.url,
+    confirmationUrl: normalizeCallbackUrl(payload.data.url),
     token: payload.data.token,
     email: payload.data.email,
     oldEmail: payload.data.old_email,

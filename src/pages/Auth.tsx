@@ -27,6 +27,8 @@ const Auth = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bioReady, setBioReady] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     isBiometricSupported().then((supported) => {
@@ -85,12 +87,16 @@ const Auth = () => {
       const errMsg = result.error.toLowerCase();
       if (errMsg.includes("invalid login credentials") || errMsg.includes("invalid_credentials")) {
         toast.error("Incorrect email or password. Please try again.");
+        setUnconfirmedEmail(null);
       } else if (errMsg.includes("email not confirmed")) {
-        toast.error("Please check your email and confirm your account before signing in.");
+        setUnconfirmedEmail(email.trim());
+        toast.error(`Please confirm your email first — we sent the link to ${email.trim()}.`);
       } else {
         toast.error(result.error);
+        setUnconfirmedEmail(null);
       }
     } else if (mode === "signup") {
+      setUnconfirmedEmail(email.trim());
       toast.success(t("auth.checkEmail"));
     } else {
       // Successful login — record this account for future biometric unlock
@@ -106,6 +112,26 @@ const Auth = () => {
       navigate(returnTo, { replace: true });
     } else if (result.error) {
       toast.error(result.error);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!unconfirmedEmail) return;
+    setResending(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: unconfirmedEmail,
+        options: { emailRedirectTo: "https://app.carnivorex.app/auth/callback" },
+      });
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success(`Confirmation link sent to ${unconfirmedEmail}`);
+      }
+    } finally {
+      setResending(false);
     }
   };
 
@@ -206,6 +232,23 @@ const Auth = () => {
               ? t("auth.createAccount")
               : t("auth.sendResetLink")}
           </button>
+
+          {unconfirmedEmail && mode !== "forgot" && (
+            <div className="mt-2 px-3 py-3 rounded-xl bg-secondary/60 border border-border/40 text-xs text-muted-foreground text-center space-y-2">
+              <p>
+                Verification email sent to <span className="text-foreground font-medium">{unconfirmedEmail}</span>.
+                Tap the link from this device to finish.
+              </p>
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resending}
+                className="text-primary font-semibold disabled:opacity-50"
+              >
+                {resending ? "Sending…" : "Resend confirmation email"}
+              </button>
+            </div>
+          )}
         </form>
 
         {mode === "forgot" ? (

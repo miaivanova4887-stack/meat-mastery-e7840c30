@@ -99,16 +99,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
       const nextUser = session?.user ?? null;
+      // Defensive: if a persisted session belongs to a user who never
+      // confirmed their email, drop it. Skip the check while we're on
+      // /auth/callback so the verification flow can complete.
+      const onCallback = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
+      if (nextUser && !nextUser.email_confirmed_at && !onCallback) {
+        console.warn("[AuthVerify] dropping unconfirmed session for", nextUser.email);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        void supabase.auth.signOut();
+        return;
+      }
+      setSession(session);
       setUser(nextUser);
       setLoading(false);
       maybeReconcile(nextUser);
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
       const nextUser = session?.user ?? null;
+      const onCallback = typeof window !== "undefined" && window.location.pathname.startsWith("/auth/callback");
+      if (nextUser && !nextUser.email_confirmed_at && !onCallback) {
+        console.warn("[AuthVerify] initial session unconfirmed, signing out", nextUser.email);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        void supabase.auth.signOut();
+        return;
+      }
+      setSession(session);
       setUser(nextUser);
       setLoading(false);
       maybeReconcile(nextUser);
@@ -133,8 +154,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    // Block sign-in if the user has not confirmed their email yet.
+    // Without this, a user can sign up, switch to the Login tab, and enter
+    // the app before clicking the verification link.
+    if (data.user && !data.user.email_confirmed_at) {
+      console.warn("[AuthVerify] blocked sign-in for unconfirmed email", email);
+      await supabase.auth.signOut();
+      return { error: "Email not confirmed" };
+    }
+    return { error: null };
   };
 
   const signOut = async () => {
