@@ -3,51 +3,78 @@ import { useNavigate } from "react-router-dom";
 import { App as CapApp } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
 
 /**
  * Wires native deep-link handling for Android App Links.
  *
- * - On `appUrlOpen`: parse the URL, and if it points at /auth/callback, push
- *   the path (with hash) into React Router so AuthCallback can finalize.
- * - On `resume`: refresh the Supabase session in case the user verified in a
- *   browser tab and is returning to the app.
+ * Two delivery paths exist on Android:
+ *  - "live link"  : app already running -> appUrlOpen event fires.
+ *  - "cold start" : app launched by the link -> URL is on getLaunchUrl(),
+ *                   and the appUrlOpen listener may attach AFTER the
+ *                   intent fired, so we have to read launch URL ourselves.
  */
 export function useDeepLinks() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!Capacitor.isNativePlatform()) {
+      logAuthDiag("deeplink:web-skip", { href: redactUrl(window.location.href) });
+      return;
+    }
+
+    const routeAuthUrl = (rawUrl: string, source: "live" | "cold") => {
+      try {
+        const url = new URL(rawUrl);
+        const isAuth =
+          url.pathname.startsWith("/auth/callback") ||
+          url.pathname.startsWith("/reset-password");
+        logAuthDiag("deeplink:received", {
+          source,
+          pathname: url.pathname,
+          isAuthRoute: isAuth,
+          redacted: redactUrl(rawUrl),
+        });
+        if (!isAuth) return;
+        const target = `${url.pathname}${url.search}${url.hash}`;
+        if (url.hash) {
+          window.history.replaceState(null, "", target);
+        }
+        navigate(target, { replace: true });
+      } catch (e) {
+        logAuthDiag("deeplink:parse-error", { error: String(e) });
+      }
+    };
+
+    // Cold-start: capture the launch URL even if appUrlOpen never fires
+    // because the listener attached too late.
+    void CapApp.getLaunchUrl()
+      .then((res) => {
+        if (res?.url) {
+          logAuthDiag("deeplink:launch-url", { redacted: redactUrl(res.url) });
+          routeAuthUrl(res.url, "cold");
+        } else {
+          logAuthDiag("deeplink:launch-url-empty");
+        }
+      })
+      .catch((e) => logAuthDiag("deeplink:launch-url-error", { error: String(e) }));
 
     const urlOpenSub = CapApp.addListener("appUrlOpen", (event) => {
-      try {
-        console.info("[AuthVerify] native deep link received url=", event.url);
-        const url = new URL(event.url);
-        if (
-          url.pathname.startsWith("/auth/callback") ||
-          url.pathname.startsWith("/reset-password")
-        ) {
-          // Preserve the hash so supabase-js can read the tokens.
-          const target = `${url.pathname}${url.search}${url.hash}`;
-          // Mirror the hash onto window.location so getSession() picks it up.
-          if (url.hash) {
-            window.history.replaceState(null, "", target);
-          }
-          navigate(target, { replace: true });
-        }
-      } catch (e) {
-        console.warn("[AuthVerify] failed to parse deep link", e);
-      }
+      logAuthDiag("deeplink:appUrlOpen", { redacted: redactUrl(event.url) });
+      routeAuthUrl(event.url, "live");
     });
 
     const resumeSub = CapApp.addListener("resume", () => {
-      console.info("[AuthVerify] app resumed, refreshing session");
+      logAuthDiag("deeplink:resume-refresh");
       void supabase.auth.refreshSession().then(({ data, error }) => {
         if (error) {
-          console.warn("[AuthVerify] resume refresh error", error);
+          logAuthDiag("deeplink:resume-refresh-error", { message: error.message });
           return;
         }
-        const verified = data.session?.user?.email_confirmed_at ?? null;
-        console.info("[AuthVerify] resume refresh done verified=", verified);
+        logAuthDiag("deeplink:resume-refresh-done", {
+          verified: data.session?.user?.email_confirmed_at ?? null,
+          hasSession: Boolean(data.session),
+        });
       });
     });
 

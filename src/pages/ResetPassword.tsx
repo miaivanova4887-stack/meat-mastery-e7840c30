@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { logAuthDiag, fingerprint, redactUrl } from "@/lib/authDiagnostics";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -54,23 +55,33 @@ const ResetPassword = () => {
         token = undefined;
       }
 
+      logAuthDiag("reset:start", {
+        url: redactUrl(window.location.href),
+        hasToken: Boolean(token),
+        hasTokenHash: Boolean(tokenHash),
+        type,
+        hasEmail: Boolean(email),
+        tokenFp: fingerprint(token),
+        tokenHashFp: fingerprint(tokenHash),
+      });
+
       if ((token || tokenHash) && type) {
+        const mode = tokenHash ? "token_hash" : "token+email";
         const args: any = tokenHash
           ? { token_hash: tokenHash, type }
           : { token, type, email };
-        console.info("[ResetPassword] verifyOtp call", {
-          mode: tokenHash ? "token_hash" : "token+email",
-          type,
-          hasEmail: Boolean(email),
-        });
+        logAuthDiag("reset:verifyOtp-call", { mode, type, hasEmail: Boolean(email) });
         const { data, error } = await supabase.auth.verifyOtp(args);
+        logAuthDiag("reset:verifyOtp-result", {
+          mode,
+          hasSession: Boolean(data?.session),
+          hasUser: Boolean(data?.user),
+          errName: (error as any)?.name ?? null,
+          errStatus: (error as any)?.status ?? null,
+          errCode: (error as any)?.code ?? null,
+          errMessage: error?.message ?? null,
+        });
         if (error) {
-          console.warn("[ResetPassword] verifyOtp error", {
-            name: (error as any)?.name,
-            status: (error as any)?.status,
-            code: (error as any)?.code,
-            message: error.message,
-          });
           toast.error(error.message || "Reset link invalid or expired");
           return;
         }
