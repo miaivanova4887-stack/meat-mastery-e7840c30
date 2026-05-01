@@ -20,11 +20,28 @@ type EmailOtpType =
  *
  * We verify the token directly with supabase.auth.verifyOtp so we don't have
  * to follow a backend redirect chain (which fails inside Android WebViews).
+ *
+ * IMPORTANT: Supabase confirmation emails embed `{{ .TokenHash }}` as the
+ * `token` query param of the backend `/auth/v1/verify` URL. That value is
+ * the email-link **token hash**, NOT a 6-digit OTP. The SDK requires it to
+ * be passed as `{ token_hash, type }`. Passing it as `{ email, token, type }`
+ * fails silently for email-link verification.
  */
 const AuthCallback = () => {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"working" | "verified" | "stale" | "error">("working");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  /** A short numeric OTP code (6-8 digits) is the only case we treat the
+   * `token` value as a literal one-time-password; anything longer is the
+   * confirmation token hash from the email link. */
+  const looksLikeOtpCode = (s: string | undefined): boolean =>
+    !!s && /^[0-9]{4,8}$/.test(s);
+
+  const fingerprint = (s: string | undefined): string => {
+    if (!s) return "none";
+    return `len=${s.length} head=${s.slice(0, 4)}…`;
+  };
 
   /** Extract token + type from the current URL. Supports the new direct
    * params and the legacy `verify_url` wrapper for already-sent emails. */
@@ -41,7 +58,6 @@ const AuthCallback = () => {
     let email = search.get("email") ?? undefined;
 
     if ((!token && !tokenHash) || !type) {
-      // Legacy: parse verify_url (the Supabase backend verify URL).
       const verifyUrl = search.get("verify_url");
       if (verifyUrl) {
         try {
@@ -55,6 +71,13 @@ const AuthCallback = () => {
       }
     }
 
+    // If token is a long hex string, it's actually the token hash from the
+    // email confirmation URL — promote it.
+    if (token && !tokenHash && !looksLikeOtpCode(token)) {
+      tokenHash = token;
+      token = undefined;
+    }
+
     return { token, tokenHash, type, email };
   };
 
@@ -62,7 +85,7 @@ const AuthCallback = () => {
     setStatus("working");
     setErrorMsg(null);
     try {
-      console.info("[AuthVerify] callback mount url=", window.location.href);
+      console.info("[AuthVerify] callback start url=", window.location.pathname + window.location.search.replace(/(token(?:_hash)?=)[^&]+/g, "$1[redacted]"));
 
       // 1. If the URL hash already contains tokens (some flows), supabase-js
       //    will have auto-installed the session. Check first.
@@ -78,25 +101,47 @@ const AuthCallback = () => {
       }
 
       const { token, tokenHash, type, email } = extractAuthParams();
-      console.info("[AuthVerify] params hasToken=", Boolean(token), "hasHash=", Boolean(tokenHash), "type=", type);
+      console.info("[AuthVerify] parsed params", {
+        hasToken: Boolean(token),
+        hasTokenHash: Boolean(tokenHash),
+        type,
+        hasEmail: Boolean(email),
+        tokenFp: fingerprint(token),
+        tokenHashFp: fingerprint(tokenHash),
+      });
 
       if ((token || tokenHash) && type) {
-        // Direct verification — works in WebView with no redirects.
+        // Prefer token_hash (the canonical email-link verification path).
         const verifyArgs: any = tokenHash
           ? { token_hash: tokenHash, type }
           : { token, type, email };
+        console.info("[AuthVerify] verifyOtp call", {
+          mode: tokenHash ? "token_hash" : "token+email",
+          type,
+          hasEmail: Boolean(email),
+        });
+
         const { data, error } = await supabase.auth.verifyOtp(verifyArgs);
         if (error) {
-          console.warn("[AuthVerify] verifyOtp error", error);
+          console.warn("[AuthVerify] verifyOtp error", {
+            name: (error as any)?.name,
+            status: (error as any)?.status,
+            code: (error as any)?.code,
+            message: error.message,
+          });
           throw error;
         }
-        const verified = data.session?.user?.email_confirmed_at ?? null;
-        console.info("[AuthVerify] verifyOtp ok verified=", verified);
+        console.info("[AuthVerify] verifyOtp result", {
+          hasSession: Boolean(data.session),
+          hasUser: Boolean(data.user),
+          userVerified: data.user?.email_confirmed_at ?? null,
+        });
+
         if (data.session) {
-          // verifyOtp installs the session automatically, but re-set to be safe.
-          await supabase.auth.setSession({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token,
+          // Session installed by SDK; re-confirm and navigate.
+          const { data: check } = await supabase.auth.getUser();
+          console.info("[AuthVerify] post-verify getUser", {
+            verified: check.user?.email_confirmed_at ?? null,
           });
           setStatus("verified");
           toast.success("Email verified — welcome to CarnivoreX");
@@ -104,12 +149,21 @@ const AuthCallback = () => {
           setTimeout(() => navigate("/", { replace: true }), 600);
           return;
         }
+
+        // Verified but no session — treat as success and route to sign in.
+        if (data.user) {
+          console.info("[AuthVerify] verified without session, sending to /auth");
+          setStatus("verified");
+          toast.success("Email verified — please sign in to continue");
+          window.history.replaceState(null, "", "/auth/callback");
+          setTimeout(() => navigate("/auth", { replace: true }), 800);
+          return;
+        }
       }
 
-      // 2. Last resort: maybe a session is already installed (e.g. user
-      //    verified earlier). Refresh and check.
+      // 2. Last resort: maybe a session is already installed.
       const { data: refreshed, error: refreshErr } = await supabase.auth.refreshSession();
-      if (refreshErr) console.warn("[AuthVerify] refreshSession error", refreshErr);
+      if (refreshErr) console.warn("[AuthVerify] refreshSession error", refreshErr.message);
       const after = refreshed.session?.user?.email_confirmed_at ?? null;
       console.info("[AuthVerify] fallback session verified=", after);
       if (after) {
@@ -122,8 +176,18 @@ const AuthCallback = () => {
 
       setStatus("stale");
     } catch (e: any) {
-      console.warn("[AuthVerify] callback threw", e);
-      setErrorMsg(e?.message ?? "Verification failed");
+      console.warn("[AuthVerify] callback threw", {
+        name: e?.name,
+        status: e?.status,
+        code: e?.code,
+        message: e?.message,
+      });
+      const code = e?.code as string | undefined;
+      let msg = e?.message ?? "Verification failed";
+      if (code === "otp_expired" || /expired/i.test(msg)) {
+        msg = "This verification link has expired. Please request a new one.";
+      }
+      setErrorMsg(msg);
       setStatus("error");
     }
   };
@@ -132,6 +196,11 @@ const AuthCallback = () => {
     void finalize();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleRetry = () => {
+    console.info("[AuthVerify] retry tapped");
+    void finalize();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-background text-foreground">
@@ -152,7 +221,7 @@ const AuthCallback = () => {
               We couldn’t confirm your verification yet. Tap below to try again.
             </p>
             <button
-              onClick={() => void finalize()}
+              onClick={handleRetry}
               className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm"
             >
               Retry verification
@@ -169,7 +238,7 @@ const AuthCallback = () => {
           <>
             <p className="text-sm text-destructive">{errorMsg ?? "Something went wrong."}</p>
             <button
-              onClick={() => void finalize()}
+              onClick={handleRetry}
               className="w-full py-3 rounded-2xl bg-primary text-primary-foreground font-semibold text-sm"
             >
               Try again

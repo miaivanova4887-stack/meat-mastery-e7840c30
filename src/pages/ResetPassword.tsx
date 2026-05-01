@@ -48,13 +48,29 @@ const ResetPassword = () => {
         }
       }
 
+      // Long hex `token` values from email links are actually the token hash.
+      if (token && !tokenHash && !/^[0-9]{4,8}$/.test(token)) {
+        tokenHash = token;
+        token = undefined;
+      }
+
       if ((token || tokenHash) && type) {
         const args: any = tokenHash
           ? { token_hash: tokenHash, type }
           : { token, type, email };
+        console.info("[ResetPassword] verifyOtp call", {
+          mode: tokenHash ? "token_hash" : "token+email",
+          type,
+          hasEmail: Boolean(email),
+        });
         const { data, error } = await supabase.auth.verifyOtp(args);
         if (error) {
-          console.warn("[ResetPassword] verifyOtp error", error);
+          console.warn("[ResetPassword] verifyOtp error", {
+            name: (error as any)?.name,
+            status: (error as any)?.status,
+            code: (error as any)?.code,
+            message: error.message,
+          });
           toast.error(error.message || "Reset link invalid or expired");
           return;
         }
