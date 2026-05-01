@@ -226,9 +226,10 @@ if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="de
   INSTALLED_VERSION=$(adb shell dumpsys package com.mi4labs.carnivorex 2>/dev/null | awk -F'=' '/versionName=/{print $2; exit}')
   echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
   echo ""
-  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify'"
-  echo "   Open the app — you MUST see [BuildInfo] fingerprint=build-<timestamp>"
-  echo "   If the fingerprint is older than this build, the install did not take."
+  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow'"
+  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v2-verifyOtp"
+  echo "   If that line is missing or the timestamp is older than this build,"
+  echo "   the install did not take or your local checkout is behind (git pull)."
 else
   echo ""
   echo "ℹ️  No adb device detected — install manually with:"
