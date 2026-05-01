@@ -1,7 +1,9 @@
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Fingerprint } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
 import { lovable } from "@/integrations/lovable";
-import { logAuthDiag } from "@/lib/authDiagnostics";
+import { supabase } from "@/integrations/supabase/client";
+import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -128,11 +130,44 @@ const Auth = () => {
     logAuthDiag("oauth:click", { provider, platform, isNative });
     logAuthDiag("oauth:redirect-uri", { redirectTo });
     try {
+      // Native (android/ios): Chrome Custom Tabs (the default browser opened by
+      // the OAuth helper) blocks 302 redirects to custom URL schemes. We must
+      // open the OAuth URL ourselves through @capacitor/browser, which routes
+      // the carnivorex:// callback back through the appUrlOpen intent.
+      if (isNative) {
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo,
+            skipBrowserRedirect: true,
+          },
+        });
+        logAuthDiag("oauth:signIn-result", {
+          provider,
+          flow: "native-manual",
+          hasUrl: Boolean(data?.url),
+          hasError: Boolean(error),
+          errName: (error as any)?.name ?? null,
+          errMessage: error?.message ?? null,
+        });
+        if (error || !data?.url) {
+          toast.error(error?.message || `${provider === "google" ? "Google" : "Apple"} sign-in failed`);
+          setLoading(false);
+          return;
+        }
+        logAuthDiag("oauth:browser-open", { url: redactUrl(data.url) });
+        await Browser.open({ url: data.url, windowName: "_self" });
+        // The deep-link handler routes /auth/callback once Google returns.
+        return;
+      }
+
+      // Web: existing managed OAuth flow.
       const result = await lovable.auth.signInWithOAuth(provider, {
         redirect_uri: redirectTo,
       });
       logAuthDiag("oauth:signIn-result", {
         provider,
+        flow: "web-managed",
         redirected: Boolean((result as any)?.redirected),
         hasError: Boolean(result.error),
         hasTokens: Boolean((result as any)?.tokens),

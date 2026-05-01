@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { App as CapApp } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
@@ -36,6 +37,15 @@ export function useDeepLinks() {
           redacted: redactUrl(rawUrl),
         });
         if (!isAuth) return;
+        // Close the in-app browser opened for OAuth so the app comes to the
+        // foreground while the callback finishes the PKCE exchange.
+        if (url.pathname.startsWith("/auth/callback")) {
+          void Browser.close()
+            .then(() => logAuthDiag("oauth:browser-close"))
+            .catch((e) =>
+              logAuthDiag("oauth:browser-close-error", { error: String(e) }),
+            );
+        }
         const target = `${url.pathname}${url.search}${url.hash}`;
         if (url.hash) {
           window.history.replaceState(null, "", target);
