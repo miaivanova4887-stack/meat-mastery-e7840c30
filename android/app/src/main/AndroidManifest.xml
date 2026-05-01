@@ -37,6 +37,9 @@
                 <data android:scheme="https"
                       android:host="app.carnivorex.app"
                       android:pathPrefix="/auth/callback" />
+                <data android:scheme="https"
+                      android:host="app.carnivorex.app"
+                      android:pathPrefix="/reset-password" />
             </intent-filter>
 
         </activity>
