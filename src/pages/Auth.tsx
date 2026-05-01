@@ -87,12 +87,16 @@ const Auth = () => {
       const errMsg = result.error.toLowerCase();
       if (errMsg.includes("invalid login credentials") || errMsg.includes("invalid_credentials")) {
         toast.error("Incorrect email or password. Please try again.");
+        setUnconfirmedEmail(null);
       } else if (errMsg.includes("email not confirmed")) {
-        toast.error("Please check your email and confirm your account before signing in.");
+        setUnconfirmedEmail(email.trim());
+        toast.error(`Please confirm your email first — we sent the link to ${email.trim()}.`);
       } else {
         toast.error(result.error);
+        setUnconfirmedEmail(null);
       }
     } else if (mode === "signup") {
+      setUnconfirmedEmail(email.trim());
       toast.success(t("auth.checkEmail"));
     } else {
       // Successful login — record this account for future biometric unlock
