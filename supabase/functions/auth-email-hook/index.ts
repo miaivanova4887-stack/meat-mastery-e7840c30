@@ -242,12 +242,15 @@ async function handleWebhook(req: Request): Promise<Response> {
     )
   }
 
-  // Build template props from payload.data (HookData structure)
+  // Build template props from payload.data (HookData structure).
+  // confirmationUrl is normalized so it always points at the verified
+  // App Link host (app.carnivorex.app), regardless of what Supabase
+  // Auth's Site URL setting currently is.
   const templateProps = {
     siteName: SITE_NAME,
-    siteUrl: `https://${ROOT_DOMAIN}`,
+    siteUrl: `https://${AUTH_CALLBACK_HOST}`,
     recipient: payload.data.email,
-    confirmationUrl: payload.data.url,
+    confirmationUrl: normalizeCallbackUrl(payload.data.url),
     token: payload.data.token,
     email: payload.data.email,
     oldEmail: payload.data.old_email,
