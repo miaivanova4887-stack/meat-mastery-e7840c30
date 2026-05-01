@@ -232,6 +232,23 @@ const Auth = () => {
               ? t("auth.createAccount")
               : t("auth.sendResetLink")}
           </button>
+
+          {unconfirmedEmail && mode !== "forgot" && (
+            <div className="mt-2 px-3 py-3 rounded-xl bg-secondary/60 border border-border/40 text-xs text-muted-foreground text-center space-y-2">
+              <p>
+                Verification email sent to <span className="text-foreground font-medium">{unconfirmedEmail}</span>.
+                Tap the link from this device to finish.
+              </p>
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resending}
+                className="text-primary font-semibold disabled:opacity-50"
+              >
+                {resending ? "Sending…" : "Resend confirmation email"}
+              </button>
+            </div>
+          )}
         </form>
 
         {mode === "forgot" ? (
