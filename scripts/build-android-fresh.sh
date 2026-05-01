@@ -67,7 +67,9 @@ REQUIRED_MARKERS=(
   "deeplink:launch-url"
   "BuildInfo"
   "build-version"
-  "authFlow=v2-verifyOtp"
+  "authFlow=v3-oauth-diag"
+  "oauth:exchange-call"
+  "oauth:redirect-uri"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
