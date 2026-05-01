@@ -49,9 +49,12 @@ export function logAuthDiag(tag: string, data?: Record<string, unknown>): void {
   if (memoryLog.length > MAX_ENTRIES) memoryLog = memoryLog.slice(-MAX_ENTRIES);
   persist();
   try {
-    // Mirror to console so logcat picks it up.
+    // Single-string log so Capacitor's WebView bridge writes it intact to
+    // logcat (object args become "[object Object]" otherwise).
+    let payload = "{}";
+    try { payload = JSON.stringify(data ?? {}); } catch { payload = "[unserializable]"; }
     // eslint-disable-next-line no-console
-    console.info(`[AuthVerify] ${tag}`, data ?? {});
+    console.info(`[AuthVerify] ${tag} ${payload}`);
   } catch {
     /* noop */
   }

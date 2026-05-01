@@ -57,6 +57,7 @@ REQUIRED_MARKERS=(
   "callback:verifyOtp-call"
   "deeplink:launch-url"
   "BuildInfo"
+  "build-version"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then

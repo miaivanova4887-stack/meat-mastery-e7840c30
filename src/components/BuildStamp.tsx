@@ -1,12 +1,11 @@
 import { Capacitor } from "@capacitor/core";
-import { useTranslation } from "react-i18next";
 
 const BuildStamp = () => {
   const platform = Capacitor.getPlatform();
-  const stamp = __BUILD_TIMESTAMP__ ?? "dev";
-  const { t } = useTranslation();
-  // Disclaimer probe: confirms i18n key resolves and bundle is fresh
-  const discProbe = (t("disclaimer.main.title") || "??").slice(0, 4);
+  const stamp = typeof __BUILD_TIMESTAMP__ === "string" ? __BUILD_TIMESTAMP__ : "dev";
+  const fp = typeof __BUILD_FINGERPRINT__ === "string"
+    ? __BUILD_FINGERPRINT__.replace(/^build-/, "").slice(-8)
+    : "dev";
 
   return (
     <div
@@ -14,7 +13,7 @@ const BuildStamp = () => {
       style={{ top: "calc(env(safe-area-inset-top, 0px) + 0.5rem)" }}
       aria-label="build-version"
     >
-      Build {stamp} · {platform} · D:{discProbe}
+      {stamp} · {platform} · {fp}
     </div>
   );
 };

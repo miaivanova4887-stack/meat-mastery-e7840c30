@@ -184,6 +184,15 @@ const AuthCallback = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-open diagnostics when verification doesn't succeed so the user
+  // can immediately copy/share the redacted log without extra taps.
+  useEffect(() => {
+    if (status === "stale" || status === "error") {
+      setDiagText(formatAuthDiag());
+      setShowDiag(true);
+    }
+  }, [status]);
+
   const handleRetry = () => {
     logAuthDiag("callback:retry");
     void finalize();
@@ -202,6 +211,9 @@ const AuthCallback = () => {
 
   const renderDiagPanel = () => (
     <div className="mt-6 text-left">
+      <div className="text-[10px] font-mono text-muted-foreground mb-2 break-all">
+        url: {redactUrl(originalUrlRef.current)}
+      </div>
       <div className="flex items-center gap-2 mb-2">
         <button
           onClick={handleShowDiag}
