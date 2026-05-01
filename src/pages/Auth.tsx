@@ -1,4 +1,5 @@
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Fingerprint } from "lucide-react";
+import { Capacitor } from "@capacitor/core";
 import { lovable } from "@/integrations/lovable";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
