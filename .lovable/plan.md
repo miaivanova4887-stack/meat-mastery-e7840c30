@@ -1,60 +1,67 @@
-I inspected the current code and the latest backend email-hook log. Two important findings:
+The new logs show two important facts:
 
-1. The timestamp is only logged to logcat on app startup; `BuildStamp` exists but is not mounted anywhere in `App.tsx`, so it will not appear on screen.
-2. The latest auth email hook log shows the custom email is building links with `token_hash=...` by promoting the backend verify URL's `token` value. That may be the root issue: depending on the email-hook payload/template, that `token` can be the confirmation token intended for `/auth/v1/verify`, not necessarily the `TokenHash` value expected by `verifyOtp({ token_hash })`. If so, the app is correctly calling `verifyOtp`, but with the wrong token representation.
+1. The installed APK is still running an older JavaScript auth flow (`native deep link received`, `app resumed, refreshing session`, `session before refresh`) that no longer exists in the current source files.
+2. The visible email link is now intercepted by Android correctly and lands on `/auth/callback` with `token_hash`, but the old callback code only calls `refreshSession()`. That fails with `AuthSessionMissingError` because there is no session yet. The callback must call `verifyOtp({ token_hash, type })` first.
 
 Plan:
 
-1. Mount an always-visible native debug build stamp
-   - Import and render `BuildStamp` in `src/App.tsx` so the timestamp/fingerprint is visible in the APK UI.
-   - Add the short build fingerprint alongside the timestamp so it is easy to compare with logcat and build output.
-   - Keep it small and non-interactive, respecting the existing safe-area style.
+1. Make the Android build fail if it contains the old auth flow
+   - Add stale-string rejection checks to `scripts/build-android-fresh.sh` for:
+     - `native deep link received`
+     - `app resumed, refreshing session`
+     - `session before refresh`
+     - `refreshSession error`
+   - Keep required positive markers for the new flow:
+     - `callback:verifyOtp-call`
+     - `callback:verifyOtp-result`
+     - `deeplink:launch-url`
+     - `BuildInfo`
+     - `build-version`
+   - This prevents another APK from silently shipping the old refresh-only callback.
 
-2. Make AuthVerify diagnostics readable in Android logcat
-   - Change `logAuthDiag()` in `src/lib/authDiagnostics.ts` to emit a single string:
-     `console.info("[AuthVerify] <tag> <json>")`
-   - This avoids Capacitor logging object payloads as `[object Object]` and makes grep output useful.
-   - Include safe JSON fallback only; keep token redaction as currently implemented.
+2. Make the installed app visibly and logcat-verifiably identify the new bundle
+   - Ensure `BuildStamp` stays mounted.
+   - Add a clearly searchable build marker to the app UI/logs, for example `authFlow=v2-verifyOtp`.
+   - Update the script instructions so the first verification step is to launch the app and confirm `[BuildInfo] ... authFlow=v2-verifyOtp` appears in logcat.
 
-3. Auto-show diagnostics on the failure screen
-   - In `AuthCallback.tsx`, automatically open and refresh the diagnostics panel when status becomes `stale` or `error`.
-   - Display the redacted original callback URL in the panel so we can prove whether Android delivered the full URL via cold-start or live-link.
-   - Keep the existing Copy button.
+3. Remove the last hardcoded wrong auth callback host in the app code
+   - In `src/contexts/AuthContext.tsx`, `resolveAuthRedirect()` already returns `https://app.carnivorex.app/auth/callback`.
+   - But the installed logs show signup used `https://carnivorex.app/auth/callback`, and `src/pages/Auth.tsx` has a separate resend path.
+   - I will centralize or mirror the redirect helper so all signup/resend/password-reset paths use `https://app.carnivorex.app/...` consistently.
 
-4. Fix the custom signup/recovery email link to prefer the real TokenHash from the email-hook payload
-   - Update `supabase/functions/auth-email-hook/index.ts` so `buildEmailLink()` accepts the payload values for `token`, `token_hash`, and/or `token_hash`-equivalent fields when available, rather than relying only on parsing the backend verify URL.
-   - For the visible app link, put the true TokenHash into `token_hash` when present.
-   - Keep `verify_url` as a fallback for older clients.
-   - Add backend logs that distinguish:
-     - URL token present
-     - payload token hash present
-     - which source was used for the top-level `token_hash`
-   - This directly tests/fixes the likely mismatch revealed by the backend log.
+4. Harden `AuthCallback` against Android resume races
+   - Do not call `refreshSession()` when there is no session just because the app resumed.
+   - Keep the callback’s primary path as:
+     - parse `token_hash` and `type`
+     - call `supabase.auth.verifyOtp({ token_hash, type })`
+     - only after success, call `getUser()` / navigate
+   - Keep the fallback refresh only after the token path has been attempted, and log it as fallback only.
 
-5. Ensure the backend auth email hook is redeployed
-   - Deploy the updated `auth-email-hook` function after code changes so newly sent verification emails use the corrected link construction.
-   - Existing email links may still fail; test with a newly generated signup/resend link after deployment.
+5. Check the auth email hook once more before redeploying if needed
+   - The latest function logs still show `tokenHashSource: "url.token(promoted)"`, not `payload.token_hash`.
+   - If Lovable Cloud’s auth email payload truly does not include `token_hash`, the current wrapped link still supplies a `token_hash` value equal to the backend verify token. The next implementation pass should either:
+     - verify that `verifyOtp(token_hash)` accepts this exact value for email signup links in this setup, or
+     - switch the app callback to consume `verify_url` as the primary path by opening/calling the backend verification URL in a controlled way, then returning to the app.
+   - I will preserve redacted logging so the next test tells us exactly whether `verifyOtp-result` succeeds or reports `otp_expired` / invalid token.
 
-6. Strengthen build-script verification
-   - Add `BuildStamp` and the single-string diagnostic marker to `scripts/build-android-fresh.sh` marker checks so stale APKs fail before install.
-   - Keep the existing marker checks for `callback:verifyOtp-call`, `deeplink:launch-url`, and `BuildInfo`.
-
-After implementation, the next test should be:
+After approval, I’ll apply these changes. Then rebuild with `npm run apk:fresh:debug` (or `bash scripts/build-android-fresh.sh`), install the APK, launch the app once, and check:
 
 ```text
-./scripts/build-android-fresh.sh
 adb logcat -c
-adb logcat -v time | grep --line-buffered -E 'BuildInfo|AuthVerify|auth-email-hook'
+adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow|verifyOtp-result|deeplink'
 ```
 
-Then request a fresh verification email and tap the newest link. We should see:
+Expected first sign that the correct APK is installed:
 
 ```text
-[BuildInfo] fingerprint=... ts=...
-[AuthVerify] deeplink:launch-url ... or deeplink:appUrlOpen ...
-[AuthVerify] callback:parsed ...
-[AuthVerify] callback:verifyOtp-call {"mode":"token_hash",...}
-[AuthVerify] callback:verifyOtp-result {"hasSession":...,"errCode":...,"errMessage":...}
+[BuildInfo] ... authFlow=v2-verifyOtp
 ```
 
-This will either confirm success or finally expose the exact `verifyOtp()` runtime failure.
+Expected verification flow after tapping a fresh email link:
+
+```text
+[AuthVerify] deeplink:received ...
+[AuthVerify] callback:parsed {"hasTokenHash":true,...}
+[AuthVerify] callback:verifyOtp-call ...
+[AuthVerify] callback:verifyOtp-result ...
+```

@@ -55,16 +55,35 @@ if [[ ! -d "$SYNCED_ASSETS_DIR" ]]; then
 fi
 REQUIRED_MARKERS=(
   "callback:verifyOtp-call"
+  "callback:verifyOtp-result"
   "deeplink:launch-url"
   "BuildInfo"
   "build-version"
+  "authFlow=v2-verifyOtp"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
     echo "❌ Synced bundle is MISSING required marker: $marker"
     echo "   Searched: $SYNCED_ASSETS_DIR"
     echo "   This means the APK would ship stale JS. Aborting."
-    echo "   Likely causes: dist/ not rebuilt, or cap sync used a cached copy."
+    echo "   Likely causes: dist/ not rebuilt, or cap sync used a cached copy,"
+    echo "   or your local checkout is behind the latest Lovable changes (git pull?)."
+    exit 1
+  fi
+done
+# Reject KNOWN-STALE auth strings from earlier callback implementation. If any
+# of these survive into the synced bundle, the APK would silently ship the old
+# refresh-only flow that fails with AuthSessionMissingError.
+FORBIDDEN_STALE=(
+  "native deep link received"
+  "app resumed, refreshing session"
+  "session before refresh"
+)
+for stale in "${FORBIDDEN_STALE[@]}"; do
+  if grep -qrl "$stale" "$SYNCED_ASSETS_DIR"; then
+    echo "❌ Synced bundle contains FORBIDDEN stale auth string: \"$stale\""
+    echo "   Your local checkout is behind. Run: git pull && rm -rf dist node_modules/.vite"
+    echo "   Then re-run this script."
     exit 1
   fi
 done
@@ -207,9 +226,10 @@ if command -v adb >/dev/null 2>&1 && [[ -n "$(adb devices | awk 'NR>1 && $2=="de
   INSTALLED_VERSION=$(adb shell dumpsys package com.mi4labs.carnivorex 2>/dev/null | awk -F'=' '/versionName=/{print $2; exit}')
   echo "✅ Installed. versionName=${INSTALLED_VERSION:-unknown}"
   echo ""
-  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify'"
-  echo "   Open the app — you MUST see [BuildInfo] fingerprint=build-<timestamp>"
-  echo "   If the fingerprint is older than this build, the install did not take."
+  echo "👉 Now run:  adb logcat -c && adb logcat -v time | grep -E 'BuildInfo|AuthVerify|authFlow'"
+  echo "   Open the app — you MUST see [BuildInfo] ... authFlow=v2-verifyOtp"
+  echo "   If that line is missing or the timestamp is older than this build,"
+  echo "   the install did not take or your local checkout is behind (git pull)."
 else
   echo ""
   echo "ℹ️  No adb device detected — install manually with:"
