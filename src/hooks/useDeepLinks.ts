@@ -22,7 +22,10 @@ export function useDeepLinks() {
       try {
         console.info("[AuthVerify] native deep link received url=", event.url);
         const url = new URL(event.url);
-        if (url.pathname.startsWith("/auth/callback")) {
+        if (
+          url.pathname.startsWith("/auth/callback") ||
+          url.pathname.startsWith("/reset-password")
+        ) {
           // Preserve the hash so supabase-js can read the tokens.
           const target = `${url.pathname}${url.search}${url.hash}`;
           // Mirror the hash onto window.location so getSession() picks it up.
