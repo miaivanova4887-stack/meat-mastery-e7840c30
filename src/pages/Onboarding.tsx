@@ -838,30 +838,32 @@ const Onboarding = () => {
           )}
         </div>
 
-        {/* Continue button for multi-select & input steps */}
+        {/* Continue button for multi-select & input steps — fixed bottom bar */}
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
           <div
-            className="pt-5 mt-auto"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+            className="fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border/30"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
           >
-            <Button
-              className="w-full gap-2 h-[50px] text-[14px] font-semibold rounded-xl tracking-normal transition-all duration-300"
-              disabled={
-                !canSkip &&
-                (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
-                (current.type === "input" && !isInputStepValid())
-              }
-              onClick={() => {
-                if (current.type === "options" && current.multiSelect) {
-                  advance(multiSelected);
-                } else {
-                  advance();
+            <div className="mx-auto w-full max-w-md md:max-w-2xl px-6 pt-4">
+              <Button
+                className="w-full gap-2 h-[50px] text-[14px] font-semibold rounded-xl tracking-normal transition-all duration-300"
+                disabled={
+                  !canSkip &&
+                  (current.type === "options" && current.multiSelect && multiSelected.length === 0) ||
+                  (current.type === "input" && !isInputStepValid())
                 }
-              }}
-            >
-              {isLastStep ? "Get Started" : multiSelected.length === 0 && canSkip ? "Skip" : "Continue"}
-              <ChevronRight size={16} strokeWidth={2} />
-            </Button>
+                onClick={() => {
+                  if (current.type === "options" && current.multiSelect) {
+                    advance(multiSelected);
+                  } else {
+                    advance();
+                  }
+                }}
+              >
+                {isLastStep ? "Get Started" : multiSelected.length === 0 && canSkip ? "Skip" : "Continue"}
+                <ChevronRight size={16} strokeWidth={2} />
+              </Button>
+            </div>
           </div>
         )}
       </div>
