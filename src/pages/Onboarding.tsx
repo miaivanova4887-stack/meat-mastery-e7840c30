@@ -386,22 +386,26 @@ const Onboarding = () => {
 
           // On native Android, prompt for Health Connect first; the
           // push opt-in sheet is shown right after (regardless of HC
-          // grant). On web/iOS we skip straight to the push step (the
-          // sheet itself short-circuits to web push there).
+          // grant), but only if the shared decision audit says eligible.
           const isAndroid =
             Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
           console.info(
             "[Onboarding] step11 done — native=", Capacitor.isNativePlatform(),
             "android=", isAndroid,
-            "→ next=", isAndroid ? "HC prompt" : "push sheet",
+            "→ next=", isAndroid ? "HC prompt" : "push audit",
           );
-          // Mark the session-once flag so the App-level
-          // PushConsentFallbackHost cannot also fire on this same launch.
-          try { sessionStorage.setItem("push-prompt-shown", "1"); } catch {}
           if (isAndroid) {
             setShowHcPrompt(true);
           } else {
-            setShowPushConsent(true);
+            // Non-Android: audit will short-circuit with not-android,
+            // and the sheet's web subscribeToPush() handles browser push.
+            const { auditPushDecision } = await import("@/lib/pushDecision");
+            const decision = await auditPushDecision("onboarding");
+            if (decision.show) {
+              setShowPushConsent(true);
+            } else {
+              navigate("/", { replace: true });
+            }
           }
         };
 
