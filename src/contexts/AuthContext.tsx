@@ -40,7 +40,7 @@ async function reconcileLocalConsent(userId: string, attempt = 0): Promise<void>
   // Always log the onboarding flag presence so logcat confirms continuity.
   if (attempt === 0) {
     try {
-      const onb = localStorage.getItem(ONBOARDING_COMPLETE_KEY) === "1";
+      const onb = localStorage.getItem(ONBOARDING_COMPLETE_KEY) === "true";
       console.info("[Onboarding] local flag carried into session present=", onb);
     } catch {}
   }

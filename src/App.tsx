@@ -57,7 +57,6 @@ import { useEdgeSwipeBack } from "./hooks/useEdgeSwipeBack";
 import { useTabSwipe } from "./hooks/useTabSwipe";
 import { useDeepLinks } from "./hooks/useDeepLinks";
 import PushConsentFallbackHost from "./components/PushConsentFallbackHost";
-import BuildStamp from "./components/BuildStamp";
 
 const queryClient = new QueryClient();
 
@@ -190,7 +189,6 @@ const App = () => {
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <BottomNav />
-              <BuildStamp />
               
             </BrowserRouter>
           </HealthConnectProvider>

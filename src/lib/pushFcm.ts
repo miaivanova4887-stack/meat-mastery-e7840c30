@@ -7,6 +7,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
 
 export type PushConsentState = "unset" | "granted" | "denied";
+export type NativePushPermission =
+  | "granted"
+  | "denied"
+  | "prompt"
+  | "prompt-with-rationale"
+  | "unsupported";
+
+// Module-scoped guard so duplicate calls don't stack listeners or
+// re-register tokens (the path that has been crashing on resume).
+let listenersBound = false;
 
 /**
  * Persist consent + (optional) preferences.
@@ -30,38 +40,37 @@ export async function savePushConsent(
   await supabase.from("profiles").update(patch).eq("id", user.id);
 }
 
-async function registerToken(token: string, platform: "android" | "ios") {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return;
-  await supabase.functions.invoke("register-device-token", {
-    body: { token, platform },
-  });
+/**
+ * Read the OS-level POST_NOTIFICATIONS state without prompting.
+ * Safe to call from React render paths — never throws.
+ */
+export async function getNativePushPermission(): Promise<NativePushPermission> {
+  if (!Capacitor.isNativePlatform()) return "unsupported";
+  try {
+    const res = await PushNotifications.checkPermissions();
+    console.info("[Push] checkPermissions receive=", res.receive);
+    return (res.receive as NativePushPermission) ?? "prompt";
+  } catch (e) {
+    console.warn("[Push] checkPermissions threw", e);
+    return "unsupported";
+  }
 }
 
-/**
- * Request native push permission and register the FCM token.
- * Returns the resulting consent state. Safe to call multiple times.
- */
-export async function requestNativePush(): Promise<PushConsentState> {
-  if (!Capacitor.isNativePlatform()) {
-    console.info("[Push] requestNativePush skipped — not native");
-    return "unset";
+function bindListenersOnce(platform: "android" | "ios") {
+  if (listenersBound) {
+    console.info("[Push] listeners already bound — skip");
+    return;
   }
-
-  const platform = Capacitor.getPlatform() as "android" | "ios";
-  console.info("[Push] requestNativePush start platform=", platform);
-  const perm = await PushNotifications.requestPermissions();
-  console.info("[Push] requestPermissions result receive=", perm.receive);
-  if (perm.receive !== "granted") {
-    await savePushConsent("denied");
-    return "denied";
-  }
-
-  // Listen for the token (async event)
+  listenersBound = true;
+  console.info("[Push] binding push listeners (first time)");
   PushNotifications.addListener("registration", async (t) => {
     try {
       console.info("[Push] FCM token registered len=", t.value?.length ?? 0);
-      await registerToken(t.value, platform);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      await supabase.functions.invoke("register-device-token", {
+        body: { token: t.value, platform },
+      });
     } catch (e) {
       console.error("[Push] token register failed", e);
     }
@@ -69,11 +78,52 @@ export async function requestNativePush(): Promise<PushConsentState> {
   PushNotifications.addListener("registrationError", (err) => {
     console.error("[Push] FCM registration error", err);
   });
+}
 
-  await PushNotifications.register();
-  console.info("[Push] PushNotifications.register() called");
-  await savePushConsent("granted");
-  return "granted";
+/**
+ * Request native push permission and register the FCM token.
+ * Idempotent: safe to call multiple times. Wrapped in try/catch so a
+ * plugin failure can never propagate into a React render and crash.
+ */
+export async function requestNativePush(): Promise<PushConsentState> {
+  if (!Capacitor.isNativePlatform()) {
+    console.info("[Push] requestNativePush skipped — not native");
+    return "unsupported" as unknown as PushConsentState && "unset";
+  }
+
+  const platform = Capacitor.getPlatform() as "android" | "ios";
+  console.info("[Push] requestNativePush start platform=", platform);
+
+  try {
+    // Short-circuit if the OS has already granted permission.
+    const existing = await getNativePushPermission();
+    if (existing === "granted") {
+      console.info("[Push] OS already granted — skipping requestPermissions");
+      bindListenersOnce(platform);
+      try { await PushNotifications.register(); } catch (e) {
+        console.warn("[Push] register() after granted-skip failed", e);
+      }
+      await savePushConsent("granted");
+      return "granted";
+    }
+
+    const perm = await PushNotifications.requestPermissions();
+    console.info("[Push] requestPermissions result receive=", perm.receive);
+    if (perm.receive !== "granted") {
+      await savePushConsent("denied");
+      return "denied";
+    }
+
+    bindListenersOnce(platform);
+    await PushNotifications.register();
+    console.info("[Push] PushNotifications.register() called");
+    await savePushConsent("granted");
+    return "granted";
+  } catch (e) {
+    console.error("[Push] requestNativePush threw", e);
+    try { await savePushConsent("denied"); } catch {}
+    return "denied";
+  }
 }
 
 /** Fire an event that may trigger push campaigns. Non-blocking. */
