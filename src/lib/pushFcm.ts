@@ -118,42 +118,50 @@ export async function requestNativePush(): Promise<PushConsentState> {
   try {
     let existing: NativePushPermission = "prompt";
     console.info("[PushDecision] source=requestNativePush branch=check-os-before-request");
-    try { existing = await getNativePushPermission(); } catch (e) {
+    try { existing = await withTimeout(getNativePushPermission(), 4000, "checkPermissions"); } catch (e) {
       console.warn("[PushDecision] source=requestNativePush branch=check-os-threw", e);
     }
     if (existing === "granted") {
-      console.info("[PushDecision] source=requestNativePush branch=register-call reason=os-already-granted");
-      bindListenersOnce(platform);
-      try {
-        await PushNotifications.register();
-      } catch (e) {
-        console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=os-already-granted", e);
+      console.info("[PushDecision] source=requestNativePush branch=os-already-granted reason=skip-prompt");
+      if (NATIVE_FCM_ENABLED) {
+        bindListenersOnce(platform);
+        try {
+          await withTimeout(PushNotifications.register(), 4000, "register");
+        } catch (e) {
+          console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=os-already-granted", e);
+        }
+      } else {
+        console.info("[PushDecision] source=requestNativePush branch=register-skipped reason=native-fcm-disabled");
       }
       try { await savePushConsent("granted"); } catch {}
       return "granted";
     }
 
-    let perm;
+    let perm: { receive: NativePushPermission } | undefined;
     try {
       console.info("[PushDecision] source=requestNativePush branch=requestPermissions-call");
-      perm = await PushNotifications.requestPermissions();
+      perm = await withTimeout(PushNotifications.requestPermissions(), 15000, "requestPermissions");
     } catch (e) {
       console.error("[PushDecision] source=requestNativePush branch=requestPermissions-threw — swallowed", e);
       try { await savePushConsent("denied"); } catch {}
       return "denied";
     }
-    console.info(`[PushDecision] source=requestNativePush branch=requestPermissions-result receive=${perm.receive}`);
-    if (perm.receive !== "granted") {
+    console.info(`[PushDecision] source=requestNativePush branch=requestPermissions-result receive=${perm?.receive}`);
+    if (perm?.receive !== "granted") {
       try { await savePushConsent("denied"); } catch {}
       return "denied";
     }
 
-    console.info("[PushDecision] source=requestNativePush branch=register-call reason=fresh-grant");
-    bindListenersOnce(platform);
-    try {
-      await PushNotifications.register();
-    } catch (e) {
-      console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=fresh-grant", e);
+    if (NATIVE_FCM_ENABLED) {
+      console.info("[PushDecision] source=requestNativePush branch=register-call reason=fresh-grant");
+      bindListenersOnce(platform);
+      try {
+        await withTimeout(PushNotifications.register(), 4000, "register");
+      } catch (e) {
+        console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=fresh-grant", e);
+      }
+    } else {
+      console.info("[PushDecision] source=requestNativePush branch=register-skipped reason=native-fcm-disabled");
     }
     try { await savePushConsent("granted"); } catch {}
     return "granted";
