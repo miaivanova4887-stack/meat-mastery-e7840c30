@@ -474,9 +474,22 @@ const Onboarding = () => {
     } finally {
       setHcBusy(false);
       setShowHcPrompt(false);
-      // Always continue to push opt-in next.
-      console.info("[Onboarding] HC step done → opening push consent sheet");
-      setShowPushConsent(true);
+      // Audit before opening the push sheet — suppress if OS already
+      // granted, profile/local consent already set, etc.
+      try {
+        const { auditPushDecision } = await import("@/lib/pushDecision");
+        const decision = await auditPushDecision("onboarding");
+        if (decision.show) {
+          console.info("[Onboarding] HC step done → opening push consent sheet");
+          setShowPushConsent(true);
+        } else {
+          console.info("[Onboarding] HC step done → push suppressed reason=", decision.reason);
+          navigate("/", { replace: true });
+        }
+      } catch (e) {
+        console.error("[Onboarding] push audit threw — navigating home", e);
+        navigate("/", { replace: true });
+      }
     }
   };
 
