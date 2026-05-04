@@ -594,7 +594,7 @@ const Onboarding = () => {
         )}
 
         {/* Options */}
-        <div className={`space-y-2 md:grid md:grid-cols-2 md:gap-2 md:space-y-0 flex-1 overflow-y-auto ${current.type === "consent" ? "hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
+        <div className={`space-y-2 ${current.type === "options" ? "md:grid md:grid-cols-2 md:gap-2 md:space-y-0" : ""} flex-1 overflow-y-auto ${current.type === "consent" ? "hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
           {current.type === "options" &&
             current.options.map((opt, i) => {
               const selected = current.multiSelect ? multiSelected.includes(i) : false;
