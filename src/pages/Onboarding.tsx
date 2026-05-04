@@ -520,7 +520,7 @@ const Onboarding = () => {
 
       {/* Premium top bar */}
       <div
-        className="px-5 pt-4 pb-3 flex items-center gap-4"
+        className="mx-auto w-full max-w-md md:max-w-2xl px-5 pt-4 pb-3 flex items-center gap-4"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 16px) + 8px)" }}
       >
         {step > 0 ? (
@@ -549,7 +549,7 @@ const Onboarding = () => {
 
       {/* Content */}
       <div
-        className={`flex-1 flex flex-col px-6 pt-4 pb-4 transition-all duration-300 ease-out ${
+        className={`mx-auto w-full max-w-md md:max-w-2xl flex-1 flex flex-col px-6 pt-4 pb-4 transition-all duration-300 ease-out ${
           transitioning
             ? "opacity-0 translate-y-2 scale-[0.99]"
             : "opacity-100 translate-y-0 scale-100"
@@ -594,7 +594,7 @@ const Onboarding = () => {
         )}
 
         {/* Options */}
-        <div className={`space-y-2 flex-1 overflow-y-auto ${current.type === "consent" ? "hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
+        <div className={`space-y-2 md:grid md:grid-cols-2 md:gap-2 md:space-y-0 flex-1 overflow-y-auto ${current.type === "consent" ? "hidden" : ""}`} style={{ scrollbarWidth: "none" }}>
           {current.type === "options" &&
             current.options.map((opt, i) => {
               const selected = current.multiSelect ? multiSelected.includes(i) : false;
