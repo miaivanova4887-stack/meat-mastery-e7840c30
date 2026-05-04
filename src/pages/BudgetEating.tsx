@@ -22,7 +22,7 @@ const BudgetEating = () => {
         <h1 className="text-lg font-display font-bold">{t("budget.title")}</h1>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("budget.subtitle")}</p>
 
         <ContentSection type="key_points" title={t("budget.cuts.title")} feedbackId="budget-cuts" feedbackQuestion={t("budget.cuts.q")} items={t("budget.cuts.items", { returnObjects: true }) as string[]} />

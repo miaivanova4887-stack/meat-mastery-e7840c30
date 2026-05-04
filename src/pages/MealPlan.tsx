@@ -447,7 +447,7 @@ const MealPlan = () => {
         </div>
       </div>
 
-      <div className="px-4 pt-4 space-y-4">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-4 space-y-4">
         {/* Placement mode banner */}
         {assignRecipe && (
           <div className="ios-card p-3.5 flex items-center gap-3 border-2 border-primary/40 bg-primary/5">

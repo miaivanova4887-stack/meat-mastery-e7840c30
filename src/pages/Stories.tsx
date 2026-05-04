@@ -22,7 +22,7 @@ const Stories = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-display font-bold">Success Stories</h1>
       </div>
-      <div className="p-4 space-y-4">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
         {stories.map((s, i) => (
           <div key={s.id} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.06}s` }}>
             <div className="flex items-center justify-between mb-2">

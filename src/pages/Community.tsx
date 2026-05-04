@@ -15,7 +15,7 @@ const Community = () => {
         <h1 className="text-lg font-display font-bold tracking-tight flex-1">Community</h1>
       </div>
 
-      <div className="px-4 pt-4">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-4">
         <CommunityFeed />
       </div>
     </div>

@@ -43,7 +43,7 @@ const Coaching = () => {
         <h1 className="text-lg font-display font-bold tracking-tight">Coaching</h1>
       </div>
 
-      <div className="px-4 pt-6 space-y-5">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-6 space-y-5">
         <div className="text-center">
           <div className="w-16 h-16 rounded-2xl bg-[hsl(var(--gold))]/15 flex items-center justify-center mx-auto mb-3 shadow-lg">
             <Crown size={28} className="text-[hsl(var(--gold))]" />

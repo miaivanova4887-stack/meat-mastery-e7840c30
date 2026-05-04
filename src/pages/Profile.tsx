@@ -434,7 +434,7 @@ const Profile = () => {
       <ConsentBanner />
 
       {/* Profile header */}
-      <div className="px-4 pt-5 pb-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-5 pb-3">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-2xl font-bold text-primary">
             {(profile?.display_name || user?.email || "?")[0].toUpperCase()}

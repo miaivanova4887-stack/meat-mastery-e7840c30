@@ -49,7 +49,7 @@ const Benefits = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-display font-bold">{t("benefits.title")}</h1>
       </div>
-      <div className="p-4 space-y-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3 md:grid md:grid-cols-2 md:gap-3 md:space-y-0">
         {keys.map(({ id, icon: Icon }, i) => (
           <div key={id} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
             <div className="flex items-start gap-3">

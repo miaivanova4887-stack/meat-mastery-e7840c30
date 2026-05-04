@@ -404,7 +404,7 @@ const Recipes = () => {
         </div>
       </div>
 
-      <div className="px-4 pt-4 space-y-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-4 space-y-3">
         <TeaserGate requiredTier="pro" featureName="AI Recipe Coach" mode="overlay">
           <button onClick={() => navigate("/recipe-coach")} className="w-full relative overflow-hidden ios-card p-4 flex items-center gap-3.5 hover:bg-secondary/60 transition-all group active:scale-[0.98]">
             <div className="absolute -top-4 -right-4 w-24 h-24 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-colors" />
