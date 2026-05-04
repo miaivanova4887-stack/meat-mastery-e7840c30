@@ -1008,7 +1008,10 @@ const Profile = () => {
 
             {/* User Notification Preferences */}
             <button
-              onClick={() => setShowPushConsent(true)}
+              onClick={() => {
+                console.info("[PushDecision] source=profile-settings branch=manual-open");
+                setShowPushConsent(true);
+              }}
               className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
             >
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
