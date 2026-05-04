@@ -8,8 +8,20 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
+        android:resizeableActivity="false"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <!-- Android 16 (API 36) opt-out: keep our orientation/aspect-ratio
+             restrictions on large-screen devices so phones stay locked to
+             portrait. Without this, API 36 ignores screenOrientation on
+             sw>=600dp devices/foldables. -->
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_USER_ASPECT_RATIO_OVERRIDE"
+            android:value="false" />
 
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"

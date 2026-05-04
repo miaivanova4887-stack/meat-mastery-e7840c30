@@ -5,6 +5,19 @@ import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
+import { NATIVE_FCM_ENABLED } from "@/lib/pushNativeConfig";
+
+/** Race a native promise against a timeout so re-renders / resume
+ *  cannot leave the JS bridge hanging. */
+async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return await new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
 
 export type PushConsentState = "unset" | "granted" | "denied";
 export type NativePushPermission =
@@ -57,27 +70,35 @@ export async function getNativePushPermission(): Promise<NativePushPermission> {
 }
 
 function bindListenersOnce(platform: "android" | "ios") {
+  if (!NATIVE_FCM_ENABLED) {
+    console.info("[PushDecision] bindListeners skipped reason=native-fcm-disabled");
+    return;
+  }
   if (listenersBound) {
     console.info("[Push] listeners already bound — skip");
     return;
   }
   listenersBound = true;
   console.info("[Push] binding push listeners (first time)");
-  PushNotifications.addListener("registration", async (t) => {
-    try {
-      console.info("[Push] FCM token registered len=", t.value?.length ?? 0);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await supabase.functions.invoke("register-device-token", {
-        body: { token: t.value, platform },
-      });
-    } catch (e) {
-      console.error("[Push] token register failed", e);
-    }
-  });
-  PushNotifications.addListener("registrationError", (err) => {
-    console.error("[Push] FCM registration error", err);
-  });
+  try {
+    PushNotifications.addListener("registration", async (t) => {
+      try {
+        console.info("[Push] FCM token registered len=", t.value?.length ?? 0);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        await supabase.functions.invoke("register-device-token", {
+          body: { token: t.value, platform },
+        });
+      } catch (e) {
+        console.error("[Push] token register failed", e);
+      }
+    });
+    PushNotifications.addListener("registrationError", (err) => {
+      console.error("[Push] FCM registration error", err);
+    });
+  } catch (e) {
+    console.error("[Push] addListener threw — swallowed", e);
+  }
 }
 
 /**
@@ -97,42 +118,50 @@ export async function requestNativePush(): Promise<PushConsentState> {
   try {
     let existing: NativePushPermission = "prompt";
     console.info("[PushDecision] source=requestNativePush branch=check-os-before-request");
-    try { existing = await getNativePushPermission(); } catch (e) {
+    try { existing = await withTimeout(getNativePushPermission(), 4000, "checkPermissions"); } catch (e) {
       console.warn("[PushDecision] source=requestNativePush branch=check-os-threw", e);
     }
     if (existing === "granted") {
-      console.info("[PushDecision] source=requestNativePush branch=register-call reason=os-already-granted");
-      bindListenersOnce(platform);
-      try {
-        await PushNotifications.register();
-      } catch (e) {
-        console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=os-already-granted", e);
+      console.info("[PushDecision] source=requestNativePush branch=os-already-granted reason=skip-prompt");
+      if (NATIVE_FCM_ENABLED) {
+        bindListenersOnce(platform);
+        try {
+          await withTimeout(PushNotifications.register(), 4000, "register");
+        } catch (e) {
+          console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=os-already-granted", e);
+        }
+      } else {
+        console.info("[PushDecision] source=requestNativePush branch=register-skipped reason=native-fcm-disabled");
       }
       try { await savePushConsent("granted"); } catch {}
       return "granted";
     }
 
-    let perm;
+    let perm: { receive: NativePushPermission } | undefined;
     try {
       console.info("[PushDecision] source=requestNativePush branch=requestPermissions-call");
-      perm = await PushNotifications.requestPermissions();
+      perm = await withTimeout(PushNotifications.requestPermissions(), 15000, "requestPermissions");
     } catch (e) {
       console.error("[PushDecision] source=requestNativePush branch=requestPermissions-threw — swallowed", e);
       try { await savePushConsent("denied"); } catch {}
       return "denied";
     }
-    console.info(`[PushDecision] source=requestNativePush branch=requestPermissions-result receive=${perm.receive}`);
-    if (perm.receive !== "granted") {
+    console.info(`[PushDecision] source=requestNativePush branch=requestPermissions-result receive=${perm?.receive}`);
+    if (perm?.receive !== "granted") {
       try { await savePushConsent("denied"); } catch {}
       return "denied";
     }
 
-    console.info("[PushDecision] source=requestNativePush branch=register-call reason=fresh-grant");
-    bindListenersOnce(platform);
-    try {
-      await PushNotifications.register();
-    } catch (e) {
-      console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=fresh-grant", e);
+    if (NATIVE_FCM_ENABLED) {
+      console.info("[PushDecision] source=requestNativePush branch=register-call reason=fresh-grant");
+      bindListenersOnce(platform);
+      try {
+        await withTimeout(PushNotifications.register(), 4000, "register");
+      } catch (e) {
+        console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=fresh-grant", e);
+      }
+    } else {
+      console.info("[PushDecision] source=requestNativePush branch=register-skipped reason=native-fcm-disabled");
     }
     try { await savePushConsent("granted"); } catch {}
     return "granted";

@@ -1,7 +1,10 @@
 ext {
     minSdkVersion = 26
     compileSdkVersion = 36
-    targetSdkVersion = 36
+    // Pinned to 35 to keep app-declared screenOrientation respected.
+    // Android 16 / API 36 ignores orientation restrictions on sw>=600dp
+    // devices and foldables, which broke the phone portrait lock.
+    targetSdkVersion = 35
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
     androidxCoordinatorLayoutVersion = '1.3.0'
