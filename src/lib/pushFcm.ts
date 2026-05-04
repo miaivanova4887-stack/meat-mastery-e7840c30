@@ -5,6 +5,19 @@ import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
+import { NATIVE_FCM_ENABLED } from "@/lib/pushNativeConfig";
+
+/** Race a native promise against a timeout so re-renders / resume
+ *  cannot leave the JS bridge hanging. */
+async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return await new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
 
 export type PushConsentState = "unset" | "granted" | "denied";
 export type NativePushPermission =
@@ -57,27 +70,35 @@ export async function getNativePushPermission(): Promise<NativePushPermission> {
 }
 
 function bindListenersOnce(platform: "android" | "ios") {
+  if (!NATIVE_FCM_ENABLED) {
+    console.info("[PushDecision] bindListeners skipped reason=native-fcm-disabled");
+    return;
+  }
   if (listenersBound) {
     console.info("[Push] listeners already bound — skip");
     return;
   }
   listenersBound = true;
   console.info("[Push] binding push listeners (first time)");
-  PushNotifications.addListener("registration", async (t) => {
-    try {
-      console.info("[Push] FCM token registered len=", t.value?.length ?? 0);
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      await supabase.functions.invoke("register-device-token", {
-        body: { token: t.value, platform },
-      });
-    } catch (e) {
-      console.error("[Push] token register failed", e);
-    }
-  });
-  PushNotifications.addListener("registrationError", (err) => {
-    console.error("[Push] FCM registration error", err);
-  });
+  try {
+    PushNotifications.addListener("registration", async (t) => {
+      try {
+        console.info("[Push] FCM token registered len=", t.value?.length ?? 0);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        await supabase.functions.invoke("register-device-token", {
+          body: { token: t.value, platform },
+        });
+      } catch (e) {
+        console.error("[Push] token register failed", e);
+      }
+    });
+    PushNotifications.addListener("registrationError", (err) => {
+      console.error("[Push] FCM registration error", err);
+    });
+  } catch (e) {
+    console.error("[Push] addListener threw — swallowed", e);
+  }
 }
 
 /**
