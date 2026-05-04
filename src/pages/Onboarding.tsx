@@ -566,12 +566,12 @@ const Onboarding = () => {
 
       {/* Content */}
       <div
-        className={`mx-auto w-full max-w-md md:max-w-2xl flex-1 flex flex-col px-6 pt-4 transition-all duration-300 ease-out ${
+        className={`mx-auto w-full max-w-md md:max-w-2xl flex-1 flex flex-col px-6 pt-4 overflow-y-auto transition-all duration-300 ease-out ${
           transitioning
             ? "opacity-0 translate-y-2 scale-[0.99]"
             : "opacity-100 translate-y-0 scale-100"
         }`}
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }}
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 140px)" }}
       >
         {/* Editorial header */}
         <div className="mb-8">
