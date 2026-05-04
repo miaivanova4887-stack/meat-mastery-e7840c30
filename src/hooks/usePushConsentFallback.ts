@@ -89,135 +89,97 @@ export function usePushConsentFallback(source: PushFallbackSource) {
     let cancelled = false;
     const timer = setTimeout(async () => {
       if (cancelled) return;
-
-      const alreadyShown = sessionStorage.getItem(SESSION_FLAG) === "1";
-      const onboardingProgressed = isOnboardingProgressed();
-      console.info(
-        "[Push] fallback timer fired source=",
-        source,
-        { native, platform, alreadyShown, onboardingProgressed, elapsedAtFire: Date.now() - appStartAt },
-      );
-
-      if (alreadyShown) {
-        console.info("[Push] fallback skipped reason=already-shown-session source=", source);
-        return;
-      }
-
-      // OS-level guard: if the user already granted POST_NOTIFICATIONS
-      // (e.g. during onboarding), never re-prompt. Reconcile the state
-      // into local + profile consent and exit.
-      const osPerm = await getNativePushPermission();
-      console.info("[Push] fallback OS perm=", osPerm, "source=", source);
-      if (osPerm === "granted") {
-        try { await savePushConsent("granted"); } catch {}
-        sessionStorage.setItem(SESSION_FLAG, "1");
-        console.info("[Push] fallback skipped reason=os-already-granted source=", source);
-        return;
-      }
-
-      const openSheet = (branch: "auth" | "anonymous", consent: string, extra: Record<string, unknown> = {}) => {
-        if (cancelled) return;
-        if (sessionStorage.getItem(SESSION_FLAG) === "1") {
-          console.info("[Push] fallback skipped reason=race-already-shown source=", source);
-          return;
-        }
-        sessionStorage.setItem(SESSION_FLAG, "1");
-        console.info(
-          "[Push] fallback reason=open source=",
-          source,
-          { branch, consent, ...extra },
-        );
-        setOpen(true);
-      };
-
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (cancelled) return;
-        const userPresent = !!user;
-
-        if (!userPresent) {
-          // Anonymous branch — only after some progression.
-          const localConsent = getLocalPushConsent();
-          console.info(
-            "[Push] fallback anonymous check source=",
-            source,
-            { localConsent, onboardingProgressed },
-          );
-
-          if (localConsent !== "unset") {
-            console.info(
-              "[Push] fallback skipped reason=anonymous-consent-already-set source=",
-              source,
-              { localConsent },
-            );
-            return;
-          }
-          if (!onboardingProgressed) {
-            console.info(
-              "[Push] fallback skipped reason=anonymous-not-progressed source=",
-              source,
-            );
-            return;
-          }
-          openSheet("anonymous", localConsent, { onboardingProgressed });
-          return;
-        }
-
-        // Authenticated branch — read consent + preferences.
-        const { data, error } = await (supabase as any)
-          .from("profiles")
-          .select("push_consent, notification_preferences")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (cancelled) return;
-
-        if (error || !data) {
-          // Profile row not yet created — fall back to local mirror.
-          const localConsent = getLocalPushConsent();
-          console.info(
-            "[Push] fallback profile-row missing — using local source=",
-            source,
-            { localConsent, error: error?.message },
-          );
-          if (localConsent !== "unset") {
-            console.info(
-              "[Push] fallback skipped reason=auth-local-consent-already-set source=",
-              source,
-              { localConsent },
-            );
-            return;
-          }
-          openSheet("auth", localConsent, { profileMissing: true });
-          return;
-        }
-
-        const consent: string = data.push_consent ?? "unset";
-        const prefsOptedIn = prefsIndicatePushOptIn(data.notification_preferences);
+        const alreadyShown = sessionStorage.getItem(SESSION_FLAG) === "1";
+        const onboardingProgressed = isOnboardingProgressed();
         console.info(
-          "[Push] fallback auth check source=",
-          source,
-          { userPresent, consent, prefsOptedIn },
+          "[PushDecision] timer-fired source=", source,
+          { native, platform, alreadyShown, onboardingProgressed, elapsedAtFire: Date.now() - appStartAt },
         );
 
-        if (consent === "granted") {
-          console.info("[Push] fallback skipped reason=consent-granted source=", source);
+        if (alreadyShown) {
+          console.info("[PushDecision] skip reason=already-shown-session source=", source);
           return;
         }
-        if (consent === "denied") {
-          console.info("[Push] fallback skipped reason=consent-denied source=", source);
+
+        // (1) Local mirror — covers anonymous and freshly-saved consent.
+        const localConsent = getLocalPushConsent();
+        if (localConsent !== "unset") {
+          console.info("[PushDecision] skip reason=local-consent-set source=", source, { localConsent });
+          sessionStorage.setItem(SESSION_FLAG, "1");
           return;
         }
-        if (prefsOptedIn) {
-          console.info(
-            "[Push] fallback skipped reason=prefs-indicate-opted-in source=",
-            source,
-            { consent },
-          );
+
+        // (2) Auth profile — if user has a consent decision, do NOT prompt.
+        let userId: string | null = null;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          userId = user?.id ?? null;
+        } catch (e) {
+          console.warn("[PushDecision] getUser failed source=", source, e);
+        }
+        if (cancelled) return;
+
+        if (userId) {
+          try {
+            const { data, error } = await (supabase as any)
+              .from("profiles")
+              .select("push_consent, notification_preferences")
+              .eq("id", userId)
+              .maybeSingle();
+            if (cancelled) return;
+            if (!error && data) {
+              const consent: string = data.push_consent ?? "unset";
+              if (consent === "granted" || consent === "denied") {
+                console.info("[PushDecision] skip reason=profile-consent-set source=", source, { consent });
+                sessionStorage.setItem(SESSION_FLAG, "1");
+                return;
+              }
+              if (prefsIndicatePushOptIn(data.notification_preferences)) {
+                console.info("[PushDecision] skip reason=prefs-opted-in source=", source);
+                sessionStorage.setItem(SESSION_FLAG, "1");
+                return;
+              }
+            } else if (error) {
+              console.warn("[PushDecision] profile read error source=", source, error.message);
+            }
+          } catch (e) {
+            console.warn("[PushDecision] profile read threw source=", source, e);
+          }
+        }
+
+        // (3) OS guard — if OS already granted, reconcile + skip.
+        let osPerm: string = "unsupported";
+        try { osPerm = await getNativePushPermission(); } catch (e) {
+          console.warn("[PushDecision] getNativePushPermission threw source=", source, e);
+        }
+        console.info("[PushDecision] os-perm source=", source, { osPerm });
+        if (osPerm === "granted") {
+          try { await savePushConsent("granted"); } catch (e) {
+            console.warn("[PushDecision] savePushConsent reconcile failed", e);
+          }
+          sessionStorage.setItem(SESSION_FLAG, "1");
+          console.info("[PushDecision] skip reason=os-already-granted source=", source);
           return;
         }
-        openSheet("auth", consent, { prefsOptedIn });
+
+        // (4) Anonymous gate — only prompt after onboarding has progressed.
+        if (!userId && !onboardingProgressed) {
+          console.info("[PushDecision] skip reason=anonymous-not-progressed source=", source);
+          return;
+        }
+
+        // (5) Open the sheet.
+        if (sessionStorage.getItem(SESSION_FLAG) === "1") {
+          console.info("[PushDecision] skip reason=race-already-shown source=", source);
+          return;
+        }
+        sessionStorage.setItem(SESSION_FLAG, "1");
+        console.info("[PushDecision] open source=", source, { branch: userId ? "auth" : "anonymous" });
+        setOpen(true);
       } catch (e) {
-        console.warn("[Push] fallback check failed source=", source, e);
+        // Defensive: a throw here must NEVER crash React.
+        console.error("[PushDecision] timer body threw — swallowed source=", source, e);
       }
     }, remaining);
 

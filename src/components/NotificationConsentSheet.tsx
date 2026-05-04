@@ -48,31 +48,43 @@ export default function NotificationConsentSheet({
     try {
       let granted = false;
       const native = Capacitor.isNativePlatform();
-      console.info("[Push] sheet Enable tapped native=", native);
+      console.info("[PushDecision] sheet-enable native=", native);
       if (native) {
-        // OS-level pre-check — if already granted, do not re-prompt
-        // (re-prompting after grant is the path that has been crashing).
-        const osPerm = await getNativePushPermission();
-        console.info("[Push] sheet OS perm=", osPerm);
+        let osPerm: string = "unsupported";
+        try { osPerm = await getNativePushPermission(); } catch (e) {
+          console.warn("[PushDecision] sheet getNativePushPermission threw", e);
+        }
+        console.info("[PushDecision] sheet os-perm=", osPerm);
         if (osPerm === "granted") {
-          await savePushConsent("granted", prefs);
+          try { await savePushConsent("granted", prefs); } catch (e) {
+            console.warn("[PushDecision] sheet save granted failed", e);
+          }
           granted = true;
         } else {
-          const result = await requestNativePush();
-          granted = result === "granted";
+          try {
+            const result = await requestNativePush();
+            granted = result === "granted";
+          } catch (e) {
+            console.error("[PushDecision] sheet requestNativePush threw — swallowed", e);
+            granted = false;
+          }
         }
       } else {
-        granted = await subscribeToPush();
+        try { granted = await subscribeToPush(); } catch (e) {
+          console.error("[PushDecision] sheet web subscribeToPush threw — swallowed", e);
+          granted = false;
+        }
       }
-      console.info("[Push] sheet Enable result granted=", granted);
-      // Save preferences alongside consent
-      await savePushConsent(granted ? "granted" : "denied", prefs);
+      console.info("[PushDecision] sheet-enable result granted=", granted);
+      try { await savePushConsent(granted ? "granted" : "denied", prefs); } catch (e) {
+        console.warn("[PushDecision] sheet final savePushConsent failed", e);
+      }
       if (granted) toast.success("Notifications enabled");
       else toast.info("Notifications declined — you can enable them later in Settings.");
       onComplete?.(granted);
       onClose();
     } catch (e) {
-      console.error("[Push] sheet Enable error", e);
+      console.error("[PushDecision] sheet-enable outer threw", e);
       toast.error("Could not enable notifications");
     } finally {
       setBusy(false);

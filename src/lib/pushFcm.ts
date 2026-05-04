@@ -87,40 +87,57 @@ function bindListenersOnce(platform: "android" | "ios") {
  */
 export async function requestNativePush(): Promise<PushConsentState> {
   if (!Capacitor.isNativePlatform()) {
-    console.info("[Push] requestNativePush skipped — not native");
+    console.info("[PushDecision] requestNativePush skipped — not native");
     return "unset";
   }
 
   const platform = Capacitor.getPlatform() as "android" | "ios";
-  console.info("[Push] requestNativePush start platform=", platform);
+  console.info("[PushDecision] requestNativePush start platform=", platform);
 
   try {
-    // Short-circuit if the OS has already granted permission.
-    const existing = await getNativePushPermission();
+    let existing: NativePushPermission = "prompt";
+    try { existing = await getNativePushPermission(); } catch (e) {
+      console.warn("[PushDecision] checkPermissions threw", e);
+    }
     if (existing === "granted") {
-      console.info("[Push] OS already granted — skipping requestPermissions");
+      console.info("[PushDecision] OS already granted — skipping requestPermissions");
       bindListenersOnce(platform);
-      try { await PushNotifications.register(); } catch (e) {
-        console.warn("[Push] register() after granted-skip failed", e);
+      try {
+        console.info("[PushDecision] register() call (granted-skip)");
+        await PushNotifications.register();
+      } catch (e) {
+        console.warn("[PushDecision] register() after granted-skip failed — swallowed", e);
       }
-      await savePushConsent("granted");
+      try { await savePushConsent("granted"); } catch {}
       return "granted";
     }
 
-    const perm = await PushNotifications.requestPermissions();
-    console.info("[Push] requestPermissions result receive=", perm.receive);
+    let perm;
+    try {
+      console.info("[PushDecision] requestPermissions() call");
+      perm = await PushNotifications.requestPermissions();
+    } catch (e) {
+      console.error("[PushDecision] requestPermissions threw — swallowed", e);
+      try { await savePushConsent("denied"); } catch {}
+      return "denied";
+    }
+    console.info("[PushDecision] requestPermissions result receive=", perm.receive);
     if (perm.receive !== "granted") {
-      await savePushConsent("denied");
+      try { await savePushConsent("denied"); } catch {}
       return "denied";
     }
 
     bindListenersOnce(platform);
-    await PushNotifications.register();
-    console.info("[Push] PushNotifications.register() called");
-    await savePushConsent("granted");
+    try {
+      console.info("[PushDecision] register() call (fresh-grant)");
+      await PushNotifications.register();
+    } catch (e) {
+      console.warn("[PushDecision] register() after fresh-grant failed — swallowed", e);
+    }
+    try { await savePushConsent("granted"); } catch {}
     return "granted";
   } catch (e) {
-    console.error("[Push] requestNativePush threw", e);
+    console.error("[PushDecision] requestNativePush outer threw — swallowed", e);
     try { await savePushConsent("denied"); } catch {}
     return "denied";
   }
