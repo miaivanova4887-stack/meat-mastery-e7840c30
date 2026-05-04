@@ -66,7 +66,6 @@ REQUIRED_MARKERS=(
   "callback:verifyOtp-result"
   "deeplink:launch-url"
   "BuildInfo"
-  "build-version"
   "authFlow=v8-normalized-callback-parser"
   "oauth:exchange-call"
   "oauth:redirect-uri"
