@@ -566,11 +566,12 @@ const Onboarding = () => {
 
       {/* Content */}
       <div
-        className={`mx-auto w-full max-w-md md:max-w-2xl flex-1 flex flex-col px-6 pt-4 pb-4 transition-all duration-300 ease-out ${
+        className={`mx-auto w-full max-w-md md:max-w-2xl flex-1 flex flex-col px-6 pt-4 transition-all duration-300 ease-out ${
           transitioning
             ? "opacity-0 translate-y-2 scale-[0.99]"
             : "opacity-100 translate-y-0 scale-100"
         }`}
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }}
       >
         {/* Editorial header */}
         <div className="mb-8">
@@ -839,7 +840,10 @@ const Onboarding = () => {
 
         {/* Continue button for multi-select & input steps */}
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
-          <div className="pt-5">
+          <div
+            className="pt-5 mt-auto"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+          >
             <Button
               className="w-full gap-2 h-[50px] text-[14px] font-semibold rounded-xl tracking-normal transition-all duration-300"
               disabled={
