@@ -233,7 +233,7 @@ const KetosisTimer = () => {
         </button>
       </div>
 
-      <div className="flex flex-col items-center pt-8 px-4">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl flex flex-col items-center pt-8 px-4">
         {/* Ring */}
         <div className="relative w-64 h-64">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 260 260">

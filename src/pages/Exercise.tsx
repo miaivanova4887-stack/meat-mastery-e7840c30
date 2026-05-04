@@ -102,7 +102,7 @@ const Exercise = () => {
         <h1 className="text-lg font-display font-bold">{t("exercise.title")}</h1>
       </div>
 
-      <div className="p-4 space-y-6">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-6">
         {personalTip && (
           <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 flex items-start gap-3 animate-fade-in">
             <Info size={18} className="text-primary mt-0.5 flex-shrink-0" />

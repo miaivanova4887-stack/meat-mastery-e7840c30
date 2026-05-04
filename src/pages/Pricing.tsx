@@ -216,7 +216,7 @@ const Pricing = () => {
         <h1 className="text-lg font-display font-bold tracking-tight">Choose Your Plan</h1>
       </div>
 
-      <div className="px-4 pt-5 space-y-4">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-5 space-y-4">
         {/* Billing toggle */}
         <div className="flex items-center justify-center gap-2">
           {(["monthly", "yearly"] as const).map((cycle) => (

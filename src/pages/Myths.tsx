@@ -23,7 +23,7 @@ const Myths = () => {
         <h1 className="text-lg font-display font-bold">{t("myths.title")}</h1>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("myths.count", { count: myths.length })}</p>
 
         {myths.map((myth, i) => (

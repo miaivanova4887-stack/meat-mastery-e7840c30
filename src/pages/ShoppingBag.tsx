@@ -48,7 +48,7 @@ const ShoppingBag = () => {
           </Button>
         </div>
       ) : (
-        <div className="p-4 space-y-2">
+        <div className="mx-auto w-full max-w-3xl p-4 space-y-2">
           {items.map((item) => {
             const display = convertUnit(item.quantity, item.unit, unitSystem);
             const showUnit = item.unit !== "piece";

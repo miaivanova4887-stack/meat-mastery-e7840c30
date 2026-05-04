@@ -15,7 +15,7 @@ const LegalPage = ({ ns }: LegalPageProps) => {
 
   return (
     <main
-      className="min-h-screen px-4 pb-24 max-w-2xl mx-auto"
+      className="min-h-screen px-4 pb-24 max-w-2xl lg:max-w-3xl mx-auto"
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1.5rem)" }}
     >
       <h1 className="text-2xl font-extrabold tracking-tight mb-4 text-foreground">

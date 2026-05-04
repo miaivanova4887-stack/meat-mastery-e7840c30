@@ -82,10 +82,10 @@ const Ingredients = () => {
 
         {diets.map(diet => (
           <TabsContent key={diet.id} value={diet.id} className="mt-0">
-            <div className="px-4 pt-3 pb-1">
+            <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-3 pb-1">
               <p className="text-xs text-muted-foreground italic">{diet.desc}</p>
             </div>
-            <div className="p-4 space-y-4">
+            <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-4">
               {diet.categories.map((cat, i) => (
                 <div key={i} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.05}s` }}>
                   <h3 className="font-display font-bold text-foreground mb-3">{cat.name}</h3>

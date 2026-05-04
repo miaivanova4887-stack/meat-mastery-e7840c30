@@ -160,7 +160,7 @@ const Index = () => {
       </div>
 
       {/* Content */}
-      <div className="px-4 space-y-5 -mt-2 relative z-10">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 space-y-5 -mt-2 relative z-10">
         {tip && (
           <div className="ios-card px-4 py-3 animate-fade-in flex items-start gap-2.5">
             <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -171,7 +171,7 @@ const Index = () => {
         )}
 
         {/* Feature Grid */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {sorted.map(({ icon, path, tags, requiredTier }) => {
             const highlighted = tags.some((tg) => profile.interests.includes(tg as any));
             const label = t(featureLabelKeys[path] || path);

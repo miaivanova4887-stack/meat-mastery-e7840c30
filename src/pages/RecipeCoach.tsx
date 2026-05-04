@@ -174,7 +174,7 @@ const RecipeCoach = () => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4 mx-auto w-full max-w-3xl lg:max-w-4xl">
         {!hasAccess("pro") ? (
           <div className="flex flex-col items-center justify-center h-full pb-8">
             <TeaserGate requiredTier="pro" featureName="AI Carnivore Coach" mode="block">

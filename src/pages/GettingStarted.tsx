@@ -21,7 +21,7 @@ const GettingStarted = () => {
         <h1 className="text-lg font-display font-bold">{t("gettingStarted.title")}</h1>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("gettingStarted.subtitle")}</p>
 
         <ContentSection type="key_points" title={t("gettingStarted.week1.title")} feedbackId="started-w1" feedbackQuestion={t("gettingStarted.week1.q")} items={t("gettingStarted.week1.items", { returnObjects: true }) as string[]} />

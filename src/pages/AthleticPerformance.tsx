@@ -21,7 +21,7 @@ const AthleticPerformance = () => {
         <h1 className="text-lg font-display font-bold">{t("athletic.title")}</h1>
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("athletic.subtitle")}</p>
 
         <ContentSection type="key_points" title={t("athletic.adapt.title")} feedbackId="athletic-adapt" feedbackQuestion={t("athletic.adapt.q")} items={t("athletic.adapt.items", { returnObjects: true }) as string[]} />

@@ -167,7 +167,7 @@ const NewsFeed = () => {
       </div>
 
       {/* Content */}
-      <div className="px-4 py-4 space-y-3">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 py-4 space-y-3">
         {enabledCategories.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <Settings2 size={40} className="mx-auto mb-3 opacity-40" />

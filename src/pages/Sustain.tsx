@@ -26,7 +26,7 @@ const Sustain = () => {
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground"><ArrowLeft size={20} /></button>
         <h1 className="text-lg font-display font-bold">{t("sustain.title")}</h1>
       </div>
-      <div className="p-4">
+      <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4">
         <p className="text-xs text-muted-foreground mb-4">{t("sustain.intro")}</p>
         <div className="space-y-3">
           {tipKeys.map(({ id, icon: Icon, link }, i) => (
