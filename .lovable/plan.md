@@ -1,72 +1,127 @@
-## Diagnosis
+I audited the runtime paths, not the build pipeline. The fresh build path does not need more changes.
 
-The reason all three fixes "don't appear in the new APK" is most likely a **single root cause**: the build script aborts before producing an APK, so the device keeps running the previous install.
+Files currently responsible for the remaining runtime issues:
+- `android/app/src/main/java/com/mi4labs/carnivorex/MainActivity.java`: orientation lock is applied only after `super.onCreate(...)`, and the manifest has no `android:screenOrientation` fallback. If the first WebView/activity configuration is created before the lock sticks on the device/OEM, the UI can still enter landscape.
+- `android/app/src/main/AndroidManifest.xml`: no early activity-level portrait orientation override exists today.
+- `src/pages/Onboarding.tsx`: after onboarding/Health Connect, it unconditionally opens `NotificationConsentSheet` with `setShowPushConsent(true)` and only marks `push-prompt-shown`; it does not check local consent, profile consent, or OS permission before showing the sheet.
+- `src/pages/Profile.tsx`: the notification preferences row unconditionally opens `NotificationConsentSheet`. This is OK for an explicit settings action, but it currently lacks a branch log to distinguish manual-open from automatic prompt.
+- `src/components/PushConsentFallbackHost.tsx` + `src/hooks/usePushConsentFallback.ts`: this is the app-level automatic prompt path and already has suppression checks, but the logs are inconsistent (`[Push]` and `[PushDecision]`) and do not emit one single full state snapshot before the decision.
+- `src/components/NotificationConsentSheet.tsx` + `src/lib/pushFcm.ts`: native permission/register calls are guarded, but the sheet itself is still reachable from Onboarding without suppression checks, so a logged-in user with active notifications can still see the prompt and tap into native permission logic.
+- `src/pages/KetosisTimer.tsx`: separate web notification path exists (`Notification.requestPermission()` / `subscribeToPush()`), but `subscribeToPush()` returns false on native, so this is not the Android native crash path. I will add no native prompt work there unless needed.
 
-### Issue 1 — Build stamp still visible
-`src/components/BuildStamp.tsx` is no longer imported by `App.tsx` (verified). However, `scripts/build-android-fresh.sh` still requires the string `"build-version"` to be present in the synced JS bundle (REQUIRED_MARKERS, line 70). That string only exists inside `BuildStamp.tsx` as `aria-label="build-version"`. Since the component is now unreferenced, Vite tree-shakes it out → marker missing → script aborts with "Synced bundle is MISSING required marker: build-version" → no new APK is installed → user sees the old build (with the stamp).
+Plan:
 
-### Issue 2 — Phone still rotates
-Same root cause — the new `MainActivity.java` portrait code never reaches the device because the build aborts. Code itself is correct but defensive hardening is warranted (see plan).
+1. Harden phone portrait lock at the earliest Android runtime point
+- In `MainActivity.java`, add a small `applyPhonePortraitLock(stage)` helper that:
+  - detects tablet mode using `smallestScreenWidthDp >= 600`
+  - applies `ActivityInfo.SCREEN_ORIENTATION_PORTRAIT` on phones
+  - logs the stage, tablet detection, applied orientation constant, and `getRequestedOrientation()` after application
+- Call this helper before `super.onCreate(...)`, then again immediately after `super.onCreate(...)`, and inside `onConfigurationChanged(...)`.
+- Keep tablet rotation behavior unchanged.
+- Add `android:screenOrientation="portrait"` to `MainActivity` in `AndroidManifest.xml` as the early manifest-level fallback, because the user reports the runtime call alone still allows rotation. This is stricter for the phone activity. If tablet rotation must remain dynamic in the same activity, the Java code will still log tablet detection; however, Android manifest orientation is static. Given the explicit blocker is phone landscape, the manifest fallback is the reliable fix.
 
-### Issue 3 — Notification prompt still crashes / shows for opted-in users
-Two contributing problems even after the build is unblocked:
-- `usePushConsentFallback` short-circuits on `osPerm === "granted"`, but `PushNotifications.checkPermissions()` can return `"prompt"` on some Android 14 OEM builds even when notifications are enabled at OS level. We need a secondary signal (local mirror + profile consent) checked **before** the OS call.
-- `requestNativePush()` calls `PushNotifications.register()` even on the granted-skip path. On a stale Firebase init this can throw and surface as a WebView crash. Need to gate `register()` behind `bindListenersOnce` having actually bound, and never let a thrown register error reach React.
-
----
-
-## Plan
-
-### A. Unblock the build (root cause for all three)
-
-1. Delete `src/components/BuildStamp.tsx` (dead code).
-2. In `scripts/build-android-fresh.sh`, remove `"build-version"` from `REQUIRED_MARKERS` (keep `"BuildInfo"` — it lives in `main.tsx` as a console-only log, not visible UI).
-3. Confirm no other file imports `BuildStamp` (already verified: zero references).
-
-### B. Portrait lock — defense in depth
-
-`MainActivity.java`:
-- Move `setRequestedOrientation` to **after** `super.onCreate(...)` (BridgeActivity initializes the window in super; some OEMs ignore orientation set before super).
-- Add `android.util.Log.i("CarnivoreXOrientation", "isTablet=" + isTablet + " applied=" + (!isTablet))` so we can verify on device with `adb logcat | grep CarnivoreXOrientation`.
-- Use `SCREEN_ORIENTATION_PORTRAIT` (hard portrait) instead of `USER_PORTRAIT` to guarantee no landscape on phones (USER_PORTRAIT honours user-set system rotation overrides on some Samsung builds).
-
-### C. Notification prompt — never re-prompt, never crash
-
-`src/hooks/usePushConsentFallback.ts`:
-- Reorder checks. New order: (1) sessionStorage already-shown, (2) **local mirror consent !== "unset" → skip**, (3) for logged-in users, **profile.push_consent in {granted,denied} → skip** (read this BEFORE the OS check), (4) OS perm check → if granted, reconcile to local + profile and skip, (5) only then open the sheet.
-- Add explicit log lines at every decision branch labelled `[PushDecision]` so they are greppable.
-- Wrap the entire async timer body in try/catch so any throw is swallowed (cannot crash React).
-
-`src/lib/pushFcm.ts`:
-- In `requestNativePush()`, only call `PushNotifications.register()` after `bindListenersOnce` actually bound (it already does — but add an inner try/catch around `register()` on every code path, including the granted-skip branch, so a Firebase init failure cannot propagate).
-- Add `[PushDecision]` log before each `register()` and `requestPermissions()` call.
-
-`src/components/NotificationConsentSheet.tsx`:
-- On `handleEnable`, before doing anything, re-check `getNativePushPermission()`. If already granted, save consent, close sheet, return — never call `requestNativePush()` again.
-
-### D. Adb log filters for on-device verification
-
-After installing the new APK, the user can verify with:
-
+Expected launch log lines after implementation:
 ```text
-adb logcat -c
-adb logcat -v time | grep -E 'CarnivoreXOrientation|PushDecision|BuildInfo'
+I/CarnivoreXOrientation: stage=before-super tablet=false smallestScreenWidthDp=<value> applying=SCREEN_ORIENTATION_PORTRAIT constant=1
+I/CarnivoreXOrientation: stage=before-super requestedOrientationAfter=1
+I/CarnivoreXOrientation: stage=after-super tablet=false smallestScreenWidthDp=<value> applying=SCREEN_ORIENTATION_PORTRAIT constant=1
+I/CarnivoreXOrientation: stage=after-super requestedOrientationAfter=1
+```
+If a configuration change occurs:
+```text
+I/CarnivoreXOrientation: stage=onConfigurationChanged tablet=false smallestScreenWidthDp=<value> applying=SCREEN_ORIENTATION_PORTRAIT constant=1
+I/CarnivoreXOrientation: stage=onConfigurationChanged requestedOrientationAfter=1
 ```
 
-Expected on phone launch:
-- `CarnivoreXOrientation: isTablet=false applied=true`
-- `[BuildInfo] fingerprint=build-<recent-ts> ...`
-- For an opted-in user: `[PushDecision] skip reason=profile-consent-granted` (or similar) and **no** sheet open log.
+2. Collapse notification automatic prompting into one logged decision path
+- Add a shared helper in the existing push consent hook/module path that performs the full suppression audit before any sheet is opened:
+  - `localConsent`
+  - `userId/userPresent`
+  - `profileConsent`
+  - whether `notification_preferences` indicate opt-in
+  - Android OS permission state from `getNativePushPermission()`
+  - final decision: `show-sheet` or a specific suppression reason
+- Reuse this helper from:
+  - `usePushConsentFallback("shell")`
+  - onboarding completion before setting `showPushConsent(true)`
+- This removes the currently broken Onboarding path that opens the native sheet without the same suppression checks as the app-level host.
 
----
+Expected branch logs:
+```text
+[PushDecision] source=shell branch=start localConsent=<unset|granted|denied> userPresent=<true|false>
+[PushDecision] source=shell branch=profile profileConsent=<unset|granted|denied|null> prefsOptedIn=<true|false>
+[PushDecision] source=shell branch=os osPermission=<granted|denied|prompt|prompt-with-rationale|unsupported>
+[PushDecision] source=shell branch=suppress reason=<already-shown-session|local-consent-set|profile-consent-set|prefs-opted-in|os-already-granted|anonymous-not-progressed>
+```
+Or when the prompt is legitimate:
+```text
+[PushDecision] source=shell branch=show-sheet reason=eligible
+```
+For onboarding:
+```text
+[PushDecision] source=onboarding branch=start ...
+[PushDecision] source=onboarding branch=suppress reason=os-already-granted
+```
+or:
+```text
+[PushDecision] source=onboarding branch=show-sheet reason=eligible
+```
 
-## Files to modify
+3. Prevent native notification calls unless the sheet is legitimately open and the user taps enable
+- Keep `requestNativePush()` as the only Android native request/register function.
+- In `requestNativePush()`, add exact logs before any native plugin call:
+```text
+[PushDecision] source=requestNativePush branch=check-os-before-request
+[PushDecision] source=requestNativePush branch=requestPermissions-call
+[PushDecision] source=requestNativePush branch=register-call reason=<os-already-granted|fresh-grant>
+```
+- Ensure every `requestPermissions()` and `register()` call remains inside `try/catch` and logs swallowed errors.
+- In `NotificationConsentSheet.tsx`, log manual vs automatic sheet enable, and re-check OS permission before calling `requestNativePush()`.
+- For already granted OS permission, save/reconcile consent and close the sheet without calling `requestPermissions()`.
 
-1. `scripts/build-android-fresh.sh` — drop `"build-version"` marker
-2. `src/components/BuildStamp.tsx` — delete file
-3. `android/app/src/main/java/com/mi4labs/carnivorex/MainActivity.java` — order + Log + hard portrait
-4. `src/hooks/usePushConsentFallback.ts` — reorder checks, add `[PushDecision]` logs, outer try/catch
-5. `src/lib/pushFcm.ts` — defensive try/catch around every `register()`, add `[PushDecision]` logs
-6. `src/components/NotificationConsentSheet.tsx` — re-check OS perm in `handleEnable`
+4. Make explicit Profile settings behavior distinguishable from automatic prompts
+- Keep the Profile notification row as an explicit user action, but add a log when it opens:
+```text
+[PushDecision] source=profile-settings branch=manual-open
+```
+- This lets logcat prove whether a prompt was automatic or caused by the user tapping Settings.
 
-No DB/edge function changes needed.
+5. Validation commands to run on device after rebuild/install
+Portrait launch/orientation evidence:
+```bash
+adb logcat -c
+adb shell am force-stop com.mi4labs.carnivorex
+adb shell settings put system accelerometer_rotation 1
+adb shell settings put system user_rotation 1
+adb shell monkey -p com.mi4labs.carnivorex 1
+adb logcat -d -s CarnivoreXOrientation
+```
+Expected: before-WebView logs with `tablet=false`, `constant=1`, `requestedOrientationAfter=1`.
+
+Force a landscape rotation attempt:
+```bash
+adb shell content insert --uri content://settings/system --bind name:s:user_rotation --bind value:i:1
+adb logcat -d -s CarnivoreXOrientation
+```
+Expected: UI remains portrait; if configuration changes fire, `onConfigurationChanged` re-applies portrait and logs `requestedOrientationAfter=1`.
+
+Notification decision logs:
+```bash
+adb logcat -c
+adb shell am force-stop com.mi4labs.carnivorex
+adb shell monkey -p com.mi4labs.carnivorex 1
+adb logcat -d | grep -E "PushDecision|Push\]"
+```
+Expected for a logged-in user with active notifications: a suppression line, not `show-sheet`.
+
+Prove no native permission request happened for already-granted users:
+```bash
+adb logcat -d | grep -E "requestPermissions-call|register-call|sheet-enable|show-sheet|suppress"
+```
+Expected: `suppress reason=os-already-granted` or `suppress reason=profile-consent-set`; no `requestPermissions-call` unless the sheet was actually shown and Enable was tapped.
+
+Crash filter:
+```bash
+adb logcat -d | grep -E "AndroidRuntime|FATAL EXCEPTION|PushDecision|PushNotifications|Capacitor/Console"
+```
+Expected: no `AndroidRuntime` / `FATAL EXCEPTION`; any permission/plugin errors should be logged as swallowed warnings/errors under `[PushDecision]`.
