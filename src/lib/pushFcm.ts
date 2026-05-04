@@ -88,7 +88,7 @@ function bindListenersOnce(platform: "android" | "ios") {
 export async function requestNativePush(): Promise<PushConsentState> {
   if (!Capacitor.isNativePlatform()) {
     console.info("[Push] requestNativePush skipped — not native");
-    return "unsupported" as unknown as PushConsentState && "unset";
+    return "unset";
   }
 
   const platform = Capacitor.getPlatform() as "android" | "ios";

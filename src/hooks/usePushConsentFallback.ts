@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
+import { getNativePushPermission, savePushConsent } from "@/lib/pushFcm";
 
 const SESSION_FLAG = "push-prompt-shown";
 
@@ -99,6 +100,18 @@ export function usePushConsentFallback(source: PushFallbackSource) {
 
       if (alreadyShown) {
         console.info("[Push] fallback skipped reason=already-shown-session source=", source);
+        return;
+      }
+
+      // OS-level guard: if the user already granted POST_NOTIFICATIONS
+      // (e.g. during onboarding), never re-prompt. Reconcile the state
+      // into local + profile consent and exit.
+      const osPerm = await getNativePushPermission();
+      console.info("[Push] fallback OS perm=", osPerm, "source=", source);
+      if (osPerm === "granted") {
+        try { await savePushConsent("granted"); } catch {}
+        sessionStorage.setItem(SESSION_FLAG, "1");
+        console.info("[Push] fallback skipped reason=os-already-granted source=", source);
         return;
       }
 
