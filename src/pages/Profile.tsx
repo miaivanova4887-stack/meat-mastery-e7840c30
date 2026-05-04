@@ -1008,9 +1008,25 @@ const Profile = () => {
 
             {/* User Notification Preferences */}
             <button
-              onClick={() => {
-                console.info("[PushDecision] source=profile-settings branch=manual-open");
-                setShowPushConsent(true);
+              onClick={async () => {
+                console.info("[PushDecision] source=profile-settings branch=manual-tap");
+                try {
+                  const { auditPushDecision } = await import("@/lib/pushDecision");
+                  const decision = await auditPushDecision("profile-settings", { ignoreSessionFlag: true });
+                  if (decision.show) {
+                    setShowPushConsent(true);
+                  } else {
+                    console.info("[PushDecision] source=profile-settings branch=suppress-open reason=", decision.reason);
+                    toast.info(
+                      decision.reason === "os-already-granted"
+                        ? "Notifications are already enabled."
+                        : "Notification preferences already saved.",
+                    );
+                  }
+                } catch (e) {
+                  console.error("[PushDecision] source=profile-settings audit-threw — opening anyway", e);
+                  setShowPushConsent(true);
+                }
               }}
               className="w-full ios-card p-4 flex items-center gap-3 hover:bg-accent/50 transition-colors"
             >
