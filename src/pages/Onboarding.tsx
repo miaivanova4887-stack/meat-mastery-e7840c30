@@ -840,7 +840,10 @@ const Onboarding = () => {
 
         {/* Continue button for multi-select & input steps */}
         {((current.type === "options" && current.multiSelect) || current.type === "input") && (
-          <div className="pt-5">
+          <div
+            className="pt-5 mt-auto"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+          >
             <Button
               className="w-full gap-2 h-[50px] text-[14px] font-semibold rounded-xl tracking-normal transition-all duration-300"
               disabled={
