@@ -1,108 +1,72 @@
-# Release Blocker Fix Pass
+## Diagnosis
 
-## 1. Remove visible build stamp
+The reason all three fixes "don't appear in the new APK" is most likely a **single root cause**: the build script aborts before producing an APK, so the device keeps running the previous install.
 
-**File**: `src/App.tsx`
+### Issue 1 — Build stamp still visible
+`src/components/BuildStamp.tsx` is no longer imported by `App.tsx` (verified). However, `scripts/build-android-fresh.sh` still requires the string `"build-version"` to be present in the synced JS bundle (REQUIRED_MARKERS, line 70). That string only exists inside `BuildStamp.tsx` as `aria-label="build-version"`. Since the component is now unreferenced, Vite tree-shakes it out → marker missing → script aborts with "Synced bundle is MISSING required marker: build-version" → no new APK is installed → user sees the old build (with the stamp).
 
-- Remove the `<BuildStamp />` render (line 193) and the import (line 60). The stamp is the only visible build/version overlay.
-- Keep `src/main.tsx`'s `[BuildInfo]` `console.info` for logcat debugging.
-- Leave `src/components/BuildStamp.tsx` on disk (unused) so we can re-mount it temporarily for QA without re-creating the file.
+### Issue 2 — Phone still rotates
+Same root cause — the new `MainActivity.java` portrait code never reaches the device because the build aborts. Code itself is correct but defensive hardening is warranted (see plan).
 
-## 2. Lock phones to portrait, leave tablets free
+### Issue 3 — Notification prompt still crashes / shows for opted-in users
+Two contributing problems even after the build is unblocked:
+- `usePushConsentFallback` short-circuits on `osPerm === "granted"`, but `PushNotifications.checkPermissions()` can return `"prompt"` on some Android 14 OEM builds even when notifications are enabled at OS level. We need a secondary signal (local mirror + profile consent) checked **before** the OS call.
+- `requestNativePush()` calls `PushNotifications.register()` even on the granted-skip path. On a stale Firebase init this can throw and surface as a WebView crash. Need to gate `register()` behind `bindListenersOnce` having actually bound, and never let a thrown register error reach React.
 
-**File**: `android/app/src/main/AndroidManifest.xml`
+---
 
-- On the `MainActivity` element, do NOT add a static `android:screenOrientation`, because that would also lock tablets. Instead keep manifest as-is.
+## Plan
 
-**File**: `android/app/src/main/java/com/mi4labs/carnivorex/MainActivity.java`
+### A. Unblock the build (root cause for all three)
 
-- In `onCreate`, before `super.onCreate`, detect tablet via `getResources().getConfiguration().smallestScreenWidthDp >= 600`.
-- If NOT a tablet, call `setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT)` (allows portrait + reverse-portrait, blocks both landscapes). Tablets keep full sensor rotation.
-- The existing `configChanges="orientation|screenSize|..."` already prevents activity recreation, so this is the safe, non-disruptive approach.
+1. Delete `src/components/BuildStamp.tsx` (dead code).
+2. In `scripts/build-android-fresh.sh`, remove `"build-version"` from `REQUIRED_MARKERS` (keep `"BuildInfo"` — it lives in `main.tsx` as a console-only log, not visible UI).
+3. Confirm no other file imports `BuildStamp` (already verified: zero references).
 
-## 3. Fix onboarding being skipped on fresh state
+### B. Portrait lock — defense in depth
 
-Findings:
+`MainActivity.java`:
+- Move `setRequestedOrientation` to **after** `super.onCreate(...)` (BridgeActivity initializes the window in super; some OEMs ignore orientation set before super).
+- Add `android.util.Log.i("CarnivoreXOrientation", "isTablet=" + isTablet + " applied=" + (!isTablet))` so we can verify on device with `adb logcat | grep CarnivoreXOrientation`.
+- Use `SCREEN_ORIENTATION_PORTRAIT` (hard portrait) instead of `USER_PORTRAIT` to guarantee no landscape on phones (USER_PORTRAIT honours user-set system rotation overrides on some Samsung builds).
 
-- Gate is correct: `Index.tsx` uses `isOnboardingComplete()` which reads `carnivore-onboarding-complete-v2 === "true"`.
-- Two real holes:
-  1. `src/pages/Onboarding.tsx` line 854 — the **"Skip for now" footer button** writes `STORAGE_KEY = "true"` on EVERY non-consent step. A single accidental tap (or a test build that auto-tapped through) marks onboarding complete with no answers, so the next launch goes straight to Home.
-  2. `src/contexts/AuthContext.tsx` line 43 reads the flag with `=== "1"` (it's stored as `"true"`), so the diagnostic log was always misleading and masked the real state.
+### C. Notification prompt — never re-prompt, never crash
 
-Fixes:
+`src/hooks/usePushConsentFallback.ts`:
+- Reorder checks. New order: (1) sessionStorage already-shown, (2) **local mirror consent !== "unset" → skip**, (3) for logged-in users, **profile.push_consent in {granted,denied} → skip** (read this BEFORE the OS check), (4) OS perm check → if granted, reconcile to local + profile and skip, (5) only then open the sheet.
+- Add explicit log lines at every decision branch labelled `[PushDecision]` so they are greppable.
+- Wrap the entire async timer body in try/catch so any throw is swallowed (cannot crash React).
 
-- `**src/pages/Onboarding.tsx**`: remove the "Skip for now" footer entirely (lines 848–864). Onboarding is mandatory per memory rule (`mem://features/onboarding/wellness-consent`), so this exit path should never have existed.
-- `**src/pages/Onboarding.tsx**` `isOnboardingComplete`: harden to require both the flag AND the presence of a non-empty answers payload, so a stray `"true"` write without answers no longer counts:
-  ```
-  return localStorage.getItem(STORAGE_KEY) === "true"
-      && !!localStorage.getItem("carnivore-onboarding-answers");
-  ```
-- `**src/contexts/AuthContext.tsx**`: fix the diagnostic to compare against `"true"` (cosmetic, but it prints the real state in logcat now).
-- `**src/pages/Onboarding.test.ts**`: update the existing test to also write `carnivore-onboarding-answers` for the "true" case, and add one case asserting that a flag without answers returns `false`.
+`src/lib/pushFcm.ts`:
+- In `requestNativePush()`, only call `PushNotifications.register()` after `bindListenersOnce` actually bound (it already does — but add an inner try/catch around `register()` on every code path, including the granted-skip branch, so a Firebase init failure cannot propagate).
+- Add `[PushDecision]` log before each `register()` and `requestPermissions()` call.
 
-Wellness consent step (final consent screen at index 11) is untouched.
+`src/components/NotificationConsentSheet.tsx`:
+- On `handleEnable`, before doing anything, re-check `getNativePushPermission()`. If already granted, save consent, close sheet, return — never call `requestNativePush()` again.
 
-## 4. Notification: stop redundant prompts and crash
+### D. Adb log filters for on-device verification
 
-Root cause analysis:
+After installing the new APK, the user can verify with:
 
-- `usePushConsentFallback.ts` checks Supabase `profiles.push_consent` and local mirror, but **never asks the Android OS whether `POST_NOTIFICATIONS` is already granted**. A user who tapped "Allow" in the system dialog (e.g. during onboarding) but whose profile row is missing or stale (`unset`) re-sees the sheet, taps Enable → `PushNotifications.requestPermissions()` re-registers a listener and re-calls `register()`, which is the path that has been crashing.
-- `requestNativePush` in `src/lib/pushFcm.ts` calls `PushNotifications.addListener(...)` every invocation → listener leak + duplicate token registrations on resume.
-
-Fixes:
-
-`**src/lib/pushFcm.ts**`
-
-- Add module-scoped `listenersBound = false`. Bind `registration` / `registrationError` listeners exactly once (idempotent).
-- Add exported helper `getNativePushPermission(): Promise<"granted"|"denied"|"prompt"|"unsupported">` that calls `PushNotifications.checkPermissions()` on native, returns `"unsupported"` on web. Wrap in try/catch so a plugin failure can never throw.
-- In `requestNativePush`, call `checkPermissions()` first; if already `granted`, skip the request, ensure listeners bound, call `register()`, write `savePushConsent("granted")`, and return early. This makes repeated calls safe.
-- Wrap the whole body in try/catch and `await savePushConsent("denied")` on throw, so a plugin crash can never propagate to React render.
-
-`**src/hooks/usePushConsentFallback.ts**`
-
-- At the very top of the timer callback (after `alreadyShown` check), call `getNativePushPermission()`. If `granted`, write `savePushConsent("granted")` (so the profile row catches up) and return — never open the sheet.
-- Keep the existing profile/local consent checks as a second gate.
-- This makes the "logged-in user with notifications already enabled" case truly silent.
-
-`**src/components/NotificationConsentSheet.tsx**`
-
-- In `handleEnable`, before calling `requestNativePush`, call `getNativePushPermission()`. If `granted`, just `savePushConsent("granted", prefs)`, toast success, close, no native call.
-- Keep existing try/catch — this prevents the crash path from being entered redundantly.
-
-## 5. Validation
-
-- 375px portrait phone: BuildStamp gone; rotating device stays portrait; fresh-install onboarding shows; completing onboarding navigates to Home; subsequent launches do not re-prompt for notifications if previously granted; tablet (sw>=600dp) still rotates freely.
-- Mobile-only changes; no changes to `BottomNav`, no layout shifts.
-
-## 6. Files to modify
-
-```
-src/App.tsx
-src/components/BuildStamp.tsx                 (untouched — left for QA)
-android/app/src/main/java/com/mi4labs/carnivorex/MainActivity.java
-src/pages/Onboarding.tsx
-src/pages/Onboarding.test.ts
-src/contexts/AuthContext.tsx
-src/lib/pushFcm.ts
-src/hooks/usePushConsentFallback.ts
-src/components/NotificationConsentSheet.tsx
+```text
+adb logcat -c
+adb logcat -v time | grep -E 'CarnivoreXOrientation|PushDecision|BuildInfo'
 ```
 
-After merge: rebuild AAB via `scripts/build-android-fresh.sh`.
+Expected on phone launch:
+- `CarnivoreXOrientation: isTablet=false applied=true`
+- `[BuildInfo] fingerprint=build-<recent-ts> ...`
+- For an opted-in user: `[PushDecision] skip reason=profile-consent-granted` (or similar) and **no** sheet open log.
 
-&nbsp;
+---
 
-**Two requirements while coding:**
+## Files to modify
 
-1. **After removing “Skip for now,” verify every onboarding step still has a valid forward path and no dead-end state.**
-2. **After implementing the notification fix, add lightweight logs around:**
-  - **native notification permission state**
-  - **whether the sheet was suppressed because OS permission was already granted**
-  - **whether listeners were newly bound or already bound**
-  &nbsp;
+1. `scripts/build-android-fresh.sh` — drop `"build-version"` marker
+2. `src/components/BuildStamp.tsx` — delete file
+3. `android/app/src/main/java/com/mi4labs/carnivorex/MainActivity.java` — order + Log + hard portrait
+4. `src/hooks/usePushConsentFallback.ts` — reorder checks, add `[PushDecision]` logs, outer try/catch
+5. `src/lib/pushFcm.ts` — defensive try/catch around every `register()`, add `[PushDecision]` logs
+6. `src/components/NotificationConsentSheet.tsx` — re-check OS perm in `handleEnable`
 
-**When done, return:**
-
-- **final modified file list**
-- **any deviations from the plan**
-- **exact commands I should run to rebuild and test on Android**
+No DB/edge function changes needed.
