@@ -571,7 +571,7 @@ const Onboarding = () => {
             ? "opacity-0 translate-y-2 scale-[0.99]"
             : "opacity-100 translate-y-0 scale-100"
         }`}
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }}
       >
         {/* Editorial header */}
         <div className="mb-8">
