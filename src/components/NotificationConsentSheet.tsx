@@ -50,8 +50,17 @@ export default function NotificationConsentSheet({
       const native = Capacitor.isNativePlatform();
       console.info("[Push] sheet Enable tapped native=", native);
       if (native) {
-        const result = await requestNativePush();
-        granted = result === "granted";
+        // OS-level pre-check — if already granted, do not re-prompt
+        // (re-prompting after grant is the path that has been crashing).
+        const osPerm = await getNativePushPermission();
+        console.info("[Push] sheet OS perm=", osPerm);
+        if (osPerm === "granted") {
+          await savePushConsent("granted", prefs);
+          granted = true;
+        } else {
+          const result = await requestNativePush();
+          granted = result === "granted";
+        }
       } else {
         granted = await subscribeToPush();
       }
