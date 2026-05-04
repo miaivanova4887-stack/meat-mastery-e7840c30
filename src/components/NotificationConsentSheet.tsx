@@ -7,6 +7,7 @@ import { Capacitor } from "@capacitor/core";
 import {
   requestNativePush,
   savePushConsent,
+  getNativePushPermission,
 } from "@/lib/pushFcm";
 import { subscribeToPush } from "@/lib/pushNotifications";
 import { toast } from "sonner";
