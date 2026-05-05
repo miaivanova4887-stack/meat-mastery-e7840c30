@@ -24,13 +24,17 @@ const LOGO_HEIGHT = 48;          // 2x — bolder, more prominent wordmark
 const LOGO_FONT_PX = 36;         // 2x visual size at final height
 const SCALE = 4;
 const fontPx = LOGO_FONT_PX * SCALE;
-// Letter-spacing 0.3em ≈ 0.3 * fontSize
+// Letter-spacing 0.3em — matches in-app `tracking-[0.3em]`
 const tracking = (0.3 * fontPx).toFixed(2);
+// Wide-enough canvas so the amber `X` is never clipped before sharp trims.
+// Generous width (4000px) since sharp.trim() removes transparent padding anyway.
+const SVG_W = 4000;
+const SVG_H = LOGO_HEIGHT * SCALE * 2;
 const wordmarkSvg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="${1200 * SCALE / 4}" height="${LOGO_HEIGHT * SCALE}">
+<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}">
   <text x="0" y="${fontPx * 0.82}"
         font-family="Inter"
-        font-weight="900"
+        font-weight="800"
         font-size="${fontPx}"
         letter-spacing="${tracking}"
         fill="${WHITE}">CARNIVORE<tspan fill="${AMBER}">X</tspan></text>
