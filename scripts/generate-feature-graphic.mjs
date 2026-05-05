@@ -20,19 +20,17 @@ const MUTED = "#a09890";
 // This guarantees the same look as the in-app CarnivoreXLogo:
 //   uppercase, font-extrabold (800), tracking-[0.3em], leading-none, white + amber X.
 // Render at 4x then resize down via sharp for crisp output.
-const LOGO_HEIGHT = 30;          // final composited height in px (reduced ~25%)
-const LOGO_FONT_PX = 22;         // visual size at final height
+const LOGO_HEIGHT = 24;          // final composited height in px (smaller, app-matching)
+const LOGO_FONT_PX = 18;         // visual size at final height
 const SCALE = 4;
 const fontPx = LOGO_FONT_PX * SCALE;
 // Letter-spacing 0.3em ≈ 0.3 * fontSize
 const tracking = (0.3 * fontPx).toFixed(2);
-// Width estimate: letters ~0.62em wide + tracking between each.
-// We'll over-allocate the canvas and trim with sharp.
 const wordmarkSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="${1200 * SCALE / 4}" height="${LOGO_HEIGHT * SCALE}">
   <text x="0" y="${fontPx * 0.82}"
         font-family="Inter"
-        font-weight="800"
+        font-weight="900"
         font-size="${fontPx}"
         letter-spacing="${tracking}"
         fill="${WHITE}">CARNIVORE<tspan fill="${AMBER}">X</tspan></text>
