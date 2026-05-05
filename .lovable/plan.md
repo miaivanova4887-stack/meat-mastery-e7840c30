@@ -1,38 +1,47 @@
-## Problem
+## Goal
+Create `public/feature-graphic.png` at exactly 1024×500px for the Google Play Store, using the existing `src/assets/hero-athletic.jpg` (muscular male hero) and the app's CarnivoreX wordmark style.
 
-On tall Android phones (S23+), the onboarding "Continue"/"Skip" button is clipped or pushed below the visible area. Earlier passes only added `paddingBottom` styles, but the CTA container was never actually fixed/sticky — it lives **inside** the scrollable content column (`mt-auto` inside a `flex-1 flex-col` div). Because the outer page is `min-h-screen` with no `overflow-y-auto`, on steps where content is tall (e.g. Step 3 inputs + keyboard, or steps with many options), the CTA sits below the fold and the user cannot scroll to reach it.
+## Approach
+Use Node with the `sharp` library (already lightweight and works without canvas native deps) plus an SVG composite. SVG handles all text + gradient overlay; sharp composites it on top of the resized hero image.
 
-## Root cause (file: `src/pages/Onboarding.tsx`)
+If `sharp` isn't already a dep, install it as a devDependency only for asset generation (or run via `npx sharp-cli` alternative). Simplest: add a one-off script `scripts/generate-feature-graphic.mjs`, run it once, commit the PNG. Script can stay for re-runs.
 
-- Lines 568–574: content column is `flex-1 flex flex-col px-6 pt-4` with only `paddingBottom: env(safe-area-inset-bottom) + 100px`. No scroll.
-- Lines 841–866: the CTA `<div>` is a normal child of that column using `pt-5 mt-auto` — it is **not** `position: fixed` or `sticky`. It scrolls with content and can leave the viewport.
-- Outer wrapper line 497: `min-h-screen flex flex-col` with no overflow handling.
+## Layout (1024×500)
+```
++------------------------+------------------------+
+| 5px amber bar          |                        |
+|                        |   hero-athletic.jpg    |
+|  CARNIVOREX wordmark   |   (cover-fit, right)   |
+|                        |                        |
+|  Health is Wealth.     |   left-edge dark→clear |
+|                        |   gradient overlay     |
+|  Let food be your...   |                        |
+|                        |                        |
+|  [Lion] [Strict] [AB]  |                        |
++------------------------+------------------------+
+```
 
-## Fix
+- Canvas: solid `#0e0c09` base
+- Hero image: resized to cover the right ~60% (x: 410→1024), with a horizontal gradient overlay from `#0e0c09` (100% at x=410) to transparent (at x=720) so left text stays readable, plus a subtle right-side vignette
+- 5px amber `#e8821a` bar pinned to the left edge, full height
+- Wordmark "CARNIVORE" white extrabold + "X" amber, tracked uppercase, ~22px — matches `CarnivoreXLogo`
+- Headline "Health is Wealth." — white `#f5f0e8`, bold, ~64px
+- Subtitle "Let food be your medicine — meat heals." — `#a09890`, ~22px
+- Three pill badges: amber bg `#e8821a` at ~15% opacity with amber border + amber text, rounded-full, padded — labels: "Lion Diet", "Strict Carnivore", "Animal-Based"
+- Fonts: system sans-serif stack via SVG (Inter / SF Pro / Helvetica) — matches app's `font-display` stack in `tailwind.config.ts`
 
-1. **Convert CTA to a true fixed bottom bar** (lines 841–866):
-   - Wrapper classes: `fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border/30`.
-   - Inner constrained container: `mx-auto w-full max-w-md md:max-w-2xl px-6 pt-4`.
-   - Inline style: `paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)'`.
-   - Keep the same `<Button>` and the same conditional render guard (`current.type === "options" && multiSelect` || `current.type === "input"`).
+## Steps
+1. Add `scripts/generate-feature-graphic.mjs` that:
+   - Reads `src/assets/hero-athletic.jpg`
+   - Builds an SVG overlay (1024×500) with gradient + text + bar + pills
+   - Composites: base color → hero image (positioned right, resized to cover) → SVG overlay
+   - Writes `public/feature-graphic.png`
+2. Run `node scripts/generate-feature-graphic.mjs` (installing `sharp` first if missing)
+3. Verify with `file public/feature-graphic.png` and `sharp` metadata that dimensions are exactly 1024×500
 
-2. **Give the scrollable content room to clear the fixed bar** (lines 568–574):
-   - Replace `paddingBottom` value with `'calc(env(safe-area-inset-bottom, 0px) + 140px)'` so content never hides behind the bar.
-   - Remove `mt-auto` from the CTA wrapper (no longer needed once fixed).
+## Files
+- **new**: `scripts/generate-feature-graphic.mjs`
+- **new**: `public/feature-graphic.png` (1024×500)
+- **possibly modified**: `package.json` (devDependency on `sharp` if not already present)
 
-3. **Ensure outer page can scroll on short viewports** (line 497):
-   - Change `min-h-screen` wrapper to also allow vertical scroll: keep `min-h-screen flex flex-col` but add `overflow-y-auto` on the content column (line 568) so tall steps (e.g. options lists with many items) scroll under the bar instead of being clipped. This guarantees the CTA is always reachable, even when the on-screen keyboard is open on input steps.
-
-4. **Apply same fix to the consent step's CTA at lines ~599–615** if its button is rendered outside the conditional CTA block (verify during edit). The standard CTA path already covers `options/input`; the `consent` type has its own inline button — ensure it also respects safe-area by adding `paddingBottom: 'calc(env(safe-area-inset-bottom,0px) + 24px)'` to its container.
-
-## Verification
-
-- After build, on Samsung S23+ with gesture nav, navigate through every onboarding step and confirm the Continue/Skip button is always visible and tappable above the system gesture bar.
-- On Step 3 with the soft keyboard open, the input remains scrollable and the CTA stays anchored at the bottom (above the keyboard if WebView resizes; otherwise reachable via scroll).
-- No regression on web preview at 390×734.
-
-## Files to modify
-
-- `src/pages/Onboarding.tsx` (only)
-
-No native/Android changes; this is a pure CSS/layout fix.
+No app/runtime code is touched; this is a build-time asset only.
