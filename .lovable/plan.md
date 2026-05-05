@@ -1,47 +1,32 @@
 ## Goal
-Create `public/feature-graphic.png` at exactly 1024×500px for the Google Play Store, using the existing `src/assets/hero-athletic.jpg` (muscular male hero) and the app's CarnivoreX wordmark style.
+Make the wordmark in `public/feature-graphic.png` exactly match the in-app `CarnivoreXLogo` component.
 
-## Approach
-Use Node with the `sharp` library (already lightweight and works without canvas native deps) plus an SVG composite. SVG handles all text + gradient overlay; sharp composites it on top of the resized hero image.
+## Reference (from code)
+`src/components/CarnivoreXLogo.tsx` renders:
+- Text: `Carnivore` + `X` (mixed case in source, but with Tailwind `uppercase` → renders as `CARNIVOREX`)
+- `tracking-[0.3em]` → letter-spacing `0.3em`
+- `font-extrabold` → font-weight 800
+- `leading-none`, baseline-aligned
+- The `X` uses `text-primary` (amber, currently `#e8821a` in graphic — keep)
+- Font family (from `src/index.css` body): `-apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif`
 
-If `sharp` isn't already a dep, install it as a devDependency only for asset generation (or run via `npx sharp-cli` alternative). Simplest: add a one-off script `scripts/generate-feature-graphic.mjs`, run it once, commit the PNG. Script can stay for re-runs.
+So the visual rendering is uppercase letters with 0.3em tracking — the current graphic is already close. The fixes needed are purely to match the component's exact spec.
 
-## Layout (1024×500)
-```
-+------------------------+------------------------+
-| 5px amber bar          |                        |
-|                        |   hero-athletic.jpg    |
-|  CARNIVOREX wordmark   |   (cover-fit, right)   |
-|                        |                        |
-|  Health is Wealth.     |   left-edge dark→clear |
-|                        |   gradient overlay     |
-|  Let food be your...   |                        |
-|                        |                        |
-|  [Lion] [Strict] [AB]  |                        |
-+------------------------+------------------------+
-```
+## Changes to `scripts/generate-feature-graphic.mjs`
 
-- Canvas: solid `#0e0c09` base
-- Hero image: resized to cover the right ~60% (x: 410→1024), with a horizontal gradient overlay from `#0e0c09` (100% at x=410) to transparent (at x=720) so left text stays readable, plus a subtle right-side vignette
-- 5px amber `#e8821a` bar pinned to the left edge, full height
-- Wordmark "CARNIVORE" white extrabold + "X" amber, tracked uppercase, ~22px — matches `CarnivoreXLogo`
-- Headline "Health is Wealth." — white `#f5f0e8`, bold, ~64px
-- Subtitle "Let food be your medicine — meat heals." — `#a09890`, ~22px
-- Three pill badges: amber bg `#e8821a` at ~15% opacity with amber border + amber text, rounded-full, padded — labels: "Lion Diet", "Strict Carnivore", "Animal-Based"
-- Fonts: system sans-serif stack via SVG (Inter / SF Pro / Helvetica) — matches app's `font-display` stack in `tailwind.config.ts`
+In the `<style>` block, update the `.wm` rule:
+- Font-family: add `'SF Pro Display'` and `'Segoe UI'`, `Roboto` to match the app's body stack
+- Letter-spacing: change `6.6px` → `0.3em` (matches `tracking-[0.3em]` exactly at any size)
+- Keep `font-weight: 800` and uppercase text content
+- Keep font-size 22px (visual size already approved)
 
-## Steps
-1. Add `scripts/generate-feature-graphic.mjs` that:
-   - Reads `src/assets/hero-athletic.jpg`
-   - Builds an SVG overlay (1024×500) with gradient + text + bar + pills
-   - Composites: base color → hero image (positioned right, resized to cover) → SVG overlay
-   - Writes `public/feature-graphic.png`
-2. Run `node scripts/generate-feature-graphic.mjs` (installing `sharp` first if missing)
-3. Verify with `file public/feature-graphic.png` and `sharp` metadata that dimensions are exactly 1024×500
+The wordmark `<text>` content stays as `CARNIVORE<tspan fill="${AMBER}">X</tspan>` — equivalent to the rendered DOM after Tailwind `uppercase`.
+
+Everything else (gradient, hero, headline, subtitle, pills, amber bar) is untouched.
+
+## Regenerate
+Run `node scripts/generate-feature-graphic.mjs` to overwrite `public/feature-graphic.png` (still 1024×500). Verify dimensions via `sharp(...).metadata()` (already logged by script).
 
 ## Files
-- **new**: `scripts/generate-feature-graphic.mjs`
-- **new**: `public/feature-graphic.png` (1024×500)
-- **possibly modified**: `package.json` (devDependency on `sharp` if not already present)
-
-No app/runtime code is touched; this is a build-time asset only.
+- Modified: `scripts/generate-feature-graphic.mjs`
+- Regenerated: `public/feature-graphic.png`

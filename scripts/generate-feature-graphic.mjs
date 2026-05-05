@@ -29,7 +29,7 @@ const svg = `
       <stop offset="0.78" stop-color="${BG}" stop-opacity="0"/>
     </linearGradient>
     <style>
-      .wm { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: 6.6px; }
+      .wm { font-family: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: 0.3em; text-transform: uppercase; }
       .h1 { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; font-weight: 800; font-size: 64px; letter-spacing: -1.5px; }
       .sub { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; font-weight: 400; font-size: 20px; }
       .pill { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Helvetica Neue", Arial, sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0.5px; }
