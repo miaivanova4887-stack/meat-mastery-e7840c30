@@ -20,8 +20,8 @@ const MUTED = "#a09890";
 // This guarantees the same look as the in-app CarnivoreXLogo:
 //   uppercase, font-extrabold (800), tracking-[0.3em], leading-none, white + amber X.
 // Render at 4x then resize down via sharp for crisp output.
-const LOGO_HEIGHT = 40;          // final composited height in px
-const LOGO_FONT_PX = 28;         // visual size at final height
+const LOGO_HEIGHT = 30;          // final composited height in px (reduced ~25%)
+const LOGO_FONT_PX = 22;         // visual size at final height
 const SCALE = 4;
 const fontPx = LOGO_FONT_PX * SCALE;
 // Letter-spacing 0.3em ≈ 0.3 * fontSize
