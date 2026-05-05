@@ -1,21 +1,26 @@
-I’ll correct the feature graphic wordmark by using the actual in-app `CarnivoreXLogo` styling as the source of truth instead of the current custom SVG text rendering.
+Capture six Play Store-ready screenshots of the running preview and save them to `public/screenshots/`.
 
-Plan:
-1. Update `scripts/generate-feature-graphic.mjs` so the wordmark matches the app logo:
-   - Text: `Carnivore` + amber `X`, uppercased by styling rather than hardcoded differently.
-   - Font: Inter ExtraBold/Black, matching the app’s `font-extrabold` look.
-   - Letter spacing: `0.3em`, matching `tracking-[0.3em]`.
-   - Color: white wordmark with the app primary amber for the `X`.
-2. Fix the wordmark rendering issue by generating the logo as a raster image from an HTML/CSS render of the real logo styling, not by hand-tuning SVG text metrics.
-3. Keep the male hero visual from the previous version: `src/assets/hero-athletic.jpg`.
-4. Keep the requested larger logo scale, but adjust width/position as needed so the full wordmark reads correctly and doesn’t get clipped or distorted.
-5. Regenerate `public/feature-graphic.png` at the required 1024×500 size.
-6. Verify the final PNG dimensions and visually inspect the generated output to confirm:
-   - The wordmark spelling and casing are correct.
-   - The `X` is amber.
-   - The logo is 2× sized compared with the earlier small version.
-   - The male visual remains in place.
+## Approach
 
-Technical details:
-- I’ll replace the fragile `Resvg` wordmark block in the generator with an image-rendering step that mirrors the React/Tailwind logo classes (`inline-flex`, `items-baseline`, `leading-none`, `tracking-[0.3em]`, `uppercase`, `font-extrabold`).
-- The final asset will still be composed with Sharp and saved as `public/feature-graphic.png`, so the Play Store image remains a normal PNG image, not an SVG.
+Use the browser automation tool to navigate to each route at a 1080×1920 viewport (Play Store phone screenshot spec) and save a full screenshot for each.
+
+## Routes → filenames
+
+1. `/` → `screen-01-home.png`
+2. `/ketosis-timer` → `screen-02-ketosis.png`
+3. `/recipes` → `screen-03-recipes.png`
+4. `/meal-plan` → `screen-04-meal-plan.png`
+5. `/progress` → `screen-05-progress.png`
+6. `/budget-eating` → `screen-06-budget.png`
+
+## Steps
+
+1. Set viewport to 1080×1920 (will snap to nearest supported size; final image will be resized to exactly 1080×1920 with sharp).
+2. For each route: navigate, wait for render, take screenshot, save raw to `/tmp/`.
+3. Run a small script using `sharp` to resize/pad each capture to exactly 1080×1920 PNG and write to `public/screenshots/screen-0N-*.png`.
+4. Verify all 6 files exist and are 1080×1920.
+
+## Notes
+
+- Onboarding gate: if the Home route redirects to onboarding, complete (or bypass via localStorage flag) before capturing.
+- Auth-gated screens (Progress) require a logged-in session in the preview. If not signed in, the Progress page shows the sign-in prompt — will note this and ask user to sign in if encountered.
