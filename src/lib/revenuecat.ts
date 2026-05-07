@@ -37,7 +37,7 @@ import {
  *   It starts with `appl_`.
  */
 const REVENUECAT_IOS_KEY = "appl_gynfZqPKaFVIhSVZFDUUghawXno";
-const REVENUECAT_ANDROID_KEY = "goog_REPLACE_ME_WITH_REAL_ANDROID_KEY";
+const REVENUECAT_ANDROID_KEY = "goog_LJgdLQzxkXUPLaORSMbZNpIPLMW";
 
 /**
  * The RevenueCat "entitlement" identifiers configured in the RC dashboard.

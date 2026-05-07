@@ -1,26 +1,29 @@
-Capture six Play Store-ready screenshots of the running preview and save them to `public/screenshots/`.
+## Plan: Wire real Android RevenueCat key
 
-## Approach
+### Change
+In `src/lib/revenuecat.ts` (line 40), replace:
+```ts
+const REVENUECAT_ANDROID_KEY = "goog_REPLACE_ME_WITH_REAL_ANDROID_KEY";
+```
+with:
+```ts
+const REVENUECAT_ANDROID_KEY = "goog_LJgdLQzxkXUPLaORSMbZNpIPLMW";
+```
 
-Use the browser automation tool to navigate to each route at a 1080×1920 viewport (Play Store phone screenshot spec) and save a full screenshot for each.
+### Why this fixes "Unavailable"
+`initRevenueCat()` currently short-circuits on Android because the key string contains `"REPLACE_ME"`. With a real `goog_…` key in place:
+- `Purchases.configure({ apiKey })` runs on Android
+- `getCurrentOffering()` returns the Play offering
+- `useNativePaywall` resolves `pro_monthly` / `pro_yearly` / `elite_monthly` / `elite_yearly` with localized `priceString`s
+- `Pricing.tsx` renders real prices instead of the literal "Unavailable" fallback
 
-## Routes → filenames
+### Safety
+- Only the constant value changes — no behavior, no UI, no Stripe/web path touched.
+- Public SDK key only (`goog_…`), never a secret. iOS key untouched.
+- `Purchases.configure(...)` already exists at lines 99–102; no new call needed — it just stops being skipped on Android.
 
-1. `/` → `screen-01-home.png`
-2. `/ketosis-timer` → `screen-02-ketosis.png`
-3. `/recipes` → `screen-03-recipes.png`
-4. `/meal-plan` → `screen-04-meal-plan.png`
-5. `/progress` → `screen-05-progress.png`
-6. `/budget-eating` → `screen-06-budget.png`
+### After deploy
+User reinstalls the Play internal-track build. Subscriptions screen should show localized Pro/Elite monthly + yearly prices. If it still says "Unavailable", the next step is RC dashboard side (offering not marked Current, packages not attached, or Play products not in "Active" state) — not code.
 
-## Steps
-
-1. Set viewport to 1080×1920 (will snap to nearest supported size; final image will be resized to exactly 1080×1920 with sharp).
-2. For each route: navigate, wait for render, take screenshot, save raw to `/tmp/`.
-3. Run a small script using `sharp` to resize/pad each capture to exactly 1080×1920 PNG and write to `public/screenshots/screen-0N-*.png`.
-4. Verify all 6 files exist and are 1080×1920.
-
-## Notes
-
-- Onboarding gate: if the Home route redirects to onboarding, complete (or bypass via localStorage flag) before capturing.
-- Auth-gated screens (Progress) require a logged-in session in the preview. If not signed in, the Progress page shows the sign-in prompt — will note this and ask user to sign in if encountered.
+### Files touched
+- `src/lib/revenuecat.ts` (1 line)
