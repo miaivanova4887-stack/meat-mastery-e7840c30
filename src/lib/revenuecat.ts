@@ -97,13 +97,18 @@ export async function initRevenueCat(appUserId?: string | null): Promise<void> {
 
   configurePromise = (async () => {
     try {
-      await Purchases.setLogLevel({ level: LOG_LEVEL.INFO });
+      const level = platform === "android" ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO;
+      await Purchases.setLogLevel({ level });
       await Purchases.configure({
         apiKey,
         appUserID: appUserId ?? undefined,
       });
       configured = true;
-      console.info("[revenuecat] configured", { platform, appUserId: appUserId ?? "(anonymous)" });
+      console.info("[revenuecat] configured", {
+        platform,
+        keyPrefix: apiKey.slice(0, 8),
+        appUserId: appUserId ?? "(anonymous)",
+      });
     } catch (e) {
       console.error("[revenuecat] configure failed", e);
       // Reset so a later call can retry (e.g. after user signs in).
