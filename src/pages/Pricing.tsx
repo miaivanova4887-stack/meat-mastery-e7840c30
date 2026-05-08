@@ -217,6 +217,21 @@ const Pricing = () => {
       </div>
 
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-5 space-y-4">
+        {searchParams.get("debug") === "1" && (
+          <div className="rounded-xl border border-border/40 bg-card/60 p-3 text-[11px] font-mono space-y-1">
+            <div className="font-bold text-foreground">RC DEBUG</div>
+            <div>enabled: {String(paywall.enabled)}</div>
+            <div>loading: {String(paywall.loading)}</div>
+            <div>error: {paywall.error ?? "(none)"}</div>
+            <div>offering: {paywall.offering?.identifier ?? "(none)"}</div>
+            <div>packageCount: {paywall.offering?.availablePackages?.length ?? 0}</div>
+            {(paywall.offering?.availablePackages ?? []).map((p) => (
+              <div key={p.identifier} className="text-muted-foreground break-all">
+                · {p.identifier} | {p.product?.identifier} | {p.product?.priceString || "(no price)"}
+              </div>
+            ))}
+          </div>
+        )}
         {/* Billing toggle */}
         <div className="flex items-center justify-center gap-2">
           {(["monthly", "yearly"] as const).map((cycle) => (

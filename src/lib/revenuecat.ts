@@ -97,13 +97,18 @@ export async function initRevenueCat(appUserId?: string | null): Promise<void> {
 
   configurePromise = (async () => {
     try {
-      await Purchases.setLogLevel({ level: LOG_LEVEL.INFO });
+      const level = platform === "android" ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO;
+      await Purchases.setLogLevel({ level });
       await Purchases.configure({
         apiKey,
         appUserID: appUserId ?? undefined,
       });
       configured = true;
-      console.info("[revenuecat] configured", { platform, appUserId: appUserId ?? "(anonymous)" });
+      console.info("[revenuecat] configured", {
+        platform,
+        keyPrefix: apiKey.slice(0, 8),
+        appUserId: appUserId ?? "(anonymous)",
+      });
     } catch (e) {
       console.error("[revenuecat] configure failed", e);
       // Reset so a later call can retry (e.g. after user signs in).
@@ -202,10 +207,29 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   if (!isRevenueCatAvailable() || !configured) return null;
   try {
     const { current, all } = await Purchases.getOfferings();
-    if (DEFAULT_OFFERING && all?.[DEFAULT_OFFERING]) return all[DEFAULT_OFFERING];
-    return current ?? null;
-  } catch (e) {
-    console.error("[revenuecat] getOfferings failed", e);
+    const chosen = DEFAULT_OFFERING && all?.[DEFAULT_OFFERING] ? all[DEFAULT_OFFERING] : current ?? null;
+    console.info("[RC DEBUG] offerings", {
+      currentId: current?.identifier ?? null,
+      allIds: Object.keys(all ?? {}),
+      chosenId: chosen?.identifier ?? null,
+      packageCount: chosen?.availablePackages?.length ?? 0,
+      packages: (chosen?.availablePackages ?? []).map((p) => ({
+        identifier: p.identifier,
+        productId: p.product?.identifier,
+        priceString: p.product?.priceString,
+        period: (p.product as { subscriptionPeriod?: string })?.subscriptionPeriod,
+      })),
+    });
+    return chosen;
+  } catch (e: unknown) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = e as any;
+    console.error("[RC DEBUG] getOfferings failed", {
+      message: err?.message,
+      code: err?.code,
+      underlying: err?.underlyingErrorMessage,
+      raw: err,
+    });
     return null;
   }
 }
