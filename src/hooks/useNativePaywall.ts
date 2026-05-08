@@ -69,12 +69,19 @@ export function useNativePaywall(): NativePaywallState {
     try {
       const off = await getCurrentOffering();
       setOffering(off);
-      setPackages({
+      const resolved = {
         pro_monthly: toInfo(findPackage(off, "pro", "monthly"), "monthly"),
         pro_yearly: toInfo(findPackage(off, "pro", "yearly"), "yearly"),
         elite_monthly: toInfo(findPackage(off, "elite", "monthly"), "monthly"),
         elite_yearly: toInfo(findPackage(off, "elite", "yearly"), "yearly"),
+      };
+      console.info("[RC DEBUG] paywall packages", {
+        offeringId: off?.identifier ?? null,
+        resolvedKeys: Object.entries(resolved)
+          .filter(([, v]) => !!v)
+          .map(([k, v]) => `${k}:${v?.priceString || "(no price)"}`),
       });
+      setPackages(resolved);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to load products";
       setError(msg);
