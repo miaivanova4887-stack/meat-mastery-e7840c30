@@ -420,6 +420,38 @@ const Pricing = () => {
               Subscriptions auto-renew unless cancelled at least 24 hours before the period ends.
               Manage or cancel anytime in your Apple ID settings.
             </p>
+            <div className="flex items-center justify-center gap-3 mt-2 text-[11px]">
+              <button
+                onClick={() => navigate("/privacy")}
+                className="text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+              >
+                Privacy Policy
+              </button>
+              <span className="text-muted-foreground/50">·</span>
+              <button
+                onClick={() => navigate("/terms")}
+                className="text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+              >
+                Terms of Use
+              </button>
+            </div>
+          </div>
+        )}
+        {!useNative && (
+          <div className="flex items-center justify-center gap-3 pt-2 text-[11px]">
+            <button
+              onClick={() => navigate("/privacy")}
+              className="text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Privacy Policy
+            </button>
+            <span className="text-muted-foreground/50">·</span>
+            <button
+              onClick={() => navigate("/terms")}
+              className="text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Terms of Use
+            </button>
           </div>
         )}
       </div>

@@ -1162,6 +1162,33 @@ const Profile = () => {
               </div>
             </div>
 
+            {/* Legal */}
+            <div className="ios-card overflow-hidden">
+              <button
+                onClick={() => navigate("/privacy")}
+                className="w-full p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors"
+              >
+                <span className="text-sm font-semibold text-foreground">Privacy Policy</span>
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </button>
+              <div className="h-px bg-border/40 mx-4" />
+              <button
+                onClick={() => navigate("/terms")}
+                className="w-full p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors"
+              >
+                <span className="text-sm font-semibold text-foreground">Terms of Use</span>
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </button>
+              <div className="h-px bg-border/40 mx-4" />
+              <button
+                onClick={() => navigate("/disclaimer")}
+                className="w-full p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors"
+              >
+                <span className="text-sm font-semibold text-foreground">Wellness Disclaimer</span>
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </button>
+            </div>
+
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
