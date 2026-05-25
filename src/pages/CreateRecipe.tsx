@@ -276,6 +276,29 @@ const CreateRecipe = () => {
           </div>
         </div>
 
+        {/* Cuisines */}
+        <div>
+          <label className={labelClass}>Cuisines</label>
+          <div className="flex gap-1.5 flex-wrap">
+            {(Object.entries(CUISINE_LABELS) as [CuisineType | "all", string][])
+              .filter(([k]) => k !== "all")
+              .map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleCuisine(key as CuisineType)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
+                    cuisines.includes(key as CuisineType)
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/60 text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+          </div>
+        </div>
+
         {/* Tags */}
         <div>
           <label className={labelClass}>Tags</label>
