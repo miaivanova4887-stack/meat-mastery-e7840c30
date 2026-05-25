@@ -2,7 +2,7 @@ import { ArrowLeft, Plus, Minus, ChefHat, Camera, X } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type Ingredient } from "@/data/recipes";
+import { TIER_LABELS, MEAL_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CuisineType, type Ingredient } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -40,6 +40,7 @@ const EditRecipe = () => {
   const [serving, setServing] = useState("");
   const [tiers, setTiers] = useState<DietTier[]>(["strict"]);
   const [meal, setMeal] = useState<MealType>("dinner");
+  const [cuisines, setCuisines] = useState<CuisineType[]>([]);
   const [tags, setTags] = useState("");
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: "", amount: "" }]);
   const [steps, setSteps] = useState<string[]>([""]);
@@ -58,6 +59,7 @@ const EditRecipe = () => {
       setServing(recipe.serving || "");
       setTiers(recipe.tier || ["strict"]);
       setMeal((recipe.meal as MealType) || "dinner");
+      setCuisines((recipe.cuisine as CuisineType[]) || []);
       setTags((recipe.tags || []).join(", "));
       setIngredients(recipe.ingredients?.length ? recipe.ingredients : [{ name: "", amount: "" }]);
       setSteps(recipe.steps?.length ? recipe.steps : [""]);
@@ -68,6 +70,10 @@ const EditRecipe = () => {
 
   const toggleTier = (tier: DietTier) => {
     setTiers((prev) => (prev.includes(tier) ? prev.filter((t) => t !== tier) : [...prev, tier]));
+  };
+
+  const toggleCuisine = (c: CuisineType) => {
+    setCuisines((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   };
 
   const updateIngredient = (i: number, field: keyof Ingredient, value: string) => {
@@ -114,6 +120,7 @@ const EditRecipe = () => {
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 5),
       tier: tiers,
       meal,
+      cuisine: cuisines,
       ingredients: validIngredients,
       steps: validSteps,
     });
@@ -203,6 +210,29 @@ const EditRecipe = () => {
               .map(([key, label]) => (
                 <button key={key} type="button" onClick={() => setMeal(key as MealType)}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${meal === key ? "bg-foreground text-background" : "bg-secondary/60 text-muted-foreground"}`}
+                >
+                  {label}
+                </button>
+              ))}
+          </div>
+        </div>
+
+        {/* Cuisines */}
+        <div>
+          <label className={labelClass}>Cuisines</label>
+          <div className="flex gap-1.5 flex-wrap">
+            {(Object.entries(CUISINE_LABELS) as [CuisineType | "all", string][])
+              .filter(([k]) => k !== "all")
+              .map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleCuisine(key as CuisineType)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
+                    cuisines.includes(key as CuisineType)
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/60 text-muted-foreground"
+                  }`}
                 >
                   {label}
                 </button>

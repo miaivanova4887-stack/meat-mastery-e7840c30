@@ -2,7 +2,7 @@ import { ArrowLeft, Plus, Minus, ChefHat, Camera, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { TIER_LABELS, MEAL_LABELS, type DietTier, type MealType, type Ingredient, type CustomRecipe } from "@/data/recipes";
+import { TIER_LABELS, MEAL_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CuisineType, type Ingredient, type CustomRecipe } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -27,6 +27,7 @@ const CreateRecipe = () => {
   const [serving, setServing] = useState("");
   const [tiers, setTiers] = useState<DietTier[]>(["strict"]);
   const [meal, setMeal] = useState<MealType>("dinner");
+  const [cuisines, setCuisines] = useState<CuisineType[]>([]);
   const [tags, setTags] = useState("");
   const [ingredients, setIngredients] = useState<Ingredient[]>([{ name: "", amount: "" }]);
   const [steps, setSteps] = useState<string[]>([""]);
@@ -61,6 +62,10 @@ const CreateRecipe = () => {
 
   const toggleTier = (tier: DietTier) => {
     setTiers((prev) => (prev.includes(tier) ? prev.filter((t) => t !== tier) : [...prev, tier]));
+  };
+
+  const toggleCuisine = (c: CuisineType) => {
+    setCuisines((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   };
 
   const updateIngredient = (i: number, field: keyof Ingredient, value: string) => {
@@ -115,6 +120,7 @@ const CreateRecipe = () => {
         .slice(0, 5),
       tier: tiers,
       meal,
+      cuisine: cuisines,
       cravings: [],
       ingredients: validIngredients,
       steps: validSteps,
@@ -261,6 +267,29 @@ const CreateRecipe = () => {
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
                     meal === key
                       ? "bg-foreground text-background"
+                      : "bg-secondary/60 text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+          </div>
+        </div>
+
+        {/* Cuisines */}
+        <div>
+          <label className={labelClass}>Cuisines</label>
+          <div className="flex gap-1.5 flex-wrap">
+            {(Object.entries(CUISINE_LABELS) as [CuisineType | "all", string][])
+              .filter(([k]) => k !== "all")
+              .map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleCuisine(key as CuisineType)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all ${
+                    cuisines.includes(key as CuisineType)
+                      ? "bg-primary text-primary-foreground"
                       : "bg-secondary/60 text-muted-foreground"
                   }`}
                 >

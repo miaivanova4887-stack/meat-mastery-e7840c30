@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { CustomRecipe, DietTier } from "@/data/recipes";
+import type { CustomRecipe, DietTier, CuisineType } from "@/data/recipes";
 
 const STORAGE_KEY = "carnivore-custom-recipes";
 
@@ -37,6 +37,7 @@ export function useCustomRecipes() {
         tier: (r.diet_tiers ?? ["strict"]) as DietTier[],
         meal: r.meal_type as CustomRecipe["meal"],
         cravings: [],
+        cuisine: ((r as any).cuisines ?? []) as CuisineType[],
         ingredients: Array.isArray(r.ingredients) ? (r.ingredients as any) : [],
         steps: r.steps ?? [],
         createdAt: r.created_at,
@@ -124,6 +125,7 @@ export function useCustomRecipes() {
         tags: recipe.tags,
         diet_tiers: recipe.tier,
         meal_type: recipe.meal,
+        cuisines: recipe.cuisine ?? [],
         ingredients: recipe.ingredients as any,
         steps: recipe.steps,
         user_id: user.id,
@@ -176,6 +178,7 @@ export function useCustomRecipes() {
       if (updates.tags !== undefined) dbUpdates.tags = updates.tags;
       if (updates.tier !== undefined) dbUpdates.diet_tiers = updates.tier;
       if (updates.meal !== undefined) dbUpdates.meal_type = updates.meal;
+      if (updates.cuisine !== undefined) dbUpdates.cuisines = updates.cuisine;
       if (updates.ingredients !== undefined) dbUpdates.ingredients = updates.ingredients;
       if (updates.steps !== undefined) dbUpdates.steps = updates.steps;
 

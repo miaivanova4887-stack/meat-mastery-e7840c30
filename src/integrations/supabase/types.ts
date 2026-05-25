@@ -144,6 +144,7 @@ export type Database = {
         Row: {
           cal: string
           created_at: string
+          cuisines: string[]
           description: string
           diet_tiers: string[]
           fat: string
@@ -163,6 +164,7 @@ export type Database = {
         Insert: {
           cal?: string
           created_at?: string
+          cuisines?: string[]
           description?: string
           diet_tiers?: string[]
           fat?: string
@@ -182,6 +184,7 @@ export type Database = {
         Update: {
           cal?: string
           created_at?: string
+          cuisines?: string[]
           description?: string
           diet_tiers?: string[]
           fat?: string
