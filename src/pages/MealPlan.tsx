@@ -129,13 +129,60 @@ const MealPlan = () => {
     return allRecipes.find((r) => r.name === detailMeal.meal.recipeName) || null;
   }, [detailMeal, allRecipes]);
 
+  // Parse "15 min" / "1 hr" / "24 hrs" / "1.5 hrs" → minutes
+  const parseMinutes = (time: string): number => {
+    if (!time) return Infinity;
+    const t = time.toLowerCase().trim();
+    const m = t.match(/([\d.]+)\s*(min|hr|hour)/);
+    if (!m) return Infinity;
+    const n = parseFloat(m[1]);
+    if (isNaN(n)) return Infinity;
+    return m[2].startsWith("hr") || m[2].startsWith("hour") ? n * 60 : n;
+  };
+
+  const QUICK_TAGS = new Set(["quick", "easy", "eggs"]);
+  const [quickOnly, setQuickOnly] = useState(true);
+
+  // Reset quickOnly to default whenever picker opens
+  useEffect(() => {
+    if (pickingSlot) setQuickOnly(true);
+  }, [pickingSlot]);
+
   const filteredRecipes = useMemo(() => {
-    if (!recipeSearch) return allRecipes.slice(0, 20);
-    const q = recipeSearch.toLowerCase();
-    return allRecipes.filter(
-      (r) => r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q))
-    ).slice(0, 20);
-  }, [allRecipes, recipeSearch]);
+    const q = recipeSearch.trim().toLowerCase();
+
+    // When the user is actively searching, search across the entire library
+    if (q) {
+      return allRecipes
+        .filter((r) => r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q)))
+        .slice(0, 30);
+    }
+
+    if (!pickingSlot) return allRecipes.slice(0, 20);
+
+    // Slot-matched recipes + staples (e.g. bone broth) as secondary fit
+    const slotMatches = allRecipes.filter((r) => r.meal === pickingSlot);
+    const staples = pickingSlot !== "snack" ? allRecipes.filter((r) => r.meal === "staple") : [];
+
+    const isQuickSlot = pickingSlot === "breakfast" || pickingSlot === "snack";
+    const timeCapped = isQuickSlot && quickOnly
+      ? slotMatches.filter((r) => parseMinutes(r.time) <= 30)
+      : slotMatches;
+
+    // Sort: quick (≤15 min) → moderate (≤30 min) → rest, ascending by time.
+    // Within bands, boost recipes tagged Quick / Easy / Eggs.
+    const scored = timeCapped
+      .map((r) => {
+        const mins = parseMinutes(r.time);
+        const band = mins <= 15 ? 0 : mins <= 30 ? 1 : 2;
+        const tagBoost = r.tags.some((t) => QUICK_TAGS.has(t.toLowerCase())) ? 0 : 1;
+        return { r, mins, band, tagBoost };
+      })
+      .sort((a, b) => a.band - b.band || a.tagBoost - b.tagBoost || a.mins - b.mins)
+      .map((x) => x.r);
+
+    return [...scored, ...staples].slice(0, 40);
+  }, [allRecipes, recipeSearch, pickingSlot, quickOnly]);
 
   const handlePick = (recipe: Recipe, slot: MealSlot) => {
     const meal: PlannedMeal = {
@@ -856,12 +903,18 @@ const MealPlan = () => {
             >
               <X size={20} />
             </button>
-            <h2 className="text-lg font-display font-bold flex-1">
-              Pick {SLOT_LABELS[pickingSlot].split(" ")[1]}
-            </h2>
+            <div className="flex-1">
+              <h2 className="text-lg font-display font-bold leading-tight">
+                Pick {SLOT_LABELS[pickingSlot].split(" ")[1]}
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {filteredRecipes.length} {filteredRecipes.length === 1 ? "recipe" : "recipes"}
+                {!recipeSearch && (pickingSlot === "breakfast" || pickingSlot === "snack") && quickOnly && " · Quick only (≤30 min)"}
+              </p>
+            </div>
           </div>
 
-          <div className="px-4 pt-3 pb-2">
+          <div className="px-4 pt-3 pb-2 space-y-2">
             <input
               type="text"
               placeholder="Search recipes…"
@@ -870,6 +923,17 @@ const MealPlan = () => {
               className={inputClass}
               autoFocus
             />
+            {!recipeSearch && (pickingSlot === "breakfast" || pickingSlot === "snack") && (
+              <button
+                type="button"
+                onClick={() => setQuickOnly((v) => !v)}
+                className={`text-[11px] px-3 py-1.5 rounded-full font-semibold transition-colors ${
+                  quickOnly ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {quickOnly ? "✓ Quick only (≤30 min)" : "Show all times"}
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
@@ -894,7 +958,20 @@ const MealPlan = () => {
               </button>
             ))}
             {filteredRecipes.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-12">No recipes found</p>
+              <div className="text-center py-12 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  No {pickingSlot} recipes match.
+                </p>
+                {quickOnly && (pickingSlot === "breakfast" || pickingSlot === "snack") && (
+                  <button
+                    type="button"
+                    onClick={() => setQuickOnly(false)}
+                    className="text-xs font-semibold text-primary underline underline-offset-2"
+                  >
+                    Show all times
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
