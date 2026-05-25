@@ -452,6 +452,8 @@
     "recipes": "recipes",
     "likes": "likes",
     "notifPrefUpdated": "Notification preference updated",
+    "notifPrefTitle": "Notification preferences",
+    "notifPrefDesc": "Choose what reminders and updates you receive.",
     "dietTierUpdated": "Diet tier updated!",
     "mealsUpdated": "Updated to {{count}} meals/day",
     "feedbackYes": "We'll show more like this!",
