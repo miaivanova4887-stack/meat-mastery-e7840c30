@@ -5,6 +5,8 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 import ReactMarkdown from "react-markdown";
 import TeaserGate from "@/components/TeaserGate";
 import { useSubscription } from "@/contexts/SubscriptionContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
