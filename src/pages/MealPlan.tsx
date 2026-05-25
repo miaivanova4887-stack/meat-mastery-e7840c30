@@ -958,7 +958,20 @@ const MealPlan = () => {
               </button>
             ))}
             {filteredRecipes.length === 0 && (
-              <p className="text-center text-sm text-muted-foreground py-12">No recipes found</p>
+              <div className="text-center py-12 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  No {pickingSlot} recipes match.
+                </p>
+                {quickOnly && (pickingSlot === "breakfast" || pickingSlot === "snack") && (
+                  <button
+                    type="button"
+                    onClick={() => setQuickOnly(false)}
+                    className="text-xs font-semibold text-primary underline underline-offset-2"
+                  >
+                    Show all times
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
