@@ -47,6 +47,17 @@ const RecipeCoach = () => {
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
+    // Get the current session JWT — the edge function's requireTier helper
+    // validates this token via supabase.auth.getUser(). Sending the anon
+    // publishable key (the previous behavior) made every authenticated
+    // call return 401, blocking Pro/Elite users from the AI Coach.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      toast.error("Please sign in again to use the AI Coach.");
+      return;
+    }
+
     const userMsg: Msg = { role: "user", content: text.trim() };
     const newMessages = [...messages, userMsg];
     setMessages(newMessages);
@@ -61,7 +72,8 @@ const RecipeCoach = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${accessToken}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
           messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
@@ -76,8 +88,28 @@ const RecipeCoach = () => {
       });
 
       if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: "Failed to connect" }));
-        throw new Error(err.error || `Error ${resp.status}`);
+        const err = await resp.json().catch(() => ({} as { error?: string }));
+        let userMessage: string;
+        switch (resp.status) {
+          case 401:
+            userMessage = "Your session expired. Please sign in again.";
+            break;
+          case 403:
+            userMessage = "AI Coach requires a Pro or Elite subscription.";
+            // Refresh in case the client cache is stale.
+            void refreshSubscription();
+            break;
+          case 402:
+            userMessage = err.error || "AI credits exhausted. Please try again later.";
+            break;
+          case 429:
+            userMessage = err.error || "Too many requests. Please wait a moment.";
+            break;
+          default:
+            userMessage = err.error || `Request failed (${resp.status}).`;
+        }
+        toast.error(userMessage);
+        throw new Error(userMessage);
       }
 
       if (!resp.body) throw new Error("No response stream");
@@ -131,7 +163,7 @@ const RecipeCoach = () => {
       console.error("Chat error:", e);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: `Sorry, something went wrong: ${(e as Error).message}. Please try again.` },
+        { role: "assistant", content: `Sorry, I couldn't reach the coach: ${(e as Error).message}` },
       ]);
     } finally {
       setIsLoading(false);
