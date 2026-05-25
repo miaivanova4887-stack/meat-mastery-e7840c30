@@ -32,6 +32,15 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  // Auth: require service-role bearer token (Supabase cron / internal callers).
+  // Prevents unauthenticated callers from triggering batch FCM sends.
+  const authHeader = req.headers.get("authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token || token !== serviceKey) {
+    return json({ error: "Forbidden" }, 403);
+  }
+
   const admin = createClient(supabaseUrl, serviceKey);
 
   // Pull due runs with their campaigns
