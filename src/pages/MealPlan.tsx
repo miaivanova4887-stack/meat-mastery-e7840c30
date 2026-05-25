@@ -129,13 +129,60 @@ const MealPlan = () => {
     return allRecipes.find((r) => r.name === detailMeal.meal.recipeName) || null;
   }, [detailMeal, allRecipes]);
 
+  // Parse "15 min" / "1 hr" / "24 hrs" / "1.5 hrs" → minutes
+  const parseMinutes = (time: string): number => {
+    if (!time) return Infinity;
+    const t = time.toLowerCase().trim();
+    const m = t.match(/([\d.]+)\s*(min|hr|hour)/);
+    if (!m) return Infinity;
+    const n = parseFloat(m[1]);
+    if (isNaN(n)) return Infinity;
+    return m[2].startsWith("hr") || m[2].startsWith("hour") ? n * 60 : n;
+  };
+
+  const QUICK_TAGS = new Set(["quick", "easy", "eggs"]);
+  const [quickOnly, setQuickOnly] = useState(true);
+
+  // Reset quickOnly to default whenever picker opens
+  useEffect(() => {
+    if (pickingSlot) setQuickOnly(true);
+  }, [pickingSlot]);
+
   const filteredRecipes = useMemo(() => {
-    if (!recipeSearch) return allRecipes.slice(0, 20);
-    const q = recipeSearch.toLowerCase();
-    return allRecipes.filter(
-      (r) => r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q))
-    ).slice(0, 20);
-  }, [allRecipes, recipeSearch]);
+    const q = recipeSearch.trim().toLowerCase();
+
+    // When the user is actively searching, search across the entire library
+    if (q) {
+      return allRecipes
+        .filter((r) => r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q)))
+        .slice(0, 30);
+    }
+
+    if (!pickingSlot) return allRecipes.slice(0, 20);
+
+    // Slot-matched recipes + staples (e.g. bone broth) as secondary fit
+    const slotMatches = allRecipes.filter((r) => r.meal === pickingSlot);
+    const staples = pickingSlot !== "snack" ? allRecipes.filter((r) => r.meal === "staple") : [];
+
+    const isQuickSlot = pickingSlot === "breakfast" || pickingSlot === "snack";
+    const timeCapped = isQuickSlot && quickOnly
+      ? slotMatches.filter((r) => parseMinutes(r.time) <= 30)
+      : slotMatches;
+
+    // Sort: quick (≤15 min) → moderate (≤30 min) → rest, ascending by time.
+    // Within bands, boost recipes tagged Quick / Easy / Eggs.
+    const scored = timeCapped
+      .map((r) => {
+        const mins = parseMinutes(r.time);
+        const band = mins <= 15 ? 0 : mins <= 30 ? 1 : 2;
+        const tagBoost = r.tags.some((t) => QUICK_TAGS.has(t.toLowerCase())) ? 0 : 1;
+        return { r, mins, band, tagBoost };
+      })
+      .sort((a, b) => a.band - b.band || a.tagBoost - b.tagBoost || a.mins - b.mins)
+      .map((x) => x.r);
+
+    return [...scored, ...staples].slice(0, 40);
+  }, [allRecipes, recipeSearch, pickingSlot, quickOnly]);
 
   const handlePick = (recipe: Recipe, slot: MealSlot) => {
     const meal: PlannedMeal = {
