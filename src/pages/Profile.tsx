@@ -1034,8 +1034,8 @@ const Profile = () => {
                 <Bell size={18} className="text-primary" />
               </div>
               <div className="flex-1 text-left">
-                <h3 className="font-display font-bold text-foreground text-[15px]">Notification preferences</h3>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Choose what reminders and updates you receive.</p>
+                <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.notifPrefTitle")}</h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t("profile.notifPrefDesc")}</p>
               </div>
               <ChevronRight size={14} className="text-muted-foreground" />
             </button>

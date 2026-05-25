@@ -452,6 +452,8 @@
     "recipes": "recettes",
     "likes": "j'aime",
     "notifPrefUpdated": "Préférence de notification mise à jour",
+    "notifPrefTitle": "Préférences de notifications",
+    "notifPrefDesc": "Choisissez les rappels et mises à jour que vous recevez.",
     "dietTierUpdated": "Niveau de régime mis à jour !",
     "mealsUpdated": "Mis à jour à {{count}} repas/jour",
     "feedbackYes": "Nous en montrerons plus comme ça !",
