@@ -903,12 +903,18 @@ const MealPlan = () => {
             >
               <X size={20} />
             </button>
-            <h2 className="text-lg font-display font-bold flex-1">
-              Pick {SLOT_LABELS[pickingSlot].split(" ")[1]}
-            </h2>
+            <div className="flex-1">
+              <h2 className="text-lg font-display font-bold leading-tight">
+                Pick {SLOT_LABELS[pickingSlot].split(" ")[1]}
+              </h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {filteredRecipes.length} {filteredRecipes.length === 1 ? "recipe" : "recipes"}
+                {!recipeSearch && (pickingSlot === "breakfast" || pickingSlot === "snack") && quickOnly && " · Quick only (≤30 min)"}
+              </p>
+            </div>
           </div>
 
-          <div className="px-4 pt-3 pb-2">
+          <div className="px-4 pt-3 pb-2 space-y-2">
             <input
               type="text"
               placeholder="Search recipes…"
@@ -917,6 +923,17 @@ const MealPlan = () => {
               className={inputClass}
               autoFocus
             />
+            {!recipeSearch && (pickingSlot === "breakfast" || pickingSlot === "snack") && (
+              <button
+                type="button"
+                onClick={() => setQuickOnly((v) => !v)}
+                className={`text-[11px] px-3 py-1.5 rounded-full font-semibold transition-colors ${
+                  quickOnly ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                }`}
+              >
+                {quickOnly ? "✓ Quick only (≤30 min)" : "Show all times"}
+              </button>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 pb-8 space-y-2">
