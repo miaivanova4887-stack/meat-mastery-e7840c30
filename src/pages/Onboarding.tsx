@@ -219,11 +219,15 @@ const steps: OnboardingStep[] = [
   },
 ];
 
-// Versioned key — anything restored from a previous Android Auto Backup
-// under the legacy "carnivore-onboarding-complete" key is intentionally
-// ignored so a fresh install always shows onboarding.
-const STORAGE_KEY = "carnivore-onboarding-complete-v2";
-const LEGACY_STORAGE_KEY = "carnivore-onboarding-complete";
+// Versioned key — bumped to v3 so any device whose localStorage was
+// restored from an iCloud/device backup (which still carries the v2
+// flag) is forced through onboarding again on a fresh install.
+// Legacy keys are removed on mount to prevent re-bypass.
+const STORAGE_KEY = "carnivore-onboarding-complete-v3";
+const LEGACY_STORAGE_KEYS = [
+  "carnivore-onboarding-complete",
+  "carnivore-onboarding-complete-v2",
+];
 
 const Onboarding = () => {
   const navigate = useNavigate();
@@ -249,10 +253,10 @@ const Onboarding = () => {
     console.info(
       "[Onboarding] mount native=", Capacitor.isNativePlatform(),
       "completeFlag=", localStorage.getItem(STORAGE_KEY),
-      "legacyFlag=", localStorage.getItem(LEGACY_STORAGE_KEY),
+      "legacyFlags=", LEGACY_STORAGE_KEYS.map((k) => `${k}=${localStorage.getItem(k)}`).join(","),
     );
-    // Clear any restored legacy flag so it can't leak back into v2.
-    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+    // Clear any restored legacy flag so it can't leak back into v3.
+    try { LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k)); } catch {}
   }, []);
 
   // Fetch health target labels from content_blocks

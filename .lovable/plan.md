@@ -1,87 +1,87 @@
-## 1. Lock iPhone to portrait (allow rotation on iPad)
+Plan: I will not call this resolved until the native iPhone build shows the UI changes and Apple Sign In works on device.
 
-`ios/App/App/Info.plist` currently lists Landscape Left/Right for iPhone, which is why your phone rotates. Restrict iPhone to portrait only and keep iPad as-is.
+1. Establish proof from the current repository
 
-- `UISupportedInterfaceOrientations` → only `UIInterfaceOrientationPortrait`.
-- `UISupportedInterfaceOrientations~ipad` → leave the four-orientation array unchanged.
+- Run and capture the exact requested outputs:
+  - `bun pm ls | grep -E "apple-sign-in|capacitor-social-login"`
+  - `npx cap sync ios`
+  - if sync output or native package state is suspicious, run `npx cap update ios`
+  - `grep -R "WKAppBoundDomains\|limitsNavigationsToAppBoundDomains" ios/App/App/Info.plist ios/App/App.xcodeproj ios/App/App 2>/dev/null`
+  - grep native project proof for:
+    - `CapgoCapacitorSocialLogin` in `ios/App/CapApp-SPM/Package.swift`
+    - `CapApp-SPM in Frameworks` in `ios/App/App.xcodeproj/project.pbxproj`
+    - `com.apple.developer.applesignin` in `ios/App/App/App.entitlements`
+    - `CODE_SIGN_ENTITLEMENTS = App/App.entitlements` in `project.pbxproj`
+    - `MainViewController` in storyboard and source
+- Current read-only findings already show:
+  - only `@capgo/capacitor-social-login@8.3.22` appears in `bun pm ls`
+  - no separate `apple-sign-in` package appears
+  - `WKAppBoundDomains` is not present in the currently inspected files
+  - the Apple entitlement exists
+  - the SPM package includes `CapgoCapacitorSocialLogin`
+  - the app target links the local `CapApp-SPM` framework
 
-After the edit you'll need to: `bun install` (no-op), `npx cap sync ios`, then Archive → upload as **build 2** (or bump `CFBundleVersion`). Apple won't let you reuse build 1.
+2. Fix native Apple Sign In registration risk
 
-## 2. Test the iOS build on your physical iPhone before App Store review
+- Inspect the Capgo plugin iOS package after dependency install/sync to confirm its exact native class/product name is present.
+- Harden `ios/App/App/MainViewController.swift` so custom local plugins do not accidentally interfere with Capacitor’s normal plugin loading.
+- Keep the storyboard pointing at `MainViewController`.
+- Keep `ios/App/App/App.entitlements` with `com.apple.developer.applesignin` and verify the Xcode target uses that entitlements file.
+- If `WKAppBoundDomains` is still absent, explicitly document that it is not blocking plugin injection. If it exists after sync/update, either remove it or add the required Capacitor domains and `limitsNavigationsToAppBoundDomains` configuration correctly.
 
-You don't need to wait for App Review to install on your device. Two options — I recommend (a):
+3. Make the UI fixes impossible to miss in source diffs
 
-**(a) Run from Xcode directly to your iPhone** (fastest, no upload needed)
+- `Profile → My Feed`:
+  - remove article `date` fields from the feed article objects in `src/pages/Profile.tsx`
+  - remove any article-date rendering path from Profile feed
+  - keep dates only for Progress Milestones if still desired, because those are not article dates
+  - show the exact diff after editing
+- `NewsFeed`:
+  - remove the now-unused `formatDate` helper so article date logic is gone from the daily feed page too
+  - show the exact diff after editing
+- `Recipe Coach`:
+  - change the composer to be fixed/sticky above the iOS safe area so it is visible in the installed app even if the WebView/keyboard viewport behaves differently
+  - keep the Pro/Elite gate behavior, but make the input bar visibly present with the locked placeholder for non-Pro users
+  - show the exact diff after editing
 
-- Plug iPhone into Mac, trust the computer.
-- In Xcode: select your iPhone in the device dropdown (top bar, next to the App scheme).
-- Press the ▶︎ Run button. Xcode signs with your dev profile and installs.
-- First launch: on iPhone go to Settings → General → VPN & Device Management → trust your developer cert.
+4. Fix onboarding first-run behavior with versioning
 
-**(b) TestFlight (internal testing)** — uses the build you already uploaded
+- Onboarding is currently stored in localStorage using:
+  - `carnivore-onboarding-complete-v2`
+  - `carnivore-onboarding-answers`
+  - `carnivore-onboarding-body`
+  - related profile keys like `carnivore-health-targets`, `carnivore-cuisines`, `carnivore-meals-per-day`
+- The `/` route gates via `isOnboardingComplete()` from `src/pages/Onboarding.tsx`, currently requiring both `carnivore-onboarding-complete-v2 === "true"` and `carnivore-onboarding-answers`.
+- A fresh iOS install not showing onboarding likely means the installed binary did not contain the gate change, or iOS/WebKit restored local storage from a previous install/device backup.
+- Add a versioned onboarding schema key, for example `carnivore-onboarding-schema-version`, and require it to match the current app onboarding version.
+- On first launch, if the schema version is missing/stale, clear only the onboarding completion keys and force `/onboarding`.
+- Update the onboarding tests to prove fresh install and stale-version cases return incomplete.
 
-- App Store Connect → your app → TestFlight tab.
-- Wait for the build to finish "Processing" (5–30 min).
-- Fill in the Export Compliance question (almost always "No" for standard HTTPS).
-- Add yourself as an Internal Tester, install **TestFlight** from the App Store on your iPhone, accept the invite email.
+5. Explain why the prior installed iOS build did not show the changes
 
-I'll write line-by-line terminal/Xcode steps for whichever you pick once we're in build mode.
+- The likely reason is build pipeline mismatch: web source changed, but the native iOS app still packaged an older `dist`/Capacitor state because the local checkout was not rebuilt and synced before archiving/installing.
+- I will provide the exact local sequence for you to run after pulling:
+  - `git pull`
+  - `bun install`
+  - `bun run build`
+  - `npx cap sync ios`
+  - open Xcode, clean build folder, install to iPhone
+- I will also add a small visible/internal build proof marker if needed so we can confirm the installed iOS app is running the new web bundle, not an older archive.
 
-## 3. Validate Sign in with Apple and Sign in with Google on iOS
+6. Verification before completion
 
-Both are wired through `@capgo/capacitor-social-login`. To actually validate end-to-end on the device build:
+- Run the requested proof commands and paste their relevant output.
+- Show exact changed files and diffs for My Feed, Recipe Coach, onboarding, and native Apple Sign In wiring.
+- Provide device-test checklist:
+  - delete existing iPhone app
+  - install new build from Xcode
+  - confirm onboarding appears on first launch
+  - confirm Google login still succeeds
+  - confirm Apple Sign In opens native Apple sheet and returns a session
+  - confirm Profile → My Feed article cards have no dates
+  - confirm Recipe Coach input bar is visible
+- I will not mark the Apple item complete unless the iPhone test confirms Apple login works.
 
-- **Apple**: Tap "Continue with Apple" → native Apple sheet appears → complete → app should return to a signed-in session. If it fails, the two usual culprits are (1) the "Sign in with Apple" capability missing in Xcode → Signing & Capabilities, (2) the Service ID + redirect URL not configured in Lovable Cloud → Auth → Apple provider.
-- **Google**: Tap "Continue with Google" → in-app browser/native sheet → complete → return to signed-in session. Needs iOS OAuth client ID in `capacitor.config.json` under the SocialLogin plugin, and Google provider enabled in Lovable Cloud → Auth.
+&nbsp;
 
-In build mode I'll:
-
-- Verify the iOS entitlement file includes `com.apple.developer.applesignin`.
-- Verify `capacitor.config.json` has the Google iOS client ID and reversed client ID URL scheme in Info.plist.
-- Confirm Lovable Cloud Apple + Google providers are configured (call `supabase--configure_social_auth` if needed).
-- Give you a short on-device test checklist with what success/failure should look like.
-
-## 4. My Feed — remove the "Mar 7th"-style date from articles
-
-The date appears in two places:
-
-- `src/pages/NewsFeed.tsx` line 119–127 (`formatDate`) — shown under each article card.
-- `src/pages/Profile.tsx` line 708–715 (`formatDate` inside the My Feed tab) — shown under news/tip items.
-
-Fix: remove the date text node from the article card JSX in both places (keep "Today/Yesterday" only if you want, or drop entirely — I'll drop entirely per your request). Progress Milestones in Profile keep their date because you didn't flag those.
-
-Need confirmation: **drop the date completely**, or **keep "Today / Yesterday / N days ago" and only hide the `Mar 7` fallback**?
-
-## 5. Recipe Coach — restore the input field
-
-The composer at the bottom of `src/pages/RecipeCoach.tsx` (lines 324–348) is rendered but `disabled` whenever the user does not have Pro access. On a Free account this looks like "no input field" because the TeaserGate also covers the message area.
-
-Two likely causes for what you're seeing — I'll need to know which:
-
-- **You are on Free tier** → expected behavior; the upgrade gate hides it. Fix would be cosmetic (e.g., show the input but route to the paywall on submit).
-- **You are on Pro/Elite and the input still doesn't show** → likely the iOS keyboard pushing the form below the safe area, or `h-[100dvh]` collapsing under the keyboard. Fix: switch container to flex layout with `min-h-[100dvh]`, add Capacitor Keyboard `resize: 'native'` config, and ensure the form's `safe-area-bottom` is respected when keyboard is open.
-
-Please confirm your tier so I apply the right fix.
-
-## 6. Progress → My Progress — remove the "..." next to category icons
-
-In `src/pages/Progress.tsx` the category dropdown trigger renders `{icon} {label}` inside shadcn's `SelectValue`. The trailing "..." is the default `line-clamp-1` / text-overflow ellipsis from `SelectValue`'s wrapping span clipping the row. Fix is one of:
-
-- Remove the truncation: override `SelectValue` to render with `whitespace-normal` / no `line-clamp`, **or**
-- Give the trigger more room: drop the `h-12` constraint and let it size naturally.
-
-I'll take the first approach (no truncation on the trigger label) so it works at all viewport widths. Affects only `src/pages/Progress.tsx`.
-
-## Technical notes (skip if not interested)
-
-- iOS orientation is controlled at the Info.plist level; no Swift changes needed.
-- Apple build numbers must be monotonically increasing per version — bump `CURRENT_PROJECT_VERSION` in `ios/App/App.xcodeproj/project.pbxproj` (or change in Xcode → General → Build) before re-uploading.
-- Capgo Social Login: Apple uses native `ASAuthorizationController`; Google uses `GIDSignIn`. Both already shipped in the binary you uploaded, but provider config on the backend can be changed without a new build.
-- &nbsp;
-
-## Open questions before I implement
-
-1. My Feed dates: drop completely, or keep relative ("Today/Yesterday/N days ago") and only hide the absolute fallback? - drop completely 
-2. Recipe Coach: are you logged in as Free, Pro, or Elite when you don't see the input? - Elite
-3. For on-device testing: option (a) Xcode direct install, or (b) TestFlight? - a
-  &nbsp;
+User feedback: Proceed with the proof-first plan, but do not change MainViewController.swift unless you can show a concrete registration defect there. For an installed Capacitor plugin, I want you to first prove package inclusion, cap sync ios, absence of WKAppBoundDomains, correct entitlements, and exact source diffs for the UI fixes. Only touch MainViewController.swift if you can show why the installed plugin is failing to register natively

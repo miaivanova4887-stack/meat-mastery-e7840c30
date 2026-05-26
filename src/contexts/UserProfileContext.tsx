@@ -85,8 +85,7 @@ function parseProfile(): UserProfile {
   try {
     const raw = localStorage.getItem("carnivore-onboarding-answers");
     const complete =
-      localStorage.getItem("carnivore-onboarding-complete-v2") === "true" ||
-      localStorage.getItem("carnivore-onboarding-complete") === "true";
+      localStorage.getItem("carnivore-onboarding-complete-v3") === "true";
     if (!raw || !complete) return defaults;
     const answers = JSON.parse(raw);
 

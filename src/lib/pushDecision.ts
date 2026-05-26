@@ -138,8 +138,7 @@ export async function auditPushDecision(
     let progressed = false;
     try {
       progressed =
-        localStorage.getItem("carnivore-onboarding-complete-v2") === "true" ||
-        localStorage.getItem("carnivore-onboarding-complete") === "true";
+        localStorage.getItem("carnivore-onboarding-complete-v3") === "true";
     } catch {}
     if (!progressed) {
       console.info(`[PushDecision] source=${source} branch=suppress reason=anonymous-not-progressed`);

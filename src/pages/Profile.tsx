@@ -727,7 +727,6 @@ const Profile = () => {
                           <div className="flex-1 min-w-0">
                             <h3 className="text-sm font-semibold text-foreground leading-snug">{m.title}</h3>
                             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{m.desc}</p>
-                            <span className="text-[10px] text-muted-foreground/60 mt-1 block">{formatDate(m.date)}</span>
                           </div>
                           <button
                             onClick={() => navigate("/progress")}

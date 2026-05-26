@@ -17,7 +17,9 @@ const BottomNav = () => {
     { path: "/progress", icon: TrendingUp, label: t("nav.progress") },
   ];
 
-  if (location.pathname === "/onboarding") return null;
+  // Hide bottom nav on full-screen flows where the fixed bar would cover
+  // the page's own bottom input/composer (Recipe Coach chat box).
+  if (location.pathname === "/onboarding" || location.pathname === "/recipe-coach") return null;
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 ios-blur shadow-lg bottom-nav border-t border-border/40 dark:border-transparent"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
