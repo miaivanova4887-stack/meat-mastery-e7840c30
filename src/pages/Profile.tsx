@@ -755,7 +755,6 @@ const Profile = () => {
                             {item.catLabel}
                           </span>
                           <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
-                          </div>
                         </div>
                         <h3 className="text-sm font-semibold text-foreground leading-snug">{item.title}</h3>
                         {!isExpanded && (
