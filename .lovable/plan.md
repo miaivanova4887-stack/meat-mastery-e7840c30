@@ -1,100 +1,214 @@
-Do I know what the issue is? Yes.
+Do I know what the issue is? Yes: the failing iOS app is not running the current `src/hooks/useDeepLinks.ts` code shown in the project context, or that branch is being bypassed before the new v10 handoff log can execute.
 
-Root cause audit
+## Why this is not speculative
 
-- The active repeat path is `src/hooks/useDeepLinks.ts`, specifically:
-  - `src/hooks/useDeepLinks.ts:114-120`: `CapApp.getLaunchUrl()` is still consumed on every fresh WebView/JS bootstrap.
-  - `src/hooks/useDeepLinks.ts:101-105`: every consumed launch URL writes the token fragment back into the WebView URL with `history.replaceState(..., /callback#access_token...)`, then navigates to the callback route.
-  - `src/pages/AuthCallback.tsx:121-185`: every callback mount then sees the same hash tokens and calls `supabase.auth.setSession()` again.
-- The repeated diagnostics prove the previous guard is not surviving the actual failure mode:
-  - `oauth:browser-close-error` repeats. In current source, `browserCloseAttempted` at `src/hooks/useDeepLinks.ts:34` should allow this only once per JS runtime.
-  - `deeplink:launch-url` repeats, while `deeplink:launch-url-skip-already-processed` never appears. In current source, `launchUrlProcessed` at `src/hooks/useDeepLinks.ts:30` should suppress later calls in the same JS runtime.
-  - `callback:start` and `callback:setSession-success` repeat, while `callback:skip-duplicate-fp` never appears. In current source, `lastFinalizedFp` at `src/pages/AuthCallback.tsx:21` should suppress repeat finalization in the same JS runtime.
-- Therefore, this is not just a React route remount. A normal React remount would keep the module-level variables alive. The logs show those variables are reset between loop iterations, meaning the WebView JavaScript runtime is being reinitialized or the shipped JS bundle is not the one containing the guards.
-- The exact line that still causes repeat processing after each reset is `src/hooks/useDeepLinks.ts:116` (`CapApp.getLaunchUrl()`), because Capacitor/iOS continues returning the same original OAuth launch URL. Since the one-shot flag is only module memory, it becomes `false` again whenever the runtime reloads, so the same launch URL is re-consumed and re-routed.
+Your latest log repeatedly shows:
 
-Why the previous dedupe did not stop it
+```text
+deeplink:received
+callback:start
+callback:setSession-start
+callback:setSession-success
+```
 
-- It is implemented only with module-level variables:
-  - `launchUrlProcessed`
-  - `lastHandledAuthFp`
-  - `browserCloseAttempted`
-  - `lastFinalizedFp`
-  - `isFinalizing`
-- Those are valid for duplicate events inside one JS runtime, but they do not survive a WebView reload, native bridge re-bootstrap, or loading a stale native bundle. Your log cadence and repeated `Browser.close()` attempts prove the loop crosses that boundary.
-- The callback is also being sanitized too late. `useDeepLinks` writes `/callback#access_token...` into the WebView URL before `AuthCallback` can process it. If the runtime restarts before or during cleanup, the app boots again on a token-bearing callback URL and the loop repeats.
+But the current source code in `src/hooks/useDeepLinks.ts` should log this for every accepted callback before routing:
 
-Router/auth listener findings
+```text
+deeplink:handoff-stored
+```
 
-- Router setup:
-  - `src/App.tsx:147` mounts `DeepLinkHandler` inside `BrowserRouter`.
-  - `src/App.tsx:171-172` maps both `/auth/callback` and `/callback` to `AuthCallback`.
-  - There is no alternate callback route found that bypasses `AuthCallback`.
-- Auth-state listener:
-  - `src/contexts/AuthContext.tsx:107-124` updates session/user and does not navigate to `/callback`.
-  - `src/contexts/AuthContext.tsx:126-141` initial `getSession()` also does not navigate to `/callback`.
-  - So there is no auth-state listener redirecting back into `/callback`.
-- Other `CapApp.getLaunchUrl()` usage:
-  - Search found only `src/hooks/useDeepLinks.ts:116`.
-- Custom-scheme conversion:
-  - `src/lib/authCallbackGuard.ts` normalizes `carnivorex://callback` to `/callback`.
-  - `src/hooks/useDeepLinks.ts:101-105` is the code that converts the native callback into the WebView route `capacitor://localhost/callback#...` by calling `history.replaceState` + React `navigate`.
+That log is completely absent. Since the source code path currently does:
 
-Build tag confirmation
+```text
+deeplink:received
+→ Browser.close attempt
+→ storeCallbackHandoff(rawUrl)
+→ deeplink:handoff-stored
+→ navigate('/callback')
+```
 
-- The source contains `authFlow=v9-callback-dedupe` at `src/main.tsx:16`.
-- The diagnostics you pasted do not include it.
-- That alone is not conclusive because the tag is currently logged only when `import.meta.env.DEV` is true, so a normal production iOS build will not emit it. But the absence of the new dedupe tags (`deeplink:launch-url-skip-already-processed`, `deeplink:dedupe-skip`, `callback:skip-duplicate-fp`) plus repeated `Browser.close()` attempts strongly indicates the active runtime is either resetting between attempts or not loading the intended guarded bundle.
+…the absence of `deeplink:handoff-stored` is hard evidence that either:
 
-Corrected plan
+1. the iOS build is running an older bundled web asset, or
+2. a different callback implementation is active at runtime, or
+3. the currently shown source was not what was packaged into the installed app.
 
-1. Move callback dedupe from module memory to persistent, pre-route storage
-  - Add a shared guard in `src/lib/authCallbackGuard.ts` that fingerprints the OAuth callback and records it in `sessionStorage`/`localStorage` before routing.
-  - Use the access/refresh token fingerprint, not the whole URL origin, so `carnivorex://callback#...` and `capacitor://localhost/callback#...` resolve to the same processed callback.
-  - Keep a short TTL so a genuinely new login attempt still works.
-2. Stop re-routing already-consumed launch URLs at the deep-link layer
-  - In `src/hooks/useDeepLinks.ts`, before `history.replaceState` or `navigate`, call the persistent guard.
-  - If already consumed, log a new unmistakable tag such as `deeplink:persistent-consumed-skip` and return.
-  - This fixes the real repeated line: `CapApp.getLaunchUrl()` may still return the stale URL, but it will no longer be allowed to route it into `/callback` again.
-3. Stop writing token fragments into browser history more than necessary
-  - Change `src/hooks/useDeepLinks.ts:101-105` so it does not call `window.history.replaceState` with `/callback#access_token...`.
-  - Route React to `/callback` using router state or a temporary storage handoff for the raw callback URL.
-  - This prevents the WebView address from being left at `capacitor://localhost/callback#access_token...` if anything restarts mid-flow.
-4. Make `AuthCallback` idempotent across runtime resets
-  - In `src/pages/AuthCallback.tsx`, read the raw callback from the shared handoff first, falling back to `window.location.href` only if needed.
-  - Before `setSession()`, check the same persistent fingerprint guard.
-  - After `setSession-success`, mark the fingerprint completed before any toast/navigation cleanup.
-  - If a completed callback is seen again, skip `setSession()` and go to `/` without touching `history.replaceState`.
-5. Add production-visible verification tags
-  - Move the auth-flow build tag out of the `import.meta.env.DEV` block or add a redacted `logAuthDiag("build:auth-flow", { version: "v10-persistent-callback-guard" })` on startup.
-  - This will make the copied AuthVerify diagnostics prove whether the intended code path is active in a production iOS build.
+The `history.replaceState()` error is also consistent with the app still landing on:
 
-Exact files to change
+```text
+capacitor://localhost/callback#access_token=...
+```
 
+instead of the intended clean `/callback` handoff route.
+
+## Full matching-file list from source search
+
+### `/callback` and `/auth/callback`
+
+- `src/App.tsx`
+  - Active routes:
+    - `/auth/callback` → `AuthCallback`
+    - `/callback` → `AuthCallback`
+- `src/contexts/AuthContext.tsx`
+  - Builds email redirect to `/auth/callback`.
+  - Detects `/auth/callback` and `/callback` so it does not sign out during verification.
+- `src/lib/oauthFlowState.ts`
+  - Comment only.
 - `src/lib/authCallbackGuard.ts`
-  - Add persistent fingerprint helpers and callback handoff helpers.
+  - Normalizes native callback URLs into `/callback` or `/auth/callback`.
 - `src/hooks/useDeepLinks.ts`
-  - Gate `CapApp.getLaunchUrl()`/`appUrlOpen` handling with persistent dedupe before routing.
-  - Remove the pre-callback token-fragment `history.replaceState` call.
-  - Store the raw callback URL for `AuthCallback` instead of pushing the full token hash into the visible WebView URL.
+  - Native callback receiver and router.
+- `src/pages/Auth.tsx`
+  - Native Google OAuth uses `carnivorex://callback`.
+  - Web/email auth uses `https://app.carnivorex.app/auth/callback`.
 - `src/pages/AuthCallback.tsx`
-  - Use the stored raw callback URL.
-  - Persistently skip already-completed callbacks.
-  - Mark completion immediately after successful session installation.
-  - Avoid repeated `replaceState` calls.
-- `src/main.tsx`
-  - Add a production-visible auth-flow diagnostic tag, because the current `authFlow=v9-callback-dedupe` log is dev-only and will not reliably appear in iOS production diagnostics.
-- Approved. Proceed with this corrected plan.
-  Two implementation notes:
-  Do not rely solely on module-level memory for callback dedupe.
-  Do not rely solely on fragile web storage long-term; if using sessionStorage/localStorage, keep it as a short-lived callback handoff/TTL guard only and make the flow resilient if storage is unavailable or cleared.
-  Please implement:
-  persistent callback fingerprint guard,
-  no token fragment written into visible WebView URL before callback completes,
-  clean handoff from deep link to /callback,
-  idempotent AuthCallback,
-  production-visible auth-flow version tag.
-  Return:
-  exact files changed,
-  final auth-flow version tag,
-  whether I must delete the app again before retesting.
+  - Active callback screen for both callback routes.
+
+### `setSession(`
+
+- `src/pages/AuthCallback.tsx`
+  - Relevant active native OAuth token branch:
+    - `supabase.auth.setSession({ access_token, refresh_token })`
+- `src/pages/ResetPassword.tsx`
+  - Reset-password only, not this Google callback loop.
+- `src/integrations/lovable/index.ts`
+  - Managed web OAuth helper. Not the current native iOS manual Browser flow shown in your log.
+- `src/lib/biometricAuth.ts`
+  - Comment only.
+- `src/contexts/AuthContext.tsx`
+  - React state setter named `setSession`, not `supabase.auth.setSession`.
+
+### `getLaunchUrl(`
+
+- `src/hooks/useDeepLinks.ts`
+  - Only source call.
+
+### `appUrlOpen`
+
+- `src/hooks/useDeepLinks.ts`
+  - Only active listener.
+- `src/App.tsx`, `src/pages/Auth.tsx`, `src/pages/AuthCallback.tsx`
+  - Comments only.
+
+### `replaceState(`
+
+- `src/pages/AuthCallback.tsx`
+  - Relevant callback cleanup call in `cleanAuthParamsFromUrl()`.
+- `src/pages/ResetPassword.tsx`
+  - Reset password only.
+- `src/pages/MealPlan.tsx`
+  - Meal-plan URL cleanup only.
+- `src/hooks/useDeepLinks.ts`
+  - Comment only.
+
+### `navigate("/callback"` / `navigate('/callback'`
+
+- No active literal matches found.
+- The active source uses:
+
+```text
+navigate(parsed.normalizedPath, { replace: true })
+```
+
+inside `src/hooks/useDeepLinks.ts`.
+
+## Active production code path according to source
+
+```text
+src/App.tsx
+  BrowserRouter
+    DeepLinkHandler
+      useDeepLinks()
+        CapApp.getLaunchUrl()
+        routeAuthUrl(...)
+        normalizeAuthCallbackUrl(...)
+        storeCallbackHandoff(rawUrl)
+        log: deeplink:handoff-stored
+        navigate('/callback')
+
+src/App.tsx routes
+  /callback
+    src/pages/AuthCallback.tsx
+      consumeCallbackHandoff()
+      finalize()
+      supabase.auth.setSession(...)
+      log: callback:setSession-success
+```
+
+## Plan to add hard-proof instrumentation only
+
+I will make no auth logic changes in this pass. I will only add proof markers.
+
+1. Add a single production-visible build constant:
+
+```text
+AUTH_FLOW_BUILD = v11-20260526-proof-path
+```
+
+2. Show that build value in all three places:
+
+- AuthVerify diagnostics header.
+- Startup AuthVerify diagnostics entry.
+- Temporary callback screen UI, visible while the callback screen is loading.
+
+3. Add this unmistakable log inside the exact active `useDeepLinks` auth-callback branch:
+
+```text
+PROOF_V11_USE_DEEPLINKS_ACTIVE_CALLBACK_BRANCH
+```
+
+with:
+
+- build value
+- source: `cold` or `live`
+- normalized path
+- fingerprint
+- current visible URL redacted
+- incoming callback URL redacted
+
+4. Add this unmistakable log immediately before the exact `AuthCallback` token `setSession()` branch:
+
+```text
+PROOF_V11_AUTHCALLBACK_SETSESSION_BRANCH
+```
+
+with:
+
+- build value
+- fingerprint
+- source URL redacted
+- access token fingerprint
+- refresh token fingerprint
+- current visible path/search/hash flags
+
+5. Add a startup marker early enough that even if the callback loop floods the 80-entry diagnostics buffer, the callback UI still visibly proves the build version.
+
+6. After this build, the interpretation will be binary:
+
+- If the callback UI or diagnostics show `AUTH_FLOW_BUILD = v11-20260526-proof-path`, then we know exactly which React source is active and can fix the loop from that path.
+- If they do not show v11 after a clean rebuild, the iOS app is packaging stale web assets or building the wrong target/copy.
+
+## Should you remove and re-add the iOS platform?
+
+Not yet.
+
+Based on the log, native deep linking is working and JavaScript is running. The problem is more likely stale packaged web assets or Xcode building a stale target/copy, not a broken iOS platform folder.
+
+If v11 does not appear after the proof instrumentation and a clean build, then I would recommend this order:
+
+1. targeted Capacitor/iOS cleanup and resync,
+2. verify `ios/App/App/public` contains the new built assets,
+3. clean Xcode DerivedData,
+4. only then consider removing/re-adding the iOS platform if the packaged assets still cannot be trusted.
+
+```xml
+<presentation-actions>
+  <presentation-open-history>View History</presentation-open-history>
+</presentation-actions>
+```
+
+```xml
+<presentation-actions>
+<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
+</presentation-actions>
+```
