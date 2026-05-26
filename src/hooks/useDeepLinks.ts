@@ -49,6 +49,13 @@ export function useDeepLinks() {
           parsed.normalizedPath === "/callback" ||
           parsed.normalizedPath === "/auth/callback";
         if (isOAuthCallback) {
+          const googleFlow = consumeGoogleOAuthInFlight();
+          if (googleFlow.wasInFlight) {
+            logAuthDiag("oauth:google-callback", {
+              normalizedPath: parsed.normalizedPath,
+              ageMs: googleFlow.ageMs,
+            });
+          }
           void Browser.close()
             .then(() => logAuthDiag("oauth:browser-close"))
             .catch((e) =>
