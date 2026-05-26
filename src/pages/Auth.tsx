@@ -5,6 +5,7 @@ import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-communi
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
+import { markGoogleOAuthInFlight } from "@/lib/oauthFlowState";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -144,6 +145,7 @@ const Auth = () => {
           state: rawNonce,
           nonce: hashedNonce,
         };
+        logAuthDiag("oauth:apple-native-start", { clientId: opts.clientId });
         const result = await SignInWithApple.authorize(opts);
         const idToken = result.response?.identityToken;
         logAuthDiag("oauth:apple-native-result", {
@@ -151,10 +153,11 @@ const Auth = () => {
           hasEmail: Boolean(result.response?.email),
         });
         if (!idToken) {
-          toast.error("Apple sign-in failed");
+          toast.error("Apple sign-in failed: no identity token returned");
           setLoading(false);
           return;
         }
+        logAuthDiag("oauth:apple-idtoken-start", { tokenLen: idToken.length });
         const { error } = await supabase.auth.signInWithIdToken({
           provider: "apple",
           token: idToken,
@@ -169,14 +172,16 @@ const Auth = () => {
         toast.success(t("auth.welcomeBackToast"));
         navigate(returnTo, { replace: true });
       } catch (err: any) {
+        const errMessage = err?.message ?? String(err);
+        const errCode = err?.code ?? null;
         logAuthDiag("oauth:apple-native-threw", {
           name: err?.name ?? null,
-          message: err?.message ?? String(err),
+          code: errCode,
+          message: errMessage,
         });
         // User cancels are normal — swallow without a toast.
-        const msg = String(err?.message ?? err ?? "");
-        if (!/cancel/i.test(msg)) {
-          toast.error("Apple sign-in failed");
+        if (!/cancel/i.test(errMessage) && errCode !== "ERR_CANCELED") {
+          toast.error(`Apple sign-in failed: ${errMessage || errCode || "unknown error"}`);
         }
         setLoading(false);
       }
@@ -197,6 +202,9 @@ const Auth = () => {
         : "carnivorex://callback";
     logAuthDiag("oauth:click", { provider, platform, isNative });
     logAuthDiag("oauth:redirect-uri", { redirectTo });
+    if (provider === "google") {
+      logAuthDiag("oauth:google-start", { platform, redirectTo });
+    }
     try {
       // Native (android/ios): Chrome Custom Tabs (the default browser opened by
       // the OAuth helper) blocks 302 redirects to custom URL schemes. We must
@@ -219,9 +227,16 @@ const Auth = () => {
           errMessage: error?.message ?? null,
         });
         if (error || !data?.url) {
+          if (provider === "google") {
+            logAuthDiag("oauth:google-error", { stage: "signInWithOAuth", message: error?.message ?? "no url" });
+          }
           toast.error(error?.message || `${provider === "google" ? "Google" : "Apple"} sign-in failed`);
           setLoading(false);
           return;
+        }
+        if (provider === "google") {
+          logAuthDiag("oauth:google-url", { url: redactUrl(data.url) });
+          markGoogleOAuthInFlight();
         }
         logAuthDiag("oauth:browser-open", { url: redactUrl(data.url) });
         await Browser.open({ url: data.url, windowName: "_self" });
