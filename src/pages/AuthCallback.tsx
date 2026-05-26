@@ -16,6 +16,39 @@ import {
   endAuthCallback,
 } from "@/lib/authCallbackGuard";
 
+// Module-level guard so the same OAuth token callback cannot run twice —
+// previously remounts / duplicate deep-link routings caused setSession() and
+// history.replaceState() to fire in a loop, eventually tripping iOS's
+// "history.replaceState() more than 100 times per 10 seconds" SecurityError.
+let lastFinalizedFp: string | null = null;
+let isFinalizing = false;
+
+function callbackFingerprint(url: string): string {
+  const h = url.indexOf("#");
+  const q = url.indexOf("?");
+  if (h >= 0) return "h:" + url.slice(h + 1, h + 96);
+  if (q >= 0) return "q:" + url.slice(q + 1, q + 96);
+  return "u:" + url.slice(0, 96);
+}
+
+function cleanAuthParamsFromUrl() {
+  // Only mutate history if there are still auth fragments to remove. This
+  // avoids the replaceState rate limit when finalize() runs repeatedly.
+  if (!window.location.hash && !window.location.search) return;
+  if (
+    !/access_token|refresh_token|token_hash|[?&]code=/.test(
+      window.location.hash + window.location.search,
+    )
+  ) {
+    return;
+  }
+  try {
+    window.history.replaceState(null, "", window.location.pathname);
+  } catch {
+    /* iOS replaceState rate limit — swallow */
+  }
+}
+
 /**
  * Accepted callback formats (any one is enough to install a session):
  *   - carnivorex://callback#access_token=...&refresh_token=...
