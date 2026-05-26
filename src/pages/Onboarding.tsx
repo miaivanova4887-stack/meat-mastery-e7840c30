@@ -253,10 +253,10 @@ const Onboarding = () => {
     console.info(
       "[Onboarding] mount native=", Capacitor.isNativePlatform(),
       "completeFlag=", localStorage.getItem(STORAGE_KEY),
-      "legacyFlag=", localStorage.getItem(LEGACY_STORAGE_KEY),
+      "legacyFlags=", LEGACY_STORAGE_KEYS.map((k) => `${k}=${localStorage.getItem(k)}`).join(","),
     );
-    // Clear any restored legacy flag so it can't leak back into v2.
-    try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+    // Clear any restored legacy flag so it can't leak back into v3.
+    try { LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k)); } catch {}
   }, []);
 
   // Fetch health target labels from content_blocks
