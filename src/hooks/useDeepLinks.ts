@@ -23,6 +23,26 @@ import { consumeGoogleOAuthInFlight } from "@/lib/oauthFlowState";
  *   - carnivorex://callback
  *   - carnivorex://auth/callback
  */
+
+// Module-level guards so duplicate hook mounts / repeated callback navigation
+// cannot reprocess the same launch URL or the same OAuth fragment over and
+// over (which previously triggered iOS's history.replaceState rate limit).
+let launchUrlProcessed = false;
+let lastHandledAuthFp: string | null = null;
+let lastHandledAt = 0;
+const DEDUPE_WINDOW_MS = 10_000;
+let browserCloseAttempted = false;
+
+function authCallbackFingerprint(rawUrl: string): string {
+  // Use the token / code portion as the dedupe key — the URL itself is
+  // identical across cold + live + remount events.
+  const hashIdx = rawUrl.indexOf("#");
+  const qIdx = rawUrl.indexOf("?");
+  if (hashIdx >= 0) return "h:" + rawUrl.slice(hashIdx + 1, hashIdx + 96);
+  if (qIdx >= 0) return "q:" + rawUrl.slice(qIdx + 1, qIdx + 96);
+  return "u:" + rawUrl.slice(0, 96);
+}
+
 export function useDeepLinks() {
   const navigate = useNavigate();
 
@@ -45,6 +65,17 @@ export function useDeepLinks() {
           redacted: redactUrl(rawUrl),
         });
         if (!parsed.isAuthRoute) return;
+
+        // Dedupe: ignore the same auth callback fingerprint within the window.
+        const fp = authCallbackFingerprint(rawUrl);
+        const now = Date.now();
+        if (lastHandledAuthFp === fp && now - lastHandledAt < DEDUPE_WINDOW_MS) {
+          logAuthDiag("deeplink:dedupe-skip", { source, ageMs: now - lastHandledAt });
+          return;
+        }
+        lastHandledAuthFp = fp;
+        lastHandledAt = now;
+
         const isOAuthCallback =
           parsed.normalizedPath === "/callback" ||
           parsed.normalizedPath === "/auth/callback";
@@ -56,11 +87,16 @@ export function useDeepLinks() {
               ageMs: googleFlow.ageMs,
             });
           }
-          void Browser.close()
-            .then(() => logAuthDiag("oauth:browser-close"))
-            .catch((e) =>
-              logAuthDiag("oauth:browser-close-error", { error: String(e) }),
-            );
+          // Only try to close the in-app browser once per callback —
+          // otherwise we spam "No active window to close!" errors.
+          if (!browserCloseAttempted) {
+            browserCloseAttempted = true;
+            void Browser.close()
+              .then(() => logAuthDiag("oauth:browser-close"))
+              .catch((e) =>
+                logAuthDiag("oauth:browser-close-error", { error: String(e) }),
+              );
+          }
         }
         const target = `${parsed.normalizedPath}${parsed.search}${parsed.hash}`;
         if (parsed.hash) {
@@ -72,16 +108,24 @@ export function useDeepLinks() {
       }
     };
 
-    void CapApp.getLaunchUrl()
-      .then((res) => {
-        if (res?.url) {
-          logAuthDiag("deeplink:launch-url", { redacted: redactUrl(res.url) });
-          routeAuthUrl(res.url, "cold");
-        } else {
-          logAuthDiag("deeplink:launch-url-empty");
-        }
-      })
-      .catch((e) => logAuthDiag("deeplink:launch-url-error", { error: String(e) }));
+    // Only consume the iOS launch URL once per process. iOS keeps returning
+    // the same URL on every call, so without this guard every remount of
+    // AuthCallback re-routes to /callback and loops setSession+replaceState.
+    if (!launchUrlProcessed) {
+      launchUrlProcessed = true;
+      void CapApp.getLaunchUrl()
+        .then((res) => {
+          if (res?.url) {
+            logAuthDiag("deeplink:launch-url", { redacted: redactUrl(res.url) });
+            routeAuthUrl(res.url, "cold");
+          } else {
+            logAuthDiag("deeplink:launch-url-empty");
+          }
+        })
+        .catch((e) => logAuthDiag("deeplink:launch-url-error", { error: String(e) }));
+    } else {
+      logAuthDiag("deeplink:launch-url-skip-already-processed");
+    }
 
     const urlOpenSub = CapApp.addListener("appUrlOpen", (event) => {
       logAuthDiag("deeplink:appUrlOpen", { redacted: redactUrl(event.url) });
@@ -89,9 +133,6 @@ export function useDeepLinks() {
     });
 
     const resumeSub = CapApp.addListener("resume", () => {
-      // Skip resume-time refresh while AuthCallback is actively installing
-      // a session — otherwise refreshSession() races setSession() and logs
-      // "Auth session missing!" which corrupts the loading state.
       if (isAuthCallbackInProgress()) {
         logAuthDiag("deeplink:resume-skip-callback-in-progress");
         return;
