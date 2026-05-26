@@ -116,15 +116,33 @@ const Index = () => {
   const quoteText = t(`quotes.${profile.goal}.text`);
   const quoteAuthor = t(`quotes.${profile.goal}.author`);
 
-  const tip = profile.struggles.includes("sugar_cravings")
-    ? t("home.tips.sugar_cravings")
-    : profile.struggles.includes("low_energy")
-    ? t("home.tips.low_energy")
-    : profile.struggles.includes("digestive")
-    ? t("home.tips.digestive")
-    : profile.struggles.includes("social_pressure")
-    ? t("home.tips.social_pressure")
-    : null;
+  const tipKey: "sugar_cravings" | "low_energy" | "digestive" | "social_pressure" | null =
+    profile.struggles.includes("sugar_cravings")
+      ? "sugar_cravings"
+      : profile.struggles.includes("low_energy")
+      ? "low_energy"
+      : profile.struggles.includes("digestive")
+      ? "digestive"
+      : profile.struggles.includes("social_pressure")
+      ? "social_pressure"
+      : null;
+
+  const [dismissedTips, setDismissedTips] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("home.dismissedTips");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const showTip = tipKey && !dismissedTips.includes(tipKey);
+  const tip = showTip ? t(`home.tips.${tipKey}`) : null;
+  const dismissTip = () => {
+    if (!tipKey) return;
+    const next = Array.from(new Set([...dismissedTips, tipKey]));
+    setDismissedTips(next);
+    try { localStorage.setItem("home.dismissedTips", JSON.stringify(next)); } catch {}
+  };
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
