@@ -117,8 +117,66 @@ const Auth = () => {
     setLoading(true);
     const platform = Capacitor.getPlatform();
     const isNative = Capacitor.isNativePlatform();
+
+    // Native iOS Apple Sign-In — uses ASAuthorizationAppleIDProvider via the
+    // Capacitor plugin. The returned identityToken is exchanged for a Supabase
+    // session via signInWithIdToken (no browser, no deep link).
+    // Required: com.apple.developer.applesignin entitlement + the iOS Bundle ID
+    // (com.mi4labs.carnivorex) added to Supabase Auth → Providers → Apple → Client IDs.
+    if (provider === "apple" && platform === "ios") {
+      logAuthDiag("oauth:click", { provider, platform, isNative, flow: "native-apple" });
+      try {
+        const rawNonce = crypto.randomUUID();
+        const hashedNonce = await sha256Hex(rawNonce);
+        const opts: SignInWithAppleOptions = {
+          clientId: "com.mi4labs.carnivorex",
+          // redirectURI is required by the plugin but unused on native (no web round-trip).
+          redirectURI: "https://app.carnivorex.app/auth/callback",
+          scopes: "email name",
+          state: rawNonce,
+          nonce: hashedNonce,
+        };
+        const result = await SignInWithApple.authorize(opts);
+        const idToken = result.response?.identityToken;
+        logAuthDiag("oauth:apple-native-result", {
+          hasIdToken: Boolean(idToken),
+          hasEmail: Boolean(result.response?.email),
+        });
+        if (!idToken) {
+          toast.error("Apple sign-in failed");
+          setLoading(false);
+          return;
+        }
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: "apple",
+          token: idToken,
+          nonce: rawNonce,
+        });
+        if (error) {
+          logAuthDiag("oauth:apple-idtoken-error", { message: error.message });
+          toast.error(error.message || "Apple sign-in failed");
+          setLoading(false);
+          return;
+        }
+        toast.success(t("auth.welcomeBackToast"));
+        navigate(returnTo, { replace: true });
+      } catch (err: any) {
+        logAuthDiag("oauth:apple-native-threw", {
+          name: err?.name ?? null,
+          message: err?.message ?? String(err),
+        });
+        // User cancels are normal — swallow without a toast.
+        const msg = String(err?.message ?? err ?? "");
+        if (!/cancel/i.test(msg)) {
+          toast.error("Apple sign-in failed");
+        }
+        setLoading(false);
+      }
+      return;
+    }
+
     // Web: hosted /auth/callback page runs the PKCE code exchange.
-    // Native (android/ios): use the custom URL scheme so the OAuth broker
+    // Native android: use the custom URL scheme so the OAuth broker
     // hands the callback directly to the app via the Capacitor intent filter.
     //
     // Required Supabase Auth → URL Configuration → Redirect URLs:
