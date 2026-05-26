@@ -121,9 +121,20 @@ const AuthCallback = () => {
   };
 
   const finalize = async () => {
+    const sourceUrl = originalUrlRef.current;
+    const fp = callbackFingerprint(sourceUrl);
+    if (isFinalizing) {
+      logAuthDiag("callback:skip-already-finalizing", { fp });
+      return;
+    }
+    if (lastFinalizedFp === fp) {
+      logAuthDiag("callback:skip-duplicate-fp", { fp });
+      return;
+    }
+    isFinalizing = true;
+    lastFinalizedFp = fp;
     setStatus("working");
     setErrorMsg(null);
-    const sourceUrl = originalUrlRef.current;
     logAuthDiag("callback:start", {
       url: redactUrl(sourceUrl),
       hashHasAccessToken: window.location.hash.includes("access_token"),
@@ -168,10 +179,7 @@ const AuthCallback = () => {
           hasUser: Boolean(ssData.user),
           userVerified: ssData.user?.email_confirmed_at ?? null,
         });
-        if (Capacitor.isNativePlatform()) {
-          void Browser.close().catch(() => { /* noop */ });
-        }
-        window.history.replaceState(null, "", window.location.pathname);
+        cleanAuthParamsFromUrl();
         setStatus("verified");
         toast.success("Signed in — welcome to CarnivoreX");
         setTimeout(() => navigate("/", { replace: true }), 400);
