@@ -180,12 +180,17 @@ const Index = () => {
       {/* Content */}
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 space-y-5 -mt-2 relative z-10">
         {tip && (
-          <div className="ios-card px-4 py-3 animate-fade-in flex items-start gap-2.5">
+          <button
+            type="button"
+            onClick={dismissTip}
+            aria-label="Dismiss tip"
+            className="ios-card w-full text-left px-4 py-3 animate-fade-in flex items-start gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+          >
             <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
               <span className="text-primary text-xs font-bold">!</span>
             </div>
             <p className="text-xs text-foreground/80 leading-relaxed">{tip}</p>
-          </div>
+          </button>
         )}
 
         {/* Feature Grid */}
