@@ -8,40 +8,32 @@ import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
 import {
   isAuthCallbackInProgress,
   normalizeAuthCallbackUrl,
+  callbackFingerprint,
+  isCallbackCompleted,
+  storeCallbackHandoff,
 } from "@/lib/authCallbackGuard";
 import { consumeGoogleOAuthInFlight } from "@/lib/oauthFlowState";
 
 /**
- * Wires native deep-link handling for Android App Links + custom scheme.
+ * Wires native deep-link handling.
  *
- * Accepted native OAuth callback shapes (all normalized to an auth route):
- *   - carnivorex://callback#access_token=...
- *   - carnivorex:///callback#access_token=...
- *   - carnivorex://auth/callback#access_token=...
- *
- * Required Supabase Auth → URL Configuration → Redirect URLs allowlist:
- *   - carnivorex://callback
- *   - carnivorex://auth/callback
+ * v10 changes (persistent callback guard):
+ *  - dedupe lives in localStorage so a WebView reload cannot reset it
+ *  - the raw native callback URL is handed off via sessionStorage to
+ *    AuthCallback INSTEAD of writing the token fragment into the visible
+ *    WebView address with history.replaceState (which caused the iOS
+ *    "history.replaceState() more than 100 times per 10 seconds" loop)
+ *  - on a completed/duplicate callback we navigate to "/" and skip routing
+ *    back into /callback entirely
  */
 
-// Module-level guards so duplicate hook mounts / repeated callback navigation
-// cannot reprocess the same launch URL or the same OAuth fragment over and
-// over (which previously triggered iOS's history.replaceState rate limit).
-let launchUrlProcessed = false;
-let lastHandledAuthFp: string | null = null;
+// In-runtime guard for the very first appUrlOpen burst — the persistent
+// guard handles cross-runtime safety; this just avoids redundant work.
+let lastHandledFp: string | null = null;
 let lastHandledAt = 0;
-const DEDUPE_WINDOW_MS = 10_000;
+const SHORT_DEDUPE_WINDOW_MS = 10_000;
 let browserCloseAttempted = false;
-
-function authCallbackFingerprint(rawUrl: string): string {
-  // Use the token / code portion as the dedupe key — the URL itself is
-  // identical across cold + live + remount events.
-  const hashIdx = rawUrl.indexOf("#");
-  const qIdx = rawUrl.indexOf("?");
-  if (hashIdx >= 0) return "h:" + rawUrl.slice(hashIdx + 1, hashIdx + 96);
-  if (qIdx >= 0) return "q:" + rawUrl.slice(qIdx + 1, qIdx + 96);
-  return "u:" + rawUrl.slice(0, 96);
-}
+let launchUrlConsumed = false;
 
 export function useDeepLinks() {
   const navigate = useNavigate();
@@ -66,19 +58,35 @@ export function useDeepLinks() {
         });
         if (!parsed.isAuthRoute) return;
 
-        // Dedupe: ignore the same auth callback fingerprint within the window.
-        const fp = authCallbackFingerprint(rawUrl);
-        const now = Date.now();
-        if (lastHandledAuthFp === fp && now - lastHandledAt < DEDUPE_WINDOW_MS) {
-          logAuthDiag("deeplink:dedupe-skip", { source, ageMs: now - lastHandledAt });
+        const fp = callbackFingerprint(rawUrl);
+
+        // Persistent dedupe — survives WebView/runtime reloads.
+        if (isCallbackCompleted(fp)) {
+          logAuthDiag("deeplink:persistent-completed-skip", { source, fp });
+          // Make sure we land on home and not on /callback if the runtime
+          // somehow restarted on a token-bearing URL.
+          if (
+            window.location.pathname === "/callback" ||
+            window.location.pathname === "/auth/callback"
+          ) {
+            navigate("/", { replace: true });
+          }
           return;
         }
-        lastHandledAuthFp = fp;
+
+        // Short in-runtime dedupe for rapid duplicate appUrlOpen events.
+        const now = Date.now();
+        if (lastHandledFp === fp && now - lastHandledAt < SHORT_DEDUPE_WINDOW_MS) {
+          logAuthDiag("deeplink:short-dedupe-skip", { source, ageMs: now - lastHandledAt });
+          return;
+        }
+        lastHandledFp = fp;
         lastHandledAt = now;
 
         const isOAuthCallback =
           parsed.normalizedPath === "/callback" ||
           parsed.normalizedPath === "/auth/callback";
+
         if (isOAuthCallback) {
           const googleFlow = consumeGoogleOAuthInFlight();
           if (googleFlow.wasInFlight) {
@@ -87,8 +95,6 @@ export function useDeepLinks() {
               ageMs: googleFlow.ageMs,
             });
           }
-          // Only try to close the in-app browser once per callback —
-          // otherwise we spam "No active window to close!" errors.
           if (!browserCloseAttempted) {
             browserCloseAttempted = true;
             void Browser.close()
@@ -98,21 +104,23 @@ export function useDeepLinks() {
               );
           }
         }
-        const target = `${parsed.normalizedPath}${parsed.search}${parsed.hash}`;
-        if (parsed.hash) {
-          window.history.replaceState(null, "", target);
-        }
-        navigate(target, { replace: true });
+
+        // Hand off the raw URL via sessionStorage so AuthCallback can
+        // process tokens WITHOUT us first writing them into the visible
+        // WebView address. This eliminates the replaceState loop.
+        storeCallbackHandoff(rawUrl);
+        logAuthDiag("deeplink:handoff-stored", { fp, normalizedPath: parsed.normalizedPath });
+
+        // Navigate to the clean callback path — no hash, no search, no
+        // history.replaceState with token fragments.
+        navigate(parsed.normalizedPath, { replace: true });
       } catch (e) {
         logAuthDiag("deeplink:parse-error", { error: String(e) });
       }
     };
 
-    // Only consume the iOS launch URL once per process. iOS keeps returning
-    // the same URL on every call, so without this guard every remount of
-    // AuthCallback re-routes to /callback and loops setSession+replaceState.
-    if (!launchUrlProcessed) {
-      launchUrlProcessed = true;
+    if (!launchUrlConsumed) {
+      launchUrlConsumed = true;
       void CapApp.getLaunchUrl()
         .then((res) => {
           if (res?.url) {
@@ -124,7 +132,7 @@ export function useDeepLinks() {
         })
         .catch((e) => logAuthDiag("deeplink:launch-url-error", { error: String(e) }));
     } else {
-      logAuthDiag("deeplink:launch-url-skip-already-processed");
+      logAuthDiag("deeplink:launch-url-skip-already-consumed");
     }
 
     const urlOpenSub = CapApp.addListener("appUrlOpen", (event) => {
