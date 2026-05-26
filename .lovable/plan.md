@@ -1,214 +1,76 @@
-Do I know what the issue is? Yes: the failing iOS app is not running the current `src/hooks/useDeepLinks.ts` code shown in the project context, or that branch is being bypassed before the new v10 handoff log can execute.
+# Migrate Apple Sign In to @capgo/capacitor-social-login
 
-## Why this is not speculative
+## Why
 
-Your latest log repeatedly shows:
+- `@capacitor-community/apple-sign-in@7.1.0` pins `capacitor-swift-pm` to 7.x.
+- `capacitor-native-settings@8.1.0` requires `capacitor-swift-pm` 8.0.2+.
+- App is on Capacitor 8.3.x. Result: Xcode SPM resolution fails, blocking iOS archive/upload.
+- Apple requires Sign in with Apple whenever Google sign-in is offered, so we must keep it working — just on a Capacitor‑8‑compatible plugin.
 
-```text
-deeplink:received
-callback:start
-callback:setSession-start
-callback:setSession-success
+## Outcome
+
+- Xcode resolves Swift packages without conflict.
+- iOS device build succeeds, archive can be uploaded to App Store Connect.
+- Sign in with Apple still authenticates against Supabase end‑to‑end with the same nonce + `signInWithIdToken` flow we use today.
+- Zero references to the old package remain.
+
+## Files / areas affected
+
+1. `package.json` + lockfile — remove old plugin, add `@capgo/capacitor-social-login`.
+2. `ios/App/CapApp-SPM/Package.swift` — replace `CapacitorCommunityAppleSignIn` entry with `CapgoCapacitorSocialLogin` (path into its iOS SPM package under `node_modules/@capgo/capacitor-social-login`).
+3. `src/pages/Auth.tsx` — replace the import and the `SignInWithApple.authorize(...)` call site with the new `SocialLogin` API; preserve raw/hashed nonce, scopes `email name`, error/cancel handling, diagnostics logs, and the existing `supabase.auth.signInWithIdToken({ provider: 'apple', token, nonce })` exchange.
+4. `ios/App/App/Info.plist` — no functional change required for native Apple Sign In (entitlement carries it), but verify nothing references the old plugin.
+5. `ios/App/App/App.entitlements` — already has `com.apple.developer.applesignin` → keep as is.
+6. `capacitor.config.json` — add the small `SocialLogin` plugin config block (Apple `clientId = com.mi4labs.carnivorex`, no Google block on iOS; we keep Google on web/Android via the existing path).
+7. Search the repo for any remaining `apple-sign-in` / `SignInWithApple` strings and remove them (none expected outside the spots already found).
+
+## New auth call shape (Auth.tsx)
+
+```ts
+import { SocialLogin } from '@capgo/capacitor-social-login';
+
+// once, before first login (idempotent):
+await SocialLogin.initialize({
+  apple: { clientId: 'com.mi4labs.carnivorex' },
+});
+
+const rawNonce = crypto.randomUUID();
+const hashedNonce = await sha256Hex(rawNonce);
+
+const res = await SocialLogin.login({
+  provider: 'apple',
+  options: { scopes: ['email', 'name'], nonce: hashedNonce, state: rawNonce },
+});
+
+const idToken = res.result?.idToken;
+await supabase.auth.signInWithIdToken({ provider: 'apple', token: idToken!, nonce: rawNonce });
 ```
 
-But the current source code in `src/hooks/useDeepLinks.ts` should log this for every accepted callback before routing:
+All existing diagnostics (`oauth:apple-native-start`, `oauth:apple-native-result`, `oauth:apple-idtoken-*`, `oauth:apple-native-threw`) and the cancel‑swallowing branch stay.
 
-```text
-deeplink:handoff-stored
-```
+## Verification steps (run after switching to build mode)
 
-That log is completely absent. Since the source code path currently does:
+1. `bun remove @capacitor-community/apple-sign-in`
+2. `bun add @capgo/capacitor-social-login`
+3. `bun run build`
+4. `npx cap sync ios`
+5. In Xcode: File → Packages → Reset Package Caches, then Resolve Package Versions. Confirm no `capacitor-swift-pm` version conflict.
+6. Build to a physical iOS device, tap “Continue with Apple”, complete flow, confirm Supabase session lands and app navigates to `returnTo`.
+7. `rg -n "apple-sign-in|SignInWithApple"` returns no matches outside lockfile history.
 
-```text
-deeplink:received
-→ Browser.close attempt
-→ storeCallbackHandoff(rawUrl)
-→ deeplink:handoff-stored
-→ navigate('/callback')
-```
+## Manual steps you (the user) must do
 
-…the absence of `deeplink:handoff-stored` is hard evidence that either:
+- **Apple Developer portal**: confirm the App ID `com.mi4labs.carnivorex` still has the **Sign In with Apple** capability enabled (already in `App.entitlements`, but the portal capability must match).
+- **Supabase → Auth → Providers → Apple**: ensure the iOS bundle ID `com.mi4labs.carnivorex` is listed under Client IDs (no change from today’s setup).
+- **App Store Connect**: no plugin‑specific config — just archive & upload once the Xcode build passes.
+- Open the Xcode workspace once after `cap sync ios` so SPM re‑resolves; if it still shows the cached failure, do Product → Clean Build Folder.
 
-1. the iOS build is running an older bundled web asset, or
-2. a different callback implementation is active at runtime, or
-3. the currently shown source was not what was packaged into the installed app.
+## User feedback:
 
-The `history.replaceState()` error is also consistent with the app still landing on:
+Amend the plan: Google Auth cannot be treated as out of scope because it has already been looping repeatedly in prior iOS attempts. After migrating Apple Sign In to @capgo/capacitor-social-login, you must also audit and verify the entire iOS auth flow for both Apple and Google, including initialization order, provider selection logic, callback/deep-link handling, nonce/state handling where applicable, Supabase signInWithIdToken() usage, post-login navigation, and any shared auth guards or retry logic. Do not assume Google is unaffected just because only Apple package code is being replaced. 
 
-```text
-capacitor://localhost/callback#access_token=...
-```
+Revise the implementation plan so it does not declare Google Auth out of scope. Google login has already looped across multiple prior iOS attempts, so after replacing @capacitor-community/apple-sign-in with @capgo/capacitor-social-login, you must run a full iOS auth regression for both Apple and Google. Identify any shared code paths, plugin initialization, deep-link/callback handling, Supabase token exchange logic, and redirect/navigation logic that could cause looping. Add instrumentation, fix any loop discovered, and only mark the task complete when both Apple and Google login succeed on iPhone and land in the authenticated app state without repeated redirects.
 
-instead of the intended clean `/callback` handoff route.
+## Out of scope
 
-## Full matching-file list from source search
-
-### `/callback` and `/auth/callback`
-
-- `src/App.tsx`
-  - Active routes:
-    - `/auth/callback` → `AuthCallback`
-    - `/callback` → `AuthCallback`
-- `src/contexts/AuthContext.tsx`
-  - Builds email redirect to `/auth/callback`.
-  - Detects `/auth/callback` and `/callback` so it does not sign out during verification.
-- `src/lib/oauthFlowState.ts`
-  - Comment only.
-- `src/lib/authCallbackGuard.ts`
-  - Normalizes native callback URLs into `/callback` or `/auth/callback`.
-- `src/hooks/useDeepLinks.ts`
-  - Native callback receiver and router.
-- `src/pages/Auth.tsx`
-  - Native Google OAuth uses `carnivorex://callback`.
-  - Web/email auth uses `https://app.carnivorex.app/auth/callback`.
-- `src/pages/AuthCallback.tsx`
-  - Active callback screen for both callback routes.
-
-### `setSession(`
-
-- `src/pages/AuthCallback.tsx`
-  - Relevant active native OAuth token branch:
-    - `supabase.auth.setSession({ access_token, refresh_token })`
-- `src/pages/ResetPassword.tsx`
-  - Reset-password only, not this Google callback loop.
-- `src/integrations/lovable/index.ts`
-  - Managed web OAuth helper. Not the current native iOS manual Browser flow shown in your log.
-- `src/lib/biometricAuth.ts`
-  - Comment only.
-- `src/contexts/AuthContext.tsx`
-  - React state setter named `setSession`, not `supabase.auth.setSession`.
-
-### `getLaunchUrl(`
-
-- `src/hooks/useDeepLinks.ts`
-  - Only source call.
-
-### `appUrlOpen`
-
-- `src/hooks/useDeepLinks.ts`
-  - Only active listener.
-- `src/App.tsx`, `src/pages/Auth.tsx`, `src/pages/AuthCallback.tsx`
-  - Comments only.
-
-### `replaceState(`
-
-- `src/pages/AuthCallback.tsx`
-  - Relevant callback cleanup call in `cleanAuthParamsFromUrl()`.
-- `src/pages/ResetPassword.tsx`
-  - Reset password only.
-- `src/pages/MealPlan.tsx`
-  - Meal-plan URL cleanup only.
-- `src/hooks/useDeepLinks.ts`
-  - Comment only.
-
-### `navigate("/callback"` / `navigate('/callback'`
-
-- No active literal matches found.
-- The active source uses:
-
-```text
-navigate(parsed.normalizedPath, { replace: true })
-```
-
-inside `src/hooks/useDeepLinks.ts`.
-
-## Active production code path according to source
-
-```text
-src/App.tsx
-  BrowserRouter
-    DeepLinkHandler
-      useDeepLinks()
-        CapApp.getLaunchUrl()
-        routeAuthUrl(...)
-        normalizeAuthCallbackUrl(...)
-        storeCallbackHandoff(rawUrl)
-        log: deeplink:handoff-stored
-        navigate('/callback')
-
-src/App.tsx routes
-  /callback
-    src/pages/AuthCallback.tsx
-      consumeCallbackHandoff()
-      finalize()
-      supabase.auth.setSession(...)
-      log: callback:setSession-success
-```
-
-## Plan to add hard-proof instrumentation only
-
-I will make no auth logic changes in this pass. I will only add proof markers.
-
-1. Add a single production-visible build constant:
-
-```text
-AUTH_FLOW_BUILD = v11-20260526-proof-path
-```
-
-2. Show that build value in all three places:
-
-- AuthVerify diagnostics header.
-- Startup AuthVerify diagnostics entry.
-- Temporary callback screen UI, visible while the callback screen is loading.
-
-3. Add this unmistakable log inside the exact active `useDeepLinks` auth-callback branch:
-
-```text
-PROOF_V11_USE_DEEPLINKS_ACTIVE_CALLBACK_BRANCH
-```
-
-with:
-
-- build value
-- source: `cold` or `live`
-- normalized path
-- fingerprint
-- current visible URL redacted
-- incoming callback URL redacted
-
-4. Add this unmistakable log immediately before the exact `AuthCallback` token `setSession()` branch:
-
-```text
-PROOF_V11_AUTHCALLBACK_SETSESSION_BRANCH
-```
-
-with:
-
-- build value
-- fingerprint
-- source URL redacted
-- access token fingerprint
-- refresh token fingerprint
-- current visible path/search/hash flags
-
-5. Add a startup marker early enough that even if the callback loop floods the 80-entry diagnostics buffer, the callback UI still visibly proves the build version.
-
-6. After this build, the interpretation will be binary:
-
-- If the callback UI or diagnostics show `AUTH_FLOW_BUILD = v11-20260526-proof-path`, then we know exactly which React source is active and can fix the loop from that path.
-- If they do not show v11 after a clean rebuild, the iOS app is packaging stale web assets or building the wrong target/copy.
-
-## Should you remove and re-add the iOS platform?
-
-Not yet.
-
-Based on the log, native deep linking is working and JavaScript is running. The problem is more likely stale packaged web assets or Xcode building a stale target/copy, not a broken iOS platform folder.
-
-If v11 does not appear after the proof instrumentation and a clean build, then I would recommend this order:
-
-1. targeted Capacitor/iOS cleanup and resync,
-2. verify `ios/App/App/public` contains the new built assets,
-3. clean Xcode DerivedData,
-4. only then consider removing/re-adding the iOS platform if the packaged assets still cannot be trusted.
-
-```xml
-<presentation-actions>
-  <presentation-open-history>View History</presentation-open-history>
-</presentation-actions>
-```
-
-```xml
-<presentation-actions>
-<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
-</presentation-actions>
-```
+- No changes to deep‑link/callback code, or the unrelated `AUTH_FLOW_BUILD v11` proof instrumentation already in place.
