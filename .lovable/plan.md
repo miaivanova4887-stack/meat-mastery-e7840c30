@@ -1,87 +1,87 @@
-Plan: I will not call this resolved until the native iPhone build shows the UI changes and Apple Sign In works on device.
+## Goal
 
-1. Establish proof from the current repository
+Resolve the runtime error:
 
-- Run and capture the exact requested outputs:
-  - `bun pm ls | grep -E "apple-sign-in|capacitor-social-login"`
-  - `npx cap sync ios`
-  - if sync output or native package state is suspicious, run `npx cap update ios`
-  - `grep -R "WKAppBoundDomains\|limitsNavigationsToAppBoundDomains" ios/App/App/Info.plist ios/App/App.xcodeproj ios/App/App 2>/dev/null`
-  - grep native project proof for:
-    - `CapgoCapacitorSocialLogin` in `ios/App/CapApp-SPM/Package.swift`
-    - `CapApp-SPM in Frameworks` in `ios/App/App.xcodeproj/project.pbxproj`
-    - `com.apple.developer.applesignin` in `ios/App/App/App.entitlements`
-    - `CODE_SIGN_ENTITLEMENTS = App/App.entitlements` in `project.pbxproj`
-    - `MainViewController` in storyboard and source
-- Current read-only findings already show:
-  - only `@capgo/capacitor-social-login@8.3.22` appears in `bun pm ls`
-  - no separate `apple-sign-in` package appears
-  - `WKAppBoundDomains` is not present in the currently inspected files
-  - the Apple entitlement exists
-  - the SPM package includes `CapgoCapacitorSocialLogin`
-  - the app target links the local `CapApp-SPM` framework
+```
+Unacceptable audience in id_token: [com.mi4labs.carnivorex]
+```
 
-2. Fix native Apple Sign In registration risk
+The native iOS Sign in with Apple flow is working (the plugin returns a valid Apple ID token). Supabase rejects it only because the Apple provider's **Authorized Client IDs** list does not yet include the iOS bundle ID `com.mi4labs.carnivorex`. This is a backend config change only — no code changes are needed.
 
-- Inspect the Capgo plugin iOS package after dependency install/sync to confirm its exact native class/product name is present.
-- Harden `ios/App/App/MainViewController.swift` so custom local plugins do not accidentally interfere with Capacitor’s normal plugin loading.
-- Keep the storyboard pointing at `MainViewController`.
-- Keep `ios/App/App/App.entitlements` with `com.apple.developer.applesignin` and verify the Xcode target uses that entitlements file.
-- If `WKAppBoundDomains` is still absent, explicitly document that it is not blocking plugin injection. If it exists after sync/update, either remove it or add the required Capacitor domains and `limitsNavigationsToAppBoundDomains` configuration correctly.
+## Why this happens
 
-3. Make the UI fixes impossible to miss in source diffs
+For native iOS Sign in with Apple, Apple signs the ID token with the `aud` claim set to your **iOS bundle ID** (`com.mi4labs.carnivorex`), not a web Services ID. Supabase's Apple provider verifies that `aud` against its list of authorized client IDs. If the bundle ID isn't in that list, the token is rejected even though it's perfectly valid.
 
-- `Profile → My Feed`:
-  - remove article `date` fields from the feed article objects in `src/pages/Profile.tsx`
-  - remove any article-date rendering path from Profile feed
-  - keep dates only for Progress Milestones if still desired, because those are not article dates
-  - show the exact diff after editing
-- `NewsFeed`:
-  - remove the now-unused `formatDate` helper so article date logic is gone from the daily feed page too
-  - show the exact diff after editing
-- `Recipe Coach`:
-  - change the composer to be fixed/sticky above the iOS safe area so it is visible in the installed app even if the WebView/keyboard viewport behaves differently
-  - keep the Pro/Elite gate behavior, but make the input bar visibly present with the locked placeholder for non-Pro users
-  - show the exact diff after editing
+You confirmed Apple sign-in is iOS-only — no web flow — so we only need the single bundle ID. No client-secret JWT, no Services ID, no `.p8` upload needed.
 
-4. Fix onboarding first-run behavior with versioning
+## Step-by-step (line-by-line)
 
-- Onboarding is currently stored in localStorage using:
-  - `carnivore-onboarding-complete-v2`
-  - `carnivore-onboarding-answers`
-  - `carnivore-onboarding-body`
-  - related profile keys like `carnivore-health-targets`, `carnivore-cuisines`, `carnivore-meals-per-day`
-- The `/` route gates via `isOnboardingComplete()` from `src/pages/Onboarding.tsx`, currently requiring both `carnivore-onboarding-complete-v2 === "true"` and `carnivore-onboarding-answers`.
-- A fresh iOS install not showing onboarding likely means the installed binary did not contain the gate change, or iOS/WebKit restored local storage from a previous install/device backup.
-- Add a versioned onboarding schema key, for example `carnivore-onboarding-schema-version`, and require it to match the current app onboarding version.
-- On first launch, if the schema version is missing/stale, clear only the onboarding completion keys and force `/onboarding`.
-- Update the onboarding tests to prove fresh install and stale-version cases return incomplete.
+### Step 1 — Open backend Apple provider settings
 
-5. Explain why the prior installed iOS build did not show the changes
+1. In the Lovable editor, click the **Open Backend** button below this plan (or: Cloud → Users → Auth Settings).
+2. In the backend UI, go to: **Authentication → Sign In Methods → Apple**.
+3. Make sure the **Enable Sign in with Apple** toggle is ON.
 
-- The likely reason is build pipeline mismatch: web source changed, but the native iOS app still packaged an older `dist`/Capacitor state because the local checkout was not rebuilt and synced before archiving/installing.
-- I will provide the exact local sequence for you to run after pulling:
-  - `git pull`
-  - `bun install`
-  - `bun run build`
-  - `npx cap sync ios`
-  - open Xcode, clean build folder, install to iPhone
-- I will also add a small visible/internal build proof marker if needed so we can confirm the installed iOS app is running the new web bundle, not an older archive.
+### Step 2 — Set Authorized Client IDs
 
-6. Verification before completion
+In the Apple provider form, find the field labeled **Client IDs** (also sometimes shown as "Authorized Client IDs" or "Bundle IDs").
 
-- Run the requested proof commands and paste their relevant output.
-- Show exact changed files and diffs for My Feed, Recipe Coach, onboarding, and native Apple Sign In wiring.
-- Provide device-test checklist:
-  - delete existing iPhone app
-  - install new build from Xcode
-  - confirm onboarding appears on first launch
-  - confirm Google login still succeeds
-  - confirm Apple Sign In opens native Apple sheet and returns a session
-  - confirm Profile → My Feed article cards have no dates
-  - confirm Recipe Coach input bar is visible
-- I will not mark the Apple item complete unless the iPhone test confirms Apple login works.
+Set it to exactly this value (no spaces, no quotes):
 
-&nbsp;
+```
+com.mi4labs.carnivorex
+```
 
-User feedback: Proceed with the proof-first plan, but do not change MainViewController.swift unless you can show a concrete registration defect there. For an installed Capacitor plugin, I want you to first prove package inclusion, cap sync ios, absence of WKAppBoundDomains, correct entitlements, and exact source diffs for the UI fixes. Only touch MainViewController.swift if you can show why the installed plugin is failing to register natively
+That's the entire field — one entry, your iOS bundle ID.
+
+### Step 3 — Leave web-only fields blank
+
+Because this is iOS-only:
+
+- **Secret Key (Client Secret JWT)**: leave blank (or untouched if a stale value is there — clearing it is fine and won't break native flow).
+- **Services ID / Web Client ID**: not needed.
+- **Team ID / Key ID / .p8**: not needed for native-only.
+
+If the UI requires the Client Secret field to be non-empty to save, you can still save with just the Client IDs populated — the secret is only used by Supabase's web OAuth redirect flow, which you are not using.
+
+### Step 4 — Save and confirm
+
+1. Click **Save** in the Apple provider form.
+2. Reload the page and re-open Apple settings to verify the saved value is exactly `com.mi4labs.carnivorex`.
+
+### Step 5 — Test on device
+
+No new build needed — this is a server-side config change that takes effect immediately.
+
+1. On the iPhone, fully close the CarnivoreX app (swipe up from app switcher).
+2. Reopen the app and tap **Sign in with Apple**.
+3. Complete the native Apple sheet.
+4. Expected result: app proceeds into the onboarding / home flow instead of throwing `Unacceptable audience`.
+
+## Final Apple provider values you should have in Supabase
+
+| Field | Value |
+|---|---|
+| Enable Sign in with Apple | ON |
+| Client IDs (Authorized Client IDs) | `com.mi4labs.carnivorex` |
+| Secret Key (Client Secret JWT) | (blank — native iOS only) |
+| Services ID | (not used) |
+| Team ID / Key ID / .p8 | (not used) |
+
+## If web Apple login is added later
+
+When/if you ever add Sign in with Apple on the web app, you'll then need to:
+
+1. Create an Apple **Services ID** in Apple Developer Console (e.g. `app.carnivorex.web`).
+2. Add it to **Client IDs** as a second comma-separated entry: `com.mi4labs.carnivorex,app.carnivorex.web`.
+3. Generate a client secret JWT from your `.p8` key and paste it into **Secret Key**.
+
+Not needed now.
+
+## What this plan does NOT change
+
+- No code files are edited.
+- No new build / archive / TestFlight upload is required.
+- No native plugin or entitlement changes.
+
+Ready to switch to build mode? There's nothing for me to code here — the fix is entirely in the backend UI per the steps above. Once you've saved the Client IDs field and tested on device, paste the result and I'll either confirm it's done or debug the next error.
