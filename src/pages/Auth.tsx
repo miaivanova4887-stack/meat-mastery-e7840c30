@@ -202,6 +202,9 @@ const Auth = () => {
         : "carnivorex://callback";
     logAuthDiag("oauth:click", { provider, platform, isNative });
     logAuthDiag("oauth:redirect-uri", { redirectTo });
+    if (provider === "google") {
+      logAuthDiag("oauth:google-start", { platform, redirectTo });
+    }
     try {
       // Native (android/ios): Chrome Custom Tabs (the default browser opened by
       // the OAuth helper) blocks 302 redirects to custom URL schemes. We must
@@ -224,9 +227,16 @@ const Auth = () => {
           errMessage: error?.message ?? null,
         });
         if (error || !data?.url) {
+          if (provider === "google") {
+            logAuthDiag("oauth:google-error", { stage: "signInWithOAuth", message: error?.message ?? "no url" });
+          }
           toast.error(error?.message || `${provider === "google" ? "Google" : "Apple"} sign-in failed`);
           setLoading(false);
           return;
+        }
+        if (provider === "google") {
+          logAuthDiag("oauth:google-url", { url: redactUrl(data.url) });
+          markGoogleOAuthInFlight();
         }
         logAuthDiag("oauth:browser-open", { url: redactUrl(data.url) });
         await Browser.open({ url: data.url, windowName: "_self" });
