@@ -26,7 +26,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ONBOARDING_COMPLETE_KEY = "carnivore-onboarding-complete-v2";
+const ONBOARDING_COMPLETE_KEY = "carnivore-onboarding-complete-v3";
 const RECONCILE_RETRY_DELAYS_MS = [500, 1500, 4000];
 
 /**
