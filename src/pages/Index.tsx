@@ -116,15 +116,33 @@ const Index = () => {
   const quoteText = t(`quotes.${profile.goal}.text`);
   const quoteAuthor = t(`quotes.${profile.goal}.author`);
 
-  const tip = profile.struggles.includes("sugar_cravings")
-    ? t("home.tips.sugar_cravings")
-    : profile.struggles.includes("low_energy")
-    ? t("home.tips.low_energy")
-    : profile.struggles.includes("digestive")
-    ? t("home.tips.digestive")
-    : profile.struggles.includes("social_pressure")
-    ? t("home.tips.social_pressure")
-    : null;
+  const tipKey: "sugar_cravings" | "low_energy" | "digestive" | "social_pressure" | null =
+    profile.struggles.includes("sugar_cravings")
+      ? "sugar_cravings"
+      : profile.struggles.includes("low_energy")
+      ? "low_energy"
+      : profile.struggles.includes("digestive")
+      ? "digestive"
+      : profile.struggles.includes("social_pressure")
+      ? "social_pressure"
+      : null;
+
+  const [dismissedTips, setDismissedTips] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("home.dismissedTips");
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const showTip = tipKey && !dismissedTips.includes(tipKey);
+  const tip = showTip ? t(`home.tips.${tipKey}`) : null;
+  const dismissTip = () => {
+    if (!tipKey) return;
+    const next = Array.from(new Set([...dismissedTips, tipKey]));
+    setDismissedTips(next);
+    try { localStorage.setItem("home.dismissedTips", JSON.stringify(next)); } catch {}
+  };
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
@@ -162,12 +180,17 @@ const Index = () => {
       {/* Content */}
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 space-y-5 -mt-2 relative z-10">
         {tip && (
-          <div className="ios-card px-4 py-3 animate-fade-in flex items-start gap-2.5">
+          <button
+            type="button"
+            onClick={dismissTip}
+            aria-label="Dismiss tip"
+            className="ios-card w-full text-left px-4 py-3 animate-fade-in flex items-start gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
+          >
             <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
               <span className="text-primary text-xs font-bold">!</span>
             </div>
             <p className="text-xs text-foreground/80 leading-relaxed">{tip}</p>
-          </div>
+          </button>
         )}
 
         {/* Feature Grid */}
