@@ -190,7 +190,7 @@ const RecipeCoach = () => {
   const lastAssistantIdx = messages.reduce((acc, m, i) => (m.role === "assistant" ? i : acc), -1);
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-background">
+    <div className="flex flex-col min-h-[100dvh] h-[100dvh] bg-background">
       {/* Header */}
       <div className="flex-shrink-0 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3 z-40" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">

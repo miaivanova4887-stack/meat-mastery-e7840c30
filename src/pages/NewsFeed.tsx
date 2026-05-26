@@ -205,7 +205,6 @@ const NewsFeed = () => {
                     <CatIcon size={10} />
                     {cat.label}
                   </Badge>
-                  <span className="text-[10px] text-muted-foreground">{formatDate(item.date)}</span>
                 </div>
 
                 <h2 className="text-sm font-semibold text-foreground leading-snug">{item.title}</h2>
