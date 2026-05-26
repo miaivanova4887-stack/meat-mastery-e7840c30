@@ -1,5 +1,11 @@
 {
   "appId": "com.mi4labs.carnivorex",
   "appName": "CarnivoreX",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    }
+  }
 }
