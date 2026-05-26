@@ -12,32 +12,32 @@ import {
 import {
   beginAuthCallback,
   endAuthCallback,
+  callbackFingerprint,
+  isCallbackCompleted,
+  markCallbackCompleted,
+  consumeCallbackHandoff,
+  clearCallbackHandoff,
 } from "@/lib/authCallbackGuard";
 
-// Module-level guard so the same OAuth token callback cannot run twice —
-// previously remounts / duplicate deep-link routings caused setSession() and
-// history.replaceState() to fire in a loop, eventually tripping iOS's
-// "history.replaceState() more than 100 times per 10 seconds" SecurityError.
-let lastFinalizedFp: string | null = null;
+// In-runtime guard ONLY — the source of truth is the persistent
+// isCallbackCompleted() check (localStorage with TTL).
 let isFinalizing = false;
-
-function callbackFingerprint(url: string): string {
-  const h = url.indexOf("#");
-  const q = url.indexOf("?");
-  if (h >= 0) return "h:" + url.slice(h + 1, h + 96);
-  if (q >= 0) return "q:" + url.slice(q + 1, q + 96);
-  return "u:" + url.slice(0, 96);
-}
+let cleanedOnce = false;
 
 function cleanAuthParamsFromUrl() {
-  // Only mutate history if there are still auth fragments to remove. This
-  // avoids the replaceState rate limit when finalize() runs repeatedly.
-  if (!window.location.hash && !window.location.search) return;
+  // Only ever attempt this once per runtime to stay well clear of the iOS
+  // "history.replaceState() more than 100 times per 10 seconds" limit.
+  if (cleanedOnce) return;
+  if (!window.location.hash && !window.location.search) {
+    cleanedOnce = true;
+    return;
+  }
   if (
     !/access_token|refresh_token|token_hash|[?&]code=/.test(
       window.location.hash + window.location.search,
     )
   ) {
+    cleanedOnce = true;
     return;
   }
   try {
@@ -45,6 +45,7 @@ function cleanAuthParamsFromUrl() {
   } catch {
     /* iOS replaceState rate limit — swallow */
   }
+  cleanedOnce = true;
 }
 
 /**
@@ -79,7 +80,10 @@ const AuthCallback = () => {
   const [showDiag, setShowDiag] = useState(false);
   const [diagText, setDiagText] = useState("");
   // Preserve the original URL so Retry still works after replaceState clears params.
-  const originalUrlRef = useRef<string>(window.location.href);
+  // Prefer the raw native URL handed off by useDeepLinks (token fragment is NOT
+  // written into the visible WebView address anymore), and fall back to
+  // window.location.href for the email/web flow.
+  const originalUrlRef = useRef<string>(consumeCallbackHandoff() ?? window.location.href);
 
   const looksLikeOtpCode = (s: string | undefined): boolean =>
     !!s && /^[0-9]{4,8}$/.test(s);
@@ -125,12 +129,15 @@ const AuthCallback = () => {
       logAuthDiag("callback:skip-already-finalizing", { fp });
       return;
     }
-    if (lastFinalizedFp === fp) {
-      logAuthDiag("callback:skip-duplicate-fp", { fp });
+    // Persistent guard — survives WebView/runtime resets.
+    if (isCallbackCompleted(fp)) {
+      logAuthDiag("callback:skip-persistent-completed", { fp });
+      clearCallbackHandoff();
+      setStatus("verified");
+      setTimeout(() => navigate("/", { replace: true }), 50);
       return;
     }
     isFinalizing = true;
-    lastFinalizedFp = fp;
     setStatus("working");
     setErrorMsg(null);
     logAuthDiag("callback:start", {
@@ -177,6 +184,8 @@ const AuthCallback = () => {
           hasUser: Boolean(ssData.user),
           userVerified: ssData.user?.email_confirmed_at ?? null,
         });
+        markCallbackCompleted(fp);
+        clearCallbackHandoff();
         cleanAuthParamsFromUrl();
         setStatus("verified");
         toast.success("Signed in — welcome to CarnivoreX");
@@ -207,6 +216,8 @@ const AuthCallback = () => {
           errMessage: exErr?.message ?? null,
         });
         if (!exErr && exData?.session) {
+          markCallbackCompleted(fp);
+          clearCallbackHandoff();
           cleanAuthParamsFromUrl();
           setStatus("verified");
           toast.success("Signed in — welcome to CarnivoreX");
@@ -353,8 +364,10 @@ const AuthCallback = () => {
 
   const handleRetry = () => {
     logAuthDiag("callback:retry");
-    // Allow finalize() to re-run for the same URL on explicit user retry.
-    lastFinalizedFp = null;
+    // On explicit user retry, bypass the in-runtime "already finalizing"
+    // flag. The persistent completed-fingerprint guard is only set after
+    // a real success, so retry remains effective for stuck callbacks.
+    isFinalizing = false;
     void finalize();
   };
 

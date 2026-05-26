@@ -1,64 +1,100 @@
-## Root cause
+Do I know what the issue is? Yes.
 
-Google is no longer failing because the redirect URI is invalid. The callback is now arriving and `setSession()` succeeds, but the app processes the same `carnivorex://callback#access_token=...` launch URL repeatedly. `useDeepLinks()` calls `CapApp.getLaunchUrl()` every time the React tree remounts/re-renders through the callback flow, and the iOS launch URL remains available, so the app navigates to `/callback` again and again. `AuthCallback` then repeatedly calls `window.history.replaceState()`, eventually triggering iOS WebKit’s limit: `Attempt to use history.replaceState() more than 100 times per 10 seconds`.
+Root cause audit
 
-Apple is separately failing because the JS imports `@capacitor-community/apple-sign-in`, but the native iOS SPM package does not include `CapacitorCommunityAppleSignIn`. That matches the device toast: `"SignInWithApple" plugin is not implemented on ios`. The dependency exists in `package.json`, but it has not been synced into `ios/App/CapApp-SPM/Package.swift`.
+- The active repeat path is `src/hooks/useDeepLinks.ts`, specifically:
+  - `src/hooks/useDeepLinks.ts:114-120`: `CapApp.getLaunchUrl()` is still consumed on every fresh WebView/JS bootstrap.
+  - `src/hooks/useDeepLinks.ts:101-105`: every consumed launch URL writes the token fragment back into the WebView URL with `history.replaceState(..., /callback#access_token...)`, then navigates to the callback route.
+  - `src/pages/AuthCallback.tsx:121-185`: every callback mount then sees the same hash tokens and calls `supabase.auth.setSession()` again.
+- The repeated diagnostics prove the previous guard is not surviving the actual failure mode:
+  - `oauth:browser-close-error` repeats. In current source, `browserCloseAttempted` at `src/hooks/useDeepLinks.ts:34` should allow this only once per JS runtime.
+  - `deeplink:launch-url` repeats, while `deeplink:launch-url-skip-already-processed` never appears. In current source, `launchUrlProcessed` at `src/hooks/useDeepLinks.ts:30` should suppress later calls in the same JS runtime.
+  - `callback:start` and `callback:setSession-success` repeat, while `callback:skip-duplicate-fp` never appears. In current source, `lastFinalizedFp` at `src/pages/AuthCallback.tsx:21` should suppress repeat finalization in the same JS runtime.
+- Therefore, this is not just a React route remount. A normal React remount would keep the module-level variables alive. The logs show those variables are reset between loop iterations, meaning the WebView JavaScript runtime is being reinitialized or the shipped JS bundle is not the one containing the guards.
+- The exact line that still causes repeat processing after each reset is `src/hooks/useDeepLinks.ts:116` (`CapApp.getLaunchUrl()`), because Capacitor/iOS continues returning the same original OAuth launch URL. Since the one-shot flag is only module memory, it becomes `false` again whenever the runtime reloads, so the same launch URL is re-consumed and re-routed.
 
-## Plan
+Why the previous dedupe did not stop it
 
-1. Harden native deep-link handling against duplicate callbacks
-  - Add a small module-level dedupe cache in `src/hooks/useDeepLinks.ts`.
-  - Process `CapApp.getLaunchUrl()` only once per app runtime, not on every callback remount.
-  - Ignore duplicate auth callback URLs with the same token/hash for a short TTL.
-  - Avoid calling `Browser.close()` repeatedly when no browser window is active.
-2. Make `AuthCallback` idempotent
-  - Add a callback fingerprint guard so the same OAuth token callback cannot run `setSession()` multiple times.
-  - Replace direct repeated `history.replaceState()` calls with a safe helper that only cleans the URL if it still contains auth params.
-  - End the callback guard before returning on every successful branch.
-3. Fix the missing iOS Apple native plugin registration
-  - Update `ios/App/CapApp-SPM/Package.swift` to include `@capacitor-community/apple-sign-in` as an SPM dependency and target product.
-  - This is the concrete cause of `SignInWithApple plugin is not implemented on ios`.
-4. Update the build fingerprint text
-  - Update the dev-only auth flow tag in `src/main.tsx` so future device logs prove the new callback dedupe build is installed.
+- It is implemented only with module-level variables:
+  - `launchUrlProcessed`
+  - `lastHandledAuthFp`
+  - `browserCloseAttempted`
+  - `lastFinalizedFp`
+  - `isFinalizing`
+- Those are valid for duplicate events inside one JS runtime, but they do not survive a WebView reload, native bridge re-bootstrap, or loading a stale native bundle. Your log cadence and repeated `Browser.close()` attempts prove the loop crosses that boundary.
+- The callback is also being sanitized too late. `useDeepLinks` writes `/callback#access_token...` into the WebView URL before `AuthCallback` can process it. If the runtime restarts before or during cleanup, the app boots again on a token-bearing callback URL and the loop repeats.
 
-## Files to change
+Router/auth listener findings
 
+- Router setup:
+  - `src/App.tsx:147` mounts `DeepLinkHandler` inside `BrowserRouter`.
+  - `src/App.tsx:171-172` maps both `/auth/callback` and `/callback` to `AuthCallback`.
+  - There is no alternate callback route found that bypasses `AuthCallback`.
+- Auth-state listener:
+  - `src/contexts/AuthContext.tsx:107-124` updates session/user and does not navigate to `/callback`.
+  - `src/contexts/AuthContext.tsx:126-141` initial `getSession()` also does not navigate to `/callback`.
+  - So there is no auth-state listener redirecting back into `/callback`.
+- Other `CapApp.getLaunchUrl()` usage:
+  - Search found only `src/hooks/useDeepLinks.ts:116`.
+- Custom-scheme conversion:
+  - `src/lib/authCallbackGuard.ts` normalizes `carnivorex://callback` to `/callback`.
+  - `src/hooks/useDeepLinks.ts:101-105` is the code that converts the native callback into the WebView route `capacitor://localhost/callback#...` by calling `history.replaceState` + React `navigate`.
+
+Build tag confirmation
+
+- The source contains `authFlow=v9-callback-dedupe` at `src/main.tsx:16`.
+- The diagnostics you pasted do not include it.
+- That alone is not conclusive because the tag is currently logged only when `import.meta.env.DEV` is true, so a normal production iOS build will not emit it. But the absence of the new dedupe tags (`deeplink:launch-url-skip-already-processed`, `deeplink:dedupe-skip`, `callback:skip-duplicate-fp`) plus repeated `Browser.close()` attempts strongly indicates the active runtime is either resetting between attempts or not loading the intended guarded bundle.
+
+Corrected plan
+
+1. Move callback dedupe from module memory to persistent, pre-route storage
+  - Add a shared guard in `src/lib/authCallbackGuard.ts` that fingerprints the OAuth callback and records it in `sessionStorage`/`localStorage` before routing.
+  - Use the access/refresh token fingerprint, not the whole URL origin, so `carnivorex://callback#...` and `capacitor://localhost/callback#...` resolve to the same processed callback.
+  - Keep a short TTL so a genuinely new login attempt still works.
+2. Stop re-routing already-consumed launch URLs at the deep-link layer
+  - In `src/hooks/useDeepLinks.ts`, before `history.replaceState` or `navigate`, call the persistent guard.
+  - If already consumed, log a new unmistakable tag such as `deeplink:persistent-consumed-skip` and return.
+  - This fixes the real repeated line: `CapApp.getLaunchUrl()` may still return the stale URL, but it will no longer be allowed to route it into `/callback` again.
+3. Stop writing token fragments into browser history more than necessary
+  - Change `src/hooks/useDeepLinks.ts:101-105` so it does not call `window.history.replaceState` with `/callback#access_token...`.
+  - Route React to `/callback` using router state or a temporary storage handoff for the raw callback URL.
+  - This prevents the WebView address from being left at `capacitor://localhost/callback#access_token...` if anything restarts mid-flow.
+4. Make `AuthCallback` idempotent across runtime resets
+  - In `src/pages/AuthCallback.tsx`, read the raw callback from the shared handoff first, falling back to `window.location.href` only if needed.
+  - Before `setSession()`, check the same persistent fingerprint guard.
+  - After `setSession-success`, mark the fingerprint completed before any toast/navigation cleanup.
+  - If a completed callback is seen again, skip `setSession()` and go to `/` without touching `history.replaceState`.
+5. Add production-visible verification tags
+  - Move the auth-flow build tag out of the `import.meta.env.DEV` block or add a redacted `logAuthDiag("build:auth-flow", { version: "v10-persistent-callback-guard" })` on startup.
+  - This will make the copied AuthVerify diagnostics prove whether the intended code path is active in a production iOS build.
+
+Exact files to change
+
+- `src/lib/authCallbackGuard.ts`
+  - Add persistent fingerprint helpers and callback handoff helpers.
 - `src/hooks/useDeepLinks.ts`
+  - Gate `CapApp.getLaunchUrl()`/`appUrlOpen` handling with persistent dedupe before routing.
+  - Remove the pre-callback token-fragment `history.replaceState` call.
+  - Store the raw callback URL for `AuthCallback` instead of pushing the full token hash into the visible WebView URL.
 - `src/pages/AuthCallback.tsx`
+  - Use the stored raw callback URL.
+  - Persistently skip already-completed callbacks.
+  - Mark completion immediately after successful session installation.
+  - Avoid repeated `replaceState` calls.
 - `src/main.tsx`
-- `ios/App/CapApp-SPM/Package.swift`
-
-## Manual steps after implementation
-
-- Run `npm install` if needed, then sync native files: `npx cap sync ios`.
-- Open Xcode and verify the App target still has Sign In with Apple capability enabled.
-- Rebuild/reinstall the iOS app; this fix requires a new native build because the iOS SPM plugin list changes.
-
-## Expected result
-
-- Google: one callback is processed, one session is installed, then the app navigates away without the `replaceState` crash.
-- Apple: the native plugin is present on iOS, so the flow reaches Apple’s authorization sheet instead of throwing `plugin is not implemented on ios`.
-
-Status update from device test:
-
-Google OAuth is working through to callback:setSession-success.
-
-The remaining Google issue is a callback loop causing repeated deeplink/callback handling and a history.replaceState() rate-limit crash.
-
-Apple still fails with: "SignInWithApple" plugin is not implemented on ios.
-
-Please fix:
-
-Prevent Google callback from being handled more than once.
-
-Ensure the Apple native plugin is actually linked into the iOS build.
-
-Return:
-
-exact root cause of the callback loop,
-
-exact root cause of the Apple plugin issue,
-
-exact files changed,
-
-and whether I need to fully delete/reinstall the iOS app before retesting.
+  - Add a production-visible auth-flow diagnostic tag, because the current `authFlow=v9-callback-dedupe` log is dev-only and will not reliably appear in iOS production diagnostics.
+- Approved. Proceed with this corrected plan.
+  Two implementation notes:
+  Do not rely solely on module-level memory for callback dedupe.
+  Do not rely solely on fragile web storage long-term; if using sessionStorage/localStorage, keep it as a short-lived callback handoff/TTL guard only and make the flow resilient if storage is unavailable or cleared.
+  Please implement:
+  persistent callback fingerprint guard,
+  no token fragment written into visible WebView URL before callback completes,
+  clean handoff from deep link to /callback,
+  idempotent AuthCallback,
+  production-visible auth-flow version tag.
+  Return:
+  exact files changed,
+  final auth-flow version tag,
+  whether I must delete the app again before retesting.
