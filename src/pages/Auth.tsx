@@ -5,6 +5,7 @@ import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-communi
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
+import { markGoogleOAuthInFlight } from "@/lib/oauthFlowState";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
