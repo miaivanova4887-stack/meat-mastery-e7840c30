@@ -1,7 +1,7 @@
 import { ArrowLeft, Mail, Lock, User, Eye, EyeOff, Fingerprint } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
-import { SignInWithApple, type SignInWithAppleOptions } from "@capacitor-community/apple-sign-in";
+import { SocialLogin } from "@capgo/capacitor-social-login";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
@@ -133,24 +133,34 @@ const Auth = () => {
     // Required: com.apple.developer.applesignin entitlement + the iOS Bundle ID
     // (com.mi4labs.carnivorex) added to Supabase Auth → Providers → Apple → Client IDs.
     if (provider === "apple" && platform === "ios") {
-      logAuthDiag("oauth:click", { provider, platform, isNative, flow: "native-apple" });
+      logAuthDiag("oauth:click", { provider, platform, isNative, flow: "native-apple-capgo" });
       try {
+        // Idempotent: SocialLogin.initialize can be called multiple times.
+        // On iOS the Apple provider needs no clientId (uses the app's
+        // com.apple.developer.applesignin entitlement + bundle ID).
+        await SocialLogin.initialize({
+          apple: { clientId: "com.mi4labs.carnivorex" },
+        });
+
         const rawNonce = crypto.randomUUID();
         const hashedNonce = await sha256Hex(rawNonce);
-        const opts: SignInWithAppleOptions = {
-          clientId: "com.mi4labs.carnivorex",
-          // redirectURI is required by the plugin but unused on native (no web round-trip).
-          redirectURI: "https://app.carnivorex.app/auth/callback",
-          scopes: "email name",
-          state: rawNonce,
-          nonce: hashedNonce,
-        };
-        logAuthDiag("oauth:apple-native-start", { clientId: opts.clientId });
-        const result = await SignInWithApple.authorize(opts);
-        const idToken = result.response?.identityToken;
+
+        logAuthDiag("oauth:apple-native-start", { clientId: "com.mi4labs.carnivorex" });
+        const res = await SocialLogin.login({
+          provider: "apple",
+          options: {
+            scopes: ["email", "name"],
+            nonce: hashedNonce,
+            state: rawNonce,
+          },
+        });
+
+        // Narrow to the apple branch of the discriminated union.
+        const apple = res.provider === "apple" ? res.result : null;
+        const idToken = apple?.idToken ?? null;
         logAuthDiag("oauth:apple-native-result", {
           hasIdToken: Boolean(idToken),
-          hasEmail: Boolean(result.response?.email),
+          hasEmail: Boolean(apple?.profile?.email),
         });
         if (!idToken) {
           toast.error("Apple sign-in failed: no identity token returned");
@@ -180,7 +190,7 @@ const Auth = () => {
           message: errMessage,
         });
         // User cancels are normal — swallow without a toast.
-        if (!/cancel/i.test(errMessage) && errCode !== "ERR_CANCELED") {
+        if (!/cancel/i.test(errMessage) && errCode !== "ERR_CANCELED" && errCode !== 1001) {
           toast.error(`Apple sign-in failed: ${errMessage || errCode || "unknown error"}`);
         }
         setLoading(false);
