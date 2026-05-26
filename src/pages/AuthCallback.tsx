@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -355,6 +353,8 @@ const AuthCallback = () => {
 
   const handleRetry = () => {
     logAuthDiag("callback:retry");
+    // Allow finalize() to re-run for the same URL on explicit user retry.
+    lastFinalizedFp = null;
     void finalize();
   };
 
