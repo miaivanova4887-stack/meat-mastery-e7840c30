@@ -145,6 +145,7 @@ const Auth = () => {
           state: rawNonce,
           nonce: hashedNonce,
         };
+        logAuthDiag("oauth:apple-native-start", { clientId: opts.clientId });
         const result = await SignInWithApple.authorize(opts);
         const idToken = result.response?.identityToken;
         logAuthDiag("oauth:apple-native-result", {
@@ -152,10 +153,11 @@ const Auth = () => {
           hasEmail: Boolean(result.response?.email),
         });
         if (!idToken) {
-          toast.error("Apple sign-in failed");
+          toast.error("Apple sign-in failed: no identity token returned");
           setLoading(false);
           return;
         }
+        logAuthDiag("oauth:apple-idtoken-start", { tokenLen: idToken.length });
         const { error } = await supabase.auth.signInWithIdToken({
           provider: "apple",
           token: idToken,
@@ -170,14 +172,16 @@ const Auth = () => {
         toast.success(t("auth.welcomeBackToast"));
         navigate(returnTo, { replace: true });
       } catch (err: any) {
+        const errMessage = err?.message ?? String(err);
+        const errCode = err?.code ?? null;
         logAuthDiag("oauth:apple-native-threw", {
           name: err?.name ?? null,
-          message: err?.message ?? String(err),
+          code: errCode,
+          message: errMessage,
         });
         // User cancels are normal — swallow without a toast.
-        const msg = String(err?.message ?? err ?? "");
-        if (!/cancel/i.test(msg)) {
-          toast.error("Apple sign-in failed");
+        if (!/cancel/i.test(errMessage) && errCode !== "ERR_CANCELED") {
+          toast.error(`Apple sign-in failed: ${errMessage || errCode || "unknown error"}`);
         }
         setLoading(false);
       }
