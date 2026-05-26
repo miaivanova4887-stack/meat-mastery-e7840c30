@@ -9,6 +9,7 @@ import {
   isAuthCallbackInProgress,
   normalizeAuthCallbackUrl,
 } from "@/lib/authCallbackGuard";
+import { consumeGoogleOAuthInFlight } from "@/lib/oauthFlowState";
 
 /**
  * Wires native deep-link handling for Android App Links + custom scheme.
