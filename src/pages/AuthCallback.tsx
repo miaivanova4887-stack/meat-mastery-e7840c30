@@ -12,32 +12,32 @@ import {
 import {
   beginAuthCallback,
   endAuthCallback,
+  callbackFingerprint,
+  isCallbackCompleted,
+  markCallbackCompleted,
+  consumeCallbackHandoff,
+  clearCallbackHandoff,
 } from "@/lib/authCallbackGuard";
 
-// Module-level guard so the same OAuth token callback cannot run twice —
-// previously remounts / duplicate deep-link routings caused setSession() and
-// history.replaceState() to fire in a loop, eventually tripping iOS's
-// "history.replaceState() more than 100 times per 10 seconds" SecurityError.
-let lastFinalizedFp: string | null = null;
+// In-runtime guard ONLY — the source of truth is the persistent
+// isCallbackCompleted() check (localStorage with TTL).
 let isFinalizing = false;
-
-function callbackFingerprint(url: string): string {
-  const h = url.indexOf("#");
-  const q = url.indexOf("?");
-  if (h >= 0) return "h:" + url.slice(h + 1, h + 96);
-  if (q >= 0) return "q:" + url.slice(q + 1, q + 96);
-  return "u:" + url.slice(0, 96);
-}
+let cleanedOnce = false;
 
 function cleanAuthParamsFromUrl() {
-  // Only mutate history if there are still auth fragments to remove. This
-  // avoids the replaceState rate limit when finalize() runs repeatedly.
-  if (!window.location.hash && !window.location.search) return;
+  // Only ever attempt this once per runtime to stay well clear of the iOS
+  // "history.replaceState() more than 100 times per 10 seconds" limit.
+  if (cleanedOnce) return;
+  if (!window.location.hash && !window.location.search) {
+    cleanedOnce = true;
+    return;
+  }
   if (
     !/access_token|refresh_token|token_hash|[?&]code=/.test(
       window.location.hash + window.location.search,
     )
   ) {
+    cleanedOnce = true;
     return;
   }
   try {
@@ -45,6 +45,7 @@ function cleanAuthParamsFromUrl() {
   } catch {
     /* iOS replaceState rate limit — swallow */
   }
+  cleanedOnce = true;
 }
 
 /**
