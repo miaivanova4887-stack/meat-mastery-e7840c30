@@ -754,9 +754,7 @@ const Profile = () => {
                             <CatIcon size={10} />
                             {item.catLabel}
                           </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-muted-foreground">{formatDate(item.date)}</span>
-                            <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                          <ChevronDown size={14} className={`text-muted-foreground transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
                           </div>
                         </div>
                         <h3 className="text-sm font-semibold text-foreground leading-snug">{item.title}</h3>

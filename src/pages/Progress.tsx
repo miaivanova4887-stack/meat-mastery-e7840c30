@@ -90,9 +90,9 @@ const Progress = () => {
 
         {/* Category dropdown — always visible */}
         <Select value={category} onValueChange={(v) => setCategory(v as ProgressCategory)}>
-          <SelectTrigger className="w-full bg-card border-border h-12 text-base font-semibold">
-            <SelectValue>
-              <span className="flex items-center gap-2">
+          <SelectTrigger className="w-full bg-card border-border h-12 text-base font-semibold [&>span]:line-clamp-none [&>span]:overflow-visible">
+            <SelectValue asChild>
+              <span className="flex items-center gap-2 whitespace-nowrap">
                 <span>{meta.icon}</span> {meta.label}
               </span>
             </SelectValue>
