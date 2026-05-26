@@ -5,6 +5,8 @@
  * Stores REDACTED data only — never raw tokens.
  */
 
+import { AUTH_FLOW_BUILD } from "./authFlowBuild";
+
 const STORAGE_KEY = "auth-diagnostics-log-v1";
 const MAX_ENTRIES = 80;
 
@@ -72,6 +74,7 @@ export function clearAuthDiag(): void {
 export function formatAuthDiag(): string {
   const lines: string[] = [];
   lines.push(`== AuthVerify diagnostics (${memoryLog.length} entries) ==`);
+  lines.push(`AUTH_FLOW_BUILD=${AUTH_FLOW_BUILD}`);
   lines.push(`ua=${navigator.userAgent}`);
   lines.push(`now=${new Date().toISOString()}`);
   lines.push(`url=${redactUrl(window.location.href)}`);

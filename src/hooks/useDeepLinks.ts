@@ -5,6 +5,7 @@ import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
+import { AUTH_FLOW_BUILD } from "@/lib/authFlowBuild";
 import {
   isAuthCallbackInProgress,
   normalizeAuthCallbackUrl,
@@ -109,6 +110,14 @@ export function useDeepLinks() {
         // process tokens WITHOUT us first writing them into the visible
         // WebView address. This eliminates the replaceState loop.
         storeCallbackHandoff(rawUrl);
+        logAuthDiag("PROOF_V11_USE_DEEPLINKS_ACTIVE_CALLBACK_BRANCH", {
+          build: AUTH_FLOW_BUILD,
+          source,
+          normalizedPath: parsed.normalizedPath,
+          fp,
+          currentVisibleUrl: redactUrl(window.location.href),
+          incomingUrl: redactUrl(rawUrl),
+        });
         logAuthDiag("deeplink:handoff-stored", { fp, normalizedPath: parsed.normalizedPath });
 
         // Navigate to the clean callback path — no hash, no search, no
