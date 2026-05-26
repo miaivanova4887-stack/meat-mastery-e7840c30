@@ -184,6 +184,8 @@ const AuthCallback = () => {
           hasUser: Boolean(ssData.user),
           userVerified: ssData.user?.email_confirmed_at ?? null,
         });
+        markCallbackCompleted(fp);
+        clearCallbackHandoff();
         cleanAuthParamsFromUrl();
         setStatus("verified");
         toast.success("Signed in — welcome to CarnivoreX");
@@ -214,6 +216,8 @@ const AuthCallback = () => {
           errMessage: exErr?.message ?? null,
         });
         if (!exErr && exData?.session) {
+          markCallbackCompleted(fp);
+          clearCallbackHandoff();
           cleanAuthParamsFromUrl();
           setStatus("verified");
           toast.success("Signed in — welcome to CarnivoreX");
@@ -360,8 +364,10 @@ const AuthCallback = () => {
 
   const handleRetry = () => {
     logAuthDiag("callback:retry");
-    // Allow finalize() to re-run for the same URL on explicit user retry.
-    lastFinalizedFp = null;
+    // On explicit user retry, bypass the in-runtime "already finalizing"
+    // flag. The persistent completed-fingerprint guard is only set after
+    // a real success, so retry remains effective for stuck callbacks.
+    isFinalizing = false;
     void finalize();
   };
 
