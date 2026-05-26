@@ -1,115 +1,64 @@
-# Fix iOS Google + Apple sign-in
+## Root cause
 
-## Root causes
+Google is no longer failing because the redirect URI is invalid. The callback is now arriving and `setSession()` succeeds, but the app processes the same `carnivorex://callback#access_token=...` launch URL repeatedly. `useDeepLinks()` calls `CapApp.getLaunchUrl()` every time the React tree remounts/re-renders through the callback flow, and the iOS launch URL remains available, so the app navigates to `/callback` again and again. `AuthCallback` then repeatedly calls `window.history.replaceState()`, eventually triggering iOS WebKit’s limit: `Attempt to use history.replaceState() more than 100 times per 10 seconds`.
 
-### Google on iOS — "Safari cannot open the page because the address is invalid"
+Apple is separately failing because the JS imports `@capacitor-community/apple-sign-in`, but the native iOS SPM package does not include `CapacitorCommunityAppleSignIn`. That matches the device toast: `"SignInWithApple" plugin is not implemented on ios`. The dependency exists in `package.json`, but it has not been synced into `ios/App/CapApp-SPM/Package.swift`.
 
-`src/pages/Auth.tsx` (line 197) passes `redirectTo: "carnivorex://callback"` to Supabase for all native platforms, then opens the resulting Google OAuth URL in the in-app browser. When Google finishes auth and 302-redirects to `carnivorex://callback#access_token=…`, iOS looks up which app owns the `carnivorex` scheme and finds **none** — `ios/App/App/Info.plist` has **no `CFBundleURLTypes` entry** registering the scheme. Safari/SFSafariViewController then renders the literal text "Safari cannot open the page because the address is invalid." Android works because the scheme is declared in `AndroidManifest.xml`; the iOS side was never wired.
+## Plan
 
-### Apple on iOS — generic "Apple sign-in failed" toast
+1. Harden native deep-link handling against duplicate callbacks
+  - Add a small module-level dedupe cache in `src/hooks/useDeepLinks.ts`.
+  - Process `CapApp.getLaunchUrl()` only once per app runtime, not on every callback remount.
+  - Ignore duplicate auth callback URLs with the same token/hash for a short TTL.
+  - Avoid calling `Browser.close()` repeatedly when no browser window is active.
+2. Make `AuthCallback` idempotent
+  - Add a callback fingerprint guard so the same OAuth token callback cannot run `setSession()` multiple times.
+  - Replace direct repeated `history.replaceState()` calls with a safe helper that only cleans the URL if it still contains auth params.
+  - End the callback guard before returning on every successful branch.
+3. Fix the missing iOS Apple native plugin registration
+  - Update `ios/App/CapApp-SPM/Package.swift` to include `@capacitor-community/apple-sign-in` as an SPM dependency and target product.
+  - This is the concrete cause of `SignInWithApple plugin is not implemented on ios`.
+4. Update the build fingerprint text
+  - Update the dev-only auth flow tag in `src/main.tsx` so future device logs prove the new callback dedupe build is installed.
 
-Two issues stack:
+## Files to change
 
-1. `App.entitlements` has `com.apple.developer.applesignin` in the file, but the **Xcode capability has not been added** to the App target in the project (no `SystemCapabilities` block for Apple Sign In in `project.pbxproj`). Without enabling the capability in Xcode and re-signing, iOS rejects `ASAuthorizationAppleIDProvider` at runtime — the plugin's `authorize()` throws, lands in the `catch` block (line 171), and the catch handler shows the hard-coded string `"Apple sign-in failed"` **without** including `err.message`, so the real reason ("The operation couldn't be completed. (com.apple.AuthenticationServices.AuthorizationError error 1000.)" or similar) is invisible.
-2. Even after #1 is fixed, `supabase.auth.signInWithIdToken({ provider: "apple", token, nonce })` will reject with `"Unacceptable audience in id_token: [com.mi4labs.carnivorex]"` unless the iOS Bundle ID is added to Supabase Auth → Providers → Apple → **Client IDs** (comma-separated list, in addition to the Services ID if any).
+- `src/hooks/useDeepLinks.ts`
+- `src/pages/AuthCallback.tsx`
+- `src/main.tsx`
+- `ios/App/CapApp-SPM/Package.swift`
 
-## Code changes
+## Manual steps after implementation
 
-### 1. `ios/App/App/Info.plist` — register the custom scheme
+- Run `npm install` if needed, then sync native files: `npx cap sync ios`.
+- Open Xcode and verify the App target still has Sign In with Apple capability enabled.
+- Rebuild/reinstall the iOS app; this fix requires a new native build because the iOS SPM plugin list changes.
 
-Add inside `<dict>`:
+## Expected result
 
-```xml
-<key>CFBundleURLTypes</key>
-<array>
-  <dict>
-    <key>CFBundleURLName</key>
-    <string>com.mi4labs.carnivorex.oauth</string>
-    <key>CFBundleURLSchemes</key>
-    <array>
-      <string>carnivorex</string>
-    </array>
-  </dict>
-</array>
-```
+- Google: one callback is processed, one session is installed, then the app navigates away without the `replaceState` crash.
+- Apple: the native plugin is present on iOS, so the flow reaches Apple’s authorization sheet instead of throwing `plugin is not implemented on ios`.
 
-This single change fixes the Google "invalid address" error. The existing `useDeepLinks` hook already parses `carnivorex://callback#...` correctly via `normalizeAuthCallbackUrl`, so no JS routing change is needed.
+Status update from device test:
 
-### 2. `src/pages/Auth.tsx` — surface real errors + add the requested diagnostic tags
+Google OAuth is working through to callback:setSession-success.
 
-- In the Apple native branch, change the catch fallback from `"Apple sign-in failed"` to `err.message || err.code || "Apple sign-in failed"` (skip when message matches `/cancel/i`).
-- In the same branch, also log `oauth:apple-native-start` before `SignInWithApple.authorize`, and `oauth:apple-idtoken-start` before `signInWithIdToken`.
-- In the Google/native branch, add `oauth:google-start` (before `signInWithOAuth`), `oauth:google-url` (with redacted URL before `Browser.open`), `oauth:google-callback` (emit from the deep-link handler when path is `/callback` and provider was Google — gate on a small module flag set when Google is launched), and ensure the existing failure path emits `oauth:google-error` with `error.message`.
+The remaining Google issue is a callback loop causing repeated deeplink/callback handling and a history.replaceState() rate-limit crash.
 
-No business-logic changes — only logging and the toast message fallback.
+Apple still fails with: "SignInWithApple" plugin is not implemented on ios.
 
-## Manual dashboard steps (you must do these)
+Please fix:
 
-**Xcode (required for Apple):**
+Prevent Google callback from being handled more than once.
 
-1. Open `ios/App/App.xcworkspace` in Xcode.
-2. Select the `App` target → Signing & Capabilities → `+ Capability` → **Sign In with Apple**. Save. Commit the `project.pbxproj` change.
+Ensure the Apple native plugin is actually linked into the iOS build.
 
-**Apple Developer portal (required for Apple):**
+Return:
 
-- App ID `com.mi4labs.carnivorex` → enable **Sign In with Apple** capability → regenerate the provisioning profile.
+exact root cause of the callback loop,
 
-**Supabase dashboard (required for Apple):**
+exact root cause of the Apple plugin issue,
 
-- Auth → Providers → Apple → **Client IDs**: add `com.mi4labs.carnivorex` (comma-separate if a Services ID is already listed). No Secret Key / Team ID / Key ID needed for the native iOS-only flow.
+exact files changed,
 
-**Supabase dashboard (required for Google on iOS):**
-
-- Auth → URL Configuration → Redirect URLs: confirm `carnivorex://callback` is in the allowlist (it should already be, per the inline comment in `Auth.tsx`; verify it's actually saved).
-
-## Rebuild
-
-Yes, a full native rebuild is required after the Info.plist change and the Xcode capability addition:
-
-```
-git pull
-npm install
-npx cap sync ios
-cd ios/App && pod install && cd ../..
-npx cap open ios
-```
-
-In Xcode: Product → Clean Build Folder → Run on device.
-
-## Verification (after rebuild)
-
-Watch device console for:
-
-- Google: `oauth:google-start` → `oauth:google-url` → (after Google redirect) `deeplink:appUrlOpen` with `carnivorex://callback#…` → `oauth:google-callback` → session set.
-- Apple: `oauth:apple-native-start` → `oauth:apple-native-result {hasIdToken:true}` → `oauth:apple-idtoken-start` → no error → navigate to `returnTo`.
-- If Apple still fails, the toast will now show the **actual** plugin/Supabase error message instead of the generic string, which tells us whether the issue is the Xcode capability or the Supabase Client IDs config.
-
-## Files changed
-
-- `ios/App/App/Info.plist`
-- `src/pages/Auth.tsx`
-- `src/hooks/useDeepLinks.ts` (only to emit `oauth:google-callback` when a Google flow is in progress)
-
-Approved. Proceed with the code changes exactly as planned for:
-
-ios/App/App/Info.plist
-
-src/pages/Auth.tsx
-
-src/hooks/useDeepLinks.ts
-
-Two notes:
-
-Do not include CocoaPods steps in the rebuild instructions — this project is using SPM.
-
-After code changes, I will manually do:
-
-Xcode → add Sign In with Apple capability to the App target,
-
-Apple Developer → enable Sign In with Apple on App ID and refresh provisioning,
-
-Supabase → add com.mi4labs.carnivorex to Apple Client IDs,
-
-Supabase → verify carnivorex://callback is in Redirect URLs.
-
-Please proceed and then confirm the final files changed and whether any other iOS plist or scheme registration was touched.
+and whether I need to fully delete/reinstall the iOS app before retesting.

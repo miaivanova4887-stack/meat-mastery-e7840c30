@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -15,6 +13,39 @@ import {
   beginAuthCallback,
   endAuthCallback,
 } from "@/lib/authCallbackGuard";
+
+// Module-level guard so the same OAuth token callback cannot run twice —
+// previously remounts / duplicate deep-link routings caused setSession() and
+// history.replaceState() to fire in a loop, eventually tripping iOS's
+// "history.replaceState() more than 100 times per 10 seconds" SecurityError.
+let lastFinalizedFp: string | null = null;
+let isFinalizing = false;
+
+function callbackFingerprint(url: string): string {
+  const h = url.indexOf("#");
+  const q = url.indexOf("?");
+  if (h >= 0) return "h:" + url.slice(h + 1, h + 96);
+  if (q >= 0) return "q:" + url.slice(q + 1, q + 96);
+  return "u:" + url.slice(0, 96);
+}
+
+function cleanAuthParamsFromUrl() {
+  // Only mutate history if there are still auth fragments to remove. This
+  // avoids the replaceState rate limit when finalize() runs repeatedly.
+  if (!window.location.hash && !window.location.search) return;
+  if (
+    !/access_token|refresh_token|token_hash|[?&]code=/.test(
+      window.location.hash + window.location.search,
+    )
+  ) {
+    return;
+  }
+  try {
+    window.history.replaceState(null, "", window.location.pathname);
+  } catch {
+    /* iOS replaceState rate limit — swallow */
+  }
+}
 
 /**
  * Accepted callback formats (any one is enough to install a session):
@@ -88,9 +119,20 @@ const AuthCallback = () => {
   };
 
   const finalize = async () => {
+    const sourceUrl = originalUrlRef.current;
+    const fp = callbackFingerprint(sourceUrl);
+    if (isFinalizing) {
+      logAuthDiag("callback:skip-already-finalizing", { fp });
+      return;
+    }
+    if (lastFinalizedFp === fp) {
+      logAuthDiag("callback:skip-duplicate-fp", { fp });
+      return;
+    }
+    isFinalizing = true;
+    lastFinalizedFp = fp;
     setStatus("working");
     setErrorMsg(null);
-    const sourceUrl = originalUrlRef.current;
     logAuthDiag("callback:start", {
       url: redactUrl(sourceUrl),
       hashHasAccessToken: window.location.hash.includes("access_token"),
@@ -135,10 +177,7 @@ const AuthCallback = () => {
           hasUser: Boolean(ssData.user),
           userVerified: ssData.user?.email_confirmed_at ?? null,
         });
-        if (Capacitor.isNativePlatform()) {
-          void Browser.close().catch(() => { /* noop */ });
-        }
-        window.history.replaceState(null, "", window.location.pathname);
+        cleanAuthParamsFromUrl();
         setStatus("verified");
         toast.success("Signed in — welcome to CarnivoreX");
         setTimeout(() => navigate("/", { replace: true }), 400);
@@ -168,7 +207,7 @@ const AuthCallback = () => {
           errMessage: exErr?.message ?? null,
         });
         if (!exErr && exData?.session) {
-          window.history.replaceState(null, "", window.location.pathname);
+          cleanAuthParamsFromUrl();
           setStatus("verified");
           toast.success("Signed in — welcome to CarnivoreX");
           setTimeout(() => navigate("/", { replace: true }), 600);
@@ -186,7 +225,7 @@ const AuthCallback = () => {
           error: refErr?.message ?? null,
         });
         if (refreshed.session?.user?.email_confirmed_at) {
-          window.history.replaceState(null, "", window.location.pathname);
+          cleanAuthParamsFromUrl();
           setStatus("verified");
           toast.success("Email verified — welcome to CarnivoreX");
           setTimeout(() => navigate("/", { replace: true }), 600);
@@ -232,7 +271,7 @@ const AuthCallback = () => {
           });
           setStatus("verified");
           toast.success("Email verified — welcome to CarnivoreX");
-          window.history.replaceState(null, "", window.location.pathname);
+          cleanAuthParamsFromUrl();
           setTimeout(() => navigate("/", { replace: true }), 600);
           return;
         }
@@ -241,7 +280,7 @@ const AuthCallback = () => {
           logAuthDiag("callback:verified-no-session");
           setStatus("verified");
           toast.success("Email verified — please sign in to continue");
-          window.history.replaceState(null, "", window.location.pathname);
+          cleanAuthParamsFromUrl();
           setTimeout(() => navigate("/auth", { replace: true }), 800);
           return;
         }
@@ -259,7 +298,7 @@ const AuthCallback = () => {
       if (refreshed.session?.user?.email_confirmed_at) {
         setStatus("verified");
         toast.success("Email verified — welcome to CarnivoreX");
-        window.history.replaceState(null, "", window.location.pathname);
+        cleanAuthParamsFromUrl();
         setTimeout(() => navigate("/", { replace: true }), 600);
         return;
       }
@@ -280,6 +319,7 @@ const AuthCallback = () => {
       setErrorMsg(msg);
       setStatus("error");
     } finally {
+      isFinalizing = false;
       endAuthCallback();
     }
   };
@@ -313,6 +353,8 @@ const AuthCallback = () => {
 
   const handleRetry = () => {
     logAuthDiag("callback:retry");
+    // Allow finalize() to re-run for the same URL on explicit user retry.
+    lastFinalizedFp = null;
     void finalize();
   };
 

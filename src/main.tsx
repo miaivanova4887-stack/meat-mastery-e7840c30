@@ -13,7 +13,7 @@ if (import.meta.env.DEV) {
   console.info(
     `[BuildInfo] fingerprint=${window.__BUILD_FINGERPRINT__} ts=${
       typeof __BUILD_TIMESTAMP__ === "string" ? __BUILD_TIMESTAMP__ : "unknown"
-    } authFlow=v8-normalized-callback-parser authVerifyTag=callback:setSession-start`
+    } authFlow=v9-callback-dedupe authVerifyTag=callback:setSession-start`
   );
 }
 
