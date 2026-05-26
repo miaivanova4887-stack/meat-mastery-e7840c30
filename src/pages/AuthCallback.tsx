@@ -80,7 +80,10 @@ const AuthCallback = () => {
   const [showDiag, setShowDiag] = useState(false);
   const [diagText, setDiagText] = useState("");
   // Preserve the original URL so Retry still works after replaceState clears params.
-  const originalUrlRef = useRef<string>(window.location.href);
+  // Prefer the raw native URL handed off by useDeepLinks (token fragment is NOT
+  // written into the visible WebView address anymore), and fall back to
+  // window.location.href for the email/web flow.
+  const originalUrlRef = useRef<string>(consumeCallbackHandoff() ?? window.location.href);
 
   const looksLikeOtpCode = (s: string | undefined): boolean =>
     !!s && /^[0-9]{4,8}$/.test(s);
@@ -126,12 +129,15 @@ const AuthCallback = () => {
       logAuthDiag("callback:skip-already-finalizing", { fp });
       return;
     }
-    if (lastFinalizedFp === fp) {
-      logAuthDiag("callback:skip-duplicate-fp", { fp });
+    // Persistent guard — survives WebView/runtime resets.
+    if (isCallbackCompleted(fp)) {
+      logAuthDiag("callback:skip-persistent-completed", { fp });
+      clearCallbackHandoff();
+      setStatus("verified");
+      setTimeout(() => navigate("/", { replace: true }), 50);
       return;
     }
     isFinalizing = true;
-    lastFinalizedFp = fp;
     setStatus("working");
     setErrorMsg(null);
     logAuthDiag("callback:start", {
