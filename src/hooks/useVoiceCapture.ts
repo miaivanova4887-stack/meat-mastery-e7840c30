@@ -517,11 +517,13 @@ export const useVoiceCapture = ({
   }, [language, onError, onPermissionBlocked, setTranscriptSafe]);
 
   const startListening = useCallback(async () => {
+    console.info("[VoiceLog] startListening listening=", listening, "isNative=", isNative);
     if (listening) return true;
 
     try {
       return isNative ? await startNativeListening() : await startWebListening();
     } catch (error) {
+      console.error("[VoiceLog] startListening outer catch err=", String(error), "stack=", (error as any)?.stack);
       if (messageIncludesPermissionBlock(error)) {
         onPermissionBlocked?.();
       } else {
