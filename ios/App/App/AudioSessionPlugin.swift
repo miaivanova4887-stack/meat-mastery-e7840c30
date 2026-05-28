@@ -2,24 +2,37 @@
 //  AudioSessionPlugin.swift
 //  CarnivoreX
 //
-//  Custom Capacitor plugin that exposes AVAudioSession reset helpers to JS.
+//  Custom Capacitor plugin that exposes AVAudioSession + microphone
+//  permission helpers and a non-backed-up install marker to JS.
 //
 //  Why this exists:
-//  The capacitor-community/speech-recognition plugin starts an
-//  AVAudioEngine + SFSpeechRecognizer per session. On rapid successive
-//  `start` calls the previous audio session isn't fully torn down, which
-//  leaves SFSpeechRecognizer in a state where it opens the mic (iOS
-//  orange dot) but emits no partial results and eventually rejects with
-//  "no-speech". Calling `resetAudioSession` between sessions forces a
-//  deactivate + reactivate of the shared audio session, which reliably
-//  unblocks the 2nd+ speech session on iPhone 17 Pro (and older).
+//  1. The capacitor-community/speech-recognition plugin only requests
+//     SFSpeechRecognizer authorization on iOS — NOT the microphone
+//     permission. Without an explicit mic prompt, CarnivoreX never
+//     appears in Settings -> Privacy & Security -> Microphone and the
+//     recognizer fails silently on the 1st use. We expose
+//     `requestMicrophonePermission` / `checkMicrophonePermission` so JS
+//     can force the OS dialog before starting recognition.
+//  2. AVAudioEngine + SFSpeechRecognizer per-session occasionally fails
+//     to fully release between rapid sessions. `resetAudioSession`
+//     deactivates + reactivates the shared audio session to recover.
+//  3. iOS WKWebView localStorage is backed up to iCloud, which means
+//     onboarding flags can survive a "fresh" install on a restored
+//     device. `readInstallMarker` / `writeInstallMarker` store a tiny
+//     file in NSCachesDirectory (which iOS NEVER backs up) so JS can
+//     detect a genuinely fresh install and clear stale flags.
 //
 //  Exposed methods:
 //    AudioSession.resetAudioSession({ delayMs?: number })
 //    AudioSession.deactivate()
-//
-//  Both resolve with { ok: true } on success; errors are rejected with
-//  the underlying OSStatus code.
+//    AudioSession.requestMicrophonePermission()
+//      -> { status: "granted" | "denied" | "undetermined" }
+//    AudioSession.checkMicrophonePermission()
+//      -> { status: "granted" | "denied" | "undetermined" }
+//    AudioSession.readInstallMarker()
+//      -> { present: boolean, value?: string }
+//    AudioSession.writeInstallMarker({ value: string })
+//      -> { ok: true }
 //
 
 import Foundation
@@ -32,7 +45,11 @@ public class AudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "AudioSession"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "resetAudioSession", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "deactivate", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "deactivate", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestMicrophonePermission", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "checkMicrophonePermission", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "readInstallMarker", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "writeInstallMarker", returnType: CAPPluginReturnPromise)
     ]
 
     /// Deactivate + reactivate the shared audio session. Optionally sleeps
@@ -75,6 +92,64 @@ public class AudioSessionPlugin: CAPPlugin, CAPBridgedPlugin {
             } catch {
                 call.reject("Failed to deactivate audio session: \(error.localizedDescription)")
             }
+        }
+    }
+
+    // MARK: - Microphone permission
+
+    private func recordPermissionString() -> String {
+        let perm = AVAudioSession.sharedInstance().recordPermission
+        switch perm {
+        case .granted: return "granted"
+        case .denied: return "denied"
+        case .undetermined: return "undetermined"
+        @unknown default: return "undetermined"
+        }
+    }
+
+    @objc func checkMicrophonePermission(_ call: CAPPluginCall) {
+        call.resolve(["status": recordPermissionString()])
+    }
+
+    /// Forces the iOS microphone permission dialog. After the user
+    /// responds (or if a previous response was remembered) iOS adds
+    /// CarnivoreX to Settings -> Privacy & Security -> Microphone.
+    @objc func requestMicrophonePermission(_ call: CAPPluginCall) {
+        AVAudioSession.sharedInstance().requestRecordPermission { granted in
+            call.resolve(["status": granted ? "granted" : "denied"])
+        }
+    }
+
+    // MARK: - Install marker (non-backed-up)
+
+    private func markerURL() -> URL? {
+        let fm = FileManager.default
+        guard let cache = fm.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            return nil
+        }
+        return cache.appendingPathComponent("carnivorex-install-marker")
+    }
+
+    @objc func readInstallMarker(_ call: CAPPluginCall) {
+        guard let url = markerURL(), FileManager.default.fileExists(atPath: url.path) else {
+            call.resolve(["present": false])
+            return
+        }
+        let value = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+        call.resolve(["present": true, "value": value])
+    }
+
+    @objc func writeInstallMarker(_ call: CAPPluginCall) {
+        guard let url = markerURL() else {
+            call.reject("Cache directory unavailable")
+            return
+        }
+        let value = call.getString("value") ?? ""
+        do {
+            try value.write(to: url, atomically: true, encoding: .utf8)
+            call.resolve(["ok": true])
+        } catch {
+            call.reject("Failed to write install marker: \(error.localizedDescription)")
         }
     }
 }

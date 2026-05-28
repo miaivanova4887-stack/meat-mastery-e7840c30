@@ -5,6 +5,7 @@ import "./i18n";
 import "./lib/firebase"; // Initialize Firebase services
 import { logAuthDiag } from "./lib/authDiagnostics";
 import { AUTH_FLOW_BUILD } from "./lib/authFlowBuild";
+import { ensureInstallMarker } from "./lib/installMarker";
 
 // Production-visible: always recorded in AuthVerify diagnostics so the
 // copied log proves which auth-flow build is actually running on device.
@@ -25,4 +26,11 @@ if (import.meta.env.DEV) {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Detect a genuine fresh install on iOS (where WKWebView localStorage
+// is iCloud-backed) and clear stale onboarding flags BEFORE React
+// mounts, so the Index gate evaluates the corrected state on first
+// paint. Awaited deliberately — a few extra ms at cold start is worth
+// the correctness guarantee. No-op on Android / web.
+void ensureInstallMarker().finally(() => {
+  createRoot(document.getElementById("root")!).render(<App />);
+});
