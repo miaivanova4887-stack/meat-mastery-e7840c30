@@ -10,6 +10,8 @@ import { SpeechRecognition } from "@capacitor-community/speech-recognition";
 interface AudioSessionPluginShape {
   resetAudioSession: (options?: { delayMs?: number }) => Promise<{ ok: boolean }>;
   deactivate: () => Promise<{ ok: boolean }>;
+  checkMicrophonePermission: () => Promise<{ status: "granted" | "denied" | "undetermined" }>;
+  requestMicrophonePermission: () => Promise<{ status: "granted" | "denied" | "undetermined" }>;
 }
 const AudioSession = registerPlugin<AudioSessionPluginShape>("AudioSession");
 
@@ -199,6 +201,28 @@ export const useVoiceCapture = ({
     // time to fully release + reinstate before we register new listeners
     // reduces the overlap window significantly.
     if (Capacitor.getPlatform() === "ios") {
+      // STEP 1: Force the iOS microphone permission dialog BEFORE doing
+      // any audio-session work. The @capacitor-community/speech-recognition
+      // plugin only requests SFSpeechRecognizer authorization, not the
+      // microphone — without an explicit mic prompt CarnivoreX never gets
+      // listed under Settings -> Privacy & Security -> Microphone and the
+      // recognizer fails silently on the 1st use.
+      try {
+        const beforeMic = await AudioSession.checkMicrophonePermission();
+        console.info("[VoiceLog] iOS mic permission status before request =", beforeMic?.status);
+        if (beforeMic?.status !== "granted") {
+          console.info("[VoiceLog] iOS mic permission request invoked");
+          const reqMic = await AudioSession.requestMicrophonePermission();
+          console.info("[VoiceLog] iOS mic permission result =", reqMic?.status);
+          if (reqMic?.status !== "granted") {
+            onPermissionBlocked?.();
+            return false;
+          }
+        }
+      } catch (err) {
+        console.warn("[VoiceLog] iOS mic permission check failed", err);
+      }
+
       try {
         await AudioSession.resetAudioSession({ delayMs: 500 });
       } catch (err) {
@@ -229,8 +253,11 @@ export const useVoiceCapture = ({
     }
 
     const permission = await SpeechRecognition.checkPermissions();
+    console.info("[VoiceLog] SR permission status before request =", permission);
     if (!permissionGranted(permission)) {
+      console.info("[VoiceLog] SR permission request invoked");
       const requested = await SpeechRecognition.requestPermissions();
+      console.info("[VoiceLog] SR permission result =", requested);
       if (!permissionGranted(requested)) {
         onPermissionBlocked?.();
         return false;
