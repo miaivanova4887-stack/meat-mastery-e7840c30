@@ -9,14 +9,14 @@ index 0000000..a1b2c3d
 +
 +let package = Package(
 +    name: "CapacitorCommunitySpeechRecognition",
-+    platforms: [.iOS(.v14)],
++    platforms: [.iOS(.v15)],
 +    products: [
 +        .library(
 +            name: "CapacitorCommunitySpeechRecognition",
 +            targets: ["CapacitorCommunitySpeechRecognition"])
 +    ],
 +    dependencies: [
-+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "7.0.0")
++        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.3.0")
 +    ],
 +    targets: [
 +        .target(
