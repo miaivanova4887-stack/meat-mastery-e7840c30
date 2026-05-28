@@ -1,15 +1,23 @@
-## Goal
-Make the personalized tip card on the Home page (e.g. "Facing pushback? Check out Success Stories…") disappear when the user taps it.
+## Profile → Invite a Friend: Native Share Sheet
 
-## Change
-File: `src/pages/Index.tsx`
+Update `src/pages/Profile.tsx` to use the native Capacitor share sheet with CarnivoreX branding.
 
-1. Compute which tip key is active (`sugar_cravings` | `low_energy` | `digestive` | `social_pressure` | `null`) instead of just the translated string.
-2. Add a `dismissedTips` state, initialized from `localStorage` (key: `home.dismissedTips`, JSON array of struggle keys). This keeps a tap-dismissed tip from reappearing on next visit / re-render.
-3. Only render the tip card when the active tip key exists AND it's not in `dismissedTips`.
-4. Make the card itself tappable (wrap in `<button>` or add `onClick` to the existing card div) — on tap, append the key to `dismissedTips` and persist to `localStorage`. Add `cursor-pointer` and `aria-label="Dismiss tip"`.
-5. Optional polish: brief fade-out via existing `animate-fade-in` / opacity transition before removal (keep it minimal — just unmount is fine).
+### Changes
+- Import `Share` from `@capacitor/share` and `Capacitor` from `@capacitor/core`.
+- Replace the current per-channel button grid with a single "Invite a Friend" button that triggers a unified share handler.
+- Update brand references from "Vore" to "CarnivoreX".
 
-## Out of scope
-- No new translations, no backend persistence, no changes to other personalized surfaces (greeting, subtitle, quotes, feature ordering).
-- No design rework of the card.
+### Share handler logic
+1. On native (`Capacitor.isNativePlatform()`): call `Share.share({ title, text, url, dialogTitle })` — keep `text` and `url` as separate fields for iOS.
+2. On web with Web Share API: `navigator.share({ title, text, url })`.
+3. Fallback: copy `text + "\n" + url` to clipboard with a toast confirmation.
+
+### Shared payload
+- title: `CarnivoreX`
+- text: `Join me on CarnivoreX — recipes, tracking, coaching, and carnivore tools in one app.`
+- url: `https://carnivorex.app` (TODO comment to swap for App Store URL when available)
+
+### Out of scope
+- No copy/translation changes beyond the brand rename and share text above.
+- No design overhaul of the Profile page.
+- `@capacitor/share` is already added to package.json from the prior step; user will need `npx cap sync` after pulling.
