@@ -18,6 +18,15 @@ npm install
 echo "== Syncing iOS native project =="
 npx cap sync ios
 
+echo "== Evidence: capacitor-swift-pm version in patched speech-recognition Package.swift =="
+SR_PKG="$ROOT_DIR/node_modules/@capacitor-community/speech-recognition/Package.swift"
+if [ -f "$SR_PKG" ]; then
+  grep -n "capacitor-swift-pm" "$SR_PKG" || echo "(no capacitor-swift-pm line found)"
+else
+  echo "WARNING: $SR_PKG not found — patch-package may not have run."
+fi
+echo "(Expected: exact: \"8.3.4\" — matching CapApp-SPM)"
+
 echo "== Clearing project-local SwiftPM/Xcode package state =="
 # Capacitor 6+ uses an xcodeproj-only setup (no .xcworkspace).
 # SwiftPM state lives under the xcodeproj's embedded workspace.
