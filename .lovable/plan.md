@@ -1,21 +1,33 @@
 ## Plan
 
-Fix the iOS SwiftPM resolver failure caused by `patch-package` silently not re-applying after `git pull`, and prevent future drift between the auto-generated `CapApp-SPM/Package.swift` and the patched speech-recognition package.
+Fix the iOS SwiftPM resolver by forcing `speech-recognition` to pin the SAME exact `capacitor-swift-pm` version that `CapApp-SPM` requires after `npx cap sync ios`.
 
 ## Root cause (evidence)
 
-Latest repair output proved that `node_modules/@capacitor-community/speech-recognition/Package.swift` still contained the upstream `from: "7.0.0"` line — the patch never applied locally. Meanwhile `npx cap sync ios` regenerates `ios/App/CapApp-SPM/Package.swift` pinned to `exact: "8.3.4"` (matching the installed `@capacitor/ios`). Two incompatible SwiftPM constraints on the same package = unresolvable graph.
+Latest output:
+
+```text
+CapApp-SPM:          capacitor-swift-pm exact: "8.3.4"
+speech-recognition: capacitor-swift-pm exact: "8.3.0"
+```
+
+`exact: "8.3.0"` is NOT compatible with `exact: "8.3.4"`. The previous repair accepted any 8.x as "compatible" — it must accept only the exact version `CapApp-SPM` pins.
 
 ## What changed
 
-1. `patches/@capacitor-community+speech-recognition+7.0.1.patch`
-   - Generated `Package.swift` now uses `from: "8.3.0"` instead of `exact: "8.3.4"`. `from: "8.3.0"` allows any 8.x ≥ 8.3.0, so it stays compatible no matter which exact 8.x version `CapApp-SPM` pins on future `cap sync` runs.
+1. `scripts/repair-ios-spm.sh`
+   - Runs `npm install` + `npx patch-package` + `npx cap sync ios` first.
+   - Parses the exact `capacitor-swift-pm` version from the freshly-generated `CapApp-SPM/Package.swift`.
+   - Force-rewrites `node_modules/@capacitor-community/speech-recognition/Package.swift` to pin `exact: "<that same version>"`.
+   - Asserts both files match before invoking `xcodebuild`. Hard-aborts otherwise.
+   - Prints a clear evidence block:
+     ```text
+     CapApp-SPM requires:          8.3.4
+     speech-recognition requires: 8.3.4
+     OK: SwiftPM versions match.
+     ```
 
-2. `scripts/repair-ios-spm.sh`
-   - Explicitly runs `npx patch-package` after `npm install` (does not rely on the postinstall hook firing).
-   - Verifies the speech-recognition Package.swift; if patch-package still didn’t apply, an inline `sed` fallback rewrites the `capacitor-swift-pm` line to `from: "8.3.0"`.
-   - Hard-aborts before `xcodebuild` if the file is not on a compatible 8.x reference — so we never reach the resolver with a known-broken graph.
-   - Prints both `CapApp-SPM/Package.swift` and speech-recognition `Package.swift` `capacitor-swift-pm` lines as evidence right before resolve.
+2. `patches/@capacitor-community+speech-recognition+7.0.1.patch` — unchanged; the script is now the source of truth for the SwiftPM version because `cap sync ios` can regenerate `CapApp-SPM` with a different pin at any time.
 
 ## After implementation, run
 
@@ -29,9 +41,12 @@ chmod +x ./scripts/repair-ios-spm.sh
 ./scripts/repair-ios-spm.sh
 ```
 
-Expected evidence in the output:
-- `OK: speech-recognition is on capacitor-swift-pm 8.x (compatible with CapApp-SPM).`
-- `== Evidence before resolve ==` shows the speech-recognition line as `from: "8.3.0"` (or `exact: "8.x"`), and CapApp-SPM as `exact: "8.3.x"`.
-- xcodebuild resolves without the "could not resolve" error.
+Expected evidence before Xcode resolves:
 
-If a different package error appears, paste the printed `Resolver output saved` log path contents.
+```text
+CapApp-SPM requires:          8.3.4
+speech-recognition requires: 8.3.4
+OK: SwiftPM versions match.
+```
+
+Then `xcodebuild -resolvePackageDependencies` should succeed (no more `8.3.4` vs `8.3.0` error). If a different error appears, paste the printed `Resolver output saved` log file contents.
