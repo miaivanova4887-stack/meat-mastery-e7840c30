@@ -160,8 +160,6 @@ const Pricing = () => {
         "Full macro history",
         "Community Feed (post & comment)",
         "AI Carnivore Coach chat",
-        "Ad-free experience",
-        "Data export (CSV)",
         "Personalized recommendations",
         "Coaching calls ($99.99/session)",
       ],
@@ -173,7 +171,6 @@ const Pricing = () => {
       features: [
         "Everything in Pro",
         "AI Meal Planner",
-        "1 coaching call/month included",
         "Priority support",
         "Early access to new features",
         "Hyper-personalized recommendations",
