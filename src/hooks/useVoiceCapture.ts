@@ -339,23 +339,35 @@ export const useVoiceCapture = ({
     setListening(true);
 
     try {
-      const createStartPromise = (languageOverride?: string) =>
-        SpeechRecognition.start({
+      const createStartPromise = (languageOverride?: string) => {
+        console.info(
+          "[VoiceLog] recorder start invoked platform=",
+          platform,
+          "language=",
+          languageOverride ?? "(default)",
+        );
+        return SpeechRecognition.start({
           ...(languageOverride ? { language: languageOverride } : {}),
           maxResults: 5,
           partialResults: usePartialResults,
           popup: usePopup,
           prompt: "Speak now",
         });
+      };
 
       const startPromise = (async () => {
         try {
-          return await createStartPromise(language);
+          const r = await createStartPromise(language);
+          console.info("[VoiceLog] recorder started");
+          return r;
         } catch (error) {
           const message = String(error || "").toLowerCase();
           if (message.includes("language")) {
-            return await createStartPromise();
+            const r = await createStartPromise();
+            console.info("[VoiceLog] recorder started (fallback language)");
+            return r;
           }
+          console.error("[VoiceLog] recorder failed err=", error);
           throw error;
         }
       })();
