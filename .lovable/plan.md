@@ -1,85 +1,100 @@
-# Fix: iOS SpeechRecognition plugin not implemented
+## Root Cause
 
-## Exact root cause
+The Xcode build fails with 8 "Missing package product" errors (CapacitorApp, CapacitorBrowser, CapacitorCommunityTextToSpeech, CapacitorPushNotifications, CapacitorShare, CapgoCapacitorSocialLogin, RevenuecatPurchasesCapacitor, CapacitorNativeSettings) — even though those plugins ARE declared in `ios/App/CapApp-SPM/Package.swift`.
 
-`@capacitor-community/speech-recognition@7.0.1` ships an iOS class declared as:
+The reason all 8 show as missing is a cascade failure: when SwiftPM cannot resolve **one** local package dependency, it aborts the whole graph and every product in `CapApp-SPM` is reported missing.
+
+The failing package is `@capacitor-community/speech-recognition@7.0.1`:
+
+```
+$ ls node_modules/@capacitor-community/speech-recognition/
+CapacitorCommunitySpeechRecognition.podspec  LICENSE  README.md  android  dist  ios  package.json
+```
+
+There is **no `Package.swift`** in that plugin. v7.0.1 only ships a CocoaPods podspec. But `CapApp-SPM/Package.swift` references it as an SPM dependency:
 
 ```swift
-@objc(SpeechRecognition)
-public class SpeechRecognition: CAPPlugin { ... }
+.package(name: "CapacitorCommunitySpeechRecognition",
+         path: "../../../node_modules/@capacitor-community/speech-recognition"),
 ```
 
-It does **not** conform to `CAPBridgedPlugin` and does **not** declare `identifier` / `jsName` / `pluginMethods`. Capacitor 7 with SPM (this project uses `capacitor-swift-pm` 8.3.0 via `ios/App/CapApp-SPM/Package.swift`) auto-registers plugins **only** when they conform to `CAPBridgedPlugin`. Result: the class is compiled and linked, but never registered with the bridge, so every JS call resolves to `"SpeechRecognition" plugin is not implemented on ios` — exactly what the logs show at `step= available`.
+SwiftPM can't load the manifest → entire dependency graph fails → every other plugin is reported as a "Missing package product". The earlier `CAPBridgedPlugin` patch is correct and needed, but it does nothing until SPM can actually compile the plugin.
 
-Secondary checks (all clean, no action needed):
+## Fix (Smallest Safe Change)
 
-- `@capacitor-community/speech-recognition` is present in `package.json` (`^7.0.1`).
-- iOS SPM package already references it in `ios/App/CapApp-SPM/Package.swift` and `android/app/capacitor.build.gradle` references the Android module — install + sync wiring is fine.
-- `Info.plist` contains `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`; no `WKAppBoundDomains` key is present, so domain restriction is not blocking plugin injection.
-- The custom `AudioSessionPlugin` works because it explicitly conforms to `CAPBridgedPlugin` and is registered in `MainViewController.capacitorDidLoad` — confirming auto-registration works for compliant plugins and fails for this one specifically.
+Add a `Package.swift` to the plugin via `patch-package` so it persists across `npm install`. The patch will also remove the old `Plugin.m`/`Plugin.h` from the SPM build (they call the legacy `CAP_PLUGIN` macro which is incompatible with `CAPBridgedPlugin` and would cause duplicate registration if compiled twice).
 
-## Fix (smallest safe change)
+### Files changed
 
-Extend the existing `patch-package` patch `patches/@capacitor-community+speech-recognition+7.0.1.patch` to also modify `node_modules/@capacitor-community/speech-recognition/ios/Plugin/Plugin.swift`:
+1. **`patches/@capacitor-community+speech-recognition+7.0.1.patch`** — extend the existing patch with a third hunk that creates `node_modules/@capacitor-community/speech-recognition/Package.swift` with this content:
 
-1. Change the class declaration to:
-  ```swift
-   public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
-       public let identifier = "SpeechRecognition"
-       public let jsName = "SpeechRecognition"
-       public let pluginMethods: [CAPPluginMethod] = [
-           CAPPluginMethod(name: "available", returnType: CAPPluginReturnPromise),
-           CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
-           CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
-           CAPPluginMethod(name: "isListening", returnType: CAPPluginReturnPromise),
-           CAPPluginMethod(name: "getSupportedLanguages", returnType: CAPPluginReturnPromise),
-           CAPPluginMethod(name: "checkPermissions", returnType: CAPPluginReturnPromise),
-           CAPPluginMethod(name: "requestPermissions", returnType: CAPPluginReturnPromise),
-       ]
-       ...
-   }
-  ```
+```swift
+// swift-tools-version: 5.9
+import PackageDescription
 
-`patch-package` (already in the project, already patching this same plugin's Android proguard rules) will reapply this on every `npm install`, so the fix survives `node_modules` re-installs.
-
-First patch the plugin to expose Capacitor bridge metadata. If the plugin still isn’t available after rebuild, add the minimal explicit iOS registration required for this project’s Capacitor/SPM setup.
-
-## Files changed
-
-- `patches/@capacitor-community+speech-recognition+7.0.1.patch` — extend with the iOS Plugin.swift hunk above.
-
-No changes to:
-
-- `MainViewController.swift` (auto-registration via SPM will now pick the plugin up; explicit registration not needed).
-- `src/hooks/useVoiceCapture.ts` (already correct; the `step= available` catch will simply stop firing).
-- `Info.plist`, auth, onboarding, paywall, purchases.
-
-## Category of fix
-
-Explicit plugin compliance patch via `patch-package`. **Not** an install/sync-only issue and **not** a WKAppBoundDomains issue.
-
-## Post-fix steps
-
-User runs:
-
+let package = Package(
+    name: "CapacitorCommunitySpeechRecognition",
+    platforms: [.iOS(.v14)],
+    products: [
+        .library(
+            name: "CapacitorCommunitySpeechRecognition",
+            targets: ["CapacitorCommunitySpeechRecognition"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "7.0.0")
+    ],
+    targets: [
+        .target(
+            name: "CapacitorCommunitySpeechRecognition",
+            dependencies: [
+                .product(name: "Capacitor", package: "capacitor-swift-pm"),
+                .product(name: "Cordova", package: "capacitor-swift-pm")
+            ],
+            path: "ios/Plugin",
+            exclude: ["Info.plist", "Plugin.h", "Plugin.m"],
+            sources: ["Plugin.swift"]
+        )
+    ]
+)
 ```
-npm install            # applies patch-package
+
+2. **`node_modules/@capacitor-community/speech-recognition/Package.swift`** — same file written locally so the next build works without re-running install (patch-package re-applies on every `npm install`).
+
+No changes to `ios/App/CapApp-SPM/Package.swift`, the Xcode project, the voice hook, or any other code.
+
+## Line-by-Line Verification Steps (macOS)
+
+```bash
+cd ~/path/to/carnivore-coach-pro
+git pull
+rm -rf node_modules
+npm install
+# Confirm patch produced the new manifest:
+ls node_modules/@capacitor-community/speech-recognition/Package.swift
+grep CAPBridgedPlugin node_modules/@capacitor-community/speech-recognition/ios/Plugin/Plugin.swift
 npx cap sync ios
-# Xcode → clean build folder → run
+cd ios/App
+# Force SPM to re-resolve from scratch:
+rm -rf ~/Library/Developer/Xcode/DerivedData/App-*
+xed .
 ```
 
-## Proof to confirm
+In Xcode:
+1. File → Packages → Reset Package Caches
+2. File → Packages → Resolve Package Versions
+3. Product → Clean Build Folder (Shift+Cmd+K)
+4. Build (Cmd+B)
 
-After rebuild, voice tap logs should show, in order:
+## Expected Evidence of Success
 
-```
-[VoiceLog] startListening listening= false isNative= true
-[VoiceLog] iOS mic permission status before request = granted
-[VoiceLog] after resetAudioSession ok
-[VoiceLog] SR pre-check platform= ios language= en-US
-[VoiceLog] SR permission status before request = { speechRecognition: "granted" }
-[VoiceLog] recorder start invoked platform= ios language= en-US
-[VoiceLog] recorder started
-```
-
-The line `SR availability/permission threw step= available err= ... plugin is not implemented on ios` must no longer appear. If it still does, the patch didn't apply — verify with `grep CAPBridgedPlugin node_modules/@capacitor-community/speech-recognition/ios/Plugin/Plugin.swift` returning a match.
+- The 8 "Missing package product" errors disappear.
+- Build succeeds.
+- After mic tap on device, console shows the full sequence with no `plugin is not implemented on ios`:
+  ```
+  [VoiceLog] startListening listening= false isNative= true
+  [VoiceLog] after resetAudioSession ok
+  [VoiceLog] SR pre-check platform= ios language= en-US
+  [VoiceLog] SR permission status before request = { speechRecognition: "granted" }
+  [VoiceLog] recorder start invoked platform= ios language= en-US
+  [VoiceLog] recorder started
+  ```
