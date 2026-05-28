@@ -175,6 +175,7 @@ export const useVoiceCapture = ({
 
   const startNativeListening = useCallback(async () => {
     if (isStoppingRef.current || nativeStartPromiseRef.current) {
+      console.info("[VoiceLog] early return: busy stopping/starting");
       onError?.("Voice recognition is still finishing. Please try again.");
       return false;
     }
@@ -194,12 +195,6 @@ export const useVoiceCapture = ({
     // sessions, leaving SFSpeechRecognizer in a stuck state. Our custom
     // Swift plugin deactivates + reactivates it, forcing a clean slate.
     // Non-fatal on failure — we still try to start.
-    //
-    // Bumped from 250ms to 500ms after device logs showed run 2 kicking
-    // off while run 1's recognizer was still emitting cached partials
-    // ("50 g of butter" replay on the 2nd start). Giving CoreAudio more
-    // time to fully release + reinstate before we register new listeners
-    // reduces the overlap window significantly.
     if (Capacitor.getPlatform() === "ios") {
       // STEP 1: Force the iOS microphone permission dialog BEFORE doing
       // any audio-session work. The @capacitor-community/speech-recognition
@@ -215,6 +210,7 @@ export const useVoiceCapture = ({
           const reqMic = await AudioSession.requestMicrophonePermission();
           console.info("[VoiceLog] iOS mic permission result =", reqMic?.status);
           if (reqMic?.status !== "granted") {
+            console.info("[VoiceLog] early return: mic permission denied");
             onPermissionBlocked?.();
             return false;
           }
@@ -225,11 +221,12 @@ export const useVoiceCapture = ({
 
       try {
         await AudioSession.resetAudioSession({ delayMs: 500 });
+        console.info("[VoiceLog] after resetAudioSession ok");
       } catch (err) {
         // Log but don't block start — old builds without the plugin should
         // still work on the 1st session.
         // eslint-disable-next-line no-console
-        console.warn("AudioSession.resetAudioSession failed", err);
+        console.warn("[VoiceLog] AudioSession.resetAudioSession failed", err);
       }
     }
 
@@ -238,30 +235,54 @@ export const useVoiceCapture = ({
     // Without partial results the UI stays on "listening" forever. Enabling
     // partial results makes the recognizer emit a stream of `partialResults`
     // events AND resolve the start promise immediately.
-    //
-    // Android: popup=true uses the system Google Voice UI which already
-    // returns a final transcript when the overlay dismisses, so it keeps the
-    // original behaviour.
     const platform = Capacitor.getPlatform();
     const usePopup = platform === "android";
     const usePartialResults = platform === "ios";
 
-    const available = await SpeechRecognition.available();
-    if (!available?.available) {
-      onError?.("Voice recognition is not available on this device.");
-      return false;
-    }
+    console.info("[VoiceLog] SR pre-check platform=", platform, "language=", language);
 
-    const permission = await SpeechRecognition.checkPermissions();
-    console.info("[VoiceLog] SR permission status before request =", permission);
-    if (!permissionGranted(permission)) {
-      console.info("[VoiceLog] SR permission request invoked");
-      const requested = await SpeechRecognition.requestPermissions();
-      console.info("[VoiceLog] SR permission result =", requested);
-      if (!permissionGranted(requested)) {
-        onPermissionBlocked?.();
+    let lastStep: "available" | "checkPermissions" | "requestPermissions" | "granted" = "available";
+    try {
+      lastStep = "available";
+      const available = await SpeechRecognition.available();
+      console.info("[VoiceLog] SR available =", available);
+      if (!available?.available) {
+        console.info("[VoiceLog] early return: SR not available");
+        onError?.("Voice recognition is not available on this device.");
         return false;
       }
+
+      lastStep = "checkPermissions";
+      const permission = await SpeechRecognition.checkPermissions();
+      console.info("[VoiceLog] SR permission status before request =", permission);
+      if (!permissionGranted(permission)) {
+        lastStep = "requestPermissions";
+        console.info("[VoiceLog] SR permission request invoked");
+        const requested = await SpeechRecognition.requestPermissions();
+        console.info("[VoiceLog] SR permission result =", requested);
+        if (!permissionGranted(requested)) {
+          console.info("[VoiceLog] early return: SR permission denied");
+          onPermissionBlocked?.();
+          return false;
+        }
+      }
+      lastStep = "granted";
+    } catch (err) {
+      console.error(
+        "[VoiceLog] SR availability/permission threw step=",
+        lastStep,
+        "err=",
+        String(err),
+        "stack=",
+        (err as any)?.stack,
+      );
+      console.info("[VoiceLog] early return: SR availability/permission threw");
+      if (messageIncludesPermissionBlock(err)) {
+        onPermissionBlocked?.();
+      } else {
+        onError?.("Voice recognition unavailable on this device.");
+      }
+      return false;
     }
 
     await cleanupNativeListeners();
