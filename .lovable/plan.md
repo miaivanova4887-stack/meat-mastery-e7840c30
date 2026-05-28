@@ -1,31 +1,41 @@
-I’ll update only the existing `patches/@capacitor-community+speech-recognition+7.0.1.patch` file.
+## Problem
 
-Plan:
-1. Change the generated `Package.swift` patch so the speech-recognition package matches the app’s Capacitor SwiftPM dependency:
-   - `from: "7.0.0"` → `exact: "8.3.0"`
-2. Change the generated iOS platform requirement to match the app’s Capacitor 8 setup:
-   - `.iOS(.v14)` → `.iOS(.v15)`
-3. Leave all other patch hunks unchanged:
-   - Android ProGuard fix
-   - iOS `CAPBridgedPlugin` registration
-   - existing plugin method list
+Xcode is still showing **Missing package product 'CapApp-SPM'** even after the speech-recognition patch now applies successfully.
 
-After implementation, your local verification commands will be:
-```bash
-cd ~/Desktop/carnivore-coach-pro
-git pull
-rm -rf node_modules
-npm install
-grep 'exact: "8.3.0"' node_modules/@capacitor-community/speech-recognition/Package.swift
-npx cap sync ios
-```
+The repository currently has:
 
-Then in Xcode:
-```text
-File → Packages → Reset Package Caches
-File → Packages → Resolve Package Versions
-Product → Clean Build Folder
-Run
-```
+- `ios/App/CapApp-SPM/Package.swift` present and pinned to Capacitor SwiftPM `8.3.0`
+- `ios/App/App.xcodeproj/project.pbxproj` referencing local package `CapApp-SPM`
+- `Package.resolved` pinned to `capacitor-swift-pm` `8.3.0`
+- The speech-recognition patch now applying correctly
 
-Expected result: the SwiftPM conflict causing `Missing package product 'CapApp-SPM'` is removed.
+So this is no longer the original `patch-package` parse issue. The likely remaining issue is that Xcode/SwiftPM is still resolving from stale local package metadata or a generated iOS project reference that needs to be refreshed after the patched package changed.
+
+## Plan
+
+1. **Make the iOS package state deterministic**
+  - Verify the checked-in iOS package files are internally consistent.
+  - If needed, update the iOS project package metadata so `CapApp-SPM` is linked in the exact Capacitor 8 SwiftPM structure Xcode expects.
+2. **Add a local repair script for Mia’s Mac**
+  - Add a small script that clears only safe local iOS/Xcode package caches for this project.
+  - It will not delete source code.
+  - It will run the required sequence in the correct order: install dependencies, apply patches, sync iOS, reset Swift package state.
+3. **Preserve the existing Android fixes**
+  - Keep the speech-recognition Android ProGuard patch untouched.
+  - Keep the existing native Android constraints untouched.
+4. **Give copy-paste verification commands**
+  - Provide exact terminal commands for:
+    - pulling the fix
+    - cleaning local SwiftPM/Xcode derived package state
+    - reinstalling dependencies
+    - syncing iOS
+    - reopening Xcode correctly
+  - Include expected output checks so we know whether the package product is actually visible before building.
+
+User: Your cleanup/reset plan is good, but before changing iOS project metadata I want the exact SwiftPM resolver failure. Please first make the local repair script run `xcodebuild -resolvePackageDependencies -workspace App.xcworkspace -scheme App` after install/sync and return the full resolver output. Only change `project.pbxproj` or package linkage if that output proves the local package reference is wrong. Keep all fixes scoped to iOS SwiftPM/package resolution only.
+
+## Technical details
+
+- I will avoid changing generated Supabase files and unrelated app code.
+- I will focus only on iOS/Capacitor SwiftPM package resolution and local cache repair.
+- I will not switch the app back to CocoaPods unless the SwiftPM route proves impossible.
