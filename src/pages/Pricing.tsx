@@ -380,7 +380,6 @@ const Pricing = () => {
           </div>
           <p className="text-xs text-foreground/70 mb-3 leading-relaxed">
             Book a 1-on-1 coaching session with a carnivore diet expert.
-            {hasAccess("elite") && " Elite members: 1 call/month included — additional sessions at $99.99."}
           </p>
           <Button
             variant="outline"
