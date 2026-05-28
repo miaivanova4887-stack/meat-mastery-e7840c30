@@ -1,4 +1,6 @@
 import { ArrowLeft, Heart, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe, Crosshair, Crown } from "lucide-react";
+import { Share } from "@capacitor/share";
+import { Capacitor } from "@capacitor/core";
 import ConsentBanner from "@/components/ConsentBanner";
 import CommunityFeed from "@/components/CommunityFeed";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -1095,54 +1097,71 @@ const Profile = () => {
               </div>
               <div className="flex gap-2 flex-wrap">
                 {(() => {
-                  const shareUrl = window.location.origin;
-                  const shareText = "Join me on Vore — the ultimate carnivore diet companion! 🥩🔥";
-                  const shareButtons = [
-                    {
-                      label: "Share",
-                      icon: Share2,
-                      color: "bg-primary/10 text-primary",
-                      action: () => {
-                        if (navigator.share) {
-                          navigator.share({ title: "Vore — Carnivore Diet App", text: shareText, url: shareUrl }).catch(() => {});
-                        } else {
-                          navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
-                          toast.success(t("profile.linkCopied"));
-                        }
-                      },
-                    },
-                    {
-                      label: t("profile.whatsApp"),
-                      icon: MessageCircle,
-                      color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-                      action: () => window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${shareUrl}`)}`, "_blank"),
-                    },
-                    {
-                      label: t("profile.email"),
-                      icon: Mail,
-                      color: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-                      action: () => window.open(`mailto:?subject=${encodeURIComponent("Check out Vore!")}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`, "_blank"),
-                    },
-                    {
-                      label: t("profile.copyLink"),
-                      icon: Copy,
-                      color: "bg-secondary text-muted-foreground",
-                      action: () => { navigator.clipboard.writeText(shareUrl); toast.success(t("profile.linkCopied")); },
-                    },
-                  ];
-                  return shareButtons.map(({ label, icon: Icon, color, action }) => (
-                    <button
-                      key={label}
-                      onClick={action}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 ${color}`}
-                    >
-                      <Icon size={14} />
-                      {label}
-                    </button>
-                  ));
+                  // TODO: replace with the App Store URL when available
+                  const shareUrl = "https://carnivorex.app";
+                  const shareTitle = "CarnivoreX";
+                  const shareText = "Join me on CarnivoreX — recipes, tracking, coaching, and carnivore tools in one app.";
+
+                  const handleShare = async () => {
+                    try {
+                      if (Capacitor.isNativePlatform()) {
+                        // Keep text and url as separate fields for iOS compatibility
+                        await Share.share({
+                          title: shareTitle,
+                          text: shareText,
+                          url: shareUrl,
+                          dialogTitle: shareTitle,
+                        });
+                        return;
+                      }
+                      if (typeof navigator !== "undefined" && (navigator as any).share) {
+                        await (navigator as any).share({ title: shareTitle, text: shareText, url: shareUrl });
+                        return;
+                      }
+                      await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                      toast.success(t("profile.linkCopied"));
+                    } catch (err: any) {
+                      if (err?.name === "AbortError") return;
+                      try {
+                        await navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+                        toast.success(t("profile.linkCopied"));
+                      } catch {
+                        toast.error("Unable to share");
+                      }
+                    }
+                  };
+
+                  const handleCopy = async () => {
+                    try {
+                      await navigator.clipboard.writeText(shareUrl);
+                      toast.success(t("profile.linkCopied"));
+                    } catch {
+                      toast.error("Unable to copy");
+                    }
+                  };
+
+                  return (
+                    <>
+                      <button
+                        onClick={handleShare}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 bg-primary/10 text-primary"
+                      >
+                        <Share2 size={14} />
+                        {t("profile.inviteFriend")}
+                      </button>
+                      <button
+                        onClick={handleCopy}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95 bg-secondary text-muted-foreground"
+                      >
+                        <Copy size={14} />
+                        {t("profile.copyLink")}
+                      </button>
+                    </>
+                  );
                 })()}
               </div>
             </div>
+
 
             {/* Language */}
             <div className="ios-card p-4">
