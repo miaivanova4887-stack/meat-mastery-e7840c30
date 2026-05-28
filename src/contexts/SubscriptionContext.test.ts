@@ -56,8 +56,6 @@ const FEATURES = [
   // Meal plan
   { location: "MealPlan.tsx", name: "Snap food inside meal plan", required: "pro"  },
   { location: "MealPlan.tsx", name: "AI Meal Planner",           required: "elite" },
-  // Coaching
-  { location: "Coaching.tsx", name: "1 coaching call/month included", required: "elite" },
 ] as const;
 
 describe("Feature gates by tier", () => {
