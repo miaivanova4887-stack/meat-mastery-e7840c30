@@ -11,3 +11,27 @@ index d31e442..eb1f3d6 100644
          }
      }
      lintOptions {
+diff --git a/node_modules/@capacitor-community/speech-recognition/ios/Plugin/Plugin.swift b/node_modules/@capacitor-community/speech-recognition/ios/Plugin/Plugin.swift
+index 0000000..1111111 100644
+--- a/node_modules/@capacitor-community/speech-recognition/ios/Plugin/Plugin.swift
++++ b/node_modules/@capacitor-community/speech-recognition/ios/Plugin/Plugin.swift
+@@ -3,7 +3,18 @@ import Capacitor
+ import Speech
+ 
+ @objc(SpeechRecognition)
+-public class SpeechRecognition: CAPPlugin {
++public class SpeechRecognition: CAPPlugin, CAPBridgedPlugin {
++    public let identifier = "SpeechRecognition"
++    public let jsName = "SpeechRecognition"
++    public let pluginMethods: [CAPPluginMethod] = [
++        CAPPluginMethod(name: "available", returnType: CAPPluginReturnPromise),
++        CAPPluginMethod(name: "start", returnType: CAPPluginReturnPromise),
++        CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
++        CAPPluginMethod(name: "isListening", returnType: CAPPluginReturnPromise),
++        CAPPluginMethod(name: "getSupportedLanguages", returnType: CAPPluginReturnPromise),
++        CAPPluginMethod(name: "checkPermissions", returnType: CAPPluginReturnPromise),
++        CAPPluginMethod(name: "requestPermissions", returnType: CAPPluginReturnPromise),
++    ]
+ 
+     let defaultMatches = 5
+     let messageMissingPermission = "Missing permission"
