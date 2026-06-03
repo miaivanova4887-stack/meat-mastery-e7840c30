@@ -1,12 +1,22 @@
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/integrations/supabase/client";
 
 const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
   const current = i18n.language?.startsWith("fr") ? "fr" : "en";
 
-  const toggle = () => {
+  const toggle = async () => {
     const next = current === "en" ? "fr" : "en";
-    i18n.changeLanguage(next);
+    await i18n.changeLanguage(next);
+    // Mirror to profile so server-side scheduled push picks the right locale.
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from("profiles").update({ locale: next }).eq("id", user.id);
+      }
+    } catch (e) {
+      console.warn("[LanguageSwitcher] profile locale sync failed", e);
+    }
   };
 
   return (

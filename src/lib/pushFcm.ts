@@ -45,9 +45,20 @@ export async function savePushConsent(
   const { data: { user } } = await supabase.auth.getUser();
   console.info("[Push] savePushConsent local=", state, "userPresent=", !!user);
   if (!user) return;
+  // Also persist timezone + locale so the server-side reconciler can target
+  // scheduled notifications at the right local time and language.
+  let timezone = "UTC";
+  try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch {}
+  let locale = "en";
+  try {
+    const stored = localStorage.getItem("carnivore-language");
+    locale = (stored || navigator.language || "en").toLowerCase().startsWith("fr") ? "fr" : "en";
+  } catch {}
   const patch = {
     push_consent: state,
     push_consent_at: new Date().toISOString(),
+    timezone,
+    locale,
     ...(preferences ? { notification_preferences: preferences } : {}),
   };
   await supabase.from("profiles").update(patch).eq("id", user.id);

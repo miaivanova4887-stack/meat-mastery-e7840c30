@@ -479,9 +479,11 @@ export type Database = {
           display_name: string | null
           health_targets: string[]
           id: string
+          locale: string
           notification_preferences: Json
           push_consent: string
           push_consent_at: string | null
+          timezone: string
           updated_at: string
           user_attributes: Json
           username: string | null
@@ -497,9 +499,11 @@ export type Database = {
           display_name?: string | null
           health_targets?: string[]
           id: string
+          locale?: string
           notification_preferences?: Json
           push_consent?: string
           push_consent_at?: string | null
+          timezone?: string
           updated_at?: string
           user_attributes?: Json
           username?: string | null
@@ -515,9 +519,11 @@ export type Database = {
           display_name?: string | null
           health_targets?: string[]
           id?: string
+          locale?: string
           notification_preferences?: Json
           push_consent?: string
           push_consent_at?: string | null
+          timezone?: string
           updated_at?: string
           user_attributes?: Json
           username?: string | null
@@ -604,6 +610,7 @@ export type Database = {
           id: string
           last_error: string | null
           next_send_at: string
+          scheduled_for: string | null
           status: string
           updated_at: string
           user_id: string
@@ -615,6 +622,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           next_send_at?: string
+          scheduled_for?: string | null
           status?: string
           updated_at?: string
           user_id: string
@@ -626,6 +634,7 @@ export type Database = {
           id?: string
           last_error?: string | null
           next_send_at?: string
+          scheduled_for?: string | null
           status?: string
           updated_at?: string
           user_id?: string
@@ -648,6 +657,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          schedule: Json
           segment: Json
           steps: Json
           trigger_config: Json
@@ -661,6 +671,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          schedule?: Json
           segment?: Json
           steps?: Json
           trigger_config?: Json
@@ -674,6 +685,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          schedule?: Json
           segment?: Json
           steps?: Json
           trigger_config?: Json
