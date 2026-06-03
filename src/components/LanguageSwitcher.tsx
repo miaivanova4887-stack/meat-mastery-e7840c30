@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeLocale } from "@/lib/locale";
 
 const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
-  const current = i18n.language?.startsWith("fr") ? "fr" : "en";
+  const current = normalizeLocale(i18n.language);
 
   const toggle = async () => {
     const next = current === "en" ? "fr" : "en";
