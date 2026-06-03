@@ -46,8 +46,8 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
               <Crosshair size={18} className="text-primary" />
             </div>
             <div>
-              <DrawerTitle>Set Goals</DrawerTitle>
-              <p className="text-xs text-muted-foreground">Goals help you track progress towards your health targets.</p>
+              <DrawerTitle>{t("progress.setGoals")}</DrawerTitle>
+              <p className="text-xs text-muted-foreground">{t("progress.setGoalsDesc")}</p>
             </div>
           </div>
         </DrawerHeader>
