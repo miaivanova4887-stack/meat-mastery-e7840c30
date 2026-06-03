@@ -189,97 +189,46 @@
 
 /*
  * ------------------------------------------------------------------
- * Responsive type scaling for px-hardcoded arbitrary Tailwind classes
+ * Rem-based remap for px-hardcoded arbitrary Tailwind classes
  * ------------------------------------------------------------------
  *
  * Most of this app was authored with explicit pixel font sizes like
- * `text-[10px]`, `text-[13px]`, etc. Those bypass the root rem scale,
- * so a device-wide font bump requires overriding each explicit size.
+ * `text-[10px]`, `text-[13px]`, etc. Those bypass the root rem scale
+ * entirely, so device-width scaling and OS/browser font-size
+ * accessibility settings cannot reach them.
  *
- * The interpolation below mirrors the html root size formula:
- *   - <= 375px (iPhone SE / small Androids) : no change (base size)
- *   - ~390–412px (iPhone 14/15, S23, Pixel): tiny bump (~+7%)
- *   - >= 430px (iPhone 17 Pro)              : clearly bigger (~+18%)
- *   - >= 600px (foldable unfolded / tablet) : cap at +33%
+ * We map every arbitrary px text class to a rem value. Because the
+ * root `html { font-size: clamp(15px, ..., 22px) }` already
+ * interpolates with the viewport width, rem-based sizes auto-scale
+ * across iPhone SE (~15px root) → iPad/foldable (~22px root) without
+ * needing per-tier media query overrides. Rem also lets Android
+ * WebView's system text-size preference flow through.
  *
- * Implemented with viewport breakpoints (not clamp) because Tailwind
- * emits fixed-px font-size declarations that clamp() cannot retrofit.
+ * 12px floor (0.75rem) is enforced for accessibility — no visible
+ * text should render below 12px at the smallest supported width.
+ * `text-[8px]` and `text-[9px]` are intentionally remapped UP to
+ * the 0.75rem floor.
+ *
+ * Reference (at root font-size 16px equivalent):
+ *   0.75rem   = 12px (floor)
+ *   0.8125rem = 13px
+ *   0.875rem  = 14px
+ *   0.9375rem = 15px
+ *   1rem      = 16px
+ *   1.0625rem = 17px
+ *   1.125rem  = 18px
+ *   2rem      = 32px
  */
-/*
- * Tier 1: iPhone 12 mini / Pixel 4a / small Androids (~375–389px)
- * Modest bump — the app was designed against this width originally.
- */
-@media (min-width: 375px) {
-  .text-\[8px\]  { font-size: 10px; }
-  .text-\[9px\]  { font-size: 11px; }
-  .text-\[10px\] { font-size: 12px; }
-  .text-\[11px\] { font-size: 13px; }
-  .text-\[12px\] { font-size: 14px; }
-  .text-\[13px\] { font-size: 15px; }
-  .text-\[14px\] { font-size: 16px; }
-  .text-\[15px\] { font-size: 17px; }
-  .text-\[26px\] { font-size: 30px; }
-}
-/*
- * Tier 2: iPhone 14/15 / Pixel / S23 (~390–401px) — bigger bump.
- */
-@media (min-width: 390px) {
-  .text-\[8px\]  { font-size: 11px; }
-  .text-\[9px\]  { font-size: 12px; }
-  .text-\[10px\] { font-size: 13px; }
-  .text-\[11px\] { font-size: 14px; }
-  .text-\[12px\] { font-size: 15px; }
-  .text-\[13px\] { font-size: 16px; }
-  .text-\[14px\] { font-size: 17px; }
-  .text-\[15px\] { font-size: 18px; }
-  .text-\[26px\] { font-size: 32px; }
-  .text-\[2\.2rem\] { font-size: 2.5rem; }
-}
-/*
- * Tier 3: iPhone 17 Pro reports vw=402 (verified via diagnostic).
- */
-@media (min-width: 400px) {
-  .text-\[8px\]  { font-size: 12px; }
-  .text-\[9px\]  { font-size: 13px; }
-  .text-\[10px\] { font-size: 14px; }
-  .text-\[11px\] { font-size: 15px; }
-  .text-\[12px\] { font-size: 16px; }
-  .text-\[13px\] { font-size: 17px; }
-  .text-\[14px\] { font-size: 18px; }
-  .text-\[15px\] { font-size: 19px; }
-  .text-\[26px\] { font-size: 34px; }
-  .text-\[2\.2rem\] { font-size: 2.7rem; }
-}
-/*
- * Tier 4: iPhone Pro Max / large Android (~420–599px).
- */
-@media (min-width: 420px) {
-  .text-\[8px\]  { font-size: 13px; }
-  .text-\[9px\]  { font-size: 14px; }
-  .text-\[10px\] { font-size: 15px; }
-  .text-\[11px\] { font-size: 16px; }
-  .text-\[12px\] { font-size: 17px; }
-  .text-\[13px\] { font-size: 18px; }
-  .text-\[14px\] { font-size: 19px; }
-  .text-\[15px\] { font-size: 20px; }
-  .text-\[26px\] { font-size: 36px; }
-  .text-\[2\.2rem\] { font-size: 2.9rem; }
-}
-/*
- * Tier 5: tablet / foldable unfolded (600px+).
- */
-@media (min-width: 600px) {
-  .text-\[8px\]  { font-size: 14px; }
-  .text-\[9px\]  { font-size: 15px; }
-  .text-\[10px\] { font-size: 16px; }
-  .text-\[11px\] { font-size: 17px; }
-  .text-\[12px\] { font-size: 18px; }
-  .text-\[13px\] { font-size: 19px; }
-  .text-\[14px\] { font-size: 20px; }
-  .text-\[15px\] { font-size: 21px; }
-  .text-\[26px\] { font-size: 38px; }
-  .text-\[2\.2rem\] { font-size: 3.1rem; }
-}
+.text-\[8px\]      { font-size: 0.75rem;   }
+.text-\[9px\]      { font-size: 0.75rem;   }
+.text-\[10px\]     { font-size: 0.8125rem; }
+.text-\[11px\]     { font-size: 0.875rem;  }
+.text-\[12px\]     { font-size: 0.9375rem; }
+.text-\[13px\]     { font-size: 1rem;      }
+.text-\[14px\]     { font-size: 1.0625rem; }
+.text-\[15px\]     { font-size: 1.125rem;  }
+.text-\[26px\]     { font-size: 2rem;      }
+.text-\[2\.2rem\]  { font-size: 2.4rem;    }
 
 @layer utilities {
   .text-gradient-flame {
