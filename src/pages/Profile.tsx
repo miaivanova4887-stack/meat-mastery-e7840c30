@@ -1204,6 +1204,9 @@ const Profile = () => {
               </button>
             </div>
 
+            {/* Delete Account — Apple Guideline 5.1.1(v) */}
+            <DeleteAccountSection />
+
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
