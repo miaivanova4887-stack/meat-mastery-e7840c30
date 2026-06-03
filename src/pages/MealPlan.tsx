@@ -987,26 +987,26 @@ const MealPlan = () => {
             <button
               type="button"
               onClick={() => setShowAI(false)}
-              aria-label="Close"
+              aria-label={t("mealPlan.close")}
               className="-ml-2 p-2 text-muted-foreground hover:text-foreground"
             >
               <X size={20} />
             </button>
             <h2 className="text-lg font-display font-bold flex-1">
               <Sparkles size={16} className="inline mr-1.5 text-primary" />
-              AI Meal Planner
+              {t("mealPlan.aiPlanner")}
             </h2>
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 pt-4 pb-8 space-y-4">
             {/* Mode */}
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Generate</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("mealPlan.generate")}</label>
               <div className="flex gap-2">
                 {([
-                  { key: "single", label: "🍽️ Single Recipe" },
-                  { key: "daily", label: "📋 Full Day" },
-                  { key: "weekly", label: "📅 Full Week" },
+                  { key: "single", label: t("mealPlan.singleRecipe") },
+                  { key: "daily", label: t("mealPlan.fullDay") },
+                  { key: "weekly", label: t("mealPlan.fullWeek") },
                 ] as const).map(({ key, label }) => (
                   <button
                     key={key}
@@ -1023,7 +1023,7 @@ const MealPlan = () => {
 
             {/* Diet tier */}
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Diet Tier</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("mealPlan.dietTier")}</label>
               <div className="flex gap-2 flex-wrap">
                 {(Object.keys(TIER_LABELS) as DietTier[]).map((tier) => (
                   <button
@@ -1041,11 +1041,11 @@ const MealPlan = () => {
 
             {/* Preferences */}
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Preferences (optional)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">{t("mealPlan.preferences")}</label>
               <textarea
                 value={aiPrefs}
                 onChange={(e) => setAiPrefs(e.target.value)}
-                placeholder="e.g. high protein, sweet treats, quick meals, seafood focus, under 30 min..."
+                placeholder={t("mealPlan.preferencesPlaceholder")}
                 className={`${inputClass} resize-none`}
                 rows={3}
               />
@@ -1054,10 +1054,10 @@ const MealPlan = () => {
             {/* Info */}
             <div className="ios-card p-3">
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                {aiMode === "single" && `AI will generate 1 recipe and add it to ${activeDay}'s plan.`}
-                {aiMode === "daily" && `AI will fill ${profile.mealsPerDay} meal slots for ${activeDay} targeting ${nutritionTargets.calories} cal.`}
-                {aiMode === "weekly" && `AI will generate ${profile.mealsPerDay} meals/day for all 7 days targeting ${nutritionTargets.calories} cal/day.`}
-                {" "}Personalized to your goal: {String(profile.goal).replace("_", " ")}.
+                {aiMode === "single" && t("mealPlan.aiInfoSingle", { day: activeDay })}
+                {aiMode === "daily" && t("mealPlan.aiInfoDay", { count: profile.mealsPerDay, day: activeDay, cal: nutritionTargets.calories })}
+                {aiMode === "weekly" && t("mealPlan.aiInfoWeek", { count: profile.mealsPerDay, cal: nutritionTargets.calories })}
+                {" "}{t("mealPlan.aiInfoGoal", { goal: String(profile.goal).replace("_", " ") })}
               </p>
             </div>
 
@@ -1070,12 +1070,12 @@ const MealPlan = () => {
               {aiLoading ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Generating{aiMode === "weekly" ? " (may take ~15s)" : ""}…
+                  {aiMode === "weekly" ? t("mealPlan.generatingLong") : t("mealPlan.generating")}…
                 </>
               ) : (
                 <>
                   <Sparkles size={16} />
-                  Generate {aiMode === "single" ? "Recipe" : aiMode === "daily" ? "Day Plan" : "Week Plan"}
+                  {aiMode === "single" ? t("mealPlan.generateRecipe") : aiMode === "daily" ? t("mealPlan.generateDayPlan") : t("mealPlan.generateWeekPlan")}
                 </>
               )}
             </button>
