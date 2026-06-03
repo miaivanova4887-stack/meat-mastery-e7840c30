@@ -188,6 +188,12 @@ const BarcodeScanner = () => {
 
   return (
     <div className="space-y-3">
+      <CameraPermissionExplainer
+        open={explainer.open}
+        mode={explainer.mode}
+        onClose={handleExplainerClose}
+        onContinue={handleExplainerContinue}
+      />
       {!result && !scanning ? (
         <button
           onClick={startScanner}
