@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     // Verify consent + preference
     const { data: profile } = await admin
       .from("profiles")
-      .select("push_consent, notification_preferences")
+      .select("push_consent, notification_preferences, locale")
       .eq("id", run.user_id)
       .maybeSingle();
     if (!profile || profile.push_consent !== "granted") {
@@ -101,6 +101,10 @@ Deno.serve(async (req) => {
       }
     }
 
+    const locale = normalizeLocale(profile.locale as string | null);
+    const localizedTitle = pickLocalized(step.title, locale);
+    const localizedBody = pickLocalized(step.body, locale);
+
     // Get this user's FCM tokens
     const { data: tokens } = await admin
       .from("device_tokens")
@@ -114,7 +118,7 @@ Deno.serve(async (req) => {
       try {
         const r = await sendFcmToToken(
           t.token,
-          { title: step.title, body: step.body ?? "" },
+          { title: localizedTitle, body: localizedBody },
           step.data,
         );
         if (r.ok) {
