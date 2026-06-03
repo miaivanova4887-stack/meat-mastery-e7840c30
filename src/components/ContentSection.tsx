@@ -24,6 +24,8 @@ interface ContentSectionProps {
   feedbackQuestion?: string;
   /** Optional explicit theme (defaults to id prefix) used for dismissal/replacement. */
   theme?: string;
+  /** Forwarded to ArticleFeedback. Fires ~3s after "Not really". */
+  onDismiss?: (articleId: string) => void;
 }
 
 const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
