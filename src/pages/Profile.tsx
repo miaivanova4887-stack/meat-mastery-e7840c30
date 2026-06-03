@@ -213,6 +213,21 @@ const Profile = () => {
   });
   const myRecipes = myRecipesQuery.data ?? [];
 
+  const myPostsQuery = useQuery({
+    queryKey: ["my-community-posts", user?.id],
+    enabled: !!user,
+    staleTime: STALE_MS,
+    queryFn: async () => {
+      if (!user) return [] as { id: string }[];
+      const { data } = await (supabase as any)
+        .from("community_posts")
+        .select("id")
+        .eq("user_id", user.id);
+      return (data as { id: string }[]) || [];
+    },
+  });
+  const myPosts = myPostsQuery.data ?? [];
+
   const likedRecipesQuery = useQuery({
     queryKey: ["liked-community-recipes", user?.id],
     enabled: !!user,
@@ -452,6 +467,9 @@ const Profile = () => {
             <div className="flex items-center gap-3 mt-1.5">
               <span className="text-[11px] text-muted-foreground">
                 <strong className="text-foreground">{myRecipes.length}</strong> {t("profile.recipes")}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
+                <strong className="text-foreground">{myPosts.length}</strong> {t("profile.posts", "posts")}
               </span>
               <span className="text-[11px] text-muted-foreground">
                 <strong className="text-foreground">{likedRecipes.length + favoriteRecipes.length}</strong> {t("profile.likes")}
