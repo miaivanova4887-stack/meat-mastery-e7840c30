@@ -50,10 +50,10 @@ export async function savePushConsent(
   // scheduled notifications at the right local time and language.
   let timezone = "UTC";
   try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch {}
-  let locale = "en";
+  let locale: "en" | "fr" = "en";
   try {
     const stored = localStorage.getItem("carnivore-language");
-    locale = (stored || navigator.language || "en").toLowerCase().startsWith("fr") ? "fr" : "en";
+    locale = normalizeLocale(stored || navigator.language);
   } catch {}
   const patch = {
     push_consent: state,
