@@ -500,7 +500,10 @@
     "shareText": "Rejoignez-moi sur le compagnon ultime du régime carnivore ! 🥩🔥",
     "today": "Aujourd'hui",
     "yesterday": "Hier",
-    "daysAgo": "il y a {{count}}j"
+    "daysAgo": "il y a {{count}}j",
+    "privacyPolicy": "Politique de confidentialité",
+    "termsOfUse": "Conditions d'utilisation",
+    "wellnessDisclaimer": "Avis bien-être"
   },
   "benefits": {
     "title": "Bienfaits potentiels",
