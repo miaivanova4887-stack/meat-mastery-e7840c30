@@ -120,6 +120,10 @@ const PhotoRecognition = () => {
         saveToGallery: false,
       });
       if (photo?.base64String) {
+        // Native camera succeeded → AVCaptureDevice is authorized. Broadcast
+        // so sibling components (e.g. BarcodeScanner) skip the explainer.
+        markGranted();
+        void refreshPermission();
         await handlePhotoFromBase64(photo.base64String);
       }
     } catch (err: any) {
