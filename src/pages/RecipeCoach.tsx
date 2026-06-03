@@ -218,21 +218,24 @@ const RecipeCoach = () => {
               <UtensilsCrossed size={28} className="text-primary-foreground" />
             </div>
             <div className="text-center">
-              <h2 className="font-display font-bold text-foreground text-lg">Your Carnivore Coach</h2>
+              <h2 className="font-display font-bold text-foreground text-lg">{t("recipeCoach.heroTitle")}</h2>
               <p className="text-sm text-muted-foreground mt-1 max-w-[260px]">
-                Ask me for recipes, meal plans, or cooking tips tailored to your diet.
+                {t("recipeCoach.heroDesc")}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => sendMessage(s)}
-                  className="ios-card p-3 text-left text-xs text-foreground hover:bg-secondary/60 transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
+              {PROMPT_KEYS.map((key) => {
+                const label = t(`recipeCoach.prompts.${key}`);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => sendMessage(label)}
+                    className="ios-card p-3 text-left text-xs text-foreground hover:bg-secondary/60 transition-colors"
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
