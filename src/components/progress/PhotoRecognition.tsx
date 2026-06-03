@@ -22,7 +22,7 @@ const PhotoRecognition = () => {
     open: false,
     mode: "purpose",
   });
-  const { requestPermission, refreshPermission } = useCameraPermission();
+  const { requestPermission, refreshPermission, markGranted } = useCameraPermission();
   // Track the currently-attached transient input so we can clean it up on unmount.
   const activeInputRef = useRef<HTMLInputElement | null>(null);
   const addEntry = useAddEntry();
@@ -120,6 +120,10 @@ const PhotoRecognition = () => {
         saveToGallery: false,
       });
       if (photo?.base64String) {
+        // Native camera succeeded → AVCaptureDevice is authorized. Broadcast
+        // so sibling components (e.g. BarcodeScanner) skip the explainer.
+        markGranted();
+        void refreshPermission();
         await handlePhotoFromBase64(photo.base64String);
       }
     } catch (err: any) {
@@ -131,7 +135,7 @@ const PhotoRecognition = () => {
       }
       toast.error(err?.message || "Failed to open camera");
     }
-  }, [handlePhotoFromBase64]);
+  }, [handlePhotoFromBase64, markGranted, refreshPermission]);
 
   const launchCamera = useCallback(async () => {
     if (Capacitor.isNativePlatform()) {

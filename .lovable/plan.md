@@ -1,62 +1,86 @@
-## Goal
+# Stop the barcode reader from re-prompting after Snap & Log was granted
 
-Implement `webView(_:requestMediaCapturePermissionFor:initiatedByFrame:type:decisionHandler:)` on the iOS host app so any WKWebView-initiated `getUserMedia` / `<input capture>` fallback path is explicitly handled instead of silently auto-denied. This is the belt-and-suspenders fix alongside the existing `@capacitor/camera` native flow.
+## Root cause
 
-The handler must be conservative — it grants only when BOTH guardrails pass.
+Snap & Log uses `@capacitor/camera` (`Camera.getPhoto`), which triggers the **native** iOS camera permission. After the user accepts, `AVCaptureDevice.authorizationStatus(for: .video) == .authorized` and the new `WKUIDelegate` in `MainViewController.swift` will auto-grant any WKWebView `getUserMedia` from a trusted origin — no second OS prompt.
 
-## Guardrails
+But the barcode reader never reaches `getUserMedia`. 
 
-1. **Trusted first-party origin only.** Build an allowlist of origins the app actually loads:
-  - `capacitor://localhost` (Capacitor's native scheme on iOS)
-  - `https://app.carnivorex.app` (production custom domain)
-  - `https://carnivorex.app`
-  - `https://carnivore-coach-pro.lovable.app` (Lovable published URL)
-  - `https://id-preview--8cc44691-15e2-40ab-844f-f90c5fa95cc6.lovable.app` (preview, useful for in-app `server.url` hot-reload during dev)
-   Any other origin → `.deny`. No wildcard, no header-driven trust.
-2. **Native camera auth required.** Even for a trusted origin, check:
-  ```
-   AVCaptureDevice.authorizationStatus(for: .video)
-  ```
-  - `.authorized` → `.grant`
-  - `.notDetermined` → `.prompt` (lets iOS show the system sheet so `NSCameraUsageDescription` kicks in)
-  - `.denied` / `.restricted` → `.deny`
-   For `type == .microphone` or `.cameraAndMicrophone`, additionally require `AVCaptureDevice.authorizationStatus(for: .audio) == .authorized` for the audio leg (mirror the same `.notDetermined → .prompt`, `.denied → .deny` mapping).
+Furthermore barcode in-app camera access triggers every time after app was killed
 
-## Changes
+Before opening the scanner, `BarcodeScanner.handleStartTap` calls `useCameraPermission.refreshPermission()`, which only knows one API:
 
-### `ios/App/App/MainViewController.swift`
+```ts
+const res = await perms.query({ name: "camera" });
+```
 
-- Add `import AVFoundation` and `import WebKit`.
-- In `capacitorDidLoad()`, after registering the existing plugins, set `bridge?.webView?.uiDelegate = self` (CAPBridgeViewController already conforms to WKUIDelegate via its own extensions for things like file picker, so we layer on top — using `bridge.webView.uiDelegate = self` is the standard Capacitor escape hatch).
-- Add an `extension MainViewController: WKUIDelegate` implementing:
-  ```swift
-  @available(iOS 15.0, *)
-  func webView(_ webView: WKWebView,
-               requestMediaCapturePermissionFor origin: WKSecurityOrigin,
-               initiatedByFrame frame: WKFrameInfo,
-               type: WKMediaCaptureType,
-               decisionHandler: @escaping (WKPermissionDecision) -> Void)
-  ```
-- Body:
-  1. Reconstruct origin string (`"\(origin.protocol)://\(origin.host)"` plus port when non-default) and check against the hard-coded `Set<String>` allowlist. Miss → `decisionHandler(.deny)`.
-  2. Map `AVCaptureDevice.authorizationStatus` to a `WKPermissionDecision` per the table above. For `.cameraAndMicrophone`, take the **most restrictive** of the two legs (`deny` > `prompt` > `grant`).
-  3. Call `decisionHandler(...)` exactly once on the main queue.
+On iOS WKWebView the Permissions API is unreliable for `camera` — it returns `"prompt"` (or `"unknown"`) even after the native permission was granted, because WKWebView's permission scope is separate from `AVCaptureDevice`'s. So `refreshPermission()` returns `"prompt"`, the code falls into the `prompt / unknown` branch, and our own `CameraPermissionExplainer` modal opens in `purpose` mode. That is the "permission" the user sees the second time.
 
-### Out of scope
+(The same hook is why `PhotoRecognition.handleSnapTap` also drops into the explainer on the first tap — but there it's intentional because of `PHOTO_EXPLAINER_SEEN_KEY`. The barcode flow has no such "seen" flag, so the modal appears on every tap until WKWebView's `getUserMedia` is actually invoked once.)
 
-- No changes to `Info.plist` (already has `NSCameraUsageDescription` and `NSPhotoLibraryAddUsageDescription` from prior work).
-- No changes to the JS/TS camera flow — `PhotoRecognition.tsx` and `useCameraPermission` stay as-is.
-- No new plugin, no Capacitor config change, no entitlement change.
+## Fix
 
-## Verification
+Make `useCameraPermission` consult the **native** `@capacitor/camera` permission status on Capacitor platforms, and broadcast grants so sibling components refresh.
 
-After `npx cap sync ios` and a fresh build:
+### 1. `src/hooks/useCameraPermission.ts`
 
-1. In Xcode, set a breakpoint inside `requestMediaCapturePermissionFor` and confirm it fires when the WKWebView fallback path runs (e.g. force the web `getUserMedia` probe in `useCameraPermission.requestPermission`).
-2. Confirm:
-  - With iOS camera permission **granted** + trusted origin → `.grant`, camera stream opens.
-  - With iOS camera permission **denied** in Settings → `.deny`, no stream, app surfaces the existing "Camera is off" recovery modal.
-  - With camera permission **not yet determined** → `.prompt`, iOS system sheet appears with our usage string.
-  - With a forged/foreign origin (manually navigate to e.g. `https://example.com` in dev) → `.deny`.
-3. Sanity-check the `@capacitor/camera` native Snap & Log path still works end-to-end (it does not go through this delegate, so it should be unchanged).
-4. if the handler covers `.microphone` or `.cameraAndMicrophone`, verify `NSMicrophoneUsageDescription` exists in `Info.plist`; otherwise either add it or scope the handler to camera-only behavior.
+Extend `queryPermissionsApi` to prefer the native plugin when running under Capacitor:
+
+- On `Capacitor.isNativePlatform()`, dynamically `import("@capacitor/camera")` and call `Camera.checkPermissions()`.
+  - Map `camera`:
+    - `"granted"` → `"granted"`
+    - `"denied"` → `"denied"`
+    - `"prompt"` / `"prompt-with-rationale"` → `"prompt"`
+    - anything else → `"unknown"`
+  - On any error (plugin missing on web build, etc.) fall through to the existing `navigator.permissions.query` path.
+- On non-native (web/PWA), keep the existing Permissions-API path unchanged.
+
+Also have the existing `installResumeListener` reconcile via the same path so an iOS Settings round-trip still clears `camera-denied-once`.
+
+### 2. `src/components/progress/PhotoRecognition.tsx`
+
+After a successful `Camera.getPhoto(...)` in `openNativeCamera`, call `markGranted()` (already imported via the hook — add it to the destructure). This:
+
+- Clears the stale `camera-denied-once` flag immediately.
+- Dispatches `camera-permission-changed` so the BarcodeScanner's hook instance refreshes without waiting for app resume.
+
+No behavior change for the web file-picker path.
+
+after successful `Camera.getPhoto(...)`, call `markGranted()` and then `refreshPermission()` so all hook consumers immediately converge on the native permission state
+
+### 3. No changes required
+
+- `MainViewController.swift` — the WKUIDelegate already handles the WKWebView side correctly; we just have to stop blocking on our own explainer before we ever hand off to it.
+- `BarcodeScanner.tsx` — its logic is already correct (`granted` → `beginScanning`, `denied` → denied modal, otherwise purpose modal). Once `refreshPermission()` returns `"granted"` on iOS, the modal is skipped and `html5-qrcode` calls `getUserMedia`, which the new `WKUIDelegate` auto-grants silently.
+- `CameraPermissionExplainer.tsx` — unchanged.
+
+## Verification (line-by-line, fresh build)
+
+```bash
+cd ~/path/to/carnivore-coach-pro
+git pull
+npm install
+npm run build
+npx cap sync ios
+npx cap open ios
+```
+
+In Xcode:
+
+```text
+Product → Clean Build Folder
+Product → Run (physical iPhone)
+```
+
+On the device:
+
+1. **Reset state** — Settings → CarnivoreX → toggle Camera **off** then **on** (or delete the app and reinstall) so AVCaptureDevice goes back to `.notDetermined`.
+2. **First Snap & Log tap** → in-app explainer (`purpose`) appears once → Continue → iOS system camera sheet appears → tap **Allow** → camera UI opens.
+3. **Tap Scan Barcode** → expected: scanner opens directly into the live camera viewfinder. **No** in-app explainer, **no** second iOS sheet, **no** WKWebView prompt.
+4. **Background the app**, change camera to Deny in Settings, return to app → tap Scan Barcode → "Camera is off" denied modal appears (existing behavior preserved).
+5. **Cold-start** the app with camera already authorized → tap Scan Barcode first (skipping Snap & Log) → scanner opens directly, no explainer.
+
+## Out of scope
+
+- No changes to Stripe / push-subscription / WKUIDelegate code from earlier turns.
+- No Android changes — Android uses a different permission pipeline already handled by Capacitor.

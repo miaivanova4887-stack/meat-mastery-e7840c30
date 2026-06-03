@@ -41,7 +41,36 @@ const isPermissionDeniedMessage = (value: unknown) => {
   );
 };
 
+const queryNativeCameraPermission = async (): Promise<CameraPermissionState | null> => {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return null;
+    const { Camera } = await import("@capacitor/camera");
+    const res = await Camera.checkPermissions();
+    switch (res?.camera) {
+      case "granted":
+      case "limited":
+        return "granted";
+      case "denied":
+return "denied";
+      case "prompt":
+      case "prompt-with-rationale":
+        return "prompt";
+      default:
+        return "unknown";
+    }
+  } catch {
+    return null;
+  }
+};
+
 const queryPermissionsApi = async (): Promise<CameraPermissionState> => {
+  // On Capacitor native, AVCaptureDevice (via @capacitor/camera) is the
+  // only reliable source — WKWebView's Permissions API is unreliable for
+  // `camera` and typically returns "prompt" even after native grant.
+  const native = await queryNativeCameraPermission();
+  if (native !== null) return native;
+
   try {
     const perms = (navigator as any).permissions;
     if (!perms?.query) return "unknown";
