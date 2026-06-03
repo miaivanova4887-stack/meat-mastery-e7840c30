@@ -8,6 +8,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { openAppSettings } from "@/lib/openAppSettings";
 import { useTranslation } from "react-i18next";
 import CameraPermissionExplainer, { type CameraExplainerMode } from "@/components/CameraPermissionExplainer";
+import { useCameraPermission } from "@/hooks/useCameraPermission";
 
 interface ProductResult {
   name: string;
@@ -20,14 +21,6 @@ interface ProductResult {
   imageUrl?: string;
 }
 
-// App Review compliance (Guideline 5.1.1):
-// We must NEVER auto-redirect to Settings on first denial. Instead:
-//  1. Show an in-app explainer BEFORE the system permission prompt.
-//  2. Trigger the system prompt only after the user taps Continue.
-//  3. On denial, stay in the app and surface a neutral, dismissible
-//     re-entry modal on the NEXT camera-only tap — never immediately.
-const CAMERA_DENIED_KEY = "camera-denied-once";
-
 const isPermissionDeniedMessage = (value: unknown) => {
   const msg = String(value || "").toLowerCase();
   return (
@@ -37,17 +30,6 @@ const isPermissionDeniedMessage = (value: unknown) => {
     msg.includes("not allowed") ||
     msg.includes("service-not-allowed")
   );
-};
-
-const queryCameraPermission = async (): Promise<"granted" | "denied" | "prompt" | "unknown"> => {
-  try {
-    const perms = (navigator as any).permissions;
-    if (!perms?.query) return "unknown";
-    const res = await perms.query({ name: "camera" as PermissionName });
-    return (res?.state as "granted" | "denied" | "prompt") ?? "unknown";
-  } catch {
-    return "unknown";
-  }
 };
 
 const BarcodeScanner = () => {
@@ -63,6 +45,7 @@ const BarcodeScanner = () => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const addEntry = useAddEntry();
+  const { refreshPermission, markGranted, markDenied } = useCameraPermission();
 
   const stopScanner = useCallback(async () => {
     try {
@@ -124,35 +107,36 @@ const BarcodeScanner = () => {
         async (decodedText) => { await stopScanner(); lookupBarcode(decodedText); },
         () => { /* per-frame decode errors are noise */ }
       );
-      try { localStorage.removeItem(CAMERA_DENIED_KEY); } catch { /* ignore */ }
+      markGranted();
     } catch (err: any) {
       // First-time denial path — do NOT redirect to Settings. Just close,
       // remember the denial for next time, and stay quiet.
       if (isPermissionDeniedMessage(err?.message || err)) {
-        try { localStorage.setItem(CAMERA_DENIED_KEY, "1"); } catch { /* ignore */ }
+        markDenied();
         toast("You can turn on the camera anytime in Settings.");
       } else {
         toast.error("Camera not available on this device.");
       }
       setScanning(false);
     }
-  }, [stopScanner, lookupBarcode]);
+  }, [stopScanner, lookupBarcode, markGranted, markDenied]);
 
   const handleStartTap = useCallback(async () => {
-    // If we already know the OS-level permission is denied (either from
-    // a previous denial this install, or from the Permissions API), show
-    // the neutral re-entry modal instead of triggering another prompt.
-    const denied = (() => {
-      try { return localStorage.getItem(CAMERA_DENIED_KEY) === "1"; } catch { return false; }
-    })();
-    const permState = await queryCameraPermission();
-    if (denied || permState === "denied") {
+    // Always re-query the live OS permission — never trust cached state.
+    // Source of truth is the OS, so if the user enabled the camera in
+    // Settings since their last denial, we open straight through.
+    const permState = await refreshPermission();
+    if (permState === "denied") {
       setExplainer({ open: true, mode: "denied" });
       return;
     }
-    // First time: show the purpose explainer before triggering iOS prompt.
+    if (permState === "granted") {
+      void beginScanning();
+      return;
+    }
+    // prompt / unknown: show the purpose explainer before triggering iOS prompt.
     setExplainer({ open: true, mode: "purpose" });
-  }, []);
+  }, [refreshPermission, beginScanning]);
 
   const handleExplainerContinue = useCallback(async () => {
     const mode = explainer.mode;

@@ -7,7 +7,9 @@ import { useAddEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import CameraPermissionExplainer from "@/components/CameraPermissionExplainer";
+import CameraPermissionExplainer, { type CameraExplainerMode } from "@/components/CameraPermissionExplainer";
+import { useCameraPermission } from "@/hooks/useCameraPermission";
+import { openAppSettings } from "@/lib/openAppSettings";
 
 const PHOTO_EXPLAINER_SEEN_KEY = "camera-photo-explainer-seen";
 
@@ -15,7 +17,11 @@ const PhotoRecognition = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
-  const [showExplainer, setShowExplainer] = useState(false);
+  const [explainer, setExplainer] = useState<{ open: boolean; mode: CameraExplainerMode }>({
+    open: false,
+    mode: "purpose",
+  });
+  const { refreshPermission } = useCameraPermission();
   const fileRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
   const profile = useUserProfile();
@@ -83,11 +89,16 @@ const PhotoRecognition = () => {
       />
 
       <CameraPermissionExplainer
-        open={showExplainer}
-        mode="purpose"
-        onClose={() => setShowExplainer(false)}
-        onContinue={() => {
-          setShowExplainer(false);
+        open={explainer.open}
+        mode={explainer.mode}
+        onClose={() => setExplainer((p) => ({ ...p, open: false }))}
+        onContinue={async () => {
+          const mode = explainer.mode;
+          setExplainer({ open: false, mode });
+          if (mode === "denied") {
+            await openAppSettings();
+            return;
+          }
           try { localStorage.setItem(PHOTO_EXPLAINER_SEEN_KEY, "1"); } catch { /* ignore */ }
           fileRef.current?.click();
         }}
@@ -95,9 +106,19 @@ const PhotoRecognition = () => {
 
       {!result ? (
         <button
-          onClick={() => {
+          onClick={async () => {
+            // Always re-query live OS permission — the user may have just
+            // enabled the camera in iOS Settings since their last denial.
+            const permState = await refreshPermission();
+            if (permState === "denied") {
+              setExplainer({ open: true, mode: "denied" });
+              return;
+            }
             const seen = (() => { try { return localStorage.getItem(PHOTO_EXPLAINER_SEEN_KEY) === "1"; } catch { return false; } })();
-            if (!seen) { setShowExplainer(true); return; }
+            if (permState !== "granted" && !seen) {
+              setExplainer({ open: true, mode: "purpose" });
+              return;
+            }
             fileRef.current?.click();
           }}
           disabled={loading}
