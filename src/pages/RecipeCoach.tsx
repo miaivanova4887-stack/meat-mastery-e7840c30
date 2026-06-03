@@ -17,6 +17,7 @@ const PROMPT_KEYS = ["lunch", "dinner", "breakfast", "postWorkout"] as const;
 
 const RecipeCoach = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const profile = useUserProfile();
   const { hasAccess, refreshSubscription } = useSubscription();
   const [messages, setMessages] = useState<Msg[]>([]);
