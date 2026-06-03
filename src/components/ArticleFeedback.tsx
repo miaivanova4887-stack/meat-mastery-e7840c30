@@ -9,6 +9,10 @@ import { inferTheme } from "@/lib/articleThemes";
 interface ArticleFeedbackProps {
   articleId: string;
   question?: string;
+  /** Optional explicit theme; defaults to the prefix of `articleId`. */
+  theme?: string;
+  /** Fired after the ~3 s acknowledgment when the user picked "Not really". */
+  onDismiss?: (articleId: string) => void;
 }
 
 function getFeedbackStore(): Record<string, "yes" | "no"> {
