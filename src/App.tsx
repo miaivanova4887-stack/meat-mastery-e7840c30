@@ -44,6 +44,7 @@ import HealthSync from "./pages/HealthSync";
 import NewsFeed from "./pages/NewsFeed";
 import AdminNotifications from "./pages/AdminNotifications";
 import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminScheduledPush from "./pages/AdminScheduledPush";
 import Admin from "./pages/Admin";
 import Pricing from "./pages/Pricing";
 import Coaching from "./pages/Coaching";
@@ -181,6 +182,7 @@ const App = () => {
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/admin/notifications" element={<AdminNotifications />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/admin/scheduled-push" element={<AdminScheduledPush />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/coaching" element={<Coaching />} />
                 <Route path="/privacy" element={<LegalPage ns="privacy" />} />

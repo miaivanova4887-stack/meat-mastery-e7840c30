@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Card } from "@/components/ui/card";
-import { BarChart3, Bell, FileEdit, Loader2 } from "lucide-react";
+import { BarChart3, Bell, BellRing, FileEdit, Loader2 } from "lucide-react";
 
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
@@ -51,6 +51,7 @@ const Admin = () => {
   const tiles = [
     { to: "/admin/analytics", label: "Analytics", icon: BarChart3, desc: "Revenue, retention, LTV" },
     { to: "/admin/notifications", label: "Notifications", icon: Bell, desc: "Send push & feed posts" },
+    { to: "/admin/scheduled-push", label: "Scheduled Push", icon: BellRing, desc: "Review, edit & activate scheduled campaigns" },
     { to: "/cms", label: "CMS Editor", icon: FileEdit, desc: "Content, layouts & pages" },
   ];
 
