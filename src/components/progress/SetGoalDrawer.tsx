@@ -61,7 +61,7 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
                   step="any"
                   value={goals[m.key] || ""}
                   onChange={(e) => setGoals((prev) => ({ ...prev, [m.key]: e.target.value }))}
-                  placeholder="Target"
+                  placeholder={t("progress.target")}
                   className="text-xl font-bold text-center h-12"
                 />
                 <span className="text-sm text-muted-foreground">{m.unit}</span>
