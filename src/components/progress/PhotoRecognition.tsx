@@ -7,11 +7,15 @@ import { useAddEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import CameraPermissionExplainer from "@/components/CameraPermissionExplainer";
+
+const PHOTO_EXPLAINER_SEEN_KEY = "camera-photo-explainer-seen";
 
 const PhotoRecognition = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
+  const [showExplainer, setShowExplainer] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
   const profile = useUserProfile();
@@ -78,9 +82,24 @@ const PhotoRecognition = () => {
         }}
       />
 
+      <CameraPermissionExplainer
+        open={showExplainer}
+        mode="purpose"
+        onClose={() => setShowExplainer(false)}
+        onContinue={() => {
+          setShowExplainer(false);
+          try { localStorage.setItem(PHOTO_EXPLAINER_SEEN_KEY, "1"); } catch { /* ignore */ }
+          fileRef.current?.click();
+        }}
+      />
+
       {!result ? (
         <button
-          onClick={() => fileRef.current?.click()}
+          onClick={() => {
+            const seen = (() => { try { return localStorage.getItem(PHOTO_EXPLAINER_SEEN_KEY) === "1"; } catch { return false; } })();
+            if (!seen) { setShowExplainer(true); return; }
+            fileRef.current?.click();
+          }}
           disabled={loading}
           className="w-full relative overflow-hidden rounded-xl border border-dashed border-primary/30 bg-card p-5 flex flex-col items-center gap-2 hover:border-primary/60 transition-colors"
         >

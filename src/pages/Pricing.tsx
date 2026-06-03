@@ -184,10 +184,33 @@ const Pricing = () => {
    * - On web: uses the hard-coded Stripe price IDs.
    */
   const getPurchaseContext = (planTier: "pro" | "elite") => {
+    const planLabel = planTier === "pro" ? "Pro" : "Elite";
+    const cycleLabel = billingCycle === "monthly"
+      ? "Monthly subscription · 1 month · Auto-renewing"
+      : "Annual subscription · 12 months · Auto-renewing";
+
     if (useNative) {
       const key = `${planTier}_${billingCycle}` as keyof typeof paywall.packages;
       const info = paywall.packages[key];
+      // Per Apple guideline 3.1.2: yearly plans must show a per-month
+      // equivalent so users can compare. RC sometimes exposes
+      // `pricePerMonth(String)`; otherwise we compute from `price`.
+      let perMonth: string | null = null;
+      if (billingCycle === "yearly" && info) {
+        const pkgAny = info.pkg.product as any;
+        if (pkgAny?.pricePerMonthString) perMonth = pkgAny.pricePerMonthString;
+        else if (typeof pkgAny?.price === "number" && pkgAny?.currencyCode) {
+          try {
+            perMonth = new Intl.NumberFormat(undefined, {
+              style: "currency",
+              currency: pkgAny.currencyCode,
+            }).format(pkgAny.price / 12);
+          } catch { /* ignore */ }
+        }
+      }
       return {
+        title: `${planLabel} — ${cycleLabel}`,
+        perMonth,
         label: info?.priceLabel ?? (paywall.loading ? "Loading…" : "Unavailable"),
         disabled: !info,
         loadingKey: info ? info.pkg.identifier : null,
@@ -196,6 +219,8 @@ const Pricing = () => {
     }
     const priceInfo = TIERS[planTier][billingCycle];
     return {
+      title: `${planLabel} — ${cycleLabel}`,
+      perMonth: null as string | null,
       label: priceInfo.amount,
       disabled: false,
       loadingKey: priceInfo.priceId,
@@ -244,6 +269,53 @@ const Pricing = () => {
           ))}
         </div>
 
+        {/* Apple-compliant subscription disclosure — shown in the purchase
+            flow above the Buy buttons. Required by App Store Review
+            Guideline 3.1.2. Native (IAP) build only; web shows Stripe terms
+            via Stripe's own checkout page. */}
+        {useNative && (
+          <div className="ios-card p-4 space-y-2 border border-border/60">
+            <p className="text-xs font-bold text-foreground uppercase tracking-wide">
+              Subscription terms
+            </p>
+            <ul className="text-[11px] text-muted-foreground leading-relaxed space-y-1 list-disc pl-4">
+              <li>Payment is charged to your Apple ID at confirmation of purchase.</li>
+              <li>
+                Your subscription automatically renews unless auto-renew is
+                turned off at least 24 hours before the end of the current
+                period.
+              </li>
+              <li>
+                Your account is charged for renewal within 24 hours prior to
+                the end of the current period at the selected plan's price.
+              </li>
+              <li>
+                You can manage your subscription and turn off auto-renew in
+                your Apple ID Account Settings after purchase.
+              </li>
+              <li>
+                No free trial is offered; any unused portion of a free trial,
+                if offered, is forfeited when purchasing a subscription.
+              </li>
+            </ul>
+            <div className="flex items-center gap-3 pt-1 text-[11px]">
+              <button
+                onClick={() => navigate("/privacy")}
+                className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+              >
+                Privacy Policy
+              </button>
+              <span className="text-muted-foreground/50">·</span>
+              <button
+                onClick={() => navigate("/terms")}
+                className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+              >
+                Terms of Use
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Plan cards */}
         {plans.map((plan) => {
           const isCurrent = tier === plan.tier;
@@ -289,15 +361,26 @@ const Pricing = () => {
                     plan.tier === "elite" ? "text-[hsl(var(--gold))]" : plan.tier === "pro" ? "text-primary" : "text-muted-foreground"
                   } />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <h2 className="text-base font-bold text-foreground">{plan.name}</h2>
                   {purchase ? (
-                    <p className="text-sm font-semibold text-primary">{purchase.label}</p>
+                    <>
+                      <p className="text-sm font-semibold text-primary">
+                        {purchase.label}
+                        {purchase.perMonth && (
+                          <span className="text-[11px] font-normal text-muted-foreground"> · ≈ {purchase.perMonth}/mo</span>
+                        )}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/80 mt-0.5 leading-tight">
+                        {purchase.title}
+                      </p>
+                    </>
                   ) : (
                     <p className="text-sm text-muted-foreground">Always free</p>
                   )}
                 </div>
               </div>
+
 
               <ul className="space-y-1.5 mb-4">
                 {plan.features.map((f) => (

@@ -11,6 +11,8 @@ project_id = "gueosugzlebbaijzcxgh"
     verify_jwt = false
   [functions.customer-portal]
     verify_jwt = false
+  [functions.delete-account]
+    verify_jwt = true
   [functions.fcm-send]
     verify_jwt = false
   [functions.generate-meal-image]
