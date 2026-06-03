@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import TeaserGate from "@/components/TeaserGate";
 import RecipeCard, { type RecipeCardData } from "@/components/community/RecipeCard";
 import PostCard, { type PostCardData } from "@/components/community/PostCard";
@@ -16,6 +17,7 @@ type FeedItem =
 
 const CommunityFeed = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [items, setItems] = useState<FeedItem[]>([]);
   const [likedRecipeIds, setLikedRecipeIds] = useState<Set<string>>(new Set());
@@ -93,7 +95,7 @@ const CommunityFeed = () => {
 
   const toggleRecipeLike = async (recipeId: string) => {
     if (!user) {
-      toast("Sign in to like recipes");
+      toast(t("community.recipe.signInToLike"));
       navigate("/auth");
       return;
     }
@@ -141,7 +143,7 @@ const CommunityFeed = () => {
 
   const togglePostLike = async (postId: string) => {
     if (!user) {
-      toast("Sign in to like posts");
+      toast(t("community.post.signInToLike"));
       navigate("/auth");
       return;
     }
