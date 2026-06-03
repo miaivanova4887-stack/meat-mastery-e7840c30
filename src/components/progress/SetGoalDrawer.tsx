@@ -13,6 +13,7 @@ interface Props {
 }
 
 const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
+  const { t } = useTranslation();
   const metrics = METRICS[category];
   const { data: existingGoals } = useProgressGoals(category);
   const upsertGoal = useUpsertGoal();
