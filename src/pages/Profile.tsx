@@ -18,6 +18,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import { useUserProfile, type Goal, type Experience, type ActivityLevel, type Struggle, type Interest, type Sex } from "@/contexts/UserProfileContext";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
+import DeleteAccountSection from "@/components/DeleteAccountSection";
 // Push consent fallback now lives in PushConsentFallbackHost (App-level shell).
 
 interface Profile {
