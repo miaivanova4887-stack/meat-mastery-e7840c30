@@ -2,6 +2,7 @@ import { ArrowLeft, Star, TrendingDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 import ArticleFeedback from "@/components/ArticleFeedback";
+import DismissibleCard from "@/components/DismissibleCard";
 
 const stories = [
   { id: "mike", name: "Mike, 42", duration: "8 months", lost: "65 lbs", quote: "I reversed my pre-diabetes and got off blood pressure medication. My doctor couldn't believe the blood work. Energy through the roof.", highlight: "Reversed pre-diabetes", q: "Did this story inspire you?" },
