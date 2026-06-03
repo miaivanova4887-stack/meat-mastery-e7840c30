@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, FileText, List, Lightbulb, TrendingUp, AlertCircle } from "lucide-react";
 import ArticleFeedback from "./ArticleFeedback";
+import { useDismissedArticles } from "@/hooks/useDismissedArticles";
+import { inferTheme } from "@/lib/articleThemes";
 
 type SectionType = "overview" | "key_points" | "tips" | "data" | "important";
 
@@ -20,6 +22,8 @@ interface ContentSectionProps {
   feedbackId?: string;
   /** Custom feedback question */
   feedbackQuestion?: string;
+  /** Optional explicit theme (defaults to id prefix) used for dismissal/replacement. */
+  theme?: string;
 }
 
 const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
@@ -30,13 +34,38 @@ const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
   important: { icon: AlertCircle },
 };
 
-const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true, feedbackId, feedbackQuestion }: ContentSectionProps) => {
+const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true, feedbackId, feedbackQuestion, theme }: ContentSectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
+  const [phase, setPhase] = useState<"visible" | "fading" | "gone">("visible");
+  const containerRef = useRef<HTMLDivElement>(null);
   const Icon = typeConfig[type].icon;
   const isImportant = type === "important";
+  const { isDismissed } = useDismissedArticles();
+  const resolvedTheme = theme ?? (feedbackId ? inferTheme(feedbackId) : undefined);
+
+  // If this section was previously dismissed (e.g. in a prior session), stay hidden from first render.
+  const [hiddenFromStart] = useState(() => !!feedbackId && isDismissed(feedbackId));
+
+  // React to dismissal events for this card.
+  useEffect(() => {
+    if (!feedbackId || phase !== "visible") return;
+    if (isDismissed(feedbackId) && !hiddenFromStart) {
+      setPhase("fading");
+      const t = window.setTimeout(() => setPhase("gone"), 320);
+      return () => window.clearTimeout(t);
+    }
+  }, [feedbackId, isDismissed, phase, hiddenFromStart]);
+
+  if (hiddenFromStart || phase === "gone") return null;
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden animate-fade-in-up">
+    <div
+      ref={containerRef}
+      className={`bg-card border border-border rounded-lg overflow-hidden transition-all duration-300 ease-out ${
+        phase === "fading" ? "opacity-0 max-h-0 my-0 border-0" : "opacity-100 animate-fade-in-up"
+      }`}
+      style={phase === "fading" ? { maxHeight: 0, paddingTop: 0, paddingBottom: 0 } : undefined}
+    >
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 p-4 text-left"
@@ -99,7 +128,7 @@ const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = 
             </div>
           )}
           {feedbackId && type !== "important" && (
-            <ArticleFeedback articleId={feedbackId} question={feedbackQuestion} />
+            <ArticleFeedback articleId={feedbackId} question={feedbackQuestion} theme={resolvedTheme} />
           )}
         </div>
       )}
