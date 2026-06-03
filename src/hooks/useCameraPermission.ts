@@ -52,7 +52,7 @@ const queryNativeCameraPermission = async (): Promise<CameraPermissionState | nu
       case "limited":
         return "granted";
       case "denied":
-ފ        return "denied";
+return "denied";
       case "prompt":
       case "prompt-with-rationale":
         return "prompt";
