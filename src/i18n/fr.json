@@ -633,7 +633,47 @@
   "community": {
     "title": "Recettes communautaires",
     "latest": "Récentes",
-    "popular": "Populaires"
+    "popular": "Populaires",
+    "create": {
+      "title": "Créer",
+      "shareRecipe": "Partager une recette",
+      "shareRecipeDesc": "Publiez avec ingrédients, macros et étapes.",
+      "writePost": "Écrire une publication",
+      "writePostDesc": "Partagez un conseil, une question ou un progrès."
+    },
+    "post": {
+      "badge": "Publication",
+      "titleLabel": "Titre (optionnel)",
+      "titlePlaceholder": "Donnez-lui un titre",
+      "bodyLabel": "Qu'avez-vous en tête ?",
+      "bodyPlaceholder": "Partagez un conseil, une question, une victoire…",
+      "imageLabel": "Image (optionnelle)",
+      "uploadImage": "Téléverser une image",
+      "removeImage": "Supprimer l'image",
+      "publish": "Publier",
+      "publishing": "Publication…",
+      "published": "Publication publiée",
+      "publishError": "Impossible de publier",
+      "imageUploadFailed": "Échec du téléversement de l'image",
+      "signInToPost": "Connectez-vous pour publier",
+      "signInToLike": "Connectez-vous pour aimer les publications",
+      "invalidInput": "Entrée invalide",
+      "writeSomething": "Écrivez quelque chose à partager",
+      "imageTypeError": "Utilisez une image JPG, PNG ou WEBP",
+      "imageSizeError": "L'image doit faire moins de 5 Mo",
+      "readMore": "Lire la suite",
+      "readLess": "Réduire",
+      "like": "Aimer la publication",
+      "unlike": "Ne plus aimer la publication",
+      "anonymous": "Anonyme"
+    },
+    "recipe": {
+      "badge": "Recette",
+      "signInToLike": "Connectez-vous pour aimer les recettes",
+      "like": "Aimer la recette",
+      "unlike": "Ne plus aimer la recette",
+      "anonymous": "Anonyme"
+    }
   },
   "shoppingBag": {
     "title": "Liste de courses",
@@ -650,6 +690,7 @@
     "cancel": "Annuler",
     "save": "Enregistrer",
     "delete": "Supprimer",
+    "close": "Fermer",
     "loading": "Chargement…",
     "error": "Une erreur est survenue",
     "signIn": "Connexion"
