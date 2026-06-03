@@ -184,10 +184,33 @@ const Pricing = () => {
    * - On web: uses the hard-coded Stripe price IDs.
    */
   const getPurchaseContext = (planTier: "pro" | "elite") => {
+    const planLabel = planTier === "pro" ? "Pro" : "Elite";
+    const cycleLabel = billingCycle === "monthly"
+      ? "Monthly subscription · 1 month · Auto-renewing"
+      : "Annual subscription · 12 months · Auto-renewing";
+
     if (useNative) {
       const key = `${planTier}_${billingCycle}` as keyof typeof paywall.packages;
       const info = paywall.packages[key];
+      // Per Apple guideline 3.1.2: yearly plans must show a per-month
+      // equivalent so users can compare. RC sometimes exposes
+      // `pricePerMonth(String)`; otherwise we compute from `price`.
+      let perMonth: string | null = null;
+      if (billingCycle === "yearly" && info) {
+        const pkgAny = info.pkg.product as any;
+        if (pkgAny?.pricePerMonthString) perMonth = pkgAny.pricePerMonthString;
+        else if (typeof pkgAny?.price === "number" && pkgAny?.currencyCode) {
+          try {
+            perMonth = new Intl.NumberFormat(undefined, {
+              style: "currency",
+              currency: pkgAny.currencyCode,
+            }).format(pkgAny.price / 12);
+          } catch { /* ignore */ }
+        }
+      }
       return {
+        title: `${planLabel} — ${cycleLabel}`,
+        perMonth,
         label: info?.priceLabel ?? (paywall.loading ? "Loading…" : "Unavailable"),
         disabled: !info,
         loadingKey: info ? info.pkg.identifier : null,
@@ -196,6 +219,8 @@ const Pricing = () => {
     }
     const priceInfo = TIERS[planTier][billingCycle];
     return {
+      title: `${planLabel} — ${cycleLabel}`,
+      perMonth: null as string | null,
       label: priceInfo.amount,
       disabled: false,
       loadingKey: priceInfo.priceId,
