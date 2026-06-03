@@ -314,15 +314,26 @@ const Pricing = () => {
                     plan.tier === "elite" ? "text-[hsl(var(--gold))]" : plan.tier === "pro" ? "text-primary" : "text-muted-foreground"
                   } />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <h2 className="text-base font-bold text-foreground">{plan.name}</h2>
                   {purchase ? (
-                    <p className="text-sm font-semibold text-primary">{purchase.label}</p>
+                    <>
+                      <p className="text-sm font-semibold text-primary">
+                        {purchase.label}
+                        {purchase.perMonth && (
+                          <span className="text-[11px] font-normal text-muted-foreground"> · ≈ {purchase.perMonth}/mo</span>
+                        )}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/80 mt-0.5 leading-tight">
+                        {purchase.title}
+                      </p>
+                    </>
                   ) : (
                     <p className="text-sm text-muted-foreground">Always free</p>
                   )}
                 </div>
               </div>
+
 
               <ul className="space-y-1.5 mb-4">
                 {plan.features.map((f) => (
