@@ -269,6 +269,53 @@ const Pricing = () => {
           ))}
         </div>
 
+        {/* Apple-compliant subscription disclosure — shown in the purchase
+            flow above the Buy buttons. Required by App Store Review
+            Guideline 3.1.2. Native (IAP) build only; web shows Stripe terms
+            via Stripe's own checkout page. */}
+        {useNative && (
+          <div className="ios-card p-4 space-y-2 border border-border/60">
+            <p className="text-xs font-bold text-foreground uppercase tracking-wide">
+              Subscription terms
+            </p>
+            <ul className="text-[11px] text-muted-foreground leading-relaxed space-y-1 list-disc pl-4">
+              <li>Payment is charged to your Apple ID at confirmation of purchase.</li>
+              <li>
+                Your subscription automatically renews unless auto-renew is
+                turned off at least 24 hours before the end of the current
+                period.
+              </li>
+              <li>
+                Your account is charged for renewal within 24 hours prior to
+                the end of the current period at the selected plan's price.
+              </li>
+              <li>
+                You can manage your subscription and turn off auto-renew in
+                your Apple ID Account Settings after purchase.
+              </li>
+              <li>
+                No free trial is offered; any unused portion of a free trial,
+                if offered, is forfeited when purchasing a subscription.
+              </li>
+            </ul>
+            <div className="flex items-center gap-3 pt-1 text-[11px]">
+              <button
+                onClick={() => navigate("/privacy")}
+                className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+              >
+                Privacy Policy
+              </button>
+              <span className="text-muted-foreground/50">·</span>
+              <button
+                onClick={() => navigate("/terms")}
+                className="text-primary underline underline-offset-2 hover:opacity-80 transition-opacity"
+              >
+                Terms of Use
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Plan cards */}
         {plans.map((plan) => {
           const isCurrent = tier === plan.tier;
