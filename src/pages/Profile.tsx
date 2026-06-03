@@ -480,12 +480,6 @@ const Profile = () => {
                 </span>
               )}
             </div>
-              {profile?.diet_tier && (
-                <span className="text-[11px] text-muted-foreground">
-                  {tierLabels[profile.diet_tier] || profile.diet_tier}
-                </span>
-              )}
-            </div>
           </div>
         </div>
       </div>
