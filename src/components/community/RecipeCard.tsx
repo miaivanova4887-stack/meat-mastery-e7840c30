@@ -1,4 +1,5 @@
 import { Heart, Clock, Flame, ChefHat } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface RecipeCardData {
   id: string;
@@ -30,6 +31,7 @@ interface Props {
 }
 
 const RecipeCard = ({ recipe: r, liked, onToggleLike }: Props) => {
+  const { t } = useTranslation();
   return (
     <article className="ios-card p-4">
       {/* Header row: author + type badge */}
@@ -38,13 +40,13 @@ const RecipeCard = ({ recipe: r, liked, onToggleLike }: Props) => {
           {(r.profile?.display_name || "?")[0].toUpperCase()}
         </div>
         <span className="text-[11px] font-medium text-muted-foreground">
-          {r.profile?.display_name || "Anonymous"}
+          {r.profile?.display_name || t("community.recipe.anonymous")}
         </span>
         <span className="text-[10px] text-muted-foreground/60">
           · {new Date(r.created_at).toLocaleDateString()}
         </span>
         <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
-          <ChefHat size={10} /> Recipe
+          <ChefHat size={10} /> {t("community.recipe.badge")}
         </span>
       </div>
 
@@ -95,7 +97,7 @@ const RecipeCard = ({ recipe: r, liked, onToggleLike }: Props) => {
         <button
           onClick={onToggleLike}
           className="flex items-center gap-1 text-xs transition-colors"
-          aria-label={liked ? "Unlike recipe" : "Like recipe"}
+          aria-label={liked ? t("community.recipe.unlike") : t("community.recipe.like")}
         >
           <Heart
             size={14}

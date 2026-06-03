@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, Loader2, X } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -15,12 +16,8 @@ const TITLE_MAX = 120;
 const BODY_MAX = 2000;
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
-const postSchema = z.object({
-  title: z.string().trim().max(TITLE_MAX).optional().or(z.literal("")),
-  body: z.string().trim().min(1, "Write something to share").max(BODY_MAX),
-});
-
 const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -29,6 +26,11 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const postSchema = z.object({
+    title: z.string().trim().max(TITLE_MAX).optional().or(z.literal("")),
+    body: z.string().trim().min(1, t("community.post.writeSomething")).max(BODY_MAX),
+  });
 
   // Reset on open/close
   useEffect(() => {
@@ -55,11 +57,11 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!/^image\/(jpeg|png|webp|jpg)$/.test(file.type)) {
-      toast.error("Use a JPG, PNG, or WEBP image");
+      toast.error(t("community.post.imageTypeError"));
       return;
     }
     if (file.size > IMAGE_MAX_BYTES) {
-      toast.error("Image must be under 5MB");
+      toast.error(t("community.post.imageSizeError"));
       return;
     }
     if (imagePreview) URL.revokeObjectURL(imagePreview);
@@ -76,12 +78,12 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
 
   const handleSubmit = async () => {
     if (!user) {
-      toast.error("Sign in to post");
+      toast.error(t("community.post.signInToPost"));
       return;
     }
     const parsed = postSchema.safeParse({ title, body });
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0]?.message || "Invalid input");
+      toast.error(parsed.error.issues[0]?.message || t("community.post.invalidInput"));
       return;
     }
 
@@ -97,7 +99,7 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
           .from("recipe-images")
           .upload(path, imageFile, { upsert: false, contentType: imageFile.type });
         if (upErr) {
-          throw new Error(`Image upload failed: ${upErr.message}`);
+          throw new Error(`${t("community.post.imageUploadFailed")}: ${upErr.message}`);
         }
         const { data: urlData } = supabase.storage.from("recipe-images").getPublicUrl(path);
         image_url = urlData.publicUrl;
@@ -113,11 +115,11 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
         });
       if (insertErr) throw insertErr;
 
-      toast.success("Post published");
+      toast.success(t("community.post.published"));
       onCreated();
       onClose();
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Could not publish post";
+      const msg = e instanceof Error ? e.message : t("community.post.publishError");
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -137,12 +139,14 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1.5rem)" }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-display font-bold text-foreground">Write a Post</h2>
+          <h2 className="text-base font-display font-bold text-foreground">
+            {t("community.create.writePost")}
+          </h2>
           <button
             onClick={onClose}
             disabled={saving}
             className="text-muted-foreground disabled:opacity-50"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X size={18} />
           </button>
@@ -150,27 +154,27 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
 
         <label className="block">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Title (optional)
+            {t("community.post.titleLabel")}
           </span>
           <input
             type="text"
             value={title}
             maxLength={TITLE_MAX}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Give it a headline"
+            placeholder={t("community.post.titlePlaceholder")}
             className="mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </label>
 
         <label className="block mt-3">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            What's on your mind?
+            {t("community.post.bodyLabel")}
           </span>
           <textarea
             value={body}
             maxLength={BODY_MAX}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Share a tip, question, win, or update…"
+            placeholder={t("community.post.bodyPlaceholder")}
             rows={5}
             className="mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y min-h-[120px]"
           />
@@ -183,7 +187,7 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
 
         <div className="mt-3">
           <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-            Image (optional)
+            {t("community.post.imageLabel")}
           </span>
           {imagePreview ? (
             <div className="mt-1 relative rounded-xl overflow-hidden border border-border/40">
@@ -192,7 +196,7 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
                 type="button"
                 onClick={removeImage}
                 className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center"
-                aria-label="Remove image"
+                aria-label={t("community.post.removeImage")}
               >
                 <X size={14} />
               </button>
@@ -203,7 +207,7 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
               onClick={() => fileRef.current?.click()}
               className="mt-1 w-full py-3 rounded-xl border border-dashed border-border bg-secondary/40 text-muted-foreground text-xs flex items-center justify-center gap-2 hover:bg-secondary/70 transition-colors"
             >
-              <Camera size={14} /> Upload an image
+              <Camera size={14} /> {t("community.post.uploadImage")}
             </button>
           )}
           <input
@@ -222,10 +226,10 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
         >
           {saving ? (
             <>
-              <Loader2 size={14} className="animate-spin" /> Posting…
+              <Loader2 size={14} className="animate-spin" /> {t("community.post.publishing")}
             </>
           ) : (
-            "Post"
+            t("community.post.publish")
           )}
         </button>
       </div>

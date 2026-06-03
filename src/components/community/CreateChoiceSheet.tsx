@@ -1,4 +1,5 @@
 import { ChefHat, MessageSquare, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 const CreateChoiceSheet = ({ open, onClose, onShareRecipe, onWritePost }: Props) => {
+  const { t } = useTranslation();
   if (!open) return null;
   return (
     <div
@@ -20,8 +22,10 @@ const CreateChoiceSheet = ({ open, onClose, onShareRecipe, onWritePost }: Props)
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-display font-bold text-foreground">Create</h2>
-          <button onClick={onClose} className="text-muted-foreground" aria-label="Close">
+          <h2 className="text-base font-display font-bold text-foreground">
+            {t("community.create.title")}
+          </h2>
+          <button onClick={onClose} className="text-muted-foreground" aria-label={t("common.close")}>
             <X size={18} />
           </button>
         </div>
@@ -34,9 +38,11 @@ const CreateChoiceSheet = ({ open, onClose, onShareRecipe, onWritePost }: Props)
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
               <ChefHat size={20} className="text-primary" />
             </div>
-            <p className="text-[13px] font-semibold text-foreground">Share a Recipe</p>
+            <p className="text-[13px] font-semibold text-foreground">
+              {t("community.create.shareRecipe")}
+            </p>
             <p className="text-[11px] text-muted-foreground leading-snug">
-              Publish with ingredients, macros, and steps.
+              {t("community.create.shareRecipeDesc")}
             </p>
           </button>
 
@@ -47,9 +53,11 @@ const CreateChoiceSheet = ({ open, onClose, onShareRecipe, onWritePost }: Props)
             <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
               <MessageSquare size={20} className="text-accent-foreground" />
             </div>
-            <p className="text-[13px] font-semibold text-foreground">Write a Post</p>
+            <p className="text-[13px] font-semibold text-foreground">
+              {t("community.create.writePost")}
+            </p>
             <p className="text-[11px] text-muted-foreground leading-snug">
-              Share a tip, question, or progress update.
+              {t("community.create.writePostDesc")}
             </p>
           </button>
         </div>

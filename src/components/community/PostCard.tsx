@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Heart, MessageSquare } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface PostCardData {
   id: string;
@@ -19,6 +20,7 @@ interface Props {
 }
 
 const PostCard = ({ post: p, liked, onToggleLike }: Props) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   // ~3 lines is roughly 220 chars in a card; offer Read more past that.
   const isLong = p.body.length > 220;
@@ -31,13 +33,13 @@ const PostCard = ({ post: p, liked, onToggleLike }: Props) => {
           {(p.profile?.display_name || "?")[0].toUpperCase()}
         </div>
         <span className="text-[11px] font-medium text-muted-foreground">
-          {p.profile?.display_name || "Anonymous"}
+          {p.profile?.display_name || t("community.post.anonymous")}
         </span>
         <span className="text-[10px] text-muted-foreground/60">
           · {new Date(p.created_at).toLocaleDateString()}
         </span>
         <span className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-[10px] font-semibold">
-          <MessageSquare size={10} /> Post
+          <MessageSquare size={10} /> {t("community.post.badge")}
         </span>
       </div>
 
@@ -59,7 +61,7 @@ const PostCard = ({ post: p, liked, onToggleLike }: Props) => {
           onClick={() => setExpanded((v) => !v)}
           className="mt-1 text-[11px] font-semibold text-primary"
         >
-          {expanded ? "Read less" : "Read more"}
+          {expanded ? t("community.post.readLess") : t("community.post.readMore")}
         </button>
       )}
 
@@ -78,7 +80,7 @@ const PostCard = ({ post: p, liked, onToggleLike }: Props) => {
         <button
           onClick={onToggleLike}
           className="flex items-center gap-1 text-xs transition-colors"
-          aria-label={liked ? "Unlike post" : "Like post"}
+          aria-label={liked ? t("community.post.unlike") : t("community.post.like")}
         >
           <Heart
             size={14}
