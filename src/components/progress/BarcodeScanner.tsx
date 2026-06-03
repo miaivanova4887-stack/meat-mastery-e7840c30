@@ -45,6 +45,7 @@ const BarcodeScanner = () => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const addEntry = useAddEntry();
+  const { refreshPermission, markGranted, markDenied } = useCameraPermission();
 
   const stopScanner = useCallback(async () => {
     try {
