@@ -140,6 +140,39 @@ export type Database = {
         }
         Relationships: []
       }
+      community_posts: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          image_url: string | null
+          likes_count: number
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          likes_count?: number
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          likes_count?: number
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       community_recipes: {
         Row: {
           cal: string
@@ -383,6 +416,27 @@ export type Database = {
           parent_slug?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
         }
         Relationships: []
       }
