@@ -2,13 +2,20 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import CorpusItemRenderer from "@/components/CorpusItemRenderer";
+import { useArticleSlots } from "@/hooks/useArticleSlots";
+import { getCorpusItem, getPageItems } from "@/data/articleCorpus";
 import { useTranslation } from "react-i18next";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { useMemo } from "react";
 
 const AthleticPerformance = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   useScrollToTop();
+
+  const initialIds = useMemo(() => getPageItems("athletic").map((i) => i.id), []);
+  const { slots, onDismiss } = useArticleSlots(initialIds);
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
@@ -24,17 +31,11 @@ const AthleticPerformance = () => {
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("athletic.subtitle")}</p>
 
-        <ContentSection type="key_points" title={t("athletic.adapt.title")} feedbackId="athletic-adapt" feedbackQuestion={t("athletic.adapt.q")} items={t("athletic.adapt.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="tips" title={t("athletic.pre.title")} feedbackId="athletic-pre" feedbackQuestion={t("athletic.pre.q")} items={t("athletic.pre.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="key_points" title={t("athletic.post.title")} feedbackId="athletic-post" feedbackQuestion={t("athletic.post.q")} items={t("athletic.post.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="key_points" title={t("athletic.endurance.title")} feedbackId="athletic-endurance" feedbackQuestion={t("athletic.endurance.q")} items={t("athletic.endurance.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="data" title={t("athletic.strength.title")} feedbackId="athletic-strength" feedbackQuestion={t("athletic.strength.q")} dataRows={t("athletic.strength.rows", { returnObjects: true }) as Array<{ label: string; value: string }>} />
-
-        <ContentSection type="key_points" title={t("athletic.benefits.title")} feedbackId="athletic-benefits" feedbackQuestion={t("athletic.benefits.q")} items={t("athletic.benefits.items", { returnObjects: true }) as string[]} />
+        {slots.map((id, i) => {
+          const item = getCorpusItem(id);
+          if (!item) return null;
+          return <CorpusItemRenderer key={id} item={item} onDismiss={onDismiss} index={i} />;
+        })}
 
         <ContentSection type="important" title={t("athletic.note.title")}>
           {t("athletic.note.content")}

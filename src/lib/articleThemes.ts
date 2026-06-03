@@ -43,3 +43,38 @@ export function pickReplacement<T extends { id: string; theme: string }>(
   }
   return null;
 }
+
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ARTICLE_CORPUS, type ArticleCorpusItem } from "@/data/articleCorpus";
+
+/**
+ * Corpus-aware replacement picker. Excludes the dismissed article, anything
+ * already dismissed, anything currently visible on the page, and anything
+ * already injected during this session.
+ */
+export function pickReplacementFromCorpus(opts: {
+  currentId: string;
+  currentTheme: string;
+  dismissedIds: Set<string>;
+  visibleIds: Set<string>;
+  injectedIds: Set<string>;
+}): ArticleCorpusItem | null {
+  const { currentId, currentTheme, dismissedIds, visibleIds, injectedIds } = opts;
+  const isEligible = (item: ArticleCorpusItem) =>
+    item.id !== currentId &&
+    !dismissedIds.has(item.id) &&
+    !visibleIds.has(item.id) &&
+    !injectedIds.has(item.id);
+
+  const sameTheme = ARTICLE_CORPUS.find(
+    (i) => i.theme === currentTheme && isEligible(i),
+  );
+  if (sameTheme) return sameTheme;
+
+  for (const adj of THEME_ADJACENCY[currentTheme] ?? []) {
+    const hit = ARTICLE_CORPUS.find((i) => i.theme === adj && isEligible(i));
+    if (hit) return hit;
+  }
+  return null;
+}
+

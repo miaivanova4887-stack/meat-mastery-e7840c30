@@ -1,138 +1,135 @@
+## V2: Same-slot replacement after "Not really"
 
-## Goal
+Build on the v1 dismissal flow. When an eligible replacement exists, the dismissed article's slot is reused by another article (same theme first, adjacent theme second) instead of collapsing to empty.
 
-When a user taps **Not really** on any article-style content, show a brief acknowledgment, fade the item out after ~3s, and (when possible) replace it with a sibling article from the same or an adjacent theme. Existing **Yes** feedback is untouched.
+### 1. Shared corpus — `src/data/articleCorpus.ts` (new)
 
-## Affected surfaces
-
-All pages that render `ContentSection` with a `feedbackId`:
-
-- `src/pages/Benefits.tsx` (theme: `benefits`)
-- `src/pages/Cravings.tsx` (theme: `cravings`)
-- `src/pages/Sustain.tsx` (theme: `sustain`)
-- `src/pages/AthleticPerformance.tsx` (theme: `athletic`)
-- `src/pages/Myths.tsx` (theme: `myths`)
-- `src/pages/Guide.tsx` (theme: `guide`)
-- `src/pages/BudgetEating.tsx` (theme: `budget`)
-- `src/pages/GettingStarted.tsx` (theme: `first30`)
-- `src/pages/Stories.tsx` (theme: `stories`, uses `ArticleFeedback` directly)
-
-`src/pages/NewsFeed.tsx` has no per-item ArticleFeedback today — out of scope for v1 (noted as future).
-
-## Architecture
-
-Centralize behavior in one hook + light wrappers so each page changes minimally.
-
-### 1. Schema — `content_reactions`
-
-```sql
-CREATE TABLE public.content_reactions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  content_id text NOT NULL,
-  content_type text NOT NULL DEFAULT 'article',
-  reaction text NOT NULL,          -- 'not_really' | 'yes' (future)
-  theme text,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (user_id, content_id, reaction)
-);
-GRANT SELECT, INSERT, DELETE ON public.content_reactions TO authenticated;
-GRANT ALL ON public.content_reactions TO service_role;
-ALTER TABLE public.content_reactions ENABLE ROW LEVEL SECURITY;
--- policies: user can select/insert/delete own; service role bypasses
-```
-
-Local-first: dismissed IDs are also stored in `localStorage` (`carnivore-dismissed-articles`) so unauthenticated users get the same UX and SSR/offline works. DB write is best-effort (fire-and-forget) when logged in.
-
-### 2. New hook — `src/hooks/useDismissibleArticle.ts`
-
-Provides:
-
-- `dismissedIds: Set<string>` — merged from localStorage + (if authed) DB
-- `dismiss(articleId, theme?)` — writes locally, fires DB insert, dispatches `articles-dismissed` event
-- `isDismissed(id)` — boolean
-- listens to `articles-dismissed` cross-component sync
-
-### 3. New helper — `src/lib/articleThemes.ts`
+Data-driven, no JSX factories (avoids hydration/unstable-ref issues). Each item describes how to render via the existing primitives (`ContentSection`, custom `cravings` card, `stories` card, `benefits` card):
 
 ```ts
-export const THEME_ADJACENCY: Record<string, string[]> = {
-  cravings:  ['first30', 'sustain', 'benefits'],
-  budget:    ['guide', 'sustain'],
-  myths:     ['benefits', 'guide', 'athletic'],
-  athletic:  ['benefits', 'guide', 'sustain'],
-  benefits:  ['sustain', 'guide'],
-  sustain:   ['benefits', 'first30'],
-  guide:     ['benefits', 'first30'],
-  first30:   ['cravings', 'guide'],
-  stories:   ['benefits', 'sustain'],
+type ContentKind =
+  | { kind: "section"; type: "overview" | "key_points" | "tips" | "data" | "important";
+      titleKey: string; questionKey?: string;
+      itemsKey?: string; dataRowsKey?: string; bodyKey?: string }
+  | { kind: "cravings"; iconName: string; titleKey: string; descKey: string; questionKey: string }
+  | { kind: "sustain";  iconName: string; titleKey: string; descKey: string; questionKey: string; link?: string }
+  | { kind: "benefit";  iconName: string; titleKey: string; descKey: string; questionKey: string }
+  | { kind: "myth";     index: number }            // pulls from t("myths.items")[index]
+  | { kind: "story";    story: StoryDef };         // static, EN-only like today
+
+export type ArticleCorpusItem = {
+  id: string;          // matches feedbackId / articleId, e.g. "benefits-energy"
+  theme: string;       // matches THEME_ADJACENCY keys
+  page: string;        // "benefits" | "cravings" | "sustain" | ...
+  content: ContentKind;
 };
-export function pickReplacement(
-  theme: string,
-  pool: { id: string; theme: string }[],
-  dismissed: Set<string>,
-  exclude: Set<string>,
-): { id: string; theme: string } | null { /* same theme first, then adjacency, then null */ }
+
+export const ARTICLE_CORPUS: ArticleCorpusItem[];
+export function getCorpusItem(id: string): ArticleCorpusItem | undefined;
+export function getPageItems(page: string): ArticleCorpusItem[];
 ```
 
-### 4. `ArticleFeedback.tsx` changes
+The current per-page arrays (`benefitKeys`, `strategyKeys`, `tipKeys`, `stories`, the `<ContentSection>` calls in Athletic / Guide / Budget / GettingStarted / Myths) are migrated into this corpus. Each page then renders by mapping over its corpus slice — no duplicated JSX. A single `<CorpusItemRenderer item={...} />` component knows how to render each `ContentKind`.
 
-- Add optional `theme?: string` and `onNotReally?: () => void` props.
-- On **Not really**:
-  1. Save existing feedback (keeps reassuring copy visible).
-  2. Show subtle inline text "Got it — we'll show less like this."
-  3. After **3000 ms**, call `dismiss(articleId, theme)` and `onNotReally?.()`.
+### 2. Replacement engine — extend `src/lib/articleThemes.ts`
 
-### 5. `ContentSection.tsx` changes
+Keep `pickReplacement` for back-compat; add corpus-aware version:
 
-- Accept optional `theme?: string`, forward to `ArticleFeedback`.
-- Use internal state `phase: 'visible' | 'fading' | 'gone'`; on dismiss callback, animate `animate-fade-out` + max-height collapse over 300ms then unmount.
-- When unmounting, dispatch an `onDismiss(id, theme)` callback so the parent page can swap in a replacement.
+```ts
+export function pickReplacementFromCorpus(opts: {
+  currentId: string;
+  currentTheme: string;
+  dismissedIds: Set<string>;
+  visibleIds: Set<string>;
+  injectedIds: Set<string>;
+}): ArticleCorpusItem | null
+```
 
-### 6. Per-page wiring (centralized)
+Order: same theme → adjacent themes (via `THEME_ADJACENCY`) → null. Excludes `currentId`, anything in `dismissedIds`, anything currently visible on the page, and anything already injected this session.
 
-Introduce a tiny wrapper `src/components/ArticleList.tsx` that takes `theme` + an array of `{ id, render }`, tracks dismissed IDs via the hook, filters them out, and — when an item is dismissed — inserts a `pickReplacement(...)` from a `pool` prop (other items on the page or a shared corpus).
+### 3. Page-level orchestration — `src/hooks/useArticleSlots.ts` (new)
 
-Migrate each of the 9 pages to render their `ContentSection`s through `ArticleList`. For pages whose pool is just the page's own list, replacement falls back to "hide only" once the local pool is exhausted (acceptable per spec).
+Each migrated page calls:
 
-Optionally, a small shared corpus index (`src/data/articleCorpus.ts`) maps every `feedbackId → { theme, render }` so cross-page replacement is possible later. v1 ships with per-page pools only to keep risk low.
+```ts
+const { slots, onDismiss } = useArticleSlots(initialIdsForThisPage);
+```
 
-### 7. Stories page
+Internally:
 
-`Stories.tsx` uses `ArticleFeedback` directly inside a custom card. Wrap each story in the same dismiss flow via the hook (no list-swap; just fade out + hide). Same animation.
+- `slots: string[]` — ordered list of article IDs to render (starts as the page's corpus IDs minus already-dismissed ones).
+- A `Set<string>` of `injectedIds` for the current view instance (not persisted).
+- `onDismiss(id)` is called when `ArticleFeedback` finishes its 3 s acknowledgment. It runs `pickReplacementFromCorpus`; if found, replaces `id` with the new id in `slots` and adds it to `injectedIds`; otherwise removes the slot (hide-only fallback).
 
-## Theme + ID mapping (already present in code)
+The page renders `slots.map(id => <CorpusItemRenderer key={id} item={getCorpusItem(id)!} onDismiss={onDismiss} />)`. Keying by `id` (not index) gives React stable identity, and the freshly-mounted replacement gets `animate-fade-in` for the subtle entry. `key` change on the slot drives the cross-fade naturally.
 
-Existing `feedbackId`s already encode theme via prefix (`benefits-*`, `cravings-*`, `myths-*`, `guide-*`, `budget-*`, `sustain-*`, `athletic-*`, `stories-*`). First-30-days IDs in `GettingStarted.tsx` will be normalized to `first30-*` (or theme passed explicitly so legacy IDs keep working).
+### 4. `ArticleFeedback` + `ContentSection` / `DismissibleCard` wiring
 
-## UX details
+- `ArticleFeedback` already accepts `onDismiss`; it currently only marks the article as dismissed. After the 3 s timer, it will also invoke the page-level `onDismiss(id)` so the slot can be swapped. Persistence (`dismiss()` → `useDismissedArticles`) is unchanged.
+- `ContentSection` / `DismissibleCard` keep their fade/collapse, but when the parent swaps `key`, the old node unmounts after fade and the new corpus item mounts in its place. We add a small grace: parent waits ~320 ms (the existing fade) before swapping `slots[i]`, so the user sees fade-out → fade-in rather than an abrupt replace. Implemented via a queued swap inside `useArticleSlots`.
 
-- Acknowledgment copy: "Got it — we'll show less like this." (added to en/fr i18n).
-- Fade: 300 ms `opacity` + `max-height` collapse after the 3 s acknowledgment hold.
-- Replacement slides in with `animate-fade-in`.
-- No layout jump: collapse animates height; replacement mounts into the same slot.
-- Detail-page case (Myths, Guide etc.): each section is independently dismissable in place. We do **not** navigate away — lower risk.
+### 5. Pages touched
 
-## Implementation order (lowest → highest risk)
+Migrated to corpus + slots:
 
-1. **Migration** — create `content_reactions` table + RLS.
-2. **Hook + helpers** — `useDismissibleArticle`, `articleThemes.ts`, i18n keys.
-3. **ArticleFeedback** — add `theme` + 3s dismiss timer + ack copy.
-4. **ContentSection** — fade/collapse + `onDismiss` callback.
-5. **ArticleList wrapper** — filters + replacement pool.
-6. **Page migrations** in this order, one at a time:
-   Cravings → Sustain → Benefits → Athletic → Myths → Guide → Budget → GettingStarted → Stories.
-7. Smoke-test each surface; confirm Yes flow unchanged.
+- `src/pages/Benefits.tsx`
+- `src/pages/Cravings.tsx`
+- `src/pages/Sustain.tsx`
+- `src/pages/AthleticPerformance.tsx`
+- `src/pages/Myths.tsx`
+- `src/pages/Guide.tsx`
+- `src/pages/BudgetEating.tsx`
+- `src/pages/GettingStarted.tsx`
+- `src/pages/Stories.tsx`
 
-## Where replacement is not possible (hide-only)
+Sex-conditional Benefits items (`hormones_f`, `testosterone`, `lean_muscle`) stay filtered at the page level before handing IDs to `useArticleSlots`, so replacements never inject a wrong-sex card.
 
-- **Stories.tsx** — short curated list, no semantic siblings on-page → fade + hide.
-- Any page where the local pool is exhausted after multiple dismissals → fade + hide.
-- Detail-style single-section pages → fade + hide (current spec accepts this).
+Non-dismissible `type: "important"` sections (warnings, disclaimers) stay outside `useArticleSlots` — they are not eligible as replacements and cannot be dismissed (already enforced by `ContentSection`).
 
-## Constraints respected
+### 6. Same-slot animation
 
-- Yes/helpful path untouched.
-- Reaction rows are per (`user_id`, `content_id`, `reaction`) — easy to delete later for a preferences-management screen.
-- Deterministic mapping, no AI.
-- Local-first so unauthed users still get dismissal UX.
+- Old card fades + collapses (existing 300 ms behavior, unchanged).
+- After the collapse settles, parent updates `slots[i]` → new corpus id.
+- New card mounts with `animate-fade-in-up` (already used by these cards) for a smooth entrance in the same layout slot.
+
+### 7. Fallback / no-eligible-replacement
+
+If `pickReplacementFromCorpus` returns `null`, behavior matches v1 exactly: the slot is removed and surrounding cards reflow. This applies to:
+
+- Stories (short, page-local pool; cross-theme matches uncommon and curated)
+- Any page where the user has dismissed enough items that the corpus is exhausted for that theme + adjacency
+- Sex-filtered Benefits where the only same-theme remainder is wrong-sex
+
+### 8. Constraints preserved
+
+- v1 persistence (`carnivore-dismissed-articles` + `content_reactions`) untouched.
+- 3-second acknowledgment timing unchanged.
+- "Yes" flow unchanged.
+- No schema changes.
+- Deterministic, no AI calls.
+- No factory functions stored in state; corpus is plain data, render is a switch in `CorpusItemRenderer`.
+
+- Keep the corpus focused on the dismissible content blocks, not whole-page layout wrappers.
+- Make `onDismiss(id)` idempotent so duplicate timer/event fires cannot double-swap a slot.
+
+### Files
+
+New:
+
+- `src/data/articleCorpus.ts`
+- `src/hooks/useArticleSlots.ts`
+- `src/components/CorpusItemRenderer.tsx`
+
+Edited:
+
+- `src/lib/articleThemes.ts` (add `pickReplacementFromCorpus`)
+- `src/components/ArticleFeedback.tsx` (call page-level `onDismiss` after the 3 s timer; already props-ready)
+- `src/pages/Benefits.tsx`, `Cravings.tsx`, `Sustain.tsx`, `AthleticPerformance.tsx`, `Myths.tsx`, `Guide.tsx`, `BudgetEating.tsx`, `GettingStarted.tsx`, `Stories.tsx` (render via corpus + slots)
+
+### Success criteria check
+
+- ✅ Same-slot replacement after fade-out when eligible.
+- ✅ Same-theme first, adjacent second via `THEME_ADJACENCY`.
+- ✅ No duplicates on the page (excludes `visibleIds` and `injectedIds`).
+- ✅ Cross-session persistence intact.
+- ✅ Hide-only fallback when no replacement.

@@ -2,13 +2,20 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import CorpusItemRenderer from "@/components/CorpusItemRenderer";
+import { useArticleSlots } from "@/hooks/useArticleSlots";
+import { getCorpusItem, getPageItems } from "@/data/articleCorpus";
 import { useTranslation } from "react-i18next";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { useMemo } from "react";
 
 const GettingStarted = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   useScrollToTop();
+
+  const initialIds = useMemo(() => getPageItems("started").map((i) => i.id), []);
+  const { slots, onDismiss } = useArticleSlots(initialIds);
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
@@ -24,15 +31,11 @@ const GettingStarted = () => {
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("gettingStarted.subtitle")}</p>
 
-        <ContentSection type="key_points" title={t("gettingStarted.week1.title")} feedbackId="started-w1" feedbackQuestion={t("gettingStarted.week1.q")} items={t("gettingStarted.week1.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="key_points" title={t("gettingStarted.week2.title")} feedbackId="started-w2" feedbackQuestion={t("gettingStarted.week2.q")} items={t("gettingStarted.week2.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="key_points" title={t("gettingStarted.week3.title")} feedbackId="started-w3" feedbackQuestion={t("gettingStarted.week3.q")} items={t("gettingStarted.week3.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="key_points" title={t("gettingStarted.week4.title")} feedbackId="started-w4" feedbackQuestion={t("gettingStarted.week4.q")} items={t("gettingStarted.week4.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="tips" title={t("gettingStarted.tips.title")} feedbackId="started-tips" feedbackQuestion={t("gettingStarted.tips.q")} items={t("gettingStarted.tips.items", { returnObjects: true }) as string[]} />
+        {slots.map((id, i) => {
+          const item = getCorpusItem(id);
+          if (!item) return null;
+          return <CorpusItemRenderer key={id} item={item} onDismiss={onDismiss} index={i} />;
+        })}
 
         <ContentSection type="important" title={t("gettingStarted.warning.title")}>
           {t("gettingStarted.warning.content")}

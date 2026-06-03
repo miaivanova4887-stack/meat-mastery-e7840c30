@@ -24,6 +24,8 @@ interface ContentSectionProps {
   feedbackQuestion?: string;
   /** Optional explicit theme (defaults to id prefix) used for dismissal/replacement. */
   theme?: string;
+  /** Forwarded to ArticleFeedback. Fires ~3s after "Not really". */
+  onDismiss?: (articleId: string) => void;
 }
 
 const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
@@ -34,7 +36,7 @@ const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
   important: { icon: AlertCircle },
 };
 
-const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true, feedbackId, feedbackQuestion, theme }: ContentSectionProps) => {
+const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true, feedbackId, feedbackQuestion, theme, onDismiss }: ContentSectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
   const [phase, setPhase] = useState<"visible" | "fading" | "gone">("visible");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -128,7 +130,7 @@ const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = 
             </div>
           )}
           {feedbackId && type !== "important" && (
-            <ArticleFeedback articleId={feedbackId} question={feedbackQuestion} theme={resolvedTheme} />
+            <ArticleFeedback articleId={feedbackId} question={feedbackQuestion} theme={resolvedTheme} onDismiss={onDismiss} />
           )}
         </div>
       )}

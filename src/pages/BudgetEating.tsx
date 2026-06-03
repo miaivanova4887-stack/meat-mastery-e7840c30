@@ -1,15 +1,21 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import CorpusItemRenderer from "@/components/CorpusItemRenderer";
+import { useArticleSlots } from "@/hooks/useArticleSlots";
+import { getCorpusItem, getPageItems } from "@/data/articleCorpus";
 import { useTranslation } from "react-i18next";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import BudgetPlanner from "@/components/budget/BudgetPlanner";
+import { useMemo } from "react";
 
 const BudgetEating = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   useScrollToTop();
+
+  const initialIds = useMemo(() => getPageItems("budget").map((i) => i.id), []);
+  const { slots, onDismiss } = useArticleSlots(initialIds);
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
@@ -25,15 +31,11 @@ const BudgetEating = () => {
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
         <p className="text-xs text-muted-foreground">{t("budget.subtitle")}</p>
 
-        <ContentSection type="key_points" title={t("budget.cuts.title")} feedbackId="budget-cuts" feedbackQuestion={t("budget.cuts.q")} items={t("budget.cuts.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="tips" title={t("budget.shopping.title")} feedbackId="budget-shopping" feedbackQuestion={t("budget.shopping.q")} items={t("budget.shopping.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="key_points" title={t("budget.bulk.title")} feedbackId="budget-bulk" feedbackQuestion={t("budget.bulk.q")} items={t("budget.bulk.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="tips" title={t("budget.free.title")} feedbackId="budget-free" feedbackQuestion={t("budget.free.q")} items={t("budget.free.items", { returnObjects: true }) as string[]} />
-
-        <ContentSection type="key_points" title={t("budget.prep.title")} feedbackId="budget-prep" feedbackQuestion={t("budget.prep.q")} items={t("budget.prep.items", { returnObjects: true }) as string[]} />
+        {slots.map((id, i) => {
+          const item = getCorpusItem(id);
+          if (!item) return null;
+          return <CorpusItemRenderer key={id} item={item} onDismiss={onDismiss} index={i} />;
+        })}
 
         <BudgetPlanner />
       </div>

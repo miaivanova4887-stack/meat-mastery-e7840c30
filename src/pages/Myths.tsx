@@ -1,16 +1,20 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import ContentSection from "@/components/ContentSection";
 import MotivationCTA from "@/components/MotivationCTA";
+import CorpusItemRenderer from "@/components/CorpusItemRenderer";
+import { useArticleSlots } from "@/hooks/useArticleSlots";
+import { getCorpusItem, getPageItems } from "@/data/articleCorpus";
 import { useTranslation } from "react-i18next";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
+import { useMemo } from "react";
 
 const Myths = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   useScrollToTop();
 
-  const myths = t("myths.items", { returnObjects: true }) as Array<{ title: string; content: string }>;
+  const initialIds = useMemo(() => getPageItems("myths").map((i) => i.id), []);
+  const { slots, onDismiss } = useArticleSlots(initialIds);
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
@@ -24,19 +28,13 @@ const Myths = () => {
       </div>
 
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-3">
-        <p className="text-xs text-muted-foreground">{t("myths.count", { count: myths.length })}</p>
+        <p className="text-xs text-muted-foreground">{t("myths.count", { count: slots.length })}</p>
 
-        {myths.map((myth, i) => (
-          <ContentSection
-            key={i}
-            type="overview"
-            title={`${i + 1}. ${myth.title}`}
-            feedbackId={`myths-${i}`}
-            feedbackQuestion={t("myths.feedbackQ")}
-          >
-            {myth.content}
-          </ContentSection>
-        ))}
+        {slots.map((id, i) => {
+          const item = getCorpusItem(id);
+          if (!item) return null;
+          return <CorpusItemRenderer key={id} item={item} onDismiss={onDismiss} index={i} />;
+        })}
       </div>
       <MotivationCTA />
     </div>
