@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { CURRENCIES, detectCurrency, type CurrencyCode } from "./currencyData";
 import { getLocalPrices, type BudgetItem } from "./localPrices";
+import { resetViewportScale } from "@/lib/utils";
 
 const STORAGE_KEY = "carnivore-budget-overrides";
 
