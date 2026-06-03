@@ -500,7 +500,10 @@
     "shareText": "Join me on the ultimate carnivore diet companion! 🥩🔥",
     "today": "Today",
     "yesterday": "Yesterday",
-    "daysAgo": "{{count}}d ago"
+    "daysAgo": "{{count}}d ago",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfUse": "Terms of Use",
+    "wellnessDisclaimer": "Wellness Disclaimer"
   },
   "benefits": {
     "title": "Potential Benefits",
