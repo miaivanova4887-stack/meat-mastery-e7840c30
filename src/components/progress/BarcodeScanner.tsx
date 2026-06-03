@@ -107,7 +107,6 @@ const BarcodeScanner = () => {
         async (decodedText) => { await stopScanner(); lookupBarcode(decodedText); },
         () => { /* per-frame decode errors are noise */ }
       );
-      try { localStorage.removeItem(CAMERA_DENIED_KEY); } catch { /* ignore */ }
       markGranted();
     } catch (err: any) {
       // First-time denial path — do NOT redirect to Settings. Just close,
