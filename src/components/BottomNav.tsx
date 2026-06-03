@@ -21,7 +21,7 @@ const BottomNav = () => {
   // the page's own bottom input/composer (Recipe Coach chat box).
   if (location.pathname === "/onboarding" || location.pathname === "/recipe-coach") return null;
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 ios-blur shadow-lg bottom-nav border-t border-border/40 dark:border-transparent"
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 dark:bg-black/95 ios-blur shadow-lg bottom-nav border-t border-border/40 dark:border-white/5"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
     >
       <div className="flex items-center justify-around py-2 px-1">
