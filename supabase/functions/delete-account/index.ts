@@ -21,7 +21,9 @@ const log = (step: string, details?: unknown) => {
 // permissions issue must NEVER stop the auth.users delete from happening.
 const USER_TABLES: { table: string; column: string }[] = [
   { table: "recipe_likes", column: "user_id" },
+  { table: "post_likes", column: "user_id" },
   { table: "community_recipes", column: "user_id" },
+  { table: "community_posts", column: "user_id" },
   { table: "progress_entries", column: "user_id" },
   { table: "progress_goals", column: "user_id" },
   { table: "user_attributes", column: "user_id" },
@@ -32,6 +34,7 @@ const USER_TABLES: { table: string; column: string }[] = [
   { table: "user_roles", column: "user_id" },
   { table: "profiles", column: "id" },
 ];
+
 
 // --- Apple Sign In revocation -------------------------------------------
 // Apple requires SiwA users to be able to fully revoke their Apple tokens
