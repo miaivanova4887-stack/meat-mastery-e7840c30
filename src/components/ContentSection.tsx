@@ -36,7 +36,7 @@ const typeConfig: Record<SectionType, { icon: typeof FileText }> = {
   important: { icon: AlertCircle },
 };
 
-const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true, feedbackId, feedbackQuestion, theme }: ContentSectionProps) => {
+const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = true, feedbackId, feedbackQuestion, theme, onDismiss }: ContentSectionProps) => {
   const [open, setOpen] = useState(defaultOpen);
   const [phase, setPhase] = useState<"visible" | "fading" | "gone">("visible");
   const containerRef = useRef<HTMLDivElement>(null);
