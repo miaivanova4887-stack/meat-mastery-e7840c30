@@ -14,25 +14,14 @@ function json(data: unknown, status = 200) {
   });
 }
 
-// Get or generate VAPID keys, stored in vapid_config table
-async function getVapidKeys(supabaseAdmin: ReturnType<typeof createClient>) {
-  const { data } = await supabaseAdmin
-    .from("vapid_config")
-    .select("public_key, private_key")
-    .eq("id", 1)
-    .maybeSingle();
-
-  if (data) return { publicKey: data.public_key, privateKey: data.private_key };
-
-  // Generate new keys
-  const vapidKeys = webPush.generateVAPIDKeys();
-  await supabaseAdmin.from("vapid_config").insert({
-    id: 1,
-    public_key: vapidKeys.publicKey,
-    private_key: vapidKeys.privateKey,
-  });
-
-  return vapidKeys;
+// VAPID keys are stored as edge function secrets (never in the database).
+function getVapidKeys(_supabaseAdmin: ReturnType<typeof createClient>) {
+  const publicKey = Deno.env.get("VAPID_PUBLIC_KEY");
+  const privateKey = Deno.env.get("VAPID_PRIVATE_KEY");
+  if (!publicKey || !privateKey) {
+    throw new Error("VAPID keys not configured. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY secrets.");
+  }
+  return { publicKey, privateKey };
 }
 
 /** Extract and validate the authenticated user from the request */
