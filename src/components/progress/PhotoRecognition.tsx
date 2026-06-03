@@ -7,11 +7,15 @@ import { useAddEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import CameraPermissionExplainer from "@/components/CameraPermissionExplainer";
+
+const PHOTO_EXPLAINER_SEEN_KEY = "camera-photo-explainer-seen";
 
 const PhotoRecognition = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
+  const [showExplainer, setShowExplainer] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
   const profile = useUserProfile();
