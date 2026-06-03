@@ -1,42 +1,62 @@
-## Fix: Add missing iOS privacy usage string for Snap & Log
+## Goal
 
-The `@capacitor/camera` plugin requires `NSPhotoLibraryAddUsageDescription` in `Info.plist` because it can save captured photos to the library. The current `ios/App/App/Info.plist` already has `NSCameraUsageDescription` and `NSPhotoLibraryUsageDescription`, but is missing `NSPhotoLibraryAddUsageDescription` — which is what the runtime error reports.
+Implement `webView(_:requestMediaCapturePermissionFor:initiatedByFrame:type:decisionHandler:)` on the iOS host app so any WKWebView-initiated `getUserMedia` / `<input capture>` fallback path is explicitly handled instead of silently auto-denied. This is the belt-and-suspenders fix alongside the existing `@capacitor/camera` native flow.
 
-This repo commits the native iOS project directly (`ios/App/App/Info.plist` is the source of truth — Capacitor does not regenerate it on `cap sync`), so the fix is a direct edit there.
+The handler must be conservative — it grants only when BOTH guardrails pass.
 
-### Change
+## Guardrails
 
-Edit `ios/App/App/Info.plist` — add one new key/value pair alongside the existing camera/photo entries:
+1. **Trusted first-party origin only.** Build an allowlist of origins the app actually loads:
+  - `capacitor://localhost` (Capacitor's native scheme on iOS)
+  - `https://app.carnivorex.app` (production custom domain)
+  - `https://carnivorex.app`
+  - `https://carnivore-coach-pro.lovable.app` (Lovable published URL)
+  - `https://id-preview--8cc44691-15e2-40ab-844f-f90c5fa95cc6.lovable.app` (preview, useful for in-app `server.url` hot-reload during dev)
+   Any other origin → `.deny`. No wildcard, no header-driven trust.
+2. **Native camera auth required.** Even for a trusted origin, check:
+  ```
+   AVCaptureDevice.authorizationStatus(for: .video)
+  ```
+  - `.authorized` → `.grant`
+  - `.notDetermined` → `.prompt` (lets iOS show the system sheet so `NSCameraUsageDescription` kicks in)
+  - `.denied` / `.restricted` → `.deny`
+   For `type == .microphone` or `.cameraAndMicrophone`, additionally require `AVCaptureDevice.authorizationStatus(for: .audio) == .authorized` for the audio leg (mirror the same `.notDetermined → .prompt`, `.denied → .deny` mapping).
 
-```xml
-<key>NSPhotoLibraryAddUsageDescription</key>
-<string>CarnivoreX saves meal photos you capture so you can revisit them in your nutrition log.</string>
-```
+## Changes
 
-Keep the existing strings as-is (they already match the brand voice):
-- `NSCameraUsageDescription` — already present (barcode + meal photos)
-- `NSPhotoLibraryUsageDescription` — already present (pick existing meal photo)
-- `NSPhotoLibraryAddUsageDescription` — NEW (save captured photo to library)
+### `ios/App/App/MainViewController.swift`
 
-### Why not capacitor.config.json
+- Add `import AVFoundation` and `import WebKit`.
+- In `capacitorDidLoad()`, after registering the existing plugins, set `bridge?.webView?.uiDelegate = self` (CAPBridgeViewController already conforms to WKUIDelegate via its own extensions for things like file picker, so we layer on top — using `bridge.webView.uiDelegate = self` is the standard Capacitor escape hatch).
+- Add an `extension MainViewController: WKUIDelegate` implementing:
+  ```swift
+  @available(iOS 15.0, *)
+  func webView(_ webView: WKWebView,
+               requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+               initiatedByFrame frame: WKFrameInfo,
+               type: WKMediaCaptureType,
+               decisionHandler: @escaping (WKPermissionDecision) -> Void)
+  ```
+- Body:
+  1. Reconstruct origin string (`"\(origin.protocol)://\(origin.host)"` plus port when non-default) and check against the hard-coded `Set<String>` allowlist. Miss → `decisionHandler(.deny)`.
+  2. Map `AVCaptureDevice.authorizationStatus` to a `WKPermissionDecision` per the table above. For `.cameraAndMicrophone`, take the **most restrictive** of the two legs (`deny` > `prompt` > `grant`).
+  3. Call `decisionHandler(...)` exactly once on the main queue.
 
-Capacitor does not inject plist usage strings from `capacitor.config.json`. The committed `Info.plist` is the persistent source of truth and is not overwritten by `npx cap sync ios`, so this edit will survive future syncs and rebuilds.
+### Out of scope
 
-### Verification (line-by-line for user)
+- No changes to `Info.plist` (already has `NSCameraUsageDescription` and `NSPhotoLibraryAddUsageDescription` from prior work).
+- No changes to the JS/TS camera flow — `PhotoRecognition.tsx` and `useCameraPermission` stay as-is.
+- No new plugin, no Capacitor config change, no entitlement change.
 
-After Lovable applies the edit, on your Mac:
+## Verification
 
-```bash
-cd ~/path/to/repo
-git pull
-grep -A1 NSPhotoLibraryAddUsageDescription ios/App/App/Info.plist
-npx cap sync ios
-npx cap open ios
-```
+After `npx cap sync ios` and a fresh build:
 
-Then in Xcode: Product → Clean Build Folder, rebuild, install on device, tap Snap & Log → camera opens; no "missing NSPhotoLibraryAddUsageDescription" error.
-
-### Files touched
-- `ios/App/App/Info.plist` (add one key/string pair)
-
-No JS, no Capacitor config, no Android changes.
+1. In Xcode, set a breakpoint inside `requestMediaCapturePermissionFor` and confirm it fires when the WKWebView fallback path runs (e.g. force the web `getUserMedia` probe in `useCameraPermission.requestPermission`).
+2. Confirm:
+  - With iOS camera permission **granted** + trusted origin → `.grant`, camera stream opens.
+  - With iOS camera permission **denied** in Settings → `.deny`, no stream, app surfaces the existing "Camera is off" recovery modal.
+  - With camera permission **not yet determined** → `.prompt`, iOS system sheet appears with our usage string.
+  - With a forged/foreign origin (manually navigate to e.g. `https://example.com` in dev) → `.deny`.
+3. Sanity-check the `@capacitor/camera` native Snap & Log path still works end-to-end (it does not go through this delegate, so it should be unchanged).
+4. if the handler covers `.microphone` or `.cameraAndMicrophone`, verify `NSMicrophoneUsageDescription` exists in `Info.plist`; otherwise either add it or scope the handler to camera-only behavior.
