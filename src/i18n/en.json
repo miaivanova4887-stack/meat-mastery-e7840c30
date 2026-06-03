@@ -633,7 +633,47 @@
   "community": {
     "title": "Community Recipes",
     "latest": "Latest",
-    "popular": "Popular"
+    "popular": "Popular",
+    "create": {
+      "title": "Create",
+      "shareRecipe": "Share a Recipe",
+      "shareRecipeDesc": "Publish with ingredients, macros, and steps.",
+      "writePost": "Write a Post",
+      "writePostDesc": "Share a tip, question, or progress update."
+    },
+    "post": {
+      "badge": "Post",
+      "titleLabel": "Title (optional)",
+      "titlePlaceholder": "Give it a headline",
+      "bodyLabel": "What's on your mind?",
+      "bodyPlaceholder": "Share a tip, question, win, or update…",
+      "imageLabel": "Image (optional)",
+      "uploadImage": "Upload an image",
+      "removeImage": "Remove image",
+      "publish": "Post",
+      "publishing": "Posting…",
+      "published": "Post published",
+      "publishError": "Could not publish post",
+      "imageUploadFailed": "Image upload failed",
+      "signInToPost": "Sign in to post",
+      "signInToLike": "Sign in to like posts",
+      "invalidInput": "Invalid input",
+      "writeSomething": "Write something to share",
+      "imageTypeError": "Use a JPG, PNG, or WEBP image",
+      "imageSizeError": "Image must be under 5MB",
+      "readMore": "Read more",
+      "readLess": "Read less",
+      "like": "Like post",
+      "unlike": "Unlike post",
+      "anonymous": "Anonymous"
+    },
+    "recipe": {
+      "badge": "Recipe",
+      "signInToLike": "Sign in to like recipes",
+      "like": "Like recipe",
+      "unlike": "Unlike recipe",
+      "anonymous": "Anonymous"
+    }
   },
   "shoppingBag": {
     "title": "Shopping list",
@@ -650,6 +690,7 @@
     "cancel": "Cancel",
     "save": "Save",
     "delete": "Delete",
+    "close": "Close",
     "loading": "Loading…",
     "error": "Something went wrong",
     "signIn": "Sign In"
