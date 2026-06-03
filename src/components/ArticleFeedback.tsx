@@ -257,15 +257,28 @@ const getResponse = (articleId: string, value: "yes" | "no"): string => {
   return defaultResponses[value];
 };
 
-const ArticleFeedback = ({ articleId, question = "Was this helpful?" }: ArticleFeedbackProps) => {
+const ArticleFeedback = ({ articleId, question = "Was this helpful?", theme, onDismiss }: ArticleFeedbackProps) => {
   const [feedback, setFeedback] = useState<"yes" | "no" | null>(() => {
     return getFeedbackStore()[articleId] ?? null;
   });
+  const { dismiss } = useDismissedArticles();
+  const dismissTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
+  }, []);
 
   const handleFeedback = (value: "yes" | "no") => {
     setFeedback(value);
     saveFeedback(articleId, value);
     toast.success(value === "yes" ? "Glad you found it useful!" : "Thanks for your feedback!");
+    if (value === "no") {
+      const resolvedTheme = theme ?? inferTheme(articleId);
+      dismissTimer.current = window.setTimeout(() => {
+        dismiss(articleId, resolvedTheme);
+        onDismiss?.(articleId);
+      }, 3000);
+    }
   };
 
   if (feedback) {
@@ -274,6 +287,11 @@ const ArticleFeedback = ({ articleId, question = "Was this helpful?" }: ArticleF
         <p className="text-[11px] text-primary font-medium leading-relaxed">
           {feedback === "yes" ? "👍 " : "👌 "}{getResponse(articleId, feedback)}
         </p>
+        {feedback === "no" && (
+          <p className="text-[10px] text-muted-foreground/80 italic mt-1.5">
+            Got it — we'll show less like this.
+          </p>
+        )}
       </div>
     );
   }
