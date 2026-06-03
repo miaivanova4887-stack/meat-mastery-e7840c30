@@ -1,135 +1,117 @@
-## V2: Same-slot replacement after "Not really"
+## Goal
 
-Build on the v1 dismissal flow. When an eligible replacement exists, the dismissed article's slot is reused by another article (same theme first, adjacent theme second) instead of collapsing to empty.
+Automatically deliver three scheduled push notifications — Daily meal reminder, Streak reminder, Weekly progress summary — to users who have OS-level push granted AND the corresponding alert toggle on in Profile, in their preferred language at a sensible local time. Reuse the existing FCM + VAPID pipeline (`fcm-send`, `push-notifications`, `device_tokens`, `profiles.notification_preferences`, `push_campaigns` / `push_campaign_runs`).
 
-### 1. Shared corpus — `src/data/articleCorpus.ts` (new)
+## Architecture (reuse + extend)
 
-Data-driven, no JSX factories (avoids hydration/unstable-ref issues). Each item describes how to render via the existing primitives (`ContentSection`, custom `cravings` card, `stories` card, `benefits` card):
+Existing infra already supports: device token registration, multi-device sending, consent gating, dedupe per (campaign,user), and a `push-scheduler` cron. We extend it with **scheduled (time-of-day) campaigns** in addition to the current event-based ones, plus a per-locale templating layer.
 
-```ts
-type ContentKind =
-  | { kind: "section"; type: "overview" | "key_points" | "tips" | "data" | "important";
-      titleKey: string; questionKey?: string;
-      itemsKey?: string; dataRowsKey?: string; bodyKey?: string }
-  | { kind: "cravings"; iconName: string; titleKey: string; descKey: string; questionKey: string }
-  | { kind: "sustain";  iconName: string; titleKey: string; descKey: string; questionKey: string; link?: string }
-  | { kind: "benefit";  iconName: string; titleKey: string; descKey: string; questionKey: string }
-  | { kind: "myth";     index: number }            // pulls from t("myths.items")[index]
-  | { kind: "story";    story: StoryDef };         // static, EN-only like today
-
-export type ArticleCorpusItem = {
-  id: string;          // matches feedbackId / articleId, e.g. "benefits-energy"
-  theme: string;       // matches THEME_ADJACENCY keys
-  page: string;        // "benefits" | "cravings" | "sustain" | ...
-  content: ContentKind;
-};
-
-export const ARTICLE_CORPUS: ArticleCorpusItem[];
-export function getCorpusItem(id: string): ArticleCorpusItem | undefined;
-export function getPageItems(page: string): ArticleCorpusItem[];
+```text
+profiles ──┐
+           │ push_consent + notification_preferences + locale + timezone
+device_tokens (1..n per user, web/android/ios)
+           │
+push_campaigns (trigger_type=scheduled, schedule + i18n templates)
+           │
+pg_cron (every 15 min) ──► push-reconcile edge fn
+           │  - finds users matching each scheduled campaign whose
+           │    local time has crossed today's send time
+           │  - upserts push_campaign_runs (campaign_id,user_id,scheduled_for)
+           │  - idempotent via UNIQUE (campaign_id,user_id,scheduled_for)
+           ▼
+push-scheduler (existing, every minute) sends due runs via fcm-send,
+picks step copy by user locale, marks runs done.
 ```
 
-The current per-page arrays (`benefitKeys`, `strategyKeys`, `tipKeys`, `stories`, the `<ContentSection>` calls in Athletic / Guide / Budget / GettingStarted / Myths) are migrated into this corpus. Each page then renders by mapping over its corpus slice — no duplicated JSX. A single `<CorpusItemRenderer item={...} />` component knows how to render each `ContentKind`.
+No new long-running services. Everything is cron + edge functions.
 
-### 2. Replacement engine — extend `src/lib/articleThemes.ts`
+## Schema changes (one migration)
 
-Keep `pickReplacement` for back-compat; add corpus-aware version:
+1. `profiles`: add `timezone text` (IANA, default `'UTC'`) and `locale text` (default `'en'`).
+2. `notification_preferences` JSONB defaults extended to include the three keys (already partly there): `daily_meal_reminder`, `streak_reminder`, `weekly_summary`. Backfill existing rows with defaults `true,true,true` while preserving any explicit `false`.
+3. `push_campaigns`:
+  - allow `trigger_type='scheduled'`.
+  - new column `schedule jsonb` — e.g. `{ "kind": "daily", "local_time": "19:00", "preference_key": "daily_meal_reminder" }` or `{ "kind": "weekly", "weekday": 1, "local_time": "09:00", "preference_key": "weekly_summary" }`.
+  - `steps` extended so each step's `title`/`body` is `{ en: "...", fr: "..." }` (renderer picks by profile locale, fallback `en`).
+4. `push_campaign_runs`:
+  - add `scheduled_for timestamptz null` (the local wall-clock instant for this user's run).
+  - replace existing UNIQUE `(campaign_id,user_id)` with UNIQUE `(campaign_id,user_id, coalesce(scheduled_for, 'epoch'))` so event campaigns keep one-shot dedupe while scheduled campaigns dedupe per occurrence.
 
-```ts
-export function pickReplacementFromCorpus(opts: {
-  currentId: string;
-  currentTheme: string;
-  dismissedIds: Set<string>;
-  visibleIds: Set<string>;
-  injectedIds: Set<string>;
-}): ArticleCorpusItem | null
-```
+Seed three rows in `push_campaigns` (active=false initially so admin can flip on):
 
-Order: same theme → adjacent themes (via `THEME_ADJACENCY`) → null. Excludes `currentId`, anything in `dismissedIds`, anything currently visible on the page, and anything already injected this session.
+- Daily meal reminder — daily 19:00 local (user can adjust reminder time), key `daily_meal_reminder`.
+- Streak reminder — daily 20:00 local, key `streak_reminder` (v1 sends to anyone with the toggle on; "at risk" gating noted as follow-up).
+- Weekly summary — Sunday 18:00 local, key `weekly_summary`.
 
-### 3. Page-level orchestration — `src/hooks/useArticleSlots.ts` (new)
+## New edge function: `push-reconcile`
 
-Each migrated page calls:
+Cron every 15 minutes. For each active scheduled campaign:
 
-```ts
-const { slots, onDismiss } = useArticleSlots(initialIdsForThisPage);
-```
+1. Compute the local "now" per timezone bucket using `AT TIME ZONE` SQL.
+2. Select candidate users from `profiles` where `push_consent='granted'`, the campaign's `preference_key` is `true` in `notification_preferences`, AND today's `local_time` for `timezone` falls within `[reconcile_window_start, now]` AND no run already exists for `(campaign_id,user_id, today's scheduled_for)`.
+3. Upsert `push_campaign_runs` with `next_send_at = now()` and `scheduled_for = computed UTC instant`. Conflict on the new UNIQUE = idempotent across reopens, multi-device, reinstalls.
 
-Internally:
+The existing `push-scheduler` then sends due runs unchanged, with two small edits:
 
-- `slots: string[]` — ordered list of article IDs to render (starts as the page's corpus IDs minus already-dismissed ones).
-- A `Set<string>` of `injectedIds` for the current view instance (not persisted).
-- `onDismiss(id)` is called when `ArticleFeedback` finishes its 3 s acknowledgment. It runs `pickReplacementFromCorpus`; if found, replaces `id` with the new id in `slots` and adds it to `injectedIds`; otherwise removes the slot (hide-only fallback).
+- pick `step.title[locale] ?? step.title.en` etc. from the user's `profiles.locale`.
+- after send, mark run `done` (already does).
 
-The page renders `slots.map(id => <CorpusItemRenderer key={id} item={getCorpusItem(id)!} onDismiss={onDismiss} />)`. Keying by `id` (not index) gives React stable identity, and the freshly-mounted replacement gets `animate-fade-in` for the subtle entry. `key` change on the slot drives the cross-fade naturally.
+## Client-side reconciliation triggers
 
-### 4. `ArticleFeedback` + `ContentSection` / `DismissibleCard` wiring
+Just one tiny touchpoint — no client cron. The server cron does all heavy lifting. We only ensure the profile fields are kept fresh so the server can target correctly:
 
-- `ArticleFeedback` already accepts `onDismiss`; it currently only marks the article as dismissed. After the 3 s timer, it will also invoke the page-level `onDismiss(id)` so the slot can be swapped. Persistence (`dismiss()` → `useDismissedArticles`) is unchanged.
-- `ContentSection` / `DismissibleCard` keep their fade/collapse, but when the parent swaps `key`, the old node unmounts after fade and the new corpus item mounts in its place. We add a small grace: parent waits ~320 ms (the existing fade) before swapping `slots[i]`, so the user sees fade-out → fade-in rather than an abrupt replace. Implemented via a queued swap inside `useArticleSlots`.
+- `pushFcm.savePushConsent` → already writes `push_consent`; extend to also write `timezone: Intl.DateTimeFormat().resolvedOptions().timeZone` and `locale: i18n.language` when missing/changed.
+- `LanguageSwitcher` → on change, update `profiles.locale` for signed-in users.
+- `Profile` notification toggles → already persist to `notification_preferences`; no change beyond exposing the three new keys in the UI.
+- `register-device-token` → unchanged; multi-device already supported via UNIQUE on `token`.
+- Token invalidation: `fcm-send` already deletes invalid tokens on FCM `UNREGISTERED`/`INVALID_ARGUMENT`. Keep as-is.
 
-### 5. Pages touched
+## Localization
 
-Migrated to corpus + slots:
+Centralized in DB (campaign `steps[].title/body` per locale) so non-engineers can edit via admin without code deploy. A small shared helper `supabase/functions/_shared/i18nStep.ts` resolves `{en,fr}` → string with `en` fallback. Initial seed uses the EN/FR copy from the request brief verbatim.
 
-- `src/pages/Benefits.tsx`
-- `src/pages/Cravings.tsx`
-- `src/pages/Sustain.tsx`
-- `src/pages/AthleticPerformance.tsx`
-- `src/pages/Myths.tsx`
-- `src/pages/Guide.tsx`
-- `src/pages/BudgetEating.tsx`
-- `src/pages/GettingStarted.tsx`
-- `src/pages/Stories.tsx`
+## Failure handling
 
-Sex-conditional Benefits items (`hormones_f`, `testosterone`, `lean_muscle`) stay filtered at the page level before handing IDs to `useArticleSlots`, so replacements never inject a wrong-sex card.
 
-Non-dismissible `type: "important"` sections (warnings, disclaimers) stay outside `useArticleSlots` — they are not eligible as replacements and cannot be dismissed (already enforced by `ContentSection`).
+| Case                  | Behavior                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Invalid/expired token | `fcm-send` deletes; next reconcile naturally re-targets remaining tokens                                        |
+| OS permission revoked | Client `savePushConsent('denied')` on next app open → reconcile excludes user                                   |
+| Missing timezone      | Default `'UTC'`; reconcile still works, fires at UTC time                                                       |
+| Missing locale        | Fallback `en`                                                                                                   |
+| Multiple devices      | `fcm-send` already loops all tokens for the user                                                                |
+| Logged-out user       | No `profiles` row matched → excluded                                                                            |
+| Duplicate sends       | UNIQUE `(campaign_id,user_id,scheduled_for)` prevents double enqueue across reopens, multi-device, cron overlap |
 
-### 6. Same-slot animation
 
-- Old card fades + collapses (existing 300 ms behavior, unchanged).
-- After the collapse settles, parent updates `slots[i]` → new corpus id.
-- New card mounts with `animate-fade-in-up` (already used by these cards) for a smooth entrance in the same layout slot.
+## Files touched
 
-### 7. Fallback / no-eligible-replacement
+**New**
 
-If `pickReplacementFromCorpus` returns `null`, behavior matches v1 exactly: the slot is removed and surrounding cards reflow. This applies to:
+- `supabase/migrations/<ts>_scheduled_push.sql` — schema + seed + unique index + cron registration via `supabase/insert` (cron is data, not schema).
+- `supabase/functions/push-reconcile/index.ts`
+- `supabase/functions/_shared/i18nStep.ts`
 
-- Stories (short, page-local pool; cross-theme matches uncommon and curated)
-- Any page where the user has dismissed enough items that the corpus is exhausted for that theme + adjacency
-- Sex-filtered Benefits where the only same-theme remainder is wrong-sex
+**Edited**
 
-### 8. Constraints preserved
+- `supabase/functions/push-scheduler/index.ts` — locale-aware copy picker; honor `scheduled_for` already-past filter.
+- `src/lib/pushFcm.ts` (`savePushConsent`) — persist `timezone` + `locale`.
+- `src/components/LanguageSwitcher.tsx` — persist locale to `profiles` on change.
+- `src/pages/Profile.tsx` — surface three alert toggles (Daily meal reminder, Streak reminder, Weekly summary) wired to `notification_preferences`.
 
-- v1 persistence (`carnivore-dismissed-articles` + `content_reactions`) untouched.
-- 3-second acknowledgment timing unchanged.
-- "Yes" flow unchanged.
-- No schema changes.
-- Deterministic, no AI calls.
-- No factory functions stored in state; corpus is plain data, render is a switch in `CorpusItemRenderer`.
+## Implementation order (low → high risk)
 
-- Keep the corpus focused on the dismissible content blocks, not whole-page layout wrappers.
-- Make `onDismiss(id)` idempotent so duplicate timer/event fires cannot double-swap a slot.
+1. Migration: add `timezone`, `locale`, extend preferences defaults, add `schedule` col and new UNIQUE, seed inactive campaigns.
+2. Client: persist `locale` + `timezone` on consent + language change. Surface Profile toggles.
+3. `_shared/i18nStep.ts` + scheduler locale picker.
+4. `push-reconcile` function + pg_cron schedule (every 15 min).
+5. Flip the three seeded campaigns `active=true` after smoke-test with one admin user.
 
-### Files
+## Open follow-ups (intentionally out of scope for v1)
 
-New:
+- "Streak at risk" gating: needs reading today's `progress_entries`; v1 sends to anyone with the toggle on. Add a `condition` JSON later evaluated in `push-reconcile`.
+- Per-user quiet hours / custom send times — currently global defaults.
+- iOS APNs key — pipeline already routes `platform='ios'` through FCM, untouched here.
 
-- `src/data/articleCorpus.ts`
-- `src/hooks/useArticleSlots.ts`
-- `src/components/CorpusItemRenderer.tsx`
-
-Edited:
-
-- `src/lib/articleThemes.ts` (add `pickReplacementFromCorpus`)
-- `src/components/ArticleFeedback.tsx` (call page-level `onDismiss` after the 3 s timer; already props-ready)
-- `src/pages/Benefits.tsx`, `Cravings.tsx`, `Sustain.tsx`, `AthleticPerformance.tsx`, `Myths.tsx`, `Guide.tsx`, `BudgetEating.tsx`, `GettingStarted.tsx`, `Stories.tsx` (render via corpus + slots)
-
-### Success criteria check
-
-- ✅ Same-slot replacement after fade-out when eligible.
-- ✅ Same-theme first, adjacent second via `THEME_ADJACENCY`.
-- ✅ No duplicates on the page (excludes `visibleIds` and `injectedIds`).
-- ✅ Cross-session persistence intact.
-- ✅ Hide-only fallback when no replacement.
+- Do **not** backfill the three new alert keys to `true` for existing users; use `false` unless explicitly enabled.
+- Normalize `profiles.locale` to supported values like `en` / `fr` before save and at send time.
