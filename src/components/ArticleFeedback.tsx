@@ -1,6 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
+import { useDismissedArticles } from "@/hooks/useDismissedArticles";
+import { inferTheme } from "@/lib/articleThemes";
+
+
 
 interface ArticleFeedbackProps {
   articleId: string;
