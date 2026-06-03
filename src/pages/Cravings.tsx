@@ -2,6 +2,7 @@ import { ArrowLeft, ShieldCheck, Coffee, Droplets, Moon, Brain, Utensils } from 
 import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 import ArticleFeedback from "@/components/ArticleFeedback";
+import DismissibleCard from "@/components/DismissibleCard";
 import { useTranslation } from "react-i18next";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 
