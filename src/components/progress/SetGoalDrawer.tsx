@@ -71,10 +71,10 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
         </div>
         <DrawerFooter className="flex-row gap-3">
           <DrawerClose asChild>
-            <Button variant="outline" className="flex-1">Cancel</Button>
+            <Button variant="outline" className="flex-1">{t("common.cancel")}</Button>
           </DrawerClose>
           <Button className="flex-1" onClick={handleSave} disabled={upsertGoal.isPending}>
-            {upsertGoal.isPending ? "Saving..." : "✓ Set Goals"}
+            {upsertGoal.isPending ? t("progress.saving") : `✓ ${t("progress.setGoals")}`}
           </Button>
         </DrawerFooter>
       </DrawerContent>
