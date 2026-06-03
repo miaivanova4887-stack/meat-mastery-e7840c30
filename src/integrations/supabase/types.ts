@@ -58,7 +58,7 @@ export type Database = {
           id: string
           page_path: string | null
           session_id: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           created_at?: string
@@ -67,7 +67,7 @@ export type Database = {
           id?: string
           page_path?: string | null
           session_id?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           created_at?: string
@@ -76,7 +76,7 @@ export type Database = {
           id?: string
           page_path?: string | null
           session_id?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -828,27 +828,6 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-        }
-        Relationships: []
-      }
-      vapid_config: {
-        Row: {
-          created_at: string
-          id: number
-          private_key: string
-          public_key: string
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-          private_key: string
-          public_key: string
-        }
-        Update: {
-          created_at?: string
-          id?: number
-          private_key?: string
-          public_key?: string
         }
         Relationships: []
       }
