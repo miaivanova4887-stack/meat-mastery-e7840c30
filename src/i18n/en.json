@@ -451,6 +451,7 @@
     "noLikedHint": "Tap the ♥ on any recipe to save it here",
     "recipes": "recipes",
     "likes": "likes",
+    "posts": "posts",
     "notifPrefUpdated": "Notification preference updated",
     "notifPrefTitle": "Notification preferences",
     "notifPrefDesc": "Choose what reminders and updates you receive.",
