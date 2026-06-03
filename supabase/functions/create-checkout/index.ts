@@ -1,11 +1,22 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { safeOrigin } from "../_shared/redirectOrigin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// Server-side allowlist of Stripe Price IDs that can be checked out.
+// Mirrors the IDs surfaced in src/pages/Pricing.tsx. Any other ID is rejected.
+const ALLOWED_PRICE_IDS = new Set<string>([
+  "price_1TEtllBqDvgi4jU7lMUy48WX", // Pro monthly
+  "price_1TEtmCBqDvgi4jU7Bgdijp8o", // Pro yearly
+  "price_1TEtmXBqDvgi4jU7C8P9of8n", // Elite monthly
+  "price_1TEtmzBqDvgi4jU7rq0QYLjQ", // Elite yearly
+  "price_1TEtnMBqDvgi4jU7ozhwwm9i", // Coaching one-off
+]);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -25,7 +36,18 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
 
     const { priceId } = await req.json();
-    if (!priceId) throw new Error("priceId is required");
+    if (!priceId || typeof priceId !== "string") {
+      return new Response(JSON.stringify({ error: "priceId is required" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+    if (!ALLOWED_PRICE_IDS.has(priceId)) {
+      return new Response(JSON.stringify({ error: "Invalid price" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -41,13 +63,14 @@ serve(async (req) => {
     const price = await stripe.prices.retrieve(priceId);
     const mode = price.recurring ? "subscription" : "payment";
 
+    const origin = safeOrigin(req);
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode,
-      success_url: `${req.headers.get("origin")}/pricing?success=true`,
-      cancel_url: `${req.headers.get("origin")}/pricing?canceled=true`,
+      success_url: `${origin}/pricing?success=true`,
+      cancel_url: `${origin}/pricing?canceled=true`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
