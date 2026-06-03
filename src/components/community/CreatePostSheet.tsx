@@ -161,8 +161,9 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
             value={title}
             maxLength={TITLE_MAX}
             onChange={(e) => setTitle(e.target.value)}
+            onBlur={resetViewportScale}
             placeholder={t("community.post.titlePlaceholder")}
-            className="mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-base md:text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </label>
 
@@ -174,10 +175,12 @@ const CreatePostSheet = ({ open, onClose, onCreated }: Props) => {
             value={body}
             maxLength={BODY_MAX}
             onChange={(e) => setBody(e.target.value)}
+            onBlur={resetViewportScale}
             placeholder={t("community.post.bodyPlaceholder")}
             rows={5}
-            className="mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y min-h-[120px]"
+            className="mt-1 w-full px-3 py-2 rounded-xl bg-secondary text-base md:text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y min-h-[120px]"
           />
+
           <div className="flex justify-end mt-1">
             <span className="text-[10px] text-muted-foreground">
               {body.trim().length}/{BODY_MAX}
