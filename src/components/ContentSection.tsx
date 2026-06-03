@@ -130,7 +130,7 @@ const ContentSection = ({ type, title, children, items, dataRows, defaultOpen = 
             </div>
           )}
           {feedbackId && type !== "important" && (
-            <ArticleFeedback articleId={feedbackId} question={feedbackQuestion} theme={resolvedTheme} />
+            <ArticleFeedback articleId={feedbackId} question={feedbackQuestion} theme={resolvedTheme} onDismiss={onDismiss} />
           )}
         </div>
       )}
