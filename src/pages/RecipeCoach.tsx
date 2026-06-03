@@ -198,8 +198,8 @@ const RecipeCoach = () => {
             <ChefHat size={16} className="text-primary-foreground drop-shadow-sm" />
           </div>
           <div>
-            <h1 className="text-sm font-display font-bold tracking-tight">Recipe Coach</h1>
-            <p className="text-[10px] text-muted-foreground">AI-powered meal suggestions</p>
+            <h1 className="text-sm font-display font-bold tracking-tight">{t("recipeCoach.title")}</h1>
+            <p className="text-[10px] text-muted-foreground">{t("recipeCoach.subtitle")}</p>
           </div>
         </div>
       </div>
