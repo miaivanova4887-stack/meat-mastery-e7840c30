@@ -8,6 +8,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { openAppSettings } from "@/lib/openAppSettings";
 import { useTranslation } from "react-i18next";
 import CameraPermissionExplainer, { type CameraExplainerMode } from "@/components/CameraPermissionExplainer";
+import { useCameraPermission } from "@/hooks/useCameraPermission";
 
 interface ProductResult {
   name: string;
@@ -20,14 +21,6 @@ interface ProductResult {
   imageUrl?: string;
 }
 
-// App Review compliance (Guideline 5.1.1):
-// We must NEVER auto-redirect to Settings on first denial. Instead:
-//  1. Show an in-app explainer BEFORE the system permission prompt.
-//  2. Trigger the system prompt only after the user taps Continue.
-//  3. On denial, stay in the app and surface a neutral, dismissible
-//     re-entry modal on the NEXT camera-only tap — never immediately.
-const CAMERA_DENIED_KEY = "camera-denied-once";
-
 const isPermissionDeniedMessage = (value: unknown) => {
   const msg = String(value || "").toLowerCase();
   return (
@@ -37,17 +30,6 @@ const isPermissionDeniedMessage = (value: unknown) => {
     msg.includes("not allowed") ||
     msg.includes("service-not-allowed")
   );
-};
-
-const queryCameraPermission = async (): Promise<"granted" | "denied" | "prompt" | "unknown"> => {
-  try {
-    const perms = (navigator as any).permissions;
-    if (!perms?.query) return "unknown";
-    const res = await perms.query({ name: "camera" as PermissionName });
-    return (res?.state as "granted" | "denied" | "prompt") ?? "unknown";
-  } catch {
-    return "unknown";
-  }
 };
 
 const BarcodeScanner = () => {
