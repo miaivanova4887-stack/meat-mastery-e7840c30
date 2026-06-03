@@ -160,7 +160,7 @@ const Profile = () => {
           };
           await supabase
             .from("profiles")
-            .update({ notification_preferences: merged })
+            .update({ notification_preferences: merged as any })
             .eq("id", user.id);
         } catch (e) {
           console.warn("[Profile] notification_preferences sync failed", e);
