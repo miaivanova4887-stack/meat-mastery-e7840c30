@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Html5Qrcode } from "html5-qrcode";
 import { openAppSettings } from "@/lib/openAppSettings";
 import { useTranslation } from "react-i18next";
+import CameraPermissionExplainer, { type CameraExplainerMode } from "@/components/CameraPermissionExplainer";
 
 interface ProductResult {
   name: string;
@@ -19,62 +20,49 @@ interface ProductResult {
   imageUrl?: string;
 }
 
+// App Review compliance (Guideline 5.1.1):
+// We must NEVER auto-redirect to Settings on first denial. Instead:
+//  1. Show an in-app explainer BEFORE the system permission prompt.
+//  2. Trigger the system prompt only after the user taps Continue.
+//  3. On denial, stay in the app and surface a neutral, dismissible
+//     re-entry modal on the NEXT camera-only tap — never immediately.
+const CAMERA_DENIED_KEY = "camera-denied-once";
+
+const isPermissionDeniedMessage = (value: unknown) => {
+  const msg = String(value || "").toLowerCase();
+  return (
+    msg.includes("permission") ||
+    msg.includes("denied") ||
+    msg.includes("notallowederror") ||
+    msg.includes("not allowed") ||
+    msg.includes("service-not-allowed")
+  );
+};
+
+const queryCameraPermission = async (): Promise<"granted" | "denied" | "prompt" | "unknown"> => {
+  try {
+    const perms = (navigator as any).permissions;
+    if (!perms?.query) return "unknown";
+    const res = await perms.query({ name: "camera" as PermissionName });
+    return (res?.state as "granted" | "denied" | "prompt") ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+};
+
 const BarcodeScanner = () => {
   const { t } = useTranslation();
   const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ProductResult | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [explainer, setExplainer] = useState<{ open: boolean; mode: CameraExplainerMode }>({
+    open: false,
+    mode: "purpose",
+  });
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const permissionHandledRef = useRef(false);
   const addEntry = useAddEntry();
-
-  const isPermissionDeniedMessage = useCallback((value: unknown) => {
-    const msg = String(value || "").toLowerCase();
-    return (
-      msg.includes("permission") ||
-      msg.includes("denied") ||
-      msg.includes("notallowederror") ||
-      msg.includes("not allowed") ||
-      msg.includes("service-not-allowed") ||
-      msg.includes("audio-capture")
-    );
-  }, []);
-
-  const openCameraSettings = useCallback(async (): Promise<boolean> => {
-    return openAppSettings();
-  }, []);
-
-  const handleCameraBlocked = useCallback(async () => {
-    if (permissionHandledRef.current) return;
-    permissionHandledRef.current = true;
-    const opened = await openCameraSettings();
-    toast.error(
-      opened
-        ? "Camera permission is blocked. Enable it in app settings, then return."
-        : "Please enable camera in Settings → Apps → Carnivore Coach → Permissions.",
-      { duration: 6000 }
-    );
-  }, [openCameraSettings]);
-
-  const ensureCameraPermission = useCallback(async (): Promise<boolean> => {
-    if (!navigator.mediaDevices?.getUserMedia) return true;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: "environment" } },
-      });
-      stream.getTracks().forEach((track) => track.stop());
-      return true;
-    } catch (error: any) {
-      if (isPermissionDeniedMessage(error?.message || error)) {
-        await handleCameraBlocked();
-      } else {
-        toast.error("Camera not available. Please check your device settings.");
-      }
-      return false;
-    }
-  }, [handleCameraBlocked, isPermissionDeniedMessage]);
 
   const stopScanner = useCallback(async () => {
     try {
@@ -123,10 +111,7 @@ const BarcodeScanner = () => {
     }
   }, []);
 
-  const startScanner = useCallback(async () => {
-    permissionHandledRef.current = false;
-    const hasPermission = await ensureCameraPermission();
-    if (!hasPermission) { setScanning(false); return; }
+  const beginScanning = useCallback(async () => {
     setScanning(true);
     setResult(null);
     await new Promise((r) => setTimeout(r, 100));
@@ -137,16 +122,55 @@ const BarcodeScanner = () => {
         { facingMode: "environment" },
         { fps: 10, qrbox: { width: 250, height: 120 } },
         async (decodedText) => { await stopScanner(); lookupBarcode(decodedText); },
-        async (scanError) => {
-          if (isPermissionDeniedMessage(scanError)) { await stopScanner(); await handleCameraBlocked(); }
-        }
+        () => { /* per-frame decode errors are noise */ }
       );
+      try { localStorage.removeItem(CAMERA_DENIED_KEY); } catch { /* ignore */ }
     } catch (err: any) {
-      if (isPermissionDeniedMessage(err?.message || err)) { await handleCameraBlocked(); }
-      else { toast.error("Camera not available. Please check your device settings."); }
+      // First-time denial path — do NOT redirect to Settings. Just close,
+      // remember the denial for next time, and stay quiet.
+      if (isPermissionDeniedMessage(err?.message || err)) {
+        try { localStorage.setItem(CAMERA_DENIED_KEY, "1"); } catch { /* ignore */ }
+        toast("You can turn on the camera anytime in Settings.");
+      } else {
+        toast.error("Camera not available on this device.");
+      }
       setScanning(false);
     }
-  }, [ensureCameraPermission, stopScanner, lookupBarcode, handleCameraBlocked, isPermissionDeniedMessage]);
+  }, [stopScanner, lookupBarcode]);
+
+  const handleStartTap = useCallback(async () => {
+    // If we already know the OS-level permission is denied (either from
+    // a previous denial this install, or from the Permissions API), show
+    // the neutral re-entry modal instead of triggering another prompt.
+    const denied = (() => {
+      try { return localStorage.getItem(CAMERA_DENIED_KEY) === "1"; } catch { return false; }
+    })();
+    const permState = await queryCameraPermission();
+    if (denied || permState === "denied") {
+      setExplainer({ open: true, mode: "denied" });
+      return;
+    }
+    // First time: show the purpose explainer before triggering iOS prompt.
+    setExplainer({ open: true, mode: "purpose" });
+  }, []);
+
+  const handleExplainerContinue = useCallback(async () => {
+    const mode = explainer.mode;
+    setExplainer({ open: false, mode });
+    if (mode === "denied") {
+      // User explicitly tapped "Open Settings" in the neutral re-entry
+      // modal. This is the ONLY place we may navigate to Settings.
+      await openAppSettings();
+      return;
+    }
+    await beginScanning();
+  }, [explainer.mode, beginScanning]);
+
+  const handleExplainerClose = useCallback(() => {
+    setExplainer((prev) => ({ ...prev, open: false }));
+  }, []);
+
+  const startScanner = handleStartTap;
 
   const logToProgress = useCallback(() => {
     if (!result) return;
