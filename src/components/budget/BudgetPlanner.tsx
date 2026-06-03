@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { CURRENCIES, detectCurrency, type CurrencyCode } from "./currencyData";
 import { getLocalPrices, type BudgetItem } from "./localPrices";
+import { resetViewportScale } from "@/lib/utils";
 
 const STORAGE_KEY = "carnivore-budget-overrides";
 
@@ -76,10 +77,10 @@ const EditableCell = ({
       ref={inputRef}
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
+      onBlur={() => { commit(); resetViewportScale(); }}
       onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setDraft(String(value)); setEditing(false); } }}
       type={type}
-      className={`bg-accent/60 rounded px-1 -mx-1 outline-none ring-1 ring-primary/30 ${className}`}
+      className={`bg-accent/60 rounded px-1 -mx-1 outline-none ring-1 ring-primary/30 text-base md:text-sm ${className}`}
       style={{ width: type === "number" ? "60px" : "auto" }}
     />
   );
