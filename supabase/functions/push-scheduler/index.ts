@@ -3,6 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendFcmToToken } from "../_shared/fcm.ts";
+import { pickLocalized, normalizeLocale, type LocalizedString } from "../_shared/i18nStep.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,8 +20,8 @@ function json(data: unknown, status = 200) {
 
 interface CampaignStep {
   delay_minutes?: number;
-  title: string;
-  body?: string;
+  title: LocalizedString;
+  body?: LocalizedString;
   data?: Record<string, string>;
   preference_key?: string;
 }
