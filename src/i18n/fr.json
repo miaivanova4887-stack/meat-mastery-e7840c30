@@ -297,7 +297,31 @@
     "fullDay": "📋 Journée complète",
     "fullWeek": "📅 Semaine complète",
     "preferences": "Préférences (optionnel)",
-    "preferencesPlaceholder": "ex. riche en protéines, desserts, repas rapides, fruits de mer, moins de 30 min..."
+    "preferencesPlaceholder": "ex. riche en protéines, desserts, repas rapides, fruits de mer, moins de 30 min...",
+    "dietTier": "Type d'alimentation",
+    "generateRecipe": "Générer une recette",
+    "generateDayPlan": "Générer le plan du jour",
+    "generateWeekPlan": "Générer le plan de la semaine",
+    "generatingLong": "Génération (environ 15s)",
+    "aiInfoSingle": "L'IA générera 1 recette et l'ajoutera au plan de {{day}}.",
+    "aiInfoDay": "L'IA remplira {{count}} repas pour {{day}} ciblant {{cal}} cal.",
+    "aiInfoWeek": "L'IA générera {{count}} repas/jour pour les 7 jours, ciblant {{cal}} cal/jour.",
+    "aiInfoGoal": "Personnalisé selon votre objectif : {{goal}}.",
+    "close": "Fermer"
+  },
+  "recipeCoach": {
+    "title": "Coach Recettes",
+    "subtitle": "Suggestions de repas par IA",
+    "heroTitle": "Votre Coach Carnivore",
+    "heroDesc": "Demandez-moi des recettes, plans de repas ou conseils de cuisine adaptés à votre alimentation.",
+    "inputPlaceholder": "Demandez recettes, idées de repas…",
+    "lockedPlaceholder": "Débloquez avec Pro pour discuter avec votre coach",
+    "prompts": {
+      "lunch": "🥩 Idées de déjeuner rapides",
+      "dinner": "🔥 Dîner riche en protéines en moins de 30 min",
+      "breakfast": "🍳 Recettes faciles pour le petit-déjeuner",
+      "postWorkout": "💪 Repas post-entraînement"
+    }
   },
   "progress": {
     "title": "Mes progrès",
@@ -476,7 +500,10 @@
     "shareText": "Rejoignez-moi sur le compagnon ultime du régime carnivore ! 🥩🔥",
     "today": "Aujourd'hui",
     "yesterday": "Hier",
-    "daysAgo": "il y a {{count}}j"
+    "daysAgo": "il y a {{count}}j",
+    "privacyPolicy": "Politique de confidentialité",
+    "termsOfUse": "Conditions d'utilisation",
+    "wellnessDisclaimer": "Avis bien-être"
   },
   "benefits": {
     "title": "Bienfaits potentiels",

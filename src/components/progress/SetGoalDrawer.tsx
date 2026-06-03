@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ interface Props {
 }
 
 const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
+  const { t } = useTranslation();
   const metrics = METRICS[category];
   const { data: existingGoals } = useProgressGoals(category);
   const upsertGoal = useUpsertGoal();
@@ -44,8 +46,8 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
               <Crosshair size={18} className="text-primary" />
             </div>
             <div>
-              <DrawerTitle>Set Goals</DrawerTitle>
-              <p className="text-xs text-muted-foreground">Goals help you track progress towards your health targets.</p>
+              <DrawerTitle>{t("progress.setGoals")}</DrawerTitle>
+              <p className="text-xs text-muted-foreground">{t("progress.setGoalsDesc")}</p>
             </div>
           </div>
         </DrawerHeader>
@@ -59,7 +61,7 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
                   step="any"
                   value={goals[m.key] || ""}
                   onChange={(e) => setGoals((prev) => ({ ...prev, [m.key]: e.target.value }))}
-                  placeholder="Target"
+                  placeholder={t("progress.target")}
                   className="text-xl font-bold text-center h-12"
                 />
                 <span className="text-sm text-muted-foreground">{m.unit}</span>
@@ -69,10 +71,10 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
         </div>
         <DrawerFooter className="flex-row gap-3">
           <DrawerClose asChild>
-            <Button variant="outline" className="flex-1">Cancel</Button>
+            <Button variant="outline" className="flex-1">{t("common.cancel")}</Button>
           </DrawerClose>
           <Button className="flex-1" onClick={handleSave} disabled={upsertGoal.isPending}>
-            {upsertGoal.isPending ? "Saving..." : "✓ Set Goals"}
+            {upsertGoal.isPending ? t("progress.saving") : `✓ ${t("progress.setGoals")}`}
           </Button>
         </DrawerFooter>
       </DrawerContent>

@@ -1,6 +1,7 @@
 import { ArrowLeft, Send, User, Loader2, ThumbsUp, ThumbsDown, ChefHat, UtensilsCrossed } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import ReactMarkdown from "react-markdown";
 import TeaserGate from "@/components/TeaserGate";
@@ -12,15 +13,11 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/recipe-coach`;
 
-const STARTERS = [
-  "🥩 Quick lunch ideas for today",
-  "🔥 High-protein dinner under 30 min",
-  "🍳 Easy breakfast recipes",
-  "💪 Post-workout meal suggestions",
-];
+const PROMPT_KEYS = ["lunch", "dinner", "breakfast", "postWorkout"] as const;
 
 const RecipeCoach = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const profile = useUserProfile();
   const { hasAccess, refreshSubscription } = useSubscription();
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -201,8 +198,8 @@ const RecipeCoach = () => {
             <ChefHat size={16} className="text-primary-foreground drop-shadow-sm" />
           </div>
           <div>
-            <h1 className="text-sm font-display font-bold tracking-tight">Recipe Coach</h1>
-            <p className="text-[10px] text-muted-foreground">AI-powered meal suggestions</p>
+            <h1 className="text-sm font-display font-bold tracking-tight">{t("recipeCoach.title")}</h1>
+            <p className="text-[10px] text-muted-foreground">{t("recipeCoach.subtitle")}</p>
           </div>
         </div>
       </div>
@@ -221,21 +218,24 @@ const RecipeCoach = () => {
               <UtensilsCrossed size={28} className="text-primary-foreground" />
             </div>
             <div className="text-center">
-              <h2 className="font-display font-bold text-foreground text-lg">Your Carnivore Coach</h2>
+              <h2 className="font-display font-bold text-foreground text-lg">{t("recipeCoach.heroTitle")}</h2>
               <p className="text-sm text-muted-foreground mt-1 max-w-[260px]">
-                Ask me for recipes, meal plans, or cooking tips tailored to your diet.
+                {t("recipeCoach.heroDesc")}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 w-full max-w-sm">
-              {STARTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => sendMessage(s)}
-                  className="ios-card p-3 text-left text-xs text-foreground hover:bg-secondary/60 transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
+              {PROMPT_KEYS.map((key) => {
+                const label = t(`recipeCoach.prompts.${key}`);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => sendMessage(label)}
+                    className="ios-card p-3 text-left text-xs text-foreground hover:bg-secondary/60 transition-colors"
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -331,7 +331,7 @@ const RecipeCoach = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={hasAccess("pro") ? "Ask for recipes, meal ideas…" : "Unlock with Pro to chat with your coach"}
+            placeholder={hasAccess("pro") ? t("recipeCoach.inputPlaceholder") : t("recipeCoach.lockedPlaceholder")}
             rows={1}
             disabled={!hasAccess("pro")}
             className="flex-1 resize-none bg-secondary rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 max-h-32 disabled:opacity-60 disabled:cursor-not-allowed"

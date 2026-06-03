@@ -1235,7 +1235,7 @@ const Profile = () => {
                 onClick={() => navigate("/privacy")}
                 className="w-full p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors"
               >
-                <span className="text-sm font-semibold text-foreground">Privacy Policy</span>
+                <span className="text-sm font-semibold text-foreground">{t("profile.privacyPolicy")}</span>
                 <ChevronRight size={16} className="text-muted-foreground" />
               </button>
               <div className="h-px bg-border/40 mx-4" />
@@ -1243,7 +1243,7 @@ const Profile = () => {
                 onClick={() => navigate("/terms")}
                 className="w-full p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors"
               >
-                <span className="text-sm font-semibold text-foreground">Terms of Use</span>
+                <span className="text-sm font-semibold text-foreground">{t("profile.termsOfUse")}</span>
                 <ChevronRight size={16} className="text-muted-foreground" />
               </button>
               <div className="h-px bg-border/40 mx-4" />
@@ -1251,7 +1251,7 @@ const Profile = () => {
                 onClick={() => navigate("/disclaimer")}
                 className="w-full p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors"
               >
-                <span className="text-sm font-semibold text-foreground">Wellness Disclaimer</span>
+                <span className="text-sm font-semibold text-foreground">{t("profile.wellnessDisclaimer")}</span>
                 <ChevronRight size={16} className="text-muted-foreground" />
               </button>
             </div>
