@@ -126,6 +126,15 @@ const Profile = () => {
     } catch { return { enabled: true, dailyReminder: true, reminderTime: "19:00", streakReminder: true, weeklySummary: true, scienceNews: true, motivationNews: true, caseStudyNews: false, tipNews: true }; }
   });
 
+  // Mirror these UI keys → server-side notification_preferences JSONB keys
+  // that the push-reconcile / push-scheduler edge functions read.
+  const SERVER_PREF_KEYS: Record<string, string> = {
+    dailyReminder: "daily_meal_reminder",
+    streakReminder: "streak_reminder",
+    weeklySummary: "weekly_summary",
+    reminderTime: "reminder_time",
+  };
+
   const updateNotifPref = (key: string, value: boolean | string) => {
     setNotifPrefs((prev: any) => {
       const next = { ...prev, [key]: value };
@@ -134,6 +143,30 @@ const Profile = () => {
       return next;
     });
     toast.success(t("profile.notifPrefUpdated"));
+
+    // Persist scheduled-push-relevant keys to profiles.notification_preferences.
+    const serverKey = SERVER_PREF_KEYS[key];
+    if (serverKey && user) {
+      (async () => {
+        try {
+          const { data: row } = await supabase
+            .from("profiles")
+            .select("notification_preferences")
+            .eq("id", user.id)
+            .maybeSingle();
+          const merged = {
+            ...((row?.notification_preferences as Record<string, unknown>) || {}),
+            [serverKey]: value,
+          };
+          await supabase
+            .from("profiles")
+            .update({ notification_preferences: merged })
+            .eq("id", user.id);
+        } catch (e) {
+          console.warn("[Profile] notification_preferences sync failed", e);
+        }
+      })();
+    }
   };
   const [loading, setLoading] = useState(true);
 
