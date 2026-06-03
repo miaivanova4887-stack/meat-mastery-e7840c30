@@ -17,7 +17,11 @@ const PhotoRecognition = () => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
-  const [showExplainer, setShowExplainer] = useState(false);
+  const [explainer, setExplainer] = useState<{ open: boolean; mode: CameraExplainerMode }>({
+    open: false,
+    mode: "purpose",
+  });
+  const { refreshPermission } = useCameraPermission();
   const fileRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
   const profile = useUserProfile();
