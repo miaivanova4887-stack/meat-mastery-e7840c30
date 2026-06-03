@@ -1,6 +1,7 @@
 import { ArrowLeft, Send, User, Loader2, ThumbsUp, ThumbsDown, ChefHat, UtensilsCrossed } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import ReactMarkdown from "react-markdown";
 import TeaserGate from "@/components/TeaserGate";
@@ -12,12 +13,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/recipe-coach`;
 
-const STARTERS = [
-  "🥩 Quick lunch ideas for today",
-  "🔥 High-protein dinner under 30 min",
-  "🍳 Easy breakfast recipes",
-  "💪 Post-workout meal suggestions",
-];
+const PROMPT_KEYS = ["lunch", "dinner", "breakfast", "postWorkout"] as const;
 
 const RecipeCoach = () => {
   const navigate = useNavigate();
