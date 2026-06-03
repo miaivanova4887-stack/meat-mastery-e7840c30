@@ -135,7 +135,7 @@ const PhotoRecognition = () => {
       }
       toast.error(err?.message || "Failed to open camera");
     }
-  }, [handlePhotoFromBase64]);
+  }, [handlePhotoFromBase64, markGranted, refreshPermission]);
 
   const launchCamera = useCallback(async () => {
     if (Capacitor.isNativePlatform()) {
