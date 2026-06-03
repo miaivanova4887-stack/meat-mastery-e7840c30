@@ -213,6 +213,21 @@ const Profile = () => {
   });
   const myRecipes = myRecipesQuery.data ?? [];
 
+  const myPostsQuery = useQuery({
+    queryKey: ["my-community-posts", user?.id],
+    enabled: !!user,
+    staleTime: STALE_MS,
+    queryFn: async () => {
+      if (!user) return [] as { id: string }[];
+      const { data } = await (supabase as any)
+        .from("community_posts")
+        .select("id")
+        .eq("user_id", user.id);
+      return (data as { id: string }[]) || [];
+    },
+  });
+  const myPosts = myPostsQuery.data ?? [];
+
   const likedRecipesQuery = useQuery({
     queryKey: ["liked-community-recipes", user?.id],
     enabled: !!user,
