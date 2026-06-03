@@ -54,14 +54,15 @@ serve(async (req) => {
       setTimeout(() => reject(new Error("Stripe checkout timed out after 8 seconds")), 8000)
     );
 
+    const origin = safeOrigin(req);
     const session = await Promise.race([
       stripe.checkout.sessions.create({
         customer: customerId,
         customer_email: customerId ? undefined : user.email,
         line_items: [{ price: "price_1TFm5RBCKK2x5xtVzSHn0acA", quantity: 1 }],
         mode: "payment",
-        success_url: `${req.headers.get("origin")}/?coaching_payment=success`,
-        cancel_url: `${req.headers.get("origin")}/?coaching_payment=cancelled`,
+        success_url: `${origin}/?coaching_payment=success`,
+        cancel_url: `${origin}/?coaching_payment=cancelled`,
         metadata: { userId: user.id, type: "coaching_session" },
       }),
       timeoutPromise,
