@@ -701,6 +701,7 @@ export type Database = {
           id: string
           keys_auth: string
           keys_p256dh: string
+          user_id: string
         }
         Insert: {
           created_at?: string
@@ -708,6 +709,7 @@ export type Database = {
           id?: string
           keys_auth: string
           keys_p256dh: string
+          user_id: string
         }
         Update: {
           created_at?: string
@@ -715,6 +717,7 @@ export type Database = {
           id?: string
           keys_auth?: string
           keys_p256dh?: string
+          user_id?: string
         }
         Relationships: []
       }
