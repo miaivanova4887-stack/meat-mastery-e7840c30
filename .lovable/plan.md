@@ -1,127 +1,114 @@
-# App Review Resubmission Plan
+## Goal
 
-## Audit results
+Make the light theme feel state-of-the-art and unmistakably premium — without adding, removing, or restructuring a single component. Pure work on the color tokens, gradient stops, and the light-mode-scoped utility classes inside `src/index.css`. Dark theme is byte-for-byte untouched.
 
-### 1) Subscription / paywall compliance — **FAIL**
+## Audit of today's light theme
 
-File: `src/pages/Pricing.tsx`
+- Background `32 12% 97%` warm ivory — pleasant but lifts to near-flat white on AMOLED-ish phone screens; lacks tonal grounding.
+- Primary `22 85% 48%` — saturated burnt-orange. Reads loud on warm cream; can feel "stock" rather than couture.
+- Borders/inputs sit at 90/94% L with neutral hue → cards lose edge definition on bright OLEDs.
+- Shadows are charcoal-tinted (`hsl(20 10% 10% / .x`) — slightly cool against the warm bg, robbing depth.
+- `.ios-card` border `28 10% 90% / 0.7` plus a 2-layer shadow → uniform but flat, no specular edge.
+- `.hero-gradient` light variant uses a `0 0% 0%` cap → cool black bleed over warm ivory.
+- `.motivation-cta` uses pure white→bone — no tonal lift, premium CTAs look like plain cards.
+- Section accent bar gradient `primary → gold` is good; underutilized elsewhere.
 
-Present:
+## Design direction (taste statement)
 
-- Localized App Store price label per package (`paywall.packages.*.priceLabel`, e.g. `$6.99/mo`)
-- Tappable Privacy Policy / Terms of Use links (native footer, lines 419–433)
-- Restore Purchases button (native only)
-- One-line disclosure: "Subscriptions auto-renew unless cancelled at least 24 hours before the period ends. Manage or cancel anytime in your Apple ID settings." (lines 415–418)
+"Aged ivory paper under museum lighting." Think Aesop store, Hermès editorial, Apple Pages export. Background warms one notch into **bisque/parchment**. Surfaces stay near-white but get a true paper hierarchy (page < card < popover). Primary shifts from "construction orange" to **burnished copper** — same warmth, lower saturation, deeper L → premium, not promotional. Borders gain a hairline warm tint so they read as embossed instead of cut. Shadows recompose around a **warm umber** key (matches bg hue) for the soft long-shadow you see in Apple marketing screenshots. Gradients gain a faint copper-to-gold wash so every "premium" surface (CTA, hero fade, accent bar) shares a single luminous family.
 
-Missing / non-compliant:
+## Token changes — `src/index.css` `:root` only
 
-- No explicit **subscription title + duration** next to each Buy button. Apple wants e.g. "Pro — Monthly subscription (1 month, auto-renewing) — $6.99".
-- No **per-unit price** when yearly is selected (currently shows `$49.99/yr`, no `≈ $4.17/mo`).
-- Disclosure block does **not** include all required Apple lines: charge at confirmation, renewal charged within 24h before period end, manage/turn off in Account Settings, free-trial forfeiture (only required if a trial exists — none currently configured, so we will state explicitly "no free trial").
-- Disclosures must sit **above the Buy buttons within the purchase flow**, not only in the footer.
+```text
+--background      32 24% 95%     (bisque parchment, +12 sat, slightly deeper)
+--foreground      22 18% 9%      (warmer near-black, richer than cool 5%)
+--card            36 30% 99%     (warm pearl — lifts above bg)
+--popover         36 30% 99%
+--card-foreground / popover-foreground  22 18% 9%
 
-### 2) Camera permission flow — **FAIL**
+--primary         20 72% 42%     (burnished copper — deeper, less neon)
+--primary-foreground  36 30% 99%
 
-File: `src/components/progress/BarcodeScanner.tsx` (lines 49–77, 126–149)
+--secondary       30 14% 92%     (warm linen)
+--secondary-foreground  22 14% 18%
+--muted           30 12% 93%
+--muted-foreground 22 14% 36%    (slightly darker for AA on warm cards)
+--accent          25 22% 90%     (champagne)
+--accent-foreground 20 72% 42%
 
-- `handleCameraBlocked` auto-calls `openAppSettings()` the moment `getUserMedia` returns NotAllowedError on the very first denial → exactly the behavior Apple rejected.
-- No pre-prompt explainer sheet before the iOS system dialog.
-- Toast copy is persuasive ("Enable it in app settings, then return.").
+--destructive     2 68% 46%      (oxblood, not fire-red)
 
-`PhotoRecognition.tsx` uses `<input type="file" capture="environment">` which delegates to the native picker (lower risk), but still needs an explainer for consistency.
+--border          28 18% 86%     (warm hairline)
+--input           28 14% 88%
+--ring            20 72% 42%
 
-### 3) In-app account deletion — **FAIL**
+--flame           20 72% 42%     (sync with primary)
+--ember           14 50% 36%
+--gold            38 62% 50%     (richer, slightly darker)
+--bone            34 24% 96%
 
-- No `delete-account` edge function exists.
-- `Profile.tsx` has no "Delete Account" entry in the settings tab.
-- Sign in with Apple is enabled (`src/pages/Auth.tsx` line 135+), so deletion must also call Apple's `/auth/revoke` endpoint per App Store Guideline 5.1.1(v).
+--sidebar         36 30% 99%
+--sidebar-background  34 22% 97%
+--sidebar-border  28 18% 86%
+--sidebar-accent  25 22% 90%
+--sidebar-accent-foreground 22 14% 18%
+--sidebar-primary 20 72% 42%
 
----
+--chart-1 20 72% 42%
+--chart-2 38 62% 50%
+--chart-3 14 50% 36%
+--chart-4 22 10% 38%
+--chart-5 28 14% 78%
+```
 
-## Implementation plan (priority order)
+Shadow system — re-key around warm umber so depth matches paper temperature:
 
-### Step 1 — Paywall disclosures (Pricing.tsx)
+```text
+--shadow-2xs  0 1px 2px 0       hsl(22 30% 12% / 0.05)
+--shadow-xs   0 1px 3px 0       hsl(22 30% 12% / 0.07)
+--shadow-sm   0 2px 6px -1px    hsl(22 30% 12% / 0.08),  0 1px 2px -1px hsl(22 30% 12% / 0.06)
+--shadow      0 4px 14px -3px   hsl(22 30% 12% / 0.10)
+--shadow-md   0 8px 22px -6px   hsl(22 30% 12% / 0.12)
+--shadow-lg   0 14px 36px -10px hsl(22 30% 12% / 0.14)
+--shadow-xl   0 22px 50px -14px hsl(22 30% 12% / 0.16)
+--shadow-2xl  0 32px 64px -18px hsl(22 30% 12% / 0.22)
+```
 
-1. Add a **per-plan subtitle line** under the price: `Monthly subscription · 1 month · Auto-renewing` / `Annual subscription · 12 months · Auto-renewing` and, for yearly, a computed "≈ $X.XX/mo equivalent" using the package's `pricePerMonth` (RC provides `pricePerMonth`/`pricePerMonthString` on yearly products; otherwise derive from `price` / 12).
-2. Add an **Apple-compliant disclosure card** rendered directly above the Buy buttons (native only). Copy:
-  > **Subscription terms**
-  > • Payment is charged to your Apple ID at confirmation of purchase.
-  > • Your subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period.
-  > • Your account will be charged for renewal within 24 hours prior to the end of the current period at the selected plan's price.
-  > • You can manage your subscription and turn off auto-renew in your Apple ID Account Settings after purchase.
-  > • No free trial is offered; any unused portion of a free trial, if offered, is forfeited when purchasing a subscription.
-  > [Privacy Policy](…) · [Terms of Use](…)
-3. Keep existing footer Privacy/Terms links but the disclosure card above is the in-flow source of truth.
-4. Add the subscription title + duration **into the confirm CTA tooltip / sub-label** so it is visible the moment the user taps Upgrade (defensive).
+## Gradient & utility refinements (light-mode scoped only)
 
-### Step 2 — Camera permission flow (Guideline 5.1.1)
+All edits live behind `:root` or `html:not(.dark)` so dark theme is provably untouched.
 
-1. New component `src/components/CameraPermissionExplainer.tsx` — a small modal/sheet with copy:
-  > **Camera access**
-  > Camera access lets you scan barcodes and snap meals to log macros instantly.
-  > [Not now] [Continue]
-2. Modify `BarcodeScanner.tsx`:
-  - On first tap of "Scan Barcode": show explainer sheet → on Continue, call `getUserMedia` once.
-  - **Remove** the auto `openAppSettings()` call on first denial. On denial, just `toast("You can enable camera later in Settings if you'd like to scan.")` and close — no redirect, no persuasive copy.
-  - Track denial in `localStorage` (`camera-denied-once`). On a **subsequent** tap of a camera-only action (Scan Barcode), show a neutral re-entry modal:
-    > Camera access is currently off. You can continue without it, or enable it in Settings.
-    > [Not now] [Open Settings]
-  - Only the re-entry modal may call `openAppSettings()`, only via the explicit "Open Settings" button.
-3. Apply the same explainer pattern wrapper to `PhotoRecognition.tsx` before opening the file picker (defensive consistency).
-4. Update copy in `ios/App/App/Info.plist` `NSCameraUsageDescription` to match the explainer's purpose string.
-5. Replace `localStorage` tracking with permission-state checking or in-app state that does not depend on browser storage.
+- `:root .ios-card`: replace cool-tinted shadow with a two-layer warm specular — `0 1px 0 hsl(36 40% 100% / 0.7) inset, 0 2px 8px -2px hsl(22 30% 12% / 0.08), 0 12px 28px -10px hsl(22 30% 12% / 0.10)`. Border becomes `hsl(28 22% 84% / 0.7)` for a barely-visible engraved edge.
+- `:root .ios-blur`: bump to `saturate(220%) blur(28px)` with a `background-color: hsl(36 30% 99% / 0.72)` so frosted surfaces (sticky headers, nav) get true frosted-glass tonality on warm bg.
+- `:root .hero-gradient`: re-cap the dark fade with the warm foreground hue instead of pure black — `hsl(22 30% 8% / 0.22)` at 100%, keep compressed bottom ramp.
+- `:root .mini-hero-overlay`: same warm-cap principle, plus a 1% champagne tint mid-stop for editorial feel.
+- `:root:not(.dark) .motivation-cta`: gradient becomes `linear-gradient(135deg, hsl(36 30% 99%), hsl(34 30% 95%) 60%, hsl(28 26% 92%))` with border `hsl(28 22% 84% / 0.6)` and shadow `0 1px 0 hsl(36 40% 100%) inset, 0 6px 20px -8px hsl(22 30% 12% / 0.14)` — gives CTAs a quiet copper-pearl luminance.
+- `html:not(.dark) .page-header`: background `hsl(36 30% 99% / 0.86)` with `backdrop-filter: saturate(220%) blur(20px)`, border `hsl(28 18% 86%)` — premium sticky headers.
+- `html:not(.dark) nav.bottom-nav`: tint border `hsl(28 18% 84%)`, shadow `0 -1px 0 hsl(36 40% 100%) inset, 0 -2px 10px hsl(22 30% 12% / 0.06)` — adds the same engraved edge.
+- `:root .filter-pill-inactive`: background `hsl(30 18% 94%)`, border `hsl(28 18% 84% / 0.6)` for a champagne chip feel.
+- `:root .section-accent-bar`: extend to a 3-stop gradient `primary → gold → primary` and widen to 40px for a metallic foil look.
+- `:root .light-divider`: re-tint to a warm metallic hairline `linear-gradient(90deg, hsl(28 22% 80%), hsl(28 18% 86% / 0.4), transparent)`.
+- New utility `:root .premium-surface` (unused by components — reserved future hook; **skip if you want zero net new utilities**, see Option below).
 
-### Step 3 — Account deletion
+## Scope guarantee
 
-**Backend**
+- Only `src/index.css` is edited.
+- Zero changes inside any `.dark` selector block.
+- No component, layout, spacing, typography, or asset change.
+- No new component, no new file.
+- `tailwind.config.ts` untouched — all tokens already map via CSS variables.
 
-1. New edge function `supabase/functions/delete-account/index.ts`:
-  - Verify JWT, get `user.id`.
-  - Best-effort delete user-owned rows: `profiles`, `user_roles`, `community_recipes`, `recipe_likes`, `progress_entries`, `progress_goals`, `user_attributes`, `device_tokens`, push subscription rows, meal plan rows, favorites — wrap each in try/catch so a missing table doesn't abort.
-  - If the user signed in with Apple, look up the stored Apple `refresh_token` (stored in `auth.identities.identity_data`) and POST to `https://appleid.apple.com/auth/revoke` with a client secret JWT (ES256 signed with Apple private key). Requires new secrets: `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_BUNDLE_ID` (`com.mi4labs.carnivorex`), `APPLE_PRIVATE_KEY` (.p8 contents). Skip silently if secrets unset, but log a warning.
-  - Finally call `supabaseAdmin.auth.admin.deleteUser(user.id)`.
-  - Return `{ ok: true }`. Function block in `supabase/config.toml` with `verify_jwt = true`.
-2. Add the four Apple secrets via `add_secret` (only required to fully revoke SiwA — without them deletion still completes inside our DB / auth tables; we will note this gap to the user before they submit). 
-3. Treat Sign in with Apple revocation as a required implementation item, not a silent fallback
+## Verification plan
 
-**Frontend** — `src/pages/Profile.tsx` Settings tab
+1. Visually diff `/` (Home), `/auth`, `/pricing`, `/profile`, `/recipes` in light mode.
+2. Confirm dark mode pixels are identical (toggle theme; check Home + Pricing).
+3. AA contrast spot check: `--foreground` on `--background`, `--muted-foreground` on `--card`, `--primary-foreground` on `--primary`.
+4. iOS Safari frosted-blur check on sticky header.
 
-1. New section "Account" with a red-tinted "Delete Account" row.
-2. Tapping it opens a confirmation modal:
-  - Headline: "Delete your account?"
-  - Body explaining permanence (data removed, active subscriptions must still be cancelled in Apple ID Settings).
-  - Required text input: user must type `DELETE` to enable the destructive button.
-  - Buttons: `Cancel` / `Delete forever`.
-3. On confirm: call `supabase.functions.invoke("delete-account")`, on success → show success screen "Your account has been deleted." with a single "OK" button that signs out and routes to `/`.
-4. Mirror copy in `src/i18n/en.json` + `src/i18n/fr.json`.
+## Option toggle for you
 
----
+- **A. Ship full palette + gradient refresh as above** (recommended — biggest premium lift).
+- **B. Tokens only** — change just the `:root` color tokens and shadow vars; skip the utility-class gradient rewrites. Smaller blast radius, ~70% of the visual upgrade.
+- **C. Gradients only** — keep current tokens, only refine `.ios-card`/`.motivation-cta`/`.hero-gradient`/`.page-header`. Lowest risk, ~40% lift.
 
-## Files changed
-
-- `src/pages/Pricing.tsx` — disclosure card, plan-row subtitles, per-month equivalent
-- `src/components/CameraPermissionExplainer.tsx` (new)
-- `src/components/progress/BarcodeScanner.tsx` — remove auto-settings redirect, add explainer + re-entry modal, denial flag
-- `src/components/progress/PhotoRecognition.tsx` — wrap with explainer
-- `ios/App/App/Info.plist` — refine `NSCameraUsageDescription`
-- `supabase/functions/delete-account/index.ts` (new)
-- `supabase/config.toml` — register `delete-account` with `verify_jwt = true`
-- `src/pages/Profile.tsx` — Account section + Delete Account modal + success state
-- `src/i18n/en.json`, `src/i18n/fr.json` — new strings
-
-## Required secrets (Apple token revocation, Step 3 only)
-
-- `APPLE_TEAM_ID`
-- `APPLE_KEY_ID`
-- `APPLE_BUNDLE_ID` (set to `com.mi4labs.carnivorex`)
-- `APPLE_PRIVATE_KEY` (contents of the `.p8` from Apple Developer → Keys, with `Sign In with Apple` enabled)
-
-If you do not have these yet, the deletion flow will still ship and pass review for our DB-side data; SiwA revocation will be best-effort once the secrets are added.
-
-## Recommended priority order for fastest resubmission
-
-1. **Camera fix** (Step 2) — smallest diff, highest rejection-risk if missed.
-2. **Account deletion** (Step 3) — required UI + backend; can ship without Apple secrets and add SiwA revocation immediately after.
-3. **Paywall disclosures** (Step 1) — content-heavy but mechanical.
-
-After approval of this plan I'll implement in that order and give you the exact terminal steps to build, install on device, and verify each fix with screenshots before resubmitting.
+Default to **A** unless you say otherwise.
