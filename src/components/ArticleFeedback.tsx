@@ -1,10 +1,18 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
+import { useDismissedArticles } from "@/hooks/useDismissedArticles";
+import { inferTheme } from "@/lib/articleThemes";
+
+
 
 interface ArticleFeedbackProps {
   articleId: string;
   question?: string;
+  /** Optional explicit theme; defaults to the prefix of `articleId`. */
+  theme?: string;
+  /** Fired after the ~3 s acknowledgment when the user picked "Not really". */
+  onDismiss?: (articleId: string) => void;
 }
 
 function getFeedbackStore(): Record<string, "yes" | "no"> {
@@ -249,15 +257,28 @@ const getResponse = (articleId: string, value: "yes" | "no"): string => {
   return defaultResponses[value];
 };
 
-const ArticleFeedback = ({ articleId, question = "Was this helpful?" }: ArticleFeedbackProps) => {
+const ArticleFeedback = ({ articleId, question = "Was this helpful?", theme, onDismiss }: ArticleFeedbackProps) => {
   const [feedback, setFeedback] = useState<"yes" | "no" | null>(() => {
     return getFeedbackStore()[articleId] ?? null;
   });
+  const { dismiss } = useDismissedArticles();
+  const dismissTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (dismissTimer.current) window.clearTimeout(dismissTimer.current);
+  }, []);
 
   const handleFeedback = (value: "yes" | "no") => {
     setFeedback(value);
     saveFeedback(articleId, value);
     toast.success(value === "yes" ? "Glad you found it useful!" : "Thanks for your feedback!");
+    if (value === "no") {
+      const resolvedTheme = theme ?? inferTheme(articleId);
+      dismissTimer.current = window.setTimeout(() => {
+        dismiss(articleId, resolvedTheme);
+        onDismiss?.(articleId);
+      }, 3000);
+    }
   };
 
   if (feedback) {
@@ -266,6 +287,11 @@ const ArticleFeedback = ({ articleId, question = "Was this helpful?" }: ArticleF
         <p className="text-[11px] text-primary font-medium leading-relaxed">
           {feedback === "yes" ? "👍 " : "👌 "}{getResponse(articleId, feedback)}
         </p>
+        {feedback === "no" && (
+          <p className="text-[10px] text-muted-foreground/80 italic mt-1.5">
+            Got it — we'll show less like this.
+          </p>
+        )}
       </div>
     );
   }

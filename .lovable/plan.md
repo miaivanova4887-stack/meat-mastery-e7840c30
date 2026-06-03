@@ -1,47 +1,138 @@
-# Fix iOS focus zoom on Budget custom item form
 
-## Root cause
+## Goal
 
-`src/components/budget/BudgetPlanner.tsx` lines 74–85 render a shared inline-edit `<input>` (used for both product name and weekly price) with `text-sm` (14px). iOS Safari auto-zooms any input under 16px and never restores scale when the keyboard dismisses.
+When a user taps **Not really** on any article-style content, show a brief acknowledgment, fade the item out after ~3s, and (when possible) replace it with a sibling article from the same or an adjacent theme. Existing **Yes** feedback is untouched.
 
-`src/components/community/CreatePostSheet.tsx` has the same defect on the title `<input>` (line 159–166, `text-sm`) and body `<textarea>` (line 173–180, `text-sm`). These are raw `<input>` / `<textarea>` elements, not the shadcn primitives, so the recent `Input`/`Textarea` font-audit fixes don't reach them.
+## Affected surfaces
 
-## Changes
+All pages that render `ContentSection` with a `feedbackId`:
 
-### 1. `src/lib/utils.ts` — add util
+- `src/pages/Benefits.tsx` (theme: `benefits`)
+- `src/pages/Cravings.tsx` (theme: `cravings`)
+- `src/pages/Sustain.tsx` (theme: `sustain`)
+- `src/pages/AthleticPerformance.tsx` (theme: `athletic`)
+- `src/pages/Myths.tsx` (theme: `myths`)
+- `src/pages/Guide.tsx` (theme: `guide`)
+- `src/pages/BudgetEating.tsx` (theme: `budget`)
+- `src/pages/GettingStarted.tsx` (theme: `first30`)
+- `src/pages/Stories.tsx` (theme: `stories`, uses `ArticleFeedback` directly)
 
-Append the `resetViewportScale()` helper exactly as specified in the bug report. Reads the live `<meta name="viewport">` content, briefly appends `, maximum-scale=1` to force iOS to rescale, then restores the original on the next animation frame.
+`src/pages/NewsFeed.tsx` has no per-item ArticleFeedback today — out of scope for v1 (noted as future).
 
-### 2. `src/components/budget/BudgetPlanner.tsx` — fix the inline-edit input
+## Architecture
 
-Inside the `editing === true` branch (lines 74–85), the `<input>`:
-- add `text-base md:text-sm` to its `className`
-- wrap the existing `onBlur={commit}` so it also calls `resetViewportScale()` after committing
+Centralize behavior in one hook + light wrappers so each page changes minimally.
 
-### 3. `src/components/community/CreatePostSheet.tsx` — fix raw title + body fields
+### 1. Schema — `content_reactions`
 
-- Title `<input>` (line 159): swap `text-sm` → `text-base md:text-sm`, add `onBlur={resetViewportScale}`.
-- Body `<textarea>` (line 178): same swap and same `onBlur`.
+```sql
+CREATE TABLE public.content_reactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  content_id text NOT NULL,
+  content_type text NOT NULL DEFAULT 'article',
+  reaction text NOT NULL,          -- 'not_really' | 'yes' (future)
+  theme text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, content_id, reaction)
+);
+GRANT SELECT, INSERT, DELETE ON public.content_reactions TO authenticated;
+GRANT ALL ON public.content_reactions TO service_role;
+ALTER TABLE public.content_reactions ENABLE ROW LEVEL SECURITY;
+-- policies: user can select/insert/delete own; service role bypasses
+```
 
-### 4. Confirmations (no edits needed)
+Local-first: dismissed IDs are also stored in `localStorage` (`carnivore-dismissed-articles`) so unauthenticated users get the same UX and SSR/offline works. DB write is best-effort (fire-and-forget) when logged in.
 
-- `src/components/ui/input.tsx` line 11 — already `text-base ... md:text-sm`. PASS.
-- `src/components/ui/textarea.tsx` line 11 — already `text-base md:text-sm` (fixed in font audit). PASS.
-- `index.html` viewport meta — no `user-scalable=no`, no `maximum-scale=1`. PASS.
+### 2. New hook — `src/hooks/useDismissibleArticle.ts`
 
-## Files touched
+Provides:
 
-- `src/lib/utils.ts` (add export)
-- `src/components/budget/BudgetPlanner.tsx` (1 className + 1 onBlur)
-- `src/components/community/CreatePostSheet.tsx` (2 classNames + 2 onBlur)
+- `dismissedIds: Set<string>` — merged from localStorage + (if authed) DB
+- `dismiss(articleId, theme?)` — writes locally, fires DB insert, dispatches `articles-dismissed` event
+- `isDismissed(id)` — boolean
+- listens to `articles-dismissed` cross-component sync
 
-## Verification
+### 3. New helper — `src/lib/articleThemes.ts`
 
-1. Budget → tap a price / item name → no zoom on iOS Safari simulator.
-2. Dismiss keyboard → viewport snaps back to scale 1.
-3. Community → "Write a Post" → tap title and body → no zoom; dismiss → no leftover zoom.
-4. At 320 px width (iPhone SE) the inline input still renders correctly (text-base = 16 px is intentionally larger than the prior 14 px; this is the whole point and matches Apple's HIG min for editable text).
+```ts
+export const THEME_ADJACENCY: Record<string, string[]> = {
+  cravings:  ['first30', 'sustain', 'benefits'],
+  budget:    ['guide', 'sustain'],
+  myths:     ['benefits', 'guide', 'athletic'],
+  athletic:  ['benefits', 'guide', 'sustain'],
+  benefits:  ['sustain', 'guide'],
+  sustain:   ['benefits', 'first30'],
+  guide:     ['benefits', 'first30'],
+  first30:   ['cravings', 'guide'],
+  stories:   ['benefits', 'sustain'],
+};
+export function pickReplacement(
+  theme: string,
+  pool: { id: string; theme: string }[],
+  dismissed: Set<string>,
+  exclude: Set<string>,
+): { id: string; theme: string } | null { /* same theme first, then adjacency, then null */ }
+```
 
-## Out of scope
+### 4. `ArticleFeedback.tsx` changes
 
-Wider sweep of every raw `<input>` / `<textarea>` in the codebase (Onboarding, AdminNotifications, ShoppingBag, etc.) — tracked as a follow-up. This plan only fixes the two surfaces called out in the bug.
+- Add optional `theme?: string` and `onNotReally?: () => void` props.
+- On **Not really**:
+  1. Save existing feedback (keeps reassuring copy visible).
+  2. Show subtle inline text "Got it — we'll show less like this."
+  3. After **3000 ms**, call `dismiss(articleId, theme)` and `onNotReally?.()`.
+
+### 5. `ContentSection.tsx` changes
+
+- Accept optional `theme?: string`, forward to `ArticleFeedback`.
+- Use internal state `phase: 'visible' | 'fading' | 'gone'`; on dismiss callback, animate `animate-fade-out` + max-height collapse over 300ms then unmount.
+- When unmounting, dispatch an `onDismiss(id, theme)` callback so the parent page can swap in a replacement.
+
+### 6. Per-page wiring (centralized)
+
+Introduce a tiny wrapper `src/components/ArticleList.tsx` that takes `theme` + an array of `{ id, render }`, tracks dismissed IDs via the hook, filters them out, and — when an item is dismissed — inserts a `pickReplacement(...)` from a `pool` prop (other items on the page or a shared corpus).
+
+Migrate each of the 9 pages to render their `ContentSection`s through `ArticleList`. For pages whose pool is just the page's own list, replacement falls back to "hide only" once the local pool is exhausted (acceptable per spec).
+
+Optionally, a small shared corpus index (`src/data/articleCorpus.ts`) maps every `feedbackId → { theme, render }` so cross-page replacement is possible later. v1 ships with per-page pools only to keep risk low.
+
+### 7. Stories page
+
+`Stories.tsx` uses `ArticleFeedback` directly inside a custom card. Wrap each story in the same dismiss flow via the hook (no list-swap; just fade out + hide). Same animation.
+
+## Theme + ID mapping (already present in code)
+
+Existing `feedbackId`s already encode theme via prefix (`benefits-*`, `cravings-*`, `myths-*`, `guide-*`, `budget-*`, `sustain-*`, `athletic-*`, `stories-*`). First-30-days IDs in `GettingStarted.tsx` will be normalized to `first30-*` (or theme passed explicitly so legacy IDs keep working).
+
+## UX details
+
+- Acknowledgment copy: "Got it — we'll show less like this." (added to en/fr i18n).
+- Fade: 300 ms `opacity` + `max-height` collapse after the 3 s acknowledgment hold.
+- Replacement slides in with `animate-fade-in`.
+- No layout jump: collapse animates height; replacement mounts into the same slot.
+- Detail-page case (Myths, Guide etc.): each section is independently dismissable in place. We do **not** navigate away — lower risk.
+
+## Implementation order (lowest → highest risk)
+
+1. **Migration** — create `content_reactions` table + RLS.
+2. **Hook + helpers** — `useDismissibleArticle`, `articleThemes.ts`, i18n keys.
+3. **ArticleFeedback** — add `theme` + 3s dismiss timer + ack copy.
+4. **ContentSection** — fade/collapse + `onDismiss` callback.
+5. **ArticleList wrapper** — filters + replacement pool.
+6. **Page migrations** in this order, one at a time:
+   Cravings → Sustain → Benefits → Athletic → Myths → Guide → Budget → GettingStarted → Stories.
+7. Smoke-test each surface; confirm Yes flow unchanged.
+
+## Where replacement is not possible (hide-only)
+
+- **Stories.tsx** — short curated list, no semantic siblings on-page → fade + hide.
+- Any page where the local pool is exhausted after multiple dismissals → fade + hide.
+- Detail-style single-section pages → fade + hide (current spec accepts this).
+
+## Constraints respected
+
+- Yes/helpful path untouched.
+- Reaction rows are per (`user_id`, `content_id`, `reaction`) — easy to delete later for a preferences-management screen.
+- Deterministic mapping, no AI.
+- Local-first so unauthed users still get dismissal UX.

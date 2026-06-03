@@ -2,6 +2,7 @@ import { ArrowLeft, Star, TrendingDown, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MotivationCTA from "@/components/MotivationCTA";
 import ArticleFeedback from "@/components/ArticleFeedback";
+import DismissibleCard from "@/components/DismissibleCard";
 
 const stories = [
   { id: "mike", name: "Mike, 42", duration: "8 months", lost: "65 lbs", quote: "I reversed my pre-diabetes and got off blood pressure medication. My doctor couldn't believe the blood work. Energy through the roof.", highlight: "Reversed pre-diabetes", q: "Did this story inspire you?" },
@@ -24,7 +25,12 @@ const Stories = () => {
       </div>
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl p-4 space-y-4 md:grid md:grid-cols-2 md:gap-4 md:space-y-0">
         {stories.map((s, i) => (
-          <div key={s.id} className="bg-card border border-border rounded-lg p-4 animate-fade-in-up" style={{ animationDelay: `${i * 0.06}s` }}>
+          <DismissibleCard
+            key={s.id}
+            articleId={`stories-${s.id}`}
+            className="bg-card border border-border rounded-lg p-4 animate-fade-in-up"
+            style={{ animationDelay: `${i * 0.06}s` }}
+          >
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-display font-bold text-foreground">{s.name}</h3>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">{s.highlight}</span>
@@ -35,8 +41,8 @@ const Stories = () => {
               <span className="flex items-center gap-1"><Star size={12} className="text-accent-foreground" /></span>
             </div>
             <p className="text-xs text-secondary-foreground/80 italic leading-relaxed">"{s.quote}"</p>
-            <ArticleFeedback articleId={`stories-${s.id}`} question={s.q} />
-          </div>
+            <ArticleFeedback articleId={`stories-${s.id}`} question={s.q} theme="stories" />
+          </DismissibleCard>
         ))}
       </div>
       <MotivationCTA />

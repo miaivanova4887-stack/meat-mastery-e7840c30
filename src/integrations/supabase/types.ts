@@ -269,6 +269,36 @@ export type Database = {
         }
         Relationships: []
       }
+      content_reactions: {
+        Row: {
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          reaction: string
+          theme: string | null
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          reaction: string
+          theme?: string | null
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          id?: string
+          reaction?: string
+          theme?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       device_tokens: {
         Row: {
           app_version: string | null
