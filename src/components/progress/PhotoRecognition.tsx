@@ -21,11 +21,23 @@ const PhotoRecognition = () => {
     open: false,
     mode: "purpose",
   });
-  const { refreshPermission } = useCameraPermission();
+  const { state, requestPermission, refreshPermission } = useCameraPermission();
   const fileRef = useRef<HTMLInputElement>(null);
   const addEntry = useAddEntry();
   const profile = useUserProfile();
   const { t } = useTranslation();
+
+  // Always reset the input value before/after every interaction so a second
+  // tap can re-trigger the picker even if the user cancelled or re-picked
+  // the same file. Without this the change event won't fire on iOS.
+  const resetFileInput = useCallback(() => {
+    if (fileRef.current) fileRef.current.value = "";
+  }, []);
+
+  const openPicker = useCallback(() => {
+    resetFileInput();
+    fileRef.current?.click();
+  }, [resetFileInput]);
 
   const handlePhoto = useCallback(async (file: File) => {
     setLoading(true);
@@ -50,8 +62,9 @@ const PhotoRecognition = () => {
       toast.error(e?.message || "Failed to recognize food");
     } finally {
       setLoading(false);
+      resetFileInput();
     }
-  }, [profile.goal]);
+  }, [profile.goal, resetFileInput]);
 
   const logToProgress = useCallback(() => {
     if (!result) return;
@@ -73,6 +86,42 @@ const PhotoRecognition = () => {
       .catch(() => toast.error("Failed to log nutrients"));
   }, [result, addEntry, quantity]);
 
+  const handleSnapTap = useCallback(async () => {
+    // 1. Sync live OS state. On iOS this often returns "unknown", so we
+    //    can't trust it alone — but if it definitively says "denied" we
+    //    can short-circuit to the re-entry modal.
+    const synced = await refreshPermission();
+    if (synced === "denied") {
+      setExplainer({ open: true, mode: "denied" });
+      return;
+    }
+
+    // 2. First-ever tap: show the App Review 5.1.1 purpose explainer
+    //    before doing anything camera-related.
+    const seen = (() => { try { return localStorage.getItem(PHOTO_EXPLAINER_SEEN_KEY) === "1"; } catch { return false; } })();
+    if (!seen && synced !== "granted") {
+      setExplainer({ open: true, mode: "purpose" });
+      return;
+    }
+
+    // 3. Authoritative probe via getUserMedia — the only source of truth
+    //    on iOS WKWebView. The capture="" file picker does NOT share the
+    //    Permissions API gate, so without this probe we'd open a dark/dead
+    //    picker after a previous denial.
+    const probe = await requestPermission();
+    if (probe === "granted") {
+      openPicker();
+      return;
+    }
+    if (probe === "denied") {
+      setExplainer({ open: true, mode: "denied" });
+      return;
+    }
+    // unavailable (e.g. desktop without camera) — fall back to picker;
+    // worst case the user picks from library.
+    openPicker();
+  }, [refreshPermission, requestPermission, openPicker]);
+
   return (
     <div className="space-y-3">
       <input
@@ -84,6 +133,8 @@ const PhotoRecognition = () => {
         onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) handlePhoto(f);
+          // Reset immediately so the next tap always re-fires onChange,
+          // even if the user re-selects the same file or cancels.
           e.target.value = "";
         }}
       />
@@ -99,28 +150,28 @@ const PhotoRecognition = () => {
             await openAppSettings();
             return;
           }
+          // Purpose explainer Continue — mark seen and run the authoritative
+          // probe. Only open the picker if the OS actually granted access;
+          // otherwise show the denied modal immediately so the user isn't
+          // left staring at a dead camera screen.
           try { localStorage.setItem(PHOTO_EXPLAINER_SEEN_KEY, "1"); } catch { /* ignore */ }
-          fileRef.current?.click();
+          const probe = await requestPermission();
+          if (probe === "granted") {
+            openPicker();
+            return;
+          }
+          if (probe === "denied") {
+            setExplainer({ open: true, mode: "denied" });
+            return;
+          }
+          // unavailable — still try the picker
+          openPicker();
         }}
       />
 
       {!result ? (
         <button
-          onClick={async () => {
-            // Always re-query live OS permission — the user may have just
-            // enabled the camera in iOS Settings since their last denial.
-            const permState = await refreshPermission();
-            if (permState === "denied") {
-              setExplainer({ open: true, mode: "denied" });
-              return;
-            }
-            const seen = (() => { try { return localStorage.getItem(PHOTO_EXPLAINER_SEEN_KEY) === "1"; } catch { return false; } })();
-            if (permState !== "granted" && !seen) {
-              setExplainer({ open: true, mode: "purpose" });
-              return;
-            }
-            fileRef.current?.click();
-          }}
+          onClick={handleSnapTap}
           disabled={loading}
           className="w-full relative overflow-hidden rounded-xl border border-dashed border-primary/30 bg-card p-5 flex flex-col items-center gap-2 hover:border-primary/60 transition-colors"
         >
