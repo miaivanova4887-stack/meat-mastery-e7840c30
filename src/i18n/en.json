@@ -297,7 +297,31 @@
     "fullDay": "📋 Full Day",
     "fullWeek": "📅 Full Week",
     "preferences": "Preferences (optional)",
-    "preferencesPlaceholder": "e.g. high protein, sweet treats, quick meals, seafood focus, under 30 min..."
+    "preferencesPlaceholder": "e.g. high protein, sweet treats, quick meals, seafood focus, under 30 min...",
+    "dietTier": "Diet Tier",
+    "generateRecipe": "Generate Recipe",
+    "generateDayPlan": "Generate Day Plan",
+    "generateWeekPlan": "Generate Week Plan",
+    "generatingLong": "Generating (may take ~15s)",
+    "aiInfoSingle": "AI will generate 1 recipe and add it to {{day}}'s plan.",
+    "aiInfoDay": "AI will fill {{count}} meal slots for {{day}} targeting {{cal}} cal.",
+    "aiInfoWeek": "AI will generate {{count}} meals/day for all 7 days targeting {{cal}} cal/day.",
+    "aiInfoGoal": "Personalized to your goal: {{goal}}.",
+    "close": "Close"
+  },
+  "recipeCoach": {
+    "title": "Recipe Coach",
+    "subtitle": "AI-powered meal suggestions",
+    "heroTitle": "Your Carnivore Coach",
+    "heroDesc": "Ask me for recipes, meal plans, or cooking tips tailored to your diet.",
+    "inputPlaceholder": "Ask for recipes, meal ideas…",
+    "lockedPlaceholder": "Unlock with Pro to chat with your coach",
+    "prompts": {
+      "lunch": "🥩 Quick lunch ideas for today",
+      "dinner": "🔥 High-protein dinner under 30 min",
+      "breakfast": "🍳 Easy breakfast recipes",
+      "postWorkout": "💪 Post-workout meal suggestions"
+    }
   },
   "progress": {
     "title": "My Progress",
