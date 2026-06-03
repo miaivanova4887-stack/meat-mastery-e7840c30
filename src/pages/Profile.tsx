@@ -469,8 +469,17 @@ const Profile = () => {
                 <strong className="text-foreground">{myRecipes.length}</strong> {t("profile.recipes")}
               </span>
               <span className="text-[11px] text-muted-foreground">
+                <strong className="text-foreground">{myPosts.length}</strong> {t("profile.posts", "posts")}
+              </span>
+              <span className="text-[11px] text-muted-foreground">
                 <strong className="text-foreground">{likedRecipes.length + favoriteRecipes.length}</strong> {t("profile.likes")}
               </span>
+              {profile?.diet_tier && (
+                <span className="text-[11px] text-muted-foreground">
+                  {tierLabels[profile.diet_tier] || profile.diet_tier}
+                </span>
+              )}
+            </div>
               {profile?.diet_tier && (
                 <span className="text-[11px] text-muted-foreground">
                   {tierLabels[profile.diet_tier] || profile.diet_tier}
