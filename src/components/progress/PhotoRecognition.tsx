@@ -22,7 +22,7 @@ const PhotoRecognition = () => {
     open: false,
     mode: "purpose",
   });
-  const { requestPermission, refreshPermission } = useCameraPermission();
+  const { requestPermission, refreshPermission, markGranted } = useCameraPermission();
   // Track the currently-attached transient input so we can clean it up on unmount.
   const activeInputRef = useRef<HTMLInputElement | null>(null);
   const addEntry = useAddEntry();
