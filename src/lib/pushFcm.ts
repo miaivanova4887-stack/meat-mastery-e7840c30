@@ -6,6 +6,7 @@ import { PushNotifications } from "@capacitor/push-notifications";
 import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
 import { NATIVE_FCM_ENABLED } from "@/lib/pushNativeConfig";
+import { normalizeLocale } from "@/lib/locale";
 
 /** Race a native promise against a timeout so re-renders / resume
  *  cannot leave the JS bridge hanging. */
