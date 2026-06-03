@@ -7,7 +7,9 @@ import { useAddEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import CameraPermissionExplainer from "@/components/CameraPermissionExplainer";
+import CameraPermissionExplainer, { type CameraExplainerMode } from "@/components/CameraPermissionExplainer";
+import { useCameraPermission } from "@/hooks/useCameraPermission";
+import { openAppSettings } from "@/lib/openAppSettings";
 
 const PHOTO_EXPLAINER_SEEN_KEY = "camera-photo-explainer-seen";
 
