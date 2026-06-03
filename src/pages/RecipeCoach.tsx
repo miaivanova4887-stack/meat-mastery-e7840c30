@@ -331,7 +331,7 @@ const RecipeCoach = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={hasAccess("pro") ? "Ask for recipes, meal ideas…" : "Unlock with Pro to chat with your coach"}
+            placeholder={hasAccess("pro") ? t("recipeCoach.inputPlaceholder") : t("recipeCoach.lockedPlaceholder")}
             rows={1}
             disabled={!hasAccess("pro")}
             className="flex-1 resize-none bg-secondary rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 max-h-32 disabled:opacity-60 disabled:cursor-not-allowed"
