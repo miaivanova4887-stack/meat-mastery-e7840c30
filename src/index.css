@@ -277,7 +277,7 @@
       0 4px 16px -6px hsl(0 0% 0% / 0.35);
   }
 
-  :root .ios-blur {
+  :root:not(.dark) .ios-blur {
     background-color: hsl(36 30% 99% / 0.72);
     backdrop-filter: saturate(220%) blur(28px);
     -webkit-backdrop-filter: saturate(220%) blur(28px);
