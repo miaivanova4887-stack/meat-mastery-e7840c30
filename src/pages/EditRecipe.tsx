@@ -262,7 +262,7 @@ const EditRecipe = () => {
         {/* Tags */}
         <div>
           <label className={labelClass}>Tags</label>
-          <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Beef, Quick, Grilling" className={inputClass} />
+          <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Beef, Quick, Grilling" maxLength={(RECIPE_LIMITS.TAG_MAX + 2) * RECIPE_LIMITS.TAGS_COUNT_MAX} className={inputClass} />
         </div>
 
         {/* Ingredients */}
