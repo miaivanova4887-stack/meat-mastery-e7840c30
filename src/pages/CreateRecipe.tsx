@@ -382,6 +382,7 @@ const CreateRecipe = () => {
                   onChange={(e) => updateStep(i, e.target.value)}
                   placeholder={`Step ${i + 1}…`}
                   rows={2}
+                  maxLength={RECIPE_LIMITS.STEP_MAX}
                   className={`${inputClass} flex-1 resize-none`}
                 />
                 <button
