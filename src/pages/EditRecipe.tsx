@@ -177,33 +177,33 @@ const EditRecipe = () => {
         {/* Name */}
         <div>
           <label className={labelClass}>Recipe Name *</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Butter-Seared Ribeye" maxLength={100} className={inputClass} />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Butter-Seared Ribeye" maxLength={RECIPE_LIMITS.NAME_MAX} className={inputClass} />
         </div>
 
         {/* Time + Macros */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Cook Time</label>
-            <input type="text" value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 30 min" className={inputClass} />
+            <input type="text" value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 30 min" maxLength={RECIPE_LIMITS.TIME_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Calories</label>
-            <input type="text" value={cal} onChange={(e) => setCal(e.target.value)} placeholder="e.g. 650" className={inputClass} />
+            <input type="text" value={cal} onChange={(e) => setCal(e.target.value)} placeholder="e.g. 650" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Protein</label>
-            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. 52g" className={inputClass} />
+            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. 52g" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Fat</label>
-            <input type="text" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="e.g. 48g" className={inputClass} />
+            <input type="text" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="e.g. 48g" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
         </div>
 
         {/* Portion Size */}
         <div>
           <label className={labelClass}>Portion Size</label>
-          <input type="text" value={serving} onChange={(e) => setServing(e.target.value)} placeholder="e.g. 8 oz steak" className={inputClass} />
+          <input type="text" value={serving} onChange={(e) => setServing(e.target.value)} placeholder="e.g. 8 oz steak" maxLength={RECIPE_LIMITS.SERVING_MAX} className={inputClass} />
         </div>
 
         {/* Diet Tiers */}
