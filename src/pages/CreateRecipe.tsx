@@ -322,6 +322,7 @@ const CreateRecipe = () => {
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="e.g. Beef, Quick, Grilling (comma separated)"
+            maxLength={(RECIPE_LIMITS.TAG_MAX + 2) * RECIPE_LIMITS.TAGS_COUNT_MAX}
             className={inputClass}
           />
         </div>
@@ -337,6 +338,7 @@ const CreateRecipe = () => {
                   value={ing.amount}
                   onChange={(e) => updateIngredient(i, "amount", e.target.value)}
                   placeholder="Amount"
+                  maxLength={RECIPE_LIMITS.INGREDIENT_AMOUNT_MAX}
                   className={`${inputClass} w-24 flex-shrink-0`}
                 />
                 <input
@@ -344,6 +346,7 @@ const CreateRecipe = () => {
                   value={ing.name}
                   onChange={(e) => updateIngredient(i, "name", e.target.value)}
                   placeholder="Ingredient name"
+                  maxLength={RECIPE_LIMITS.INGREDIENT_NAME_MAX}
                   className={`${inputClass} flex-1`}
                 />
                 <button
