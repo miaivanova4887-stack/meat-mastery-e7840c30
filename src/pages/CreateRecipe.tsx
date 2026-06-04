@@ -94,37 +94,51 @@ const CreateRecipe = () => {
       navigate("/auth");
       return;
     }
-    if (!name.trim()) {
-      toast.error("Recipe name is required");
+
+    const validIngredients = ingredients
+      .map((i) => ({ name: i.name.trim(), amount: i.amount.trim() }))
+      .filter((i) => i.name);
+    const validSteps = steps.map((s) => s.trim()).filter(Boolean);
+    const parsedTags = tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, RECIPE_LIMITS.TAGS_COUNT_MAX);
+
+    const parsed = recipeSchema.safeParse({
+      name,
+      time,
+      cal,
+      protein,
+      fat,
+      serving,
+      tiers,
+      tags: parsedTags,
+      ingredients: validIngredients,
+      steps: validSteps,
+    });
+
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message || "Please review the form");
       return;
     }
-    if (tiers.length === 0) {
-      toast.error("Select at least one diet tier");
-      return;
-    }
-    const validIngredients = ingredients.filter((i) => i.name.trim());
-    const validSteps = steps.filter((s) => s.trim());
 
     const recipe: CustomRecipe = {
       id: crypto.randomUUID(),
-      name: name.trim().slice(0, 100),
-      time: time.trim() || "N/A",
-      cal: cal.trim() || "0",
-      protein: protein.trim() || "0g",
-      fat: fat.trim() || "0g",
-      serving: serving.trim() || "1 serving",
-      desc: validSteps.length > 0 ? validSteps[0].slice(0, 200) : "Custom recipe",
-      tags: tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .slice(0, 5),
+      name: parsed.data.name,
+      time: parsed.data.time || "N/A",
+      cal: parsed.data.cal || "0",
+      protein: parsed.data.protein || "0g",
+      fat: parsed.data.fat || "0g",
+      serving: parsed.data.serving || "1 serving",
+      desc: deriveDescription(parsed.data.steps),
+      tags: parsed.data.tags,
       tier: tiers,
       meal,
       cuisine: cuisines,
       cravings: [],
-      ingredients: validIngredients,
-      steps: validSteps,
+      ingredients: parsed.data.ingredients as Ingredient[],
+      steps: parsed.data.steps,
       createdAt: new Date().toISOString(),
       isCustom: true,
     };
