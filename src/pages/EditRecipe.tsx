@@ -291,7 +291,7 @@ const EditRecipe = () => {
             {steps.map((step, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-2">{i + 1}</span>
-                <textarea value={step} onChange={(e) => updateStep(i, e.target.value)} placeholder={`Step ${i + 1}…`} rows={2} className={`${inputClass} flex-1 resize-none`} />
+                <textarea value={step} onChange={(e) => updateStep(i, e.target.value)} placeholder={`Step ${i + 1}…`} rows={2} maxLength={RECIPE_LIMITS.STEP_MAX} className={`${inputClass} flex-1 resize-none`} />
                 <button type="button" onClick={() => removeStep(i)} className="w-8 h-8 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center flex-shrink-0 mt-2">
                   <Minus size={14} />
                 </button>
