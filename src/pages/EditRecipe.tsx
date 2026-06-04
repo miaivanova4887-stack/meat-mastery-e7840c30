@@ -6,6 +6,7 @@ import { TIER_LABELS, MEAL_LABELS, CUISINE_LABELS, type DietTier, type MealType,
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { recipeSchema, deriveDescription, RECIPE_LIMITS } from "@/lib/recipeValidation";
 
 const EditRecipe = () => {
   const navigate = useNavigate();
@@ -97,32 +98,50 @@ const EditRecipe = () => {
 
   const handleSave = async () => {
     if (!user || !id) return;
-    if (!name.trim()) {
-      toast.error("Recipe name is required");
+
+    const validIngredients = ingredients
+      .map((i) => ({ name: i.name.trim(), amount: i.amount.trim() }))
+      .filter((i) => i.name);
+    const validSteps = steps.map((s) => s.trim()).filter(Boolean);
+    const parsedTags = tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, RECIPE_LIMITS.TAGS_COUNT_MAX);
+
+    const parsed = recipeSchema.safeParse({
+      name,
+      time,
+      cal,
+      protein,
+      fat,
+      serving,
+      tiers,
+      tags: parsedTags,
+      ingredients: validIngredients,
+      steps: validSteps,
+    });
+
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message || "Please review the form");
       return;
     }
-    if (tiers.length === 0) {
-      toast.error("Select at least one diet tier");
-      return;
-    }
-    const validIngredients = ingredients.filter((i) => i.name.trim());
-    const validSteps = steps.filter((s) => s.trim());
 
     setSaving(true);
     await updateRecipe(id, {
-      name: name.trim().slice(0, 100),
-      time: time.trim() || "N/A",
-      cal: cal.trim() || "0",
-      protein: protein.trim() || "0g",
-      fat: fat.trim() || "0g",
-      serving: serving.trim() || "1 serving",
-      desc: validSteps.length > 0 ? validSteps[0].slice(0, 200) : "Custom recipe",
-      tags: tags.split(",").map((t) => t.trim()).filter(Boolean).slice(0, 5),
+      name: parsed.data.name,
+      time: parsed.data.time || "N/A",
+      cal: parsed.data.cal || "0",
+      protein: parsed.data.protein || "0g",
+      fat: parsed.data.fat || "0g",
+      serving: parsed.data.serving || "1 serving",
+      desc: deriveDescription(parsed.data.steps),
+      tags: parsed.data.tags,
       tier: tiers,
       meal,
       cuisine: cuisines,
-      ingredients: validIngredients,
-      steps: validSteps,
+      ingredients: parsed.data.ingredients as Ingredient[],
+      steps: parsed.data.steps,
     });
     setSaving(false);
     toast.success("Recipe updated!");
@@ -158,33 +177,33 @@ const EditRecipe = () => {
         {/* Name */}
         <div>
           <label className={labelClass}>Recipe Name *</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Butter-Seared Ribeye" maxLength={100} className={inputClass} />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Butter-Seared Ribeye" maxLength={RECIPE_LIMITS.NAME_MAX} className={inputClass} />
         </div>
 
         {/* Time + Macros */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Cook Time</label>
-            <input type="text" value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 30 min" className={inputClass} />
+            <input type="text" value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 30 min" maxLength={RECIPE_LIMITS.TIME_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Calories</label>
-            <input type="text" value={cal} onChange={(e) => setCal(e.target.value)} placeholder="e.g. 650" className={inputClass} />
+            <input type="text" value={cal} onChange={(e) => setCal(e.target.value)} placeholder="e.g. 650" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Protein</label>
-            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. 52g" className={inputClass} />
+            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. 52g" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Fat</label>
-            <input type="text" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="e.g. 48g" className={inputClass} />
+            <input type="text" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="e.g. 48g" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
         </div>
 
         {/* Portion Size */}
         <div>
           <label className={labelClass}>Portion Size</label>
-          <input type="text" value={serving} onChange={(e) => setServing(e.target.value)} placeholder="e.g. 8 oz steak" className={inputClass} />
+          <input type="text" value={serving} onChange={(e) => setServing(e.target.value)} placeholder="e.g. 8 oz steak" maxLength={RECIPE_LIMITS.SERVING_MAX} className={inputClass} />
         </div>
 
         {/* Diet Tiers */}
@@ -243,7 +262,7 @@ const EditRecipe = () => {
         {/* Tags */}
         <div>
           <label className={labelClass}>Tags</label>
-          <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Beef, Quick, Grilling" className={inputClass} />
+          <input type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="e.g. Beef, Quick, Grilling" maxLength={(RECIPE_LIMITS.TAG_MAX + 2) * RECIPE_LIMITS.TAGS_COUNT_MAX} className={inputClass} />
         </div>
 
         {/* Ingredients */}
@@ -252,8 +271,8 @@ const EditRecipe = () => {
           <div className="space-y-2">
             {ingredients.map((ing, i) => (
               <div key={i} className="flex gap-2 items-center">
-                <input type="text" value={ing.amount} onChange={(e) => updateIngredient(i, "amount", e.target.value)} placeholder="Amount" className={`${inputClass} w-24 flex-shrink-0`} />
-                <input type="text" value={ing.name} onChange={(e) => updateIngredient(i, "name", e.target.value)} placeholder="Ingredient name" className={`${inputClass} flex-1`} />
+                <input type="text" value={ing.amount} onChange={(e) => updateIngredient(i, "amount", e.target.value)} placeholder="Amount" maxLength={RECIPE_LIMITS.INGREDIENT_AMOUNT_MAX} className={`${inputClass} w-24 flex-shrink-0`} />
+                <input type="text" value={ing.name} onChange={(e) => updateIngredient(i, "name", e.target.value)} placeholder="Ingredient name" maxLength={RECIPE_LIMITS.INGREDIENT_NAME_MAX} className={`${inputClass} flex-1`} />
                 <button type="button" onClick={() => removeIngredient(i)} className="w-8 h-8 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center flex-shrink-0">
                   <Minus size={14} />
                 </button>
@@ -272,7 +291,7 @@ const EditRecipe = () => {
             {steps.map((step, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center flex-shrink-0 mt-2">{i + 1}</span>
-                <textarea value={step} onChange={(e) => updateStep(i, e.target.value)} placeholder={`Step ${i + 1}…`} rows={2} className={`${inputClass} flex-1 resize-none`} />
+                <textarea value={step} onChange={(e) => updateStep(i, e.target.value)} placeholder={`Step ${i + 1}…`} rows={2} maxLength={RECIPE_LIMITS.STEP_MAX} className={`${inputClass} flex-1 resize-none`} />
                 <button type="button" onClick={() => removeStep(i)} className="w-8 h-8 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center flex-shrink-0 mt-2">
                   <Minus size={14} />
                 </button>

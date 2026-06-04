@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { TIER_LABELS, MEAL_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CuisineType, type Ingredient, type CustomRecipe } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useAuth } from "@/contexts/AuthContext";
+import { recipeSchema, deriveDescription, RECIPE_LIMITS } from "@/lib/recipeValidation";
 
 const CreateRecipe = () => {
   const navigate = useNavigate();
@@ -93,37 +94,51 @@ const CreateRecipe = () => {
       navigate("/auth");
       return;
     }
-    if (!name.trim()) {
-      toast.error("Recipe name is required");
+
+    const validIngredients = ingredients
+      .map((i) => ({ name: i.name.trim(), amount: i.amount.trim() }))
+      .filter((i) => i.name);
+    const validSteps = steps.map((s) => s.trim()).filter(Boolean);
+    const parsedTags = tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .slice(0, RECIPE_LIMITS.TAGS_COUNT_MAX);
+
+    const parsed = recipeSchema.safeParse({
+      name,
+      time,
+      cal,
+      protein,
+      fat,
+      serving,
+      tiers,
+      tags: parsedTags,
+      ingredients: validIngredients,
+      steps: validSteps,
+    });
+
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message || "Please review the form");
       return;
     }
-    if (tiers.length === 0) {
-      toast.error("Select at least one diet tier");
-      return;
-    }
-    const validIngredients = ingredients.filter((i) => i.name.trim());
-    const validSteps = steps.filter((s) => s.trim());
 
     const recipe: CustomRecipe = {
       id: crypto.randomUUID(),
-      name: name.trim().slice(0, 100),
-      time: time.trim() || "N/A",
-      cal: cal.trim() || "0",
-      protein: protein.trim() || "0g",
-      fat: fat.trim() || "0g",
-      serving: serving.trim() || "1 serving",
-      desc: validSteps.length > 0 ? validSteps[0].slice(0, 200) : "Custom recipe",
-      tags: tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .slice(0, 5),
+      name: parsed.data.name,
+      time: parsed.data.time || "N/A",
+      cal: parsed.data.cal || "0",
+      protein: parsed.data.protein || "0g",
+      fat: parsed.data.fat || "0g",
+      serving: parsed.data.serving || "1 serving",
+      desc: deriveDescription(parsed.data.steps),
+      tags: parsed.data.tags,
       tier: tiers,
       meal,
       cuisine: cuisines,
       cravings: [],
-      ingredients: validIngredients,
-      steps: validSteps,
+      ingredients: parsed.data.ingredients as Ingredient[],
+      steps: parsed.data.steps,
       createdAt: new Date().toISOString(),
       isCustom: true,
     };
@@ -210,26 +225,26 @@ const CreateRecipe = () => {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>Cook Time</label>
-            <input type="text" value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 30 min" className={inputClass} />
+            <input type="text" value={time} onChange={(e) => setTime(e.target.value)} placeholder="e.g. 30 min" maxLength={RECIPE_LIMITS.TIME_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Calories</label>
-            <input type="text" value={cal} onChange={(e) => setCal(e.target.value)} placeholder="e.g. 650" className={inputClass} />
+            <input type="text" value={cal} onChange={(e) => setCal(e.target.value)} placeholder="e.g. 650" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Protein</label>
-            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. 52g" className={inputClass} />
+            <input type="text" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="e.g. 52g" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Fat</label>
-            <input type="text" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="e.g. 48g" className={inputClass} />
+            <input type="text" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="e.g. 48g" maxLength={RECIPE_LIMITS.MACRO_MAX} className={inputClass} />
           </div>
         </div>
 
         {/* Portion Size */}
         <div>
           <label className={labelClass}>Portion Size</label>
-          <input type="text" value={serving} onChange={(e) => setServing(e.target.value)} placeholder="e.g. 8 oz steak, 2 patties, 3 eggs" className={inputClass} />
+          <input type="text" value={serving} onChange={(e) => setServing(e.target.value)} placeholder="e.g. 8 oz steak, 2 patties, 3 eggs" maxLength={RECIPE_LIMITS.SERVING_MAX} className={inputClass} />
         </div>
 
         {/* Diet Tiers */}
@@ -307,6 +322,7 @@ const CreateRecipe = () => {
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="e.g. Beef, Quick, Grilling (comma separated)"
+            maxLength={(RECIPE_LIMITS.TAG_MAX + 2) * RECIPE_LIMITS.TAGS_COUNT_MAX}
             className={inputClass}
           />
         </div>
@@ -322,6 +338,7 @@ const CreateRecipe = () => {
                   value={ing.amount}
                   onChange={(e) => updateIngredient(i, "amount", e.target.value)}
                   placeholder="Amount"
+                  maxLength={RECIPE_LIMITS.INGREDIENT_AMOUNT_MAX}
                   className={`${inputClass} w-24 flex-shrink-0`}
                 />
                 <input
@@ -329,6 +346,7 @@ const CreateRecipe = () => {
                   value={ing.name}
                   onChange={(e) => updateIngredient(i, "name", e.target.value)}
                   placeholder="Ingredient name"
+                  maxLength={RECIPE_LIMITS.INGREDIENT_NAME_MAX}
                   className={`${inputClass} flex-1`}
                 />
                 <button
@@ -364,6 +382,7 @@ const CreateRecipe = () => {
                   onChange={(e) => updateStep(i, e.target.value)}
                   placeholder={`Step ${i + 1}…`}
                   rows={2}
+                  maxLength={RECIPE_LIMITS.STEP_MAX}
                   className={`${inputClass} flex-1 resize-none`}
                 />
                 <button

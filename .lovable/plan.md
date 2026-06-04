@@ -1,86 +1,47 @@
-# Stop the barcode reader from re-prompting after Snap & Log was granted
+# Validate community recipe inputs
 
-## Root cause
+Add client-side zod validation with explicit length limits to the recipe submission forms so users can't save empty or excessively long content. Mirrors the pattern already used in `CreatePostSheet.tsx`.
 
-Snap & Log uses `@capacitor/camera` (`Camera.getPhoto`), which triggers the **native** iOS camera permission. After the user accepts, `AVCaptureDevice.authorizationStatus(for: .video) == .authorized` and the new `WKUIDelegate` in `MainViewController.swift` will auto-grant any WKWebView `getUserMedia` from a trusted origin — no second OS prompt.
+## Limits
 
-But the barcode reader never reaches `getUserMedia`. 
+| Field | Min | Max | Notes |
+|---|---|---|---|
+| Recipe name | 1 | 100 | already capped at 100; add non-empty check |
+| Cook time | 0 | 30 | optional |
+| Calories / Protein / Fat | 0 | 20 | optional |
+| Serving | 0 | 80 | optional |
+| Tag (each) | 1 | 30 | max 5 tags total (already enforced) |
+| Ingredient name | 1 | 80 | required if row kept |
+| Ingredient amount | 0 | 40 | optional |
+| Step text | 1 | 500 | min 1 step required |
+| Steps count | 1 | 30 | |
+| Ingredients count | 1 | 50 | at least one valid ingredient required |
+| Auto-derived `desc` | 1 | 200 | still derived from first step, but now guaranteed non-empty since steps are required |
 
-Furthermore barcode in-app camera access triggers every time after app was killed
+## Files to change
 
-Before opening the scanner, `BarcodeScanner.handleStartTap` calls `useCameraPermission.refreshPermission()`, which only knows one API:
+1. **`src/pages/CreateRecipe.tsx`**
+   - Add zod schema (`recipeSchema`) at module scope.
+   - In `handleSave`, run `recipeSchema.safeParse(...)` after trimming; on failure toast the first `issue.message` and stop.
+   - Add `maxLength` to remaining inputs (time, cal, protein, fat, serving, tags, ingredient amount/name, step textarea) matching the schema.
+   - Keep existing required checks but route through zod for consistent messaging.
 
-```ts
-const res = await perms.query({ name: "camera" });
-```
+2. **`src/pages/EditRecipe.tsx`**
+   - Import and apply the same schema (export it from CreateRecipe or place in a new `src/lib/recipeValidation.ts` — preferred so it's shared).
+   - Same `maxLength` additions and `safeParse` call in the save handler.
 
-On iOS WKWebView the Permissions API is unreliable for `camera` — it returns `"prompt"` (or `"unknown"`) even after the native permission was granted, because WKWebView's permission scope is separate from `AVCaptureDevice`'s. So `refreshPermission()` returns `"prompt"`, the code falls into the `prompt / unknown` branch, and our own `CameraPermissionExplainer` modal opens in `purpose` mode. That is the "permission" the user sees the second time.
-
-(The same hook is why `PhotoRecognition.handleSnapTap` also drops into the explainer on the first tap — but there it's intentional because of `PHOTO_EXPLAINER_SEEN_KEY`. The barcode flow has no such "seen" flag, so the modal appears on every tap until WKWebView's `getUserMedia` is actually invoked once.)
-
-## Fix
-
-Make `useCameraPermission` consult the **native** `@capacitor/camera` permission status on Capacitor platforms, and broadcast grants so sibling components refresh.
-
-### 1. `src/hooks/useCameraPermission.ts`
-
-Extend `queryPermissionsApi` to prefer the native plugin when running under Capacitor:
-
-- On `Capacitor.isNativePlatform()`, dynamically `import("@capacitor/camera")` and call `Camera.checkPermissions()`.
-  - Map `camera`:
-    - `"granted"` → `"granted"`
-    - `"denied"` → `"denied"`
-    - `"prompt"` / `"prompt-with-rationale"` → `"prompt"`
-    - anything else → `"unknown"`
-  - On any error (plugin missing on web build, etc.) fall through to the existing `navigator.permissions.query` path.
-- On non-native (web/PWA), keep the existing Permissions-API path unchanged.
-
-Also have the existing `installResumeListener` reconcile via the same path so an iOS Settings round-trip still clears `camera-denied-once`.
-
-### 2. `src/components/progress/PhotoRecognition.tsx`
-
-After a successful `Camera.getPhoto(...)` in `openNativeCamera`, call `markGranted()` (already imported via the hook — add it to the destructure). This:
-
-- Clears the stale `camera-denied-once` flag immediately.
-- Dispatches `camera-permission-changed` so the BarcodeScanner's hook instance refreshes without waiting for app resume.
-
-No behavior change for the web file-picker path.
-
-after successful `Camera.getPhoto(...)`, call `markGranted()` and then `refreshPermission()` so all hook consumers immediately converge on the native permission state
-
-### 3. No changes required
-
-- `MainViewController.swift` — the WKUIDelegate already handles the WKWebView side correctly; we just have to stop blocking on our own explainer before we ever hand off to it.
-- `BarcodeScanner.tsx` — its logic is already correct (`granted` → `beginScanning`, `denied` → denied modal, otherwise purpose modal). Once `refreshPermission()` returns `"granted"` on iOS, the modal is skipped and `html5-qrcode` calls `getUserMedia`, which the new `WKUIDelegate` auto-grants silently.
-- `CameraPermissionExplainer.tsx` — unchanged.
-
-## Verification (line-by-line, fresh build)
-
-```bash
-cd ~/path/to/carnivore-coach-pro
-git pull
-npm install
-npm run build
-npx cap sync ios
-npx cap open ios
-```
-
-In Xcode:
-
-```text
-Product → Clean Build Folder
-Product → Run (physical iPhone)
-```
-
-On the device:
-
-1. **Reset state** — Settings → CarnivoreX → toggle Camera **off** then **on** (or delete the app and reinstall) so AVCaptureDevice goes back to `.notDetermined`.
-2. **First Snap & Log tap** → in-app explainer (`purpose`) appears once → Continue → iOS system camera sheet appears → tap **Allow** → camera UI opens.
-3. **Tap Scan Barcode** → expected: scanner opens directly into the live camera viewfinder. **No** in-app explainer, **no** second iOS sheet, **no** WKWebView prompt.
-4. **Background the app**, change camera to Deny in Settings, return to app → tap Scan Barcode → "Camera is off" denied modal appears (existing behavior preserved).
-5. **Cold-start** the app with camera already authorized → tap Scan Barcode first (skipping Snap & Log) → scanner opens directly, no explainer.
+3. **`src/lib/recipeValidation.ts`** (new)
+   - Export `recipeSchema` and the field-level constants (so both pages and any future server check stay in sync).
 
 ## Out of scope
 
-- No changes to Stripe / push-subscription / WKUIDelegate code from earlier turns.
-- No Android changes — Android uses a different permission pipeline already handled by Capacitor.
+- No DB schema change. `community_recipes.description` keeps current `text NOT NULL DEFAULT ''`; validation lives on the client (RLS already restricts writes to the owner).
+- No new user-facing "Description" textarea (per user choice).
+- No edge-function-side validation added; can be a follow-up if abuse is observed.
+
+## Verification
+
+- Try saving with empty name → toast "Recipe name is required".
+- Try saving with no valid steps → toast "Add at least one step".
+- Paste 5000-char string into a step → input caps at 500 and save still passes.
+- Existing happy-path save still works on both Create and Edit.
