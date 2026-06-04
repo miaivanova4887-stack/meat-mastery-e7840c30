@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { TIER_LABELS, MEAL_LABELS, CUISINE_LABELS, type DietTier, type MealType, type CuisineType, type Ingredient, type CustomRecipe } from "@/data/recipes";
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useAuth } from "@/contexts/AuthContext";
+import { recipeSchema, deriveDescription, RECIPE_LIMITS } from "@/lib/recipeValidation";
 
 const CreateRecipe = () => {
   const navigate = useNavigate();
