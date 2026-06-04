@@ -271,8 +271,8 @@ const EditRecipe = () => {
           <div className="space-y-2">
             {ingredients.map((ing, i) => (
               <div key={i} className="flex gap-2 items-center">
-                <input type="text" value={ing.amount} onChange={(e) => updateIngredient(i, "amount", e.target.value)} placeholder="Amount" className={`${inputClass} w-24 flex-shrink-0`} />
-                <input type="text" value={ing.name} onChange={(e) => updateIngredient(i, "name", e.target.value)} placeholder="Ingredient name" className={`${inputClass} flex-1`} />
+                <input type="text" value={ing.amount} onChange={(e) => updateIngredient(i, "amount", e.target.value)} placeholder="Amount" maxLength={RECIPE_LIMITS.INGREDIENT_AMOUNT_MAX} className={`${inputClass} w-24 flex-shrink-0`} />
+                <input type="text" value={ing.name} onChange={(e) => updateIngredient(i, "name", e.target.value)} placeholder="Ingredient name" maxLength={RECIPE_LIMITS.INGREDIENT_NAME_MAX} className={`${inputClass} flex-1`} />
                 <button type="button" onClick={() => removeIngredient(i)} className="w-8 h-8 rounded-lg bg-destructive/10 text-destructive flex items-center justify-center flex-shrink-0">
                   <Minus size={14} />
                 </button>
