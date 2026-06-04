@@ -6,6 +6,7 @@ import { TIER_LABELS, MEAL_LABELS, CUISINE_LABELS, type DietTier, type MealType,
 import { useCustomRecipes } from "@/hooks/useCustomRecipes";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
+import { recipeSchema, deriveDescription, RECIPE_LIMITS } from "@/lib/recipeValidation";
 
 const EditRecipe = () => {
   const navigate = useNavigate();
