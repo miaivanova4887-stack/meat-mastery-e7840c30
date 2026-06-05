@@ -230,6 +230,85 @@ const Profile = () => {
       })();
     }
   };
+
+  // ---- OS-permission-driven push toggle state -------------------------------
+  // OS permission is the source of truth for whether push is *possible* on
+  // this device. The visible ON state still depends on both OS permission
+  // AND the user's saved in-app preference (notifPrefs.enabled).
+  const [osPushPerm, setOsPushPerm] = useState<NativePushPermission>(
+    Capacitor.isNativePlatform() ? "prompt" : "unsupported",
+  );
+
+  const refreshOsPushPerm = useCallback(
+    async (source: "mount" | "resume" | "tabSwitch" | "postToggle") => {
+      if (!Capacitor.isNativePlatform()) {
+        setOsPushPerm("unsupported");
+        return "unsupported" as NativePushPermission;
+      }
+      try {
+        const { getNativePushPermission } = await import("@/lib/pushFcm");
+        const perm = await getNativePushPermission();
+        setOsPushPerm(perm);
+        console.info("[NotifSettings] osPerm refresh", { source, perm });
+        // Reconcile: if OS revoked, force the local pref OFF (UI honesty)
+        // without touching server consent — saved cross-device intent is
+        // preserved in profiles.notification_preferences.
+        try {
+          const raw = localStorage.getItem("carnivore-notif-prefs");
+          const saved = raw ? JSON.parse(raw) : null;
+          const savedEnabled = saved?.enabled !== false;
+          if (perm === "denied" && savedEnabled) {
+            const next = { ...(saved || {}), enabled: false };
+            localStorage.setItem("carnivore-notif-prefs", JSON.stringify(next));
+            setNotifPrefs(next);
+            window.dispatchEvent(new Event("profile-update"));
+            console.info("[NotifSettings] reconcile action=force-off", {
+              osPerm: perm, savedPref: savedEnabled,
+            });
+          } else {
+            console.info("[NotifSettings] reconcile action=noop", {
+              osPerm: perm, savedPref: savedEnabled,
+            });
+          }
+        } catch {/* ignore */}
+        return perm;
+      } catch (e) {
+        console.warn("[NotifSettings] osPerm refresh threw", e);
+        return "unsupported" as NativePushPermission;
+      }
+    },
+    [],
+  );
+
+  // Refresh on mount.
+  useEffect(() => { void refreshOsPushPerm("mount"); }, [refreshOsPushPerm]);
+
+  // Refresh when Settings tab becomes visible.
+  useEffect(() => {
+    if (tab !== "settings") return;
+    void refreshOsPushPerm("tabSwitch");
+  }, [tab, refreshOsPushPerm]);
+
+  // Refresh when app resumes (covers user toggling iOS Settings then returning).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let sub: { remove: () => void } | undefined;
+    (async () => {
+      try {
+        sub = await CapApp.addListener("appStateChange", ({ isActive }) => {
+          if (isActive) void refreshOsPushPerm("resume");
+        });
+      } catch (e) {
+        console.warn("[NotifSettings] appStateChange bind failed", e);
+      }
+    })();
+    return () => { try { sub?.remove(); } catch {/* ignore */} };
+  }, [refreshOsPushPerm]);
+
+  const pushEnabledEffective = Capacitor.isNativePlatform()
+    ? (osPushPerm === "granted" && notifPrefs.enabled)
+    : notifPrefs.enabled;
+
   const [loading, setLoading] = useState(true);
 
   // Settings editing state
