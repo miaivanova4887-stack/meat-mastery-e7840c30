@@ -3,62 +3,69 @@ import { App as CapacitorApp } from "@capacitor/app";
 import { AndroidSettings, IOSSettings, NativeSettings } from "capacitor-native-settings";
 
 /**
- * Opens the OS-level settings screen for this app.
- * On iOS 15.4+ this prefers the app-specific Notifications page; older iOS
- * falls back to the app settings page. Android always opens app details.
- * Returns true if the plugin reports success.
+ * Opens the OS-level settings screen for this app. On iOS 15.4+ this opens
+ * the app-specific Notifications page; older iOS falls back to the app
+ * settings page. Android always opens app details.
+ *
+ * Heavily instrumented so we can prove from the device console which branch
+ * actually ran when the user taps the in-app CTA.
  */
-export const openAppSettings = async (): Promise<boolean> => {
-  console.info("[NotifSettings] CTA tapped");
+export const openAppSettings = async (traceId?: string): Promise<boolean> => {
+  const t = traceId || `nsx_${Date.now()}`;
+  console.info("[NotifSettings] open() called", { traceId: t });
+
   if (!Capacitor.isNativePlatform()) {
-    console.info("[NotifSettings] non-native — skipping");
+    console.info("[NotifSettings] open() non-native — skipping", { traceId: t });
     return false;
   }
 
   const platform = Capacitor.getPlatform();
-  console.info("[NotifSettings] opening", platform === "ios" ? "iOS app notification settings" : "Android app details");
+  console.info("[NotifSettings] open() platform", { traceId: t, platform });
 
-  // First attempt: dedicated notifications screen.
+  // Attempt 1: dedicated notifications screen (iOS 15.4+).
   try {
+    console.info("[NotifSettings] open() attempt=AppNotification", { traceId: t });
     const result = await NativeSettings.open({
       optionAndroid: AndroidSettings.ApplicationDetails,
       optionIOS: IOSSettings.AppNotification,
     });
-    console.info("[NotifSettings] plugin result (AppNotification)", result);
+    console.info("[NotifSettings] open() result=AppNotification", { traceId: t, result });
     if (typeof result?.status === "boolean") {
       if (result.status) return true;
     } else {
       return true;
     }
   } catch (e) {
-    console.warn("[NotifSettings] AppNotification threw", e);
+    console.warn("[NotifSettings] open() AppNotification threw", { traceId: t, error: String(e) });
   }
 
-  // Fallback: generic app settings page (covers iOS <15.4).
+  // Attempt 2: generic app settings page.
   try {
+    console.info("[NotifSettings] open() attempt=App", { traceId: t });
     const result = await NativeSettings.open({
       optionAndroid: AndroidSettings.ApplicationDetails,
       optionIOS: IOSSettings.App,
     });
-    console.info("[NotifSettings] plugin result (App)", result);
+    console.info("[NotifSettings] open() result=App", { traceId: t, result });
     if (typeof result?.status === "boolean") return result.status;
     return true;
   } catch (e) {
-    console.warn("[NotifSettings] App fallback threw", e);
+    console.warn("[NotifSettings] open() App fallback threw", { traceId: t, error: String(e) });
   }
 
-  // Last-ditch fallback via Capacitor App plugin (some versions expose it).
+  // Attempt 3: Capacitor App.openSettings (rare).
   try {
     const openSettings = (CapacitorApp as unknown as { openSettings?: () => Promise<void> })?.openSettings;
     if (typeof openSettings !== "function") {
-      console.warn("[NotifSettings] no openSettings on CapacitorApp");
+      console.warn("[NotifSettings] open() no CapacitorApp.openSettings", { traceId: t });
       return false;
     }
+    console.info("[NotifSettings] open() attempt=CapacitorApp.openSettings", { traceId: t });
     await openSettings.call(CapacitorApp);
-    console.info("[NotifSettings] CapacitorApp.openSettings ok");
+    console.info("[NotifSettings] open() result=CapacitorApp.openSettings ok", { traceId: t });
     return true;
   } catch (e) {
-    console.error("[NotifSettings] all fallbacks failed", e);
+    console.error("[NotifSettings] open() all fallbacks failed", { traceId: t, error: String(e) });
     return false;
   }
 };
