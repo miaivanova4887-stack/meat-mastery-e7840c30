@@ -54,6 +54,11 @@ export async function recordCoachingPurchase(
   );
 
   const call = (async (): Promise<RecordCoachingPurchaseResult> => {
+    console.info("[coachingPurchase] invoke start", {
+      source: input.source,
+      productId: input.productId,
+      hasTxId: !!input.transactionId,
+    });
     try {
       const { data, error } = await supabase.functions.invoke(
         "record-coaching-purchase",
@@ -68,11 +73,18 @@ export async function recordCoachingPurchase(
           error: error.message ?? "Could not record purchase",
         };
       }
+      const sessionRowId = (data?.sessionRowId as string | undefined) ?? undefined;
+      console.info("[coachingPurchase] invoke ok", {
+        hasCalComUrl: !!data?.calComUrl,
+        hasIosBookingUrl: !!data?.iosBookingUrl,
+        sessionRowId: sessionRowId ?? null,
+      });
       return {
         ok: true,
         calComUrl: (data?.calComUrl as string) ?? fallbackUrl,
         iosBookingUrl: (data?.iosBookingUrl as string | undefined) ??
           (isIos ? IOS_FALLBACK_URL : undefined),
+        sessionRowId,
       };
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not record purchase";
