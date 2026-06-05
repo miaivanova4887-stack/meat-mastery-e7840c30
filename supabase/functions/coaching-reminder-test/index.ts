@@ -156,7 +156,16 @@ serve(async (req) => {
         try {
           await webPush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth } },
-            JSON.stringify({ title, body, url: "/coaching" }),
+            JSON.stringify({
+              title,
+              body,
+              url: testPath,
+              data: {
+                type: "coaching_reminder_test",
+                target: "coaching_upcoming_session",
+                path: testPath,
+              },
+            }),
           );
           deliveredWeb++;
         } catch (e: any) {
