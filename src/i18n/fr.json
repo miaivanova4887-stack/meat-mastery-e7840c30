@@ -326,8 +326,8 @@
   },
   "progress": {
     "title": "Mes progrès",
-    "signInToTrack": "Connectez-vous pour suivre vos progrès",
-    "signInDesc": "Vos données de santé sont stockées en toute sécurité et synchronisées entre vos appareils.",
+    "signInToTrack": "Connectez-vous pour débloquer vos progrès",
+    "signInDesc": "Créez un compte gratuit pour suivre vos progrès en continu, définir vos objectifs et profiter d'une expérience carnivore personnalisée — vos données restent sécurisées et synchronisées sur tous vos appareils.",
     "syncDevices": "Synchroniser les appareils",
     "syncDesc": "Connectez Apple Health ou Google Health Connect.",
     "setup": "Configurer",
