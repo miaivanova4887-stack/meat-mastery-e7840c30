@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, ExternalLink, Download } from "lucide-react";
+import { Calendar, Clock, ExternalLink, CalendarPlus } from "lucide-react";
 import CoachingBooking from "@/components/CoachingBooking";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
@@ -46,13 +46,32 @@ function formatWhen(iso: string | null, tz?: string | null) {
   }
 }
 
+// Escape per RFC 5545 TEXT property
+function icsEscape(s: string): string {
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function fmtUtc(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
+function buildDescription(s: CoachingSession): string {
+  const lines: string[] = [];
+  if (s.booking_url) lines.push(`Join: ${s.booking_url}`);
+  lines.push("Your 1-hour coaching session with CarnivoreX.");
+  return lines.join("\n");
+}
+
 function buildIcs(s: CoachingSession): string {
   if (!s.scheduled_at) return "";
   const start = new Date(s.scheduled_at);
   const end = new Date(start.getTime() + 60 * 60 * 1000);
-  const fmt = (d: Date) =>
-    d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const uid = `${s.id}@carnivorex.app`;
+  const description = buildDescription(s);
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -61,11 +80,12 @@ function buildIcs(s: CoachingSession): string {
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
     `UID:${uid}`,
-    `DTSTAMP:${fmt(new Date())}`,
-    `DTSTART:${fmt(start)}`,
-    `DTEND:${fmt(end)}`,
-    "SUMMARY:CarnivoreX Coaching Call",
-    "DESCRIPTION:Your 1-hour coaching session with CarnivoreX.",
+    `DTSTAMP:${fmtUtc(new Date())}`,
+    `DTSTART:${fmtUtc(start)}`,
+    `DTEND:${fmtUtc(end)}`,
+    "SUMMARY:CarnivoreX Coaching Call (1 hr)",
+    `DESCRIPTION:${icsEscape(description)}`,
+    s.booking_url ? `LOCATION:${icsEscape(s.booking_url)}` : "",
     s.booking_url ? `URL:${s.booking_url}` : "",
     "END:VEVENT",
     "END:VCALENDAR",
@@ -74,48 +94,83 @@ function buildIcs(s: CoachingSession): string {
     .join("\r\n");
 }
 
-async function downloadIcs(session: CoachingSession) {
-  const ics = buildIcs(session);
-  if (!ics) {
+function buildGoogleCalendarUrl(s: CoachingSession): string | null {
+  if (!s.scheduled_at) return null;
+  const start = new Date(s.scheduled_at);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: "CarnivoreX Coaching Call (1 hr)",
+    dates: `${fmtUtc(start)}/${fmtUtc(end)}`,
+    details: buildDescription(s),
+  });
+  if (s.booking_url) params.set("location", s.booking_url);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+async function addToCalendar(session: CoachingSession) {
+  if (!session.scheduled_at) {
     toast.error("No scheduled time yet for this session.");
     return;
   }
-  const filename = `coaching-${session.id.slice(0, 8)}.ics`;
 
-  if (Capacitor.isNativePlatform()) {
-    // WKWebView/Chromium-WebView block blob downloads. Use a data URL via
-    // the system browser so iOS/Android offer to add the event to Calendar.
-    const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
-    try {
-      await Share.share({
-        title: "CarnivoreX Coaching Call",
-        text: "Add your coaching session to your calendar.",
-        url: dataUrl,
-        dialogTitle: "Add to calendar",
-      });
-      return;
-    } catch (err) {
-      console.warn("coaching:ics-share-failed", err);
-      const res = await openExternalUrl(dataUrl, { logTag: "coaching:ics-open" });
-      if (!res.ok) {
-        toast.error("Couldn't open calendar. Please try again.");
-      }
-      return;
+  const platform = Capacitor.getPlatform();
+
+  // Android → open Google Calendar template URL: drops user straight into
+  // the Calendar app's "New event" screen, pre-filled with the join link.
+  if (platform === "android") {
+    const url = buildGoogleCalendarUrl(session);
+    if (url) {
+      const res = await openExternalUrl(url, { logTag: "coaching:add-to-calendar-android" });
+      if (res.ok) return;
+      console.warn("coaching:add-to-calendar-android-failed", { error: res.error });
     }
   }
 
+  // iOS → open .ics via system browser; Safari shows the native
+  // "Add to Calendar" prompt that hands it to Apple Calendar.
+  if (platform === "ios") {
+    const ics = buildIcs(session);
+    if (ics) {
+      const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+      const res = await openExternalUrl(dataUrl, { logTag: "coaching:add-to-calendar-ios" });
+      if (res.ok) return;
+      console.warn("coaching:add-to-calendar-ios-failed", { error: res.error });
+      // Last-resort fallback: share sheet.
+      try {
+        await Share.share({
+          title: "CarnivoreX Coaching Call",
+          text: "Add your coaching session to your calendar.",
+          url: dataUrl,
+          dialogTitle: "Add to calendar",
+        });
+        return;
+      } catch (err) {
+        console.warn("coaching:add-to-calendar-ios-share-failed", err);
+        toast.error("Couldn't open calendar. Please try again.");
+        return;
+      }
+    }
+  }
+
+  // Web → download .ics; desktop OSes open it in the default calendar.
+  const ics = buildIcs(session);
+  if (!ics) {
+    toast.error("Couldn't build calendar event.");
+    return;
+  }
   try {
     const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = filename;
+    a.download = `coaching-${session.id.slice(0, 8)}.ics`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   } catch (err) {
-    console.error("coaching:ics-download-failed", err);
+    console.error("coaching:add-to-calendar-web-failed", err);
     toast.error("Couldn't download calendar file.");
   }
 }
@@ -253,10 +308,10 @@ export default function CoachingSessionsList() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => downloadIcs(s)}
+                onClick={() => addToCalendar(s)}
                 className="h-8 text-xs"
               >
-                <Download className="w-3.5 h-3.5 mr-1.5" />
+                <CalendarPlus className="w-3.5 h-3.5 mr-1.5" />
                 Add to calendar
               </Button>
             )}
@@ -273,7 +328,7 @@ export default function CoachingSessionsList() {
                   rel="noopener noreferrer"
                 >
                   <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                  Reschedule
+                  Join / Reschedule
                 </a>
               </Button>
             )}
