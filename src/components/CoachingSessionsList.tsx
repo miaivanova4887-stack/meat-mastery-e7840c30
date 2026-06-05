@@ -5,6 +5,8 @@ import { Calendar, Clock, ExternalLink, CalendarPlus } from "lucide-react";
 import CoachingBooking from "@/components/CoachingBooking";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
+import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
+import { FileOpener } from "@capacitor-community/file-opener";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { toast } from "sonner";
 
