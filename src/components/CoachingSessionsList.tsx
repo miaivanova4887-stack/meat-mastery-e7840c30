@@ -234,11 +234,12 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
   const [userTz, setUserTz] = useState<string | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [pulseId, setPulseId] = useState<string | null>(null);
-  const [schedulingId, setSchedulingId] = useState<string | null>(null);
+  const [scheduleSession, setScheduleSession] = useState<CoachingSession | null>(null);
 
   const fetchSessions = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser();
     const uid = auth.user?.id;
+    console.info("[CoachingSessions] fetch start", { uid });
     if (!uid) {
       setSessions([]);
       setLoading(false);
@@ -254,7 +255,13 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
         .order("scheduled_at", { ascending: true, nullsFirst: false }),
       supabase.from("profiles").select("timezone").eq("id", uid).maybeSingle(),
     ]);
-    setSessions((rows as CoachingSession[]) || []);
+    const list = (rows as CoachingSession[]) || [];
+    const counts = list.reduce<Record<string, number>>((acc, r) => {
+      acc[r.status] = (acc[r.status] ?? 0) + 1;
+      return acc;
+    }, {});
+    console.info("[CoachingSessions] fetched", { total: list.length, counts });
+    setSessions(list);
     setUserTz(profile?.timezone || null);
     setLoading(false);
   }, []);
