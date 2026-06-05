@@ -1062,20 +1062,48 @@ const Profile = () => {
                   onCheckedChange={async (v) => {
                     updateNotifPref("enabled", v);
                     if (!v) return;
-                    // If turning ON while OS notifications are denied, jump to system settings.
-                    if (Capacitor.isNativePlatform()) {
-                      try {
-                        const { getNativePushPermission } = await import("@/lib/pushFcm");
-                        const perm = await getNativePushPermission();
-                        console.info("[NotifSettings] enable-switch os-perm=", perm);
-                        if (perm !== "granted") {
-                          const { openAppSettings } = await import("@/lib/openAppSettings");
-                          toast.info("Opening system notification settings…");
-                          await openAppSettings();
-                        }
-                      } catch (e) {
-                        console.warn("[NotifSettings] enable-switch check failed", e);
+                    if (!Capacitor.isNativePlatform()) return;
+                    const traceId = `nsx_tog_${Date.now()}`;
+                    try {
+                      const { getNativePushPermission, requestNativePush, savePushConsent } =
+                        await import("@/lib/pushFcm");
+                      const permBefore = await getNativePushPermission();
+                      console.info("[NotifSettings] toggle-enable perm-before", { traceId, permBefore });
+
+                      if (permBefore === "granted") {
+                        try { await savePushConsent("granted", {}); } catch {}
+                        toast.success("Notifications enabled");
+                        console.info("[NotifSettings] toggle-enable action=already-granted", { traceId });
+                        return;
                       }
+
+                      if (permBefore === "prompt" || permBefore === "prompt-with-rationale") {
+                        console.info("[NotifSettings] toggle-enable action=request-native", { traceId });
+                        let result: string = "denied";
+                        try {
+                          result = await requestNativePush();
+                        } catch (e) {
+                          console.error("[NotifSettings] toggle-enable requestNativePush threw", { traceId, error: String(e) });
+                        }
+                        console.info("[NotifSettings] toggle-enable perm-after", { traceId, result });
+                        if (result === "granted") {
+                          try { await savePushConsent("granted", {}); } catch {}
+                          toast.success("Notifications enabled");
+                        } else {
+                          updateNotifPref("enabled", false);
+                          toast.info("Notifications were not enabled.");
+                        }
+                        return;
+                      }
+
+                      // permBefore === "denied" — OS won't reshow the prompt.
+                      console.info("[NotifSettings] toggle-enable action=open-settings", { traceId });
+                      const { openAppSettings } = await import("@/lib/openAppSettings");
+                      toast.info("Opening system notification settings…");
+                      await openAppSettings(traceId);
+                      updateNotifPref("enabled", false);
+                    } catch (e) {
+                      console.warn("[NotifSettings] toggle-enable threw", { traceId, error: String(e) });
                     }
                   }}
                 />
