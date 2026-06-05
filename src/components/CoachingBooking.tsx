@@ -32,7 +32,14 @@ interface CoachingBookingProps {
 }
 
 
-const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: CoachingBookingProps) => {
+const CoachingBooking = ({
+  open,
+  onOpenChange,
+  initialScreen = "info",
+  mode = "default",
+  sessionId,
+  sessionSource,
+}: CoachingBookingProps) => {
   const { user } = useAuth();
   const { i18n } = useTranslation();
   const navigate = useNavigate();
@@ -41,35 +48,55 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const paywall = useNativePaywall();
   const useNative = isRevenueCatAvailable();
 
-  const [screen, setScreen] = useState<Screen>(initialScreen);
+  // For already-paid pending sessions, always use the no-payment Cal.com URL
+  // when the original purchase was via Apple (or when we're running on iOS),
+  // otherwise the paid event. Skip payment entirely.
+  const isAlreadyPaid = mode === "already_paid";
+  const isIosPaid =
+    sessionSource === "appstore" || sessionSource === "paid_ios" || useNative;
+  const effectiveInitialScreen: Screen = isAlreadyPaid ? "calcom" : initialScreen;
+
+  const [screen, setScreen] = useState<Screen>(effectiveInitialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [schedulerUrl, setSchedulerUrl] = useState<string>(useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL);
+  const defaultBase = isAlreadyPaid
+    ? (isIosPaid ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL)
+    : (useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL);
+  const [schedulerUrl, setSchedulerUrl] = useState<string>(defaultBase);
 
   // Whenever the user is known, refresh the default scheduler URL with
-  // metadata[user_id] so the cal-webhook can link the booking back even when
-  // the user enters a different email at booking time (Apple private relay,
-  // shared inbox, etc). The iOS path overrides this with the prefilled URL
-  // returned by record-coaching-purchase after the StoreKit purchase.
+  // metadata[user_id] (+ session_row_id for already-paid pending rows) so
+  // cal-webhook can link the booking back even when the user enters a
+  // different email at booking time (Apple private relay, shared inbox).
   useEffect(() => {
     if (!user?.id) return;
-    const base = useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL;
-    setSchedulerUrl(
-      buildCalUrl({
-        base,
-        userId: user.id,
-        name: (user.user_metadata as Record<string, unknown> | undefined)?.display_name as string | undefined ?? null,
-        email: user.email ?? null,
-      })
-    );
-  }, [user?.id, user?.email, useNative]);
+    const base = isAlreadyPaid
+      ? (isIosPaid ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL)
+      : (useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL);
+    const url = buildCalUrl({
+      base,
+      userId: user.id,
+      sessionRowId: isAlreadyPaid ? sessionId ?? null : null,
+      name: (user.user_metadata as Record<string, unknown> | undefined)?.display_name as string | undefined ?? null,
+      email: user.email ?? null,
+    });
+    setSchedulerUrl(url);
+    if (isAlreadyPaid) {
+      console.info("[CoachingPending] already_paid scheduler url built", {
+        sessionId,
+        sessionSource,
+        isIosPaid,
+        urlHost: (() => { try { return new URL(url).host; } catch { return "?"; } })(),
+      });
+    }
+  }, [user?.id, user?.email, useNative, isAlreadyPaid, isIosPaid, sessionId, sessionSource]);
   const [showFallback, setShowFallback] = useState(false);
 
 
   // Reset screen when opened
   useEffect(() => {
-    if (open) setScreen(initialScreen);
-  }, [open, initialScreen]);
+    if (open) setScreen(effectiveInitialScreen);
+  }, [open, effectiveInitialScreen]);
 
   // Fetch localized CMS copy. Defensively wrapped so a transient session/network
   // error during post-login refresh cannot crash the dialog (and the page it's
