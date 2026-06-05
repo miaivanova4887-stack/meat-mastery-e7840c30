@@ -18,6 +18,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgress";
 import { useUserProfile, type Goal, type Experience, type ActivityLevel, type Struggle, type Interest, type Sex } from "@/contexts/UserProfileContext";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
+import { CoachingReminderSettings } from "@/components/CoachingReminderSettings";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 // Push consent fallback now lives in PushConsentFallbackHost (App-level shell).
 
@@ -1034,6 +1035,9 @@ const Profile = () => {
                   <Switch checked={notifPrefs.weeklySummary} onCheckedChange={(v) => updateNotifPref("weeklySummary", v)} />
                 </div>
               </div>
+
+              {/* Coaching Call Reminders */}
+              <CoachingReminderSettings />
 
               {/* News Preferences */}
               <h3 className="text-sm font-display font-bold text-foreground pt-2">{t("profile.newsFeedPrefs")}</h3>

@@ -94,6 +94,7 @@ serve(async (req) => {
       transaction_id: transactionId,
       source,
       stripe_payment_intent: source === "stripe" ? transactionId : null,
+      status: "pending",
     });
 
     if (insertErr) {
