@@ -439,7 +439,7 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
 
   const renderPendingCard = (s: CoachingSession) => {
     const isPulsing = pulseId === s.id;
-    const busy = schedulingId === s.id;
+    const busy = scheduleSession?.id === s.id && bookingOpen;
     return (
       <div
         key={s.id}
