@@ -81,12 +81,9 @@ function SubscriptionBadge() {
 const Profile = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { t } = useTranslation();
   const qc = useQueryClient();
-  // Local UI-only shadow of the profile row — reads initialize from the
-  // React Query cache so the first paint is instant on revisits; writes
-  // stay optimistic via saveField + query invalidation.
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPushConsent, setShowPushConsent] = useState(false);
@@ -100,11 +97,26 @@ const Profile = () => {
   const highlightSessionId = searchParams.get("sessionId") || undefined;
   const section = searchParams.get("section") || undefined;
 
+  // [PushRoute] Mount log — proves Profile received the push route params.
+  useEffect(() => {
+    console.info("[PushRoute] Profile mount", {
+      path: window.location.pathname,
+      search: window.location.search,
+      tab: searchParams.get("tab"),
+      section: searchParams.get("section"),
+      sessionId: searchParams.get("sessionId"),
+      authLoading,
+      hasUser: !!user,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // React to query-param updates that arrive while Profile is already mounted
   // (e.g., push tap when app was already on /profile). Switch tab + scroll.
   useEffect(() => {
     const q = searchParams.get("tab");
     if (q === "feed" || q === "goals" || q === "community" || q === "settings") {
+      console.info("[PushRoute] setTab from query", { q });
       setTab(q);
     }
   }, [searchParams]);
@@ -112,8 +124,10 @@ const Profile = () => {
   useEffect(() => {
     if (section !== "coaching") return;
     if (tab !== "settings") return;
+    console.info("[PushRoute] scroll to coaching attempt", { tab, highlightSessionId });
     const id = window.setTimeout(() => {
       const el = document.getElementById("coaching-section");
+      console.info("[PushRoute] coaching-section element", { found: !!el });
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
     return () => window.clearTimeout(id);
