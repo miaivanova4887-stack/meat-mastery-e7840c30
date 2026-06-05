@@ -1,15 +1,22 @@
-// Native FCM push integration via @capacitor/push-notifications.
+// Native FCM push integration via @capacitor/push-notifications + Firebase iOS.
 // Web push remains handled by src/lib/pushNotifications.ts (VAPID).
+//
+// iOS path: AppDelegate.swift configures Firebase, sets Messaging.apnsToken
+// from the APNs token, and dispatches a `fcm-token` window CustomEvent with
+// the FCM registration token. We listen to that here and persist the token
+// in device_tokens (platform='ios') via the register-device-token edge fn.
+//
+// Android path: native FCM is currently disabled (no google-services.json
+// shipping yet); register() is a no-op until that lands.
 
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { App as CapApp } from "@capacitor/app";
 import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
-import { NATIVE_FCM_ENABLED } from "@/lib/pushNativeConfig";
+import { isNativeFcmEnabled, NATIVE_FCM_ENABLED_IOS } from "@/lib/pushNativeConfig";
 import { normalizeLocale } from "@/lib/locale";
 
-/** Race a native promise against a timeout so re-renders / resume
- *  cannot leave the JS bridge hanging. */
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return await new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
@@ -28,26 +35,18 @@ export type NativePushPermission =
   | "prompt-with-rationale"
   | "unsupported";
 
-// Module-scoped guard so duplicate calls don't stack listeners or
-// re-register tokens (the path that has been crashing on resume).
 let listenersBound = false;
+let fcmTokenListenerBound = false;
+let appStateListenerBound = false;
 
-/**
- * Persist consent + (optional) preferences.
- * Always writes a local mirror so anonymous users' choices survive until
- * sign-in, when AuthContext reconciles the value into profiles.push_consent.
- */
 export async function savePushConsent(
   state: PushConsentState,
   preferences?: Record<string, boolean>,
 ): Promise<void> {
-  // Local mirror — works even when no user is signed in.
   setLocalPushConsent(state);
   const { data: { user } } = await supabase.auth.getUser();
   console.info("[Push] savePushConsent local=", state, "userPresent=", !!user);
   if (!user) return;
-  // Also persist timezone + locale so the server-side reconciler can target
-  // scheduled notifications at the right local time and language.
   let timezone = "UTC";
   try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch {}
   let locale: "en" | "fr" = "en";
@@ -65,10 +64,6 @@ export async function savePushConsent(
   await supabase.from("profiles").update(patch).eq("id", user.id);
 }
 
-/**
- * Read the OS-level POST_NOTIFICATIONS state without prompting.
- * Safe to call from React render paths — never throws.
- */
 export async function getNativePushPermission(): Promise<NativePushPermission> {
   if (!Capacitor.isNativePlatform()) return "unsupported";
   try {
@@ -81,43 +76,90 @@ export async function getNativePushPermission(): Promise<NativePushPermission> {
   }
 }
 
+async function registerDeviceTokenWithBackend(token: string, platform: "android" | "ios") {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.info("[Push] skipping token register — no session");
+      return;
+    }
+    await supabase.functions.invoke("register-device-token", {
+      body: { token, platform },
+    });
+    console.info(`[Push] device token persisted platform=${platform} len=${token.length}`);
+  } catch (e) {
+    console.error("[Push] token register failed", e);
+  }
+}
+
+// iOS: FCM token arrives via window event dispatched from AppDelegate.
+function bindFcmTokenListenerOnce() {
+  if (fcmTokenListenerBound) return;
+  fcmTokenListenerBound = true;
+  if (typeof window === "undefined") return;
+  window.addEventListener("fcm-token", (ev: Event) => {
+    const detail = (ev as CustomEvent).detail as { token?: string; platform?: string } | undefined;
+    if (!detail?.token) return;
+    const platform = (detail.platform === "android" ? "android" : "ios") as "ios" | "android";
+    console.info(`[Push] window:fcm-token received platform=${platform} len=${detail.token.length}`);
+    void registerDeviceTokenWithBackend(detail.token, platform);
+  });
+  console.info("[Push] window:fcm-token listener bound");
+}
+
 function bindListenersOnce(platform: "android" | "ios") {
-  if (!NATIVE_FCM_ENABLED) {
+  if (!isNativeFcmEnabled()) {
     console.info("[PushDecision] bindListeners skipped reason=native-fcm-disabled");
     return;
   }
+  // iOS sources tokens via window event (FCM), Android via PushNotifications.registration.
+  if (platform === "ios") bindFcmTokenListenerOnce();
+
   if (listenersBound) {
-    console.info("[Push] listeners already bound — skip");
+    console.info("[Push] plugin listeners already bound — skip");
     return;
   }
   listenersBound = true;
-  console.info("[Push] binding push listeners (first time)");
+  console.info("[Push] binding push plugin listeners (first time)");
   try {
     PushNotifications.addListener("registration", async (t) => {
-      try {
-        console.info("[Push] FCM token registered len=", t.value?.length ?? 0);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-        await supabase.functions.invoke("register-device-token", {
-          body: { token: t.value, platform },
-        });
-      } catch (e) {
-        console.error("[Push] token register failed", e);
+      // On iOS the value is the APNs hex token (not what the backend wants);
+      // FCM token comes through the window 'fcm-token' event instead.
+      if (platform === "android") {
+        await registerDeviceTokenWithBackend(t.value, "android");
+      } else {
+        console.info("[Push] iOS APNs-token registration event len=", t.value?.length ?? 0);
       }
     });
     PushNotifications.addListener("registrationError", (err) => {
-      console.error("[Push] FCM registration error", err);
+      console.error(`[Push] ${platform} registrationError`, err);
     });
   } catch (e) {
     console.error("[Push] addListener threw — swallowed", e);
   }
 }
 
-/**
- * Request native push permission and register the FCM token.
- * Idempotent: safe to call multiple times. Wrapped in try/catch so a
- * plugin failure can never propagate into a React render and crash.
- */
+function bindAppStateListenerOnce(platform: "android" | "ios") {
+  if (appStateListenerBound) return;
+  if (platform !== "ios") return; // only iOS rotates tokens & benefits from re-register
+  appStateListenerBound = true;
+  try {
+    CapApp.addListener("appStateChange", async ({ isActive }) => {
+      if (!isActive) return;
+      try {
+        const perm = await getNativePushPermission();
+        if (perm !== "granted") return;
+        await withTimeout(PushNotifications.register(), 4000, "register(resume)");
+      } catch (e) {
+        console.warn("[Push] resume re-register failed — swallowed", e);
+      }
+    });
+    console.info("[Push] appStateChange listener bound (iOS)");
+  } catch (e) {
+    console.warn("[Push] appStateChange bind failed", e);
+  }
+}
+
 export async function requestNativePush(): Promise<PushConsentState> {
   if (!Capacitor.isNativePlatform()) {
     console.info("[PushDecision] source=requestNativePush branch=skip reason=not-native");
@@ -129,21 +171,21 @@ export async function requestNativePush(): Promise<PushConsentState> {
 
   try {
     let existing: NativePushPermission = "prompt";
-    console.info("[PushDecision] source=requestNativePush branch=check-os-before-request");
     try { existing = await withTimeout(getNativePushPermission(), 4000, "checkPermissions"); } catch (e) {
-      console.warn("[PushDecision] source=requestNativePush branch=check-os-threw", e);
+      console.warn("[PushDecision] check-os-threw", e);
     }
     if (existing === "granted") {
-      console.info("[PushDecision] source=requestNativePush branch=os-already-granted reason=skip-prompt");
-      if (NATIVE_FCM_ENABLED) {
+      console.info("[PushDecision] os-already-granted");
+      if (isNativeFcmEnabled()) {
         bindListenersOnce(platform);
+        bindAppStateListenerOnce(platform);
         try {
           await withTimeout(PushNotifications.register(), 4000, "register");
         } catch (e) {
-          console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=os-already-granted", e);
+          console.warn("[PushDecision] register-threw os-already-granted", e);
         }
       } else {
-        console.info("[PushDecision] source=requestNativePush branch=register-skipped reason=native-fcm-disabled");
+        console.info("[PushDecision] register-skipped native-fcm-disabled");
       }
       try { await savePushConsent("granted"); } catch {}
       return "granted";
@@ -151,40 +193,44 @@ export async function requestNativePush(): Promise<PushConsentState> {
 
     let perm: { receive: NativePushPermission } | undefined;
     try {
-      console.info("[PushDecision] source=requestNativePush branch=requestPermissions-call");
       perm = await withTimeout(PushNotifications.requestPermissions(), 15000, "requestPermissions");
     } catch (e) {
-      console.error("[PushDecision] source=requestNativePush branch=requestPermissions-threw — swallowed", e);
+      console.error("[PushDecision] requestPermissions-threw — swallowed", e);
       try { await savePushConsent("denied"); } catch {}
       return "denied";
     }
-    console.info(`[PushDecision] source=requestNativePush branch=requestPermissions-result receive=${perm?.receive}`);
+    console.info(`[PushDecision] requestPermissions-result receive=${perm?.receive}`);
     if (perm?.receive !== "granted") {
       try { await savePushConsent("denied"); } catch {}
       return "denied";
     }
 
-    if (NATIVE_FCM_ENABLED) {
-      console.info("[PushDecision] source=requestNativePush branch=register-call reason=fresh-grant");
+    if (isNativeFcmEnabled()) {
       bindListenersOnce(platform);
+      bindAppStateListenerOnce(platform);
       try {
         await withTimeout(PushNotifications.register(), 4000, "register");
       } catch (e) {
-        console.warn("[PushDecision] source=requestNativePush branch=register-threw reason=fresh-grant", e);
+        console.warn("[PushDecision] register-threw fresh-grant", e);
       }
     } else {
-      console.info("[PushDecision] source=requestNativePush branch=register-skipped reason=native-fcm-disabled");
+      console.info("[PushDecision] register-skipped native-fcm-disabled");
     }
     try { await savePushConsent("granted"); } catch {}
     return "granted";
   } catch (e) {
-    console.error("[PushDecision] source=requestNativePush branch=outer-threw — swallowed", e);
+    console.error("[PushDecision] outer-threw — swallowed", e);
     try { await savePushConsent("denied"); } catch {}
     return "denied";
   }
 }
 
-/** Fire an event that may trigger push campaigns. Non-blocking. */
+// Bind the FCM window event as early as possible on iOS so a token that
+// arrives before requestNativePush() ran (warm starts) is still captured.
+if (typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios" && NATIVE_FCM_ENABLED_IOS) {
+  bindFcmTokenListenerOnce();
+}
+
 export async function triggerPushEvent(
   eventName: string,
   eventData?: Record<string, unknown>,
@@ -196,7 +242,6 @@ export async function triggerPushEvent(
       body: { event_name: eventName, event_data: eventData },
     });
   } catch (e) {
-    // Never let messaging affect app flow
     console.warn("triggerPushEvent failed", e);
   }
 }
