@@ -55,25 +55,48 @@ function safeAbsPath(p: unknown): string | null {
 }
 
 function resolvePushNavPath(data: Record<string, unknown> | undefined | null): string | null {
-  if (!data) return null;
+  if (!data) {
+    console.info("[PushTap] resolve branch=null reason=no-data");
+    return null;
+  }
+  const hasPath = typeof data.path === "string";
+  const hasTarget = typeof data.target === "string";
+  const hasSessionId = typeof data.session_id === "string";
+  console.info("[PushTap] resolve inputs", {
+    hasPath, hasTarget, hasSessionId,
+    target: data.target, type: data.type,
+  });
   const direct = safeAbsPath(data.path);
-  if (direct) return direct;
+  if (direct) {
+    console.info("[PushTap] resolve branch=path path=", direct);
+    return direct;
+  }
   if (data.target === "coaching_upcoming_session") {
     const base = "/profile?tab=settings&section=coaching";
     const sid = typeof data.session_id === "string" ? data.session_id : "";
-    return sid ? `${base}&sessionId=${encodeURIComponent(sid)}` : base;
+    const out = sid ? `${base}&sessionId=${encodeURIComponent(sid)}` : base;
+    console.info("[PushTap] resolve branch=target path=", out);
+    return out;
   }
   const url = safeAbsPath(data.url);
-  if (url) return url;
+  if (url) {
+    console.info("[PushTap] resolve branch=url path=", url);
+    return url;
+  }
+  console.info("[PushTap] resolve branch=null reason=no-match");
   return null;
 }
 
 function queuePushNav(path: string) {
   pendingPushNav = path;
-  try { sessionStorage.setItem(PENDING_NAV_KEY, path); } catch {/* ignore */}
+  let stored = false;
+  try { sessionStorage.setItem(PENDING_NAV_KEY, path); stored = true; } catch {/* ignore */}
+  let dispatched = false;
   try {
     window.dispatchEvent(new CustomEvent("push-nav", { detail: { path } }));
+    dispatched = true;
   } catch {/* ignore */}
+  console.info("[PushTap] queue", { path, stored, dispatched });
 }
 
 export function consumePendingPushNav(): string | null {
@@ -158,20 +181,25 @@ function bindActionListenerOnce() {
   actionListenerBound = true;
   try {
     PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+      try {
+        console.info("[PushTap] actionPerformed RAW", JSON.stringify(action));
+      } catch {
+        console.info("[PushTap] actionPerformed RAW (unstringifiable)", action);
+      }
       const data = (action?.notification?.data ?? {}) as Record<string, unknown>;
+      console.info("[PushTap] data keys", Object.keys(data), "values", data);
       const path = resolvePushNavPath(data);
-      console.info("[Push] actionPerformed", { hasData: !!data, path, type: data?.type });
+      console.info("[PushTap] actionPerformed resolved", { path, type: data?.type });
       if (path) queuePushNav(path);
+      else console.warn("[PushTap] actionPerformed dropped — no path resolvable");
     });
     PushNotifications.addListener("pushNotificationReceived", (n) => {
-      // Foreground receive — do not auto-navigate. iOS shows the banner;
-      // tap will route via actionPerformed.
       const data = (n?.data ?? {}) as Record<string, unknown>;
-      console.info("[Push] notificationReceived (foreground)", { type: data?.type });
+      console.info("[PushTap] notificationReceived (foreground)", { type: data?.type, keys: Object.keys(data) });
     });
-    console.info("[Push] action listeners bound");
+    console.info("[PushTap] action listeners bound");
   } catch (e) {
-    console.warn("[Push] action listener bind failed", e);
+    console.warn("[PushTap] action listener bind failed", e);
   }
 }
 
@@ -314,8 +342,10 @@ if (typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.g
 // cold-start taps (where the OS launches the app from a notification) are
 // captured before React Router mounts. The handler queues the path in a
 // module-level variable + sessionStorage; usePushNavigation drains both.
-if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
-  bindActionListenerOnce();
+if (typeof window !== "undefined") {
+  const isNative = Capacitor.isNativePlatform();
+  console.info("[PushTap] module loaded", { isNative, platform: isNative ? Capacitor.getPlatform() : "web" });
+  if (isNative) bindActionListenerOnce();
 }
 
 export async function triggerPushEvent(

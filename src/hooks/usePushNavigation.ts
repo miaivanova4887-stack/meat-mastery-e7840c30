@@ -2,7 +2,8 @@
 // (and the web push service worker via postMessage in the future). Drains
 // both the module-level pending value and an optional sessionStorage
 // fallback so cold-start taps reliably land on the deep route once React
-// Router has mounted.
+// Router has mounted. All navigation is wrapped in requestAnimationFrame
+// to ensure the router has committed its initial render before we navigate.
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
@@ -16,38 +17,60 @@ function safePath(p: unknown): string | null {
   return p;
 }
 
+function readStored(): string | null {
+  try {
+    const v = sessionStorage.getItem(PENDING_KEY);
+    if (v) sessionStorage.removeItem(PENDING_KEY);
+    return safePath(v);
+  } catch {
+    return null;
+  }
+}
+
 export function usePushNavigation() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const go = (path: string) => {
-      console.info("[PushNav] navigate", path);
-      navigate(path);
+    console.info("[PushNav] consumer mounted");
+
+    const go = (path: string, reason: string) => {
+      console.info("[PushNav] navigate scheduled", { path, reason });
+      requestAnimationFrame(() => {
+        console.info("[PushNav] navigate calling", { path });
+        navigate(path);
+        requestAnimationFrame(() => {
+          console.info("[PushNav] post-nav location", {
+            path: window.location.pathname + window.location.search,
+          });
+        });
+      });
     };
 
-    // 1) Drain module-level pending (primary cold-start handoff)
-    const pendingModule = safePath(consumePendingPushNav());
-    if (pendingModule) {
-      go(pendingModule);
-    } else {
-      // 2) Belt-and-suspenders fallback via sessionStorage
-      try {
-        const stored = sessionStorage.getItem(PENDING_KEY);
-        const pendingStored = safePath(stored);
-        if (pendingStored) {
-          sessionStorage.removeItem(PENDING_KEY);
-          go(pendingStored);
-        }
-      } catch {/* ignore */}
-    }
+    const drain = (reason: string) => {
+      const m = safePath(consumePendingPushNav());
+      const s = readStored();
+      console.info("[PushNav] drain", { reason, module: m, stored: s });
+      const path = m ?? s;
+      if (path) go(path, `drain:${reason}`);
+    };
+
+    // Primary drain: right after mount.
+    drain("mount");
+    // Belt-and-suspenders: re-check after the current microtask in case the
+    // native actionPerformed listener queued a path just after we mounted.
+    const t = setTimeout(() => drain("post-mount-timeout"), 0);
 
     const handler = (ev: Event) => {
       const detail = (ev as CustomEvent).detail as { path?: string } | undefined;
       const path = safePath(detail?.path);
+      console.info("[PushNav] event received", { rawPath: detail?.path, accepted: !!path });
       if (!path) return;
-      go(path);
+      go(path, "event");
     };
     window.addEventListener("push-nav", handler);
-    return () => window.removeEventListener("push-nav", handler);
+    return () => {
+      window.removeEventListener("push-nav", handler);
+      clearTimeout(t);
+    };
   }, [navigate]);
 }
