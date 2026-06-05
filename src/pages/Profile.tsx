@@ -124,13 +124,29 @@ const Profile = () => {
   useEffect(() => {
     if (section !== "coaching") return;
     if (tab !== "settings") return;
-    console.info("[PushRoute] scroll to coaching attempt", { tab, highlightSessionId });
-    const id = window.setTimeout(() => {
+    console.info("[PushRoute] scroll-retry start", { tab, highlightSessionId });
+    let cancelled = false;
+    let attempts = 0;
+    const tryScroll = () => {
+      if (cancelled) return;
+      attempts += 1;
       const el = document.getElementById("coaching-section");
-      console.info("[PushRoute] coaching-section element", { found: !!el });
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 120);
-    return () => window.clearTimeout(id);
+      console.info("[PushRoute] scroll-retry tick", { attempt: attempts, found: !!el });
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        import("@/lib/pushRouteIntent")
+          .then((m) => m.markPushRouteIntentVerified())
+          .catch(() => {});
+        return;
+      }
+      if (attempts < 20) {
+        window.setTimeout(tryScroll, 150);
+      } else {
+        console.warn("[PushRoute] scroll-retry gave up — section never mounted");
+      }
+    };
+    window.setTimeout(tryScroll, 120);
+    return () => { cancelled = true; };
   }, [section, tab, highlightSessionId]);
   const userProfile = useUserProfile();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
@@ -460,10 +476,10 @@ const Profile = () => {
       return;
     }
     if (!user) {
-      console.info("[PushRoute] no user after auth load — redirect /auth", {
-        path: window.location.pathname + window.location.search,
-      });
+      // Preserve the full deep-link (including section/sessionId) as returnTo
+      // so /auth → sign-in returns us to the original coaching destination.
       const returnTo = window.location.pathname + window.location.search;
+      console.info("[PushRoute] no user after auth load — redirect /auth", { returnTo });
       navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
     }
   }, [authLoading, user, navigate]);
