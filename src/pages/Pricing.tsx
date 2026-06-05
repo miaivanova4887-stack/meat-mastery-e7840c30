@@ -136,18 +136,22 @@ const Pricing = () => {
         toast.error(result.error ?? "Purchase failed");
         return;
       }
-      const productId = info.pkg.product?.identifier ?? "coaching_call";
-      // RC doesn't surface the StoreKit transaction id directly on the result;
-      // fall back to a synthesized id based on user + timestamp so the server
-      // row is unique. The webhook (when added) will reconcile against the
-      // real Apple transactionId.
-      const transactionId = `rc_${user.id}_${Date.now()}`;
-      console.log("coaching:booking-link-requested", { userId: user.id, source: "pricing-page" });
+      // Prefer the real Apple/Google transaction id surfaced by RC. Fall
+      // back to a synthetic id only if the SDK runtime didn't expose one,
+      // so we still record the purchase. The backend is idempotent on
+      // (user_id, transaction_id).
+      const productId = result.productId ?? info.pkg.product?.identifier ?? "coaching_call";
+      const transactionId = result.transactionId ?? `rc_${user.id}_${Date.now()}`;
+      console.log("coaching:booking-link-requested", {
+        userId: user.id,
+        source: "pricing-page",
+        usingRealTxId: Boolean(result.transactionId),
+      });
       const recorded = await recordCoachingPurchase({
         source: "appstore",
         productId,
         transactionId,
-        purchaseDateMs: Date.now(),
+        purchaseDateMs: result.purchaseDateMs ?? Date.now(),
       });
       toast.success("Coaching call purchased — choose your time.");
       // iOS MUST open the prefilled no-payment Cal.com event so Apple isn't
