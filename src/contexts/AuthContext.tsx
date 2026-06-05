@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
+import { reconcileCachedAppleName } from "@/lib/appleDisplayName";
 
 /** Where verification / recovery emails should send users back to.
  * Always app.carnivorex.app so the link works for both the installed
@@ -96,6 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       reconciledForUserRef.current = nextUser.id;
       // Defer so we never block auth state propagation.
       setTimeout(() => { void reconcileLocalConsent(nextUser.id); }, 0);
+      setTimeout(() => { reconcileCachedAppleName(nextUser.id); }, 0);
     };
 
     const isCallbackPath = () => {
