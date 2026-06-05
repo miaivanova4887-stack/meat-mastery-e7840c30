@@ -150,6 +150,31 @@ function bindFcmTokenListenerOnce() {
   console.info("[Push] window:fcm-token listener bound");
 }
 
+let actionListenerBound = false;
+
+function bindActionListenerOnce() {
+  if (actionListenerBound) return;
+  if (!Capacitor.isNativePlatform()) return;
+  actionListenerBound = true;
+  try {
+    PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+      const data = (action?.notification?.data ?? {}) as Record<string, unknown>;
+      const path = resolvePushNavPath(data);
+      console.info("[Push] actionPerformed", { hasData: !!data, path, type: data?.type });
+      if (path) queuePushNav(path);
+    });
+    PushNotifications.addListener("pushNotificationReceived", (n) => {
+      // Foreground receive — do not auto-navigate. iOS shows the banner;
+      // tap will route via actionPerformed.
+      const data = (n?.data ?? {}) as Record<string, unknown>;
+      console.info("[Push] notificationReceived (foreground)", { type: data?.type });
+    });
+    console.info("[Push] action listeners bound");
+  } catch (e) {
+    console.warn("[Push] action listener bind failed", e);
+  }
+}
+
 function bindListenersOnce(platform: "android" | "ios") {
   if (!isNativeFcmEnabled()) {
     console.info("[PushDecision] bindListeners skipped reason=native-fcm-disabled");
@@ -157,6 +182,9 @@ function bindListenersOnce(platform: "android" | "ios") {
   }
   // iOS sources tokens via window event (FCM), Android via PushNotifications.registration.
   if (platform === "ios") bindFcmTokenListenerOnce();
+
+  // Action listener should bind regardless of token-source path.
+  bindActionListenerOnce();
 
   if (listenersBound) {
     console.info("[Push] plugin listeners already bound — skip");
