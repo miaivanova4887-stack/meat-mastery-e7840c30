@@ -74,18 +74,50 @@ function buildIcs(s: CoachingSession): string {
     .join("\r\n");
 }
 
-function downloadIcs(session: CoachingSession) {
+async function downloadIcs(session: CoachingSession) {
   const ics = buildIcs(session);
-  if (!ics) return;
-  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `coaching-${session.id.slice(0, 8)}.ics`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  if (!ics) {
+    toast.error("No scheduled time yet for this session.");
+    return;
+  }
+  const filename = `coaching-${session.id.slice(0, 8)}.ics`;
+
+  if (Capacitor.isNativePlatform()) {
+    // WKWebView/Chromium-WebView block blob downloads. Use a data URL via
+    // the system browser so iOS/Android offer to add the event to Calendar.
+    const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
+    try {
+      await Share.share({
+        title: "CarnivoreX Coaching Call",
+        text: "Add your coaching session to your calendar.",
+        url: dataUrl,
+        dialogTitle: "Add to calendar",
+      });
+      return;
+    } catch (err) {
+      console.warn("coaching:ics-share-failed", err);
+      const res = await openExternalUrl(dataUrl, { logTag: "coaching:ics-open" });
+      if (!res.ok) {
+        toast.error("Couldn't open calendar. Please try again.");
+      }
+      return;
+    }
+  }
+
+  try {
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("coaching:ics-download-failed", err);
+    toast.error("Couldn't download calendar file.");
+  }
 }
 
 export default function CoachingSessionsList() {
