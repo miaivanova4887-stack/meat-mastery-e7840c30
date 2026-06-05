@@ -1,38 +1,76 @@
-## Problem
+## iOS coaching booking — eliminate double charge, prefill identity, align price
 
-On the Sign In screen, social login buttons have poor visibility:
-- **Google button**: dark gray (`bg-secondary`) on near-black background → very low contrast, the button barely reads as tappable.
-- **Apple button**: rendered with `bg-foreground text-background`, which is correct Apple HIG (white on black in dark mode), but it sits behind the bottom nav and gets clipped/hidden, so the user only sees a sliver of white.
-- The "OR" divider and form section are too tall relative to the viewport, pushing Apple under the bottom tab bar.
+### Goal
 
-## Fix (src/pages/Auth.tsx only)
+After a successful iOS StoreKit coaching purchase, the user is sent to a **no-payment** Cal.com event (`coaching-session-ios`) with name + email prefilled. Web Stripe flow stays untouched.
 
-1. **Apple button** — use explicit Apple HIG styling for both light and dark mode so it always renders as a strong, fully-visible pill:
-   - `bg-white text-black` in dark mode, `bg-black text-white` in light mode (via a single class set using `dark:` variants).
-   - Add a subtle ring (`ring-1 ring-border/40`) so it has a defined edge on both themes.
+### Backend
 
-2. **Google button** — increase contrast against the page background:
-   - Switch from `bg-secondary` to `bg-card` with a stronger `border-border` (full opacity, not `/40`).
-   - Slight elevation via `shadow-sm` so it lifts off the background.
+`**record-coaching-purchase` (update)**
 
-3. **Layout / clipping** — make sure both buttons are fully visible above the bottom nav:
-   - Increase the form container's bottom padding from `8rem` to `calc(env(safe-area-inset-bottom) + 10rem)` so the Apple button clears the 5-tab BottomNav on small iPhones.
-   - Tighten the "Why create an account?" paragraph margin (`mb-6` → `mb-4`) to recover vertical space.
+- After inserting the `coaching_sessions` row, look up the caller's `auth.users.email` and `profiles.display_name`.
+- If `source === "appstore"`, build:
+  - `iosBookingUrl = https://cal.com/carnivorex/coaching-session-ios?name={encoded}&email={encoded}` (Cal.com supports `name` + `email` query prefill on its booking form).
+  - Log `coaching:booking-link-issued` with `{ userId, hasName, hasEmail }`.
+  - Log `coaching:booking-link-prefill-missing` if name or email is empty.
+- Response payload becomes `{ ok, calComUrl, iosBookingUrl? }`. Web path keeps returning the existing paid `calComUrl` unchanged.
 
-4. **Order** — keep Google first, Apple second (current order), since this matches what the screenshot shows and what users already learned.
+No DB migration required for the simple gate — the existing `coaching_sessions` row + auth check is the gate.
 
-No business-logic / OAuth handler changes. No copy changes. No changes to other screens.
+### Client — `src/lib/coachingPurchase.ts`
 
-## Out of scope
+- Extend `RecordCoachingPurchaseResult` with `iosBookingUrl?: string` and propagate it through.
 
-- Hiding the BottomNav on the Auth route (separate UX question).
-- Email/password field styling.
-- Biometric button.
-- Any backend / Supabase / RevenueCat work.
+### Client — `src/components/CoachingBooking.tsx`
 
-## Acceptance
+- iOS branch after `recordCoachingPurchase`:
+  - Log `coaching:booking-link-requested` before invoking.
+  - `schedulerUrl = recorded.iosBookingUrl ?? recorded.calComUrl ?? IOS_NO_PAYMENT_FALLBACK` where the fallback constant is the no-payment URL (not the paid one).
+  - Open via `openExternalUrl(schedulerUrl, { logTag: "coaching:booking-link" })`; on `ok` log `coaching:booking-link-opened`, else log `coaching:booking-link-open-failed` and show existing fallback UI.
+- Web branch: unchanged (still hits `create-coaching-checkout` → Stripe).
+- Replace the paid `CAL_URL` fallback used by iOS with the no-payment URL so a backend failure still avoids double charge.
+- Replace hardcoded `"CA$99 per session"` info-screen price with the StoreKit-localized string when `useNative && paywall.packages.coaching?.priceString` is available; fall back to CMS `paid_label` only on web.
 
-- On iOS dark mode, both Google and Apple buttons are fully visible above the bottom tab bar with clear contrast.
-- Apple button is unmistakably a white pill with black wordmark + glyph.
-- Google button has a visible border/elevation against the page.
-- Light mode still looks correct (Apple = black pill, Google = light pill with border).
+### Client — `src/pages/Coaching.tsx` and `src/pages/Pricing.tsx`
+
+- Same iOS branch updates: prefer `recorded.iosBookingUrl`, fall back to the no-payment URL, never the paid one. Web Stripe redirect stays as-is.
+- Where any hardcoded "$99" / "CA$99" appears on the iOS path, swap for `paywall.packages.coaching?.priceString` (already loaded by `useNativePaywall`).
+
+### Constants
+
+Add a single module `src/lib/coachingUrls.ts`:
+
+```ts
+export const CAL_PAID_URL = "https://cal.com/carnivorex/coaching-session";
+export const CAL_IOS_NO_PAYMENT_URL = "https://cal.com/carnivorex/coaching-session-ios";
+```
+
+All call sites import from here.
+
+### Diag logs (console)
+
+- `coaching:booking-link-requested` — client, before invoke
+- `coaching:booking-link-issued` — server
+- `coaching:booking-link-prefill-missing` — server, when name/email blank
+- `coaching:booking-link-opened` — client, after successful `openExternalUrl`
+- `coaching:booking-link-open-failed` — client, on failure (already triggers fallback UI)
+
+### Out of scope
+
+- Web Stripe / paid Cal.com flow — untouched.
+- Single-use signed token (rejected in favor of simple gate).
+- Cal.com event configuration itself — you'll handle in Cal.com dashboard (disable payment on `coaching-session-ios`).
+
+### Acceptance verification
+
+After build:
+
+1. iOS sandbox purchase → Cal.com opens directly to `coaching-session-ios` time picker — no card form, no price screen.
+2. Name + email pre-filled on the Cal.com "Confirm your details" step.
+3. App pricing CTA reads the StoreKit storefront price (e.g. `$99.99`, `CA$129.99`), not `CA$99`.
+4. Web Stripe coaching purchase still lands on the existing paid Cal.com event.
+
+User feedback: If `profiles.display_name` is missing, Lovable should fall back to:
+
+- SIWA / auth metadata display name,
+- then email local-part only as a last resort.
