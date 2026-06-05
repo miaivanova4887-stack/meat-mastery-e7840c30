@@ -342,8 +342,10 @@ if (typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.g
 // cold-start taps (where the OS launches the app from a notification) are
 // captured before React Router mounts. The handler queues the path in a
 // module-level variable + sessionStorage; usePushNavigation drains both.
-if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
-  bindActionListenerOnce();
+if (typeof window !== "undefined") {
+  const isNative = Capacitor.isNativePlatform();
+  console.info("[PushTap] module loaded", { isNative, platform: isNative ? Capacitor.getPlatform() : "web" });
+  if (isNative) bindActionListenerOnce();
 }
 
 export async function triggerPushEvent(
