@@ -9,6 +9,8 @@ import { useState, useEffect } from "react";
 import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywall";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
+import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
+
 
 // --- Web / Stripe configuration ------------------------------------------
 // These price IDs drive Stripe Checkout on the web. On native iOS we ignore
@@ -140,6 +142,7 @@ const Pricing = () => {
       // row is unique. The webhook (when added) will reconcile against the
       // real Apple transactionId.
       const transactionId = `rc_${user.id}_${Date.now()}`;
+      console.log("coaching:booking-link-requested", { userId: user.id, source: "pricing-page" });
       const recorded = await recordCoachingPurchase({
         source: "appstore",
         productId,
@@ -147,12 +150,17 @@ const Pricing = () => {
         purchaseDateMs: Date.now(),
       });
       toast.success("Coaching call purchased — choose your time.");
-      const url = recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session";
-      console.log("coaching:open-scheduler-tap", { url, source: "pricing-page" });
-      const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
-      if (!res.ok) {
+      // iOS MUST open the prefilled no-payment Cal.com event so Apple isn't
+      // followed by a Cal.com card form (double-charge).
+      const url = recorded.iosBookingUrl ?? recorded.calComUrl ?? CAL_IOS_NO_PAYMENT_URL;
+      const res = await openExternalUrl(url, { logTag: "coaching:booking-link" });
+      if (res.ok) {
+        console.log("coaching:booking-link-opened", { native: res.native, source: "pricing-page" });
+      } else {
+        console.warn("coaching:booking-link-open-failed", { error: res.error, source: "pricing-page" });
         toast.error("Payment received — we couldn't open the scheduler automatically. Visit " + url + " to book.");
       }
+
     } finally {
       setLoading(null);
     }

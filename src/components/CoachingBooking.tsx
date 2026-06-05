@@ -11,6 +11,7 @@ import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
+import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL } from "@/lib/coachingUrls";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -20,7 +21,6 @@ interface CoachingBookingProps {
   initialScreen?: Screen;
 }
 
-const CAL_URL = "https://cal.com/carnivorex/coaching-session";
 
 const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: CoachingBookingProps) => {
   const { user } = useAuth();
@@ -34,8 +34,9 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [schedulerUrl, setSchedulerUrl] = useState<string>(CAL_URL);
+  const [schedulerUrl, setSchedulerUrl] = useState<string>(useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL);
   const [showFallback, setShowFallback] = useState(false);
+
 
   // Reset screen when opened
   useEffect(() => {
@@ -106,6 +107,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
           setScreen("info");
           return;
         }
+        console.log("coaching:booking-link-requested", { userId: session.user.id });
         const recorded = await recordCoachingPurchase({
           source: "appstore",
           productId: pkg.pkg.product?.identifier ?? "coaching_call",
@@ -113,16 +115,24 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
           purchaseDateMs: Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
-        const url = recorded.calComUrl ?? CAL_URL;
+        // iOS MUST open the no-payment Cal.com event — never the paid one
+        // (otherwise Cal.com asks for a card on top of the Apple charge).
+        const url = recorded.iosBookingUrl ?? recorded.calComUrl ?? CAL_IOS_NO_PAYMENT_URL;
         setSchedulerUrl(url);
         setShowFallback(false);
         // Best-effort auto-open. If the native browser can't open, the
         // calcom screen's CTA + fallback UI lets the user copy/open manually.
-        const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
-        if (!res.ok) setShowFallback(true);
+        const res = await openExternalUrl(url, { logTag: "coaching:booking-link" });
+        if (res.ok) {
+          console.log("coaching:booking-link-opened", { native: res.native });
+        } else {
+          console.warn("coaching:booking-link-open-failed", { error: res.error });
+          setShowFallback(true);
+        }
         setScreen("calcom");
         return;
       }
+
 
       // Web: existing Stripe one-off flow.
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
@@ -198,9 +208,12 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
               </div>
               <div className="bg-muted/50 rounded-xl p-4 text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  {content.paid_label || "CA$99 per session"}
+                  {useNative && paywall.packages.coaching?.priceString
+                    ? `${paywall.packages.coaching.priceString} per session`
+                    : (content.paid_label || "$99.99 per session")}
                 </p>
               </div>
+
               <Button onClick={() => { handlePayment(); setScreen("payment"); }} className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-12 font-semibold">
                 {content.pay_button || "Proceed to Payment"}
               </Button>

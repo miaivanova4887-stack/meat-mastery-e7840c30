@@ -4,6 +4,10 @@
 // Stripe one-off on web) into public.coaching_sessions and returns the
 // Cal.com scheduling URL so the client can immediately route the user.
 //
+// For iOS purchases, we additionally return a no-payment Cal.com URL with
+// the user's name + email prefilled, so the user is never asked to pay
+// twice (Apple already collected payment) and barely has to re-enter data.
+//
 // Idempotent on (user_id, transaction_id) — safe to retry from the client
 // or to be mirrored by a future RevenueCat webhook.
 
@@ -16,7 +20,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const CAL_URL = "https://cal.com/carnivorex/coaching-session";
+const CAL_PAID_URL = "https://cal.com/carnivorex/coaching-session";
+const CAL_IOS_NO_PAYMENT_URL = "https://cal.com/carnivorex/coaching-session-ios";
 
 interface Body {
   source?: "appstore" | "stripe";
@@ -69,8 +74,8 @@ serve(async (req) => {
       return json({ error: "transactionId is required" }, 400);
     }
 
-    // Service-role client for the insert so we can write the audit row
-    // regardless of the user's RLS surface area.
+    // Service-role client for the insert + profile read so we can write the
+    // audit row regardless of the user's RLS surface area.
     const admin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -105,7 +110,69 @@ serve(async (req) => {
       });
     }
 
-    return json({ ok: true, calComUrl: CAL_URL }, 200);
+    // For iOS: build a prefilled no-payment Cal.com URL. Falls back through
+    // profiles.display_name -> auth metadata names -> email local-part.
+    let iosBookingUrl: string | undefined;
+    if (source === "appstore") {
+      const email = user.email ?? "";
+      let displayName = "";
+      try {
+        const { data: profile } = await admin
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        displayName = (profile?.display_name ?? "").trim();
+      } catch (e) {
+        console.warn("[record-coaching-purchase] profile lookup failed", e);
+      }
+
+      if (!displayName) {
+        const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+        const metaName =
+          (typeof meta.display_name === "string" && meta.display_name) ||
+          (typeof meta.full_name === "string" && meta.full_name) ||
+          (typeof meta.name === "string" && meta.name) ||
+          "";
+        displayName = String(metaName).trim();
+      }
+      if (!displayName && email) {
+        displayName = email.split("@")[0] ?? "";
+      }
+
+      const params = new URLSearchParams();
+      if (displayName) params.set("name", displayName);
+      if (email) params.set("email", email);
+      const qs = params.toString();
+      iosBookingUrl = qs
+        ? `${CAL_IOS_NO_PAYMENT_URL}?${qs}`
+        : CAL_IOS_NO_PAYMENT_URL;
+
+      console.info("coaching:booking-link-issued", {
+        userId: user.id,
+        hasName: Boolean(displayName),
+        hasEmail: Boolean(email),
+      });
+      if (!displayName || !email) {
+        console.warn("coaching:booking-link-prefill-missing", {
+          userId: user.id,
+          missing: [
+            !displayName ? "name" : null,
+            !email ? "email" : null,
+          ].filter(Boolean),
+        });
+      }
+    }
+
+    return json(
+      {
+        ok: true,
+        // Keep `calComUrl` for backward compatibility — web Stripe path uses it.
+        calComUrl: source === "appstore" ? iosBookingUrl ?? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL,
+        iosBookingUrl,
+      },
+      200
+    );
   } catch (e) {
     console.error("[record-coaching-purchase] unhandled", e);
     return json({ error: (e as Error).message }, 500);

@@ -9,6 +9,8 @@ import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
+import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
+
 
 const Coaching = () => {
   const navigate = useNavigate();
@@ -42,6 +44,7 @@ const Coaching = () => {
           toast.error(result.error ?? "Purchase failed");
           return;
         }
+        console.log("coaching:booking-link-requested", { userId: session.user.id, source: "coaching-page" });
         const recorded = await recordCoachingPurchase({
           source: "appstore",
           productId: pkg.pkg.product?.identifier ?? "coaching_call",
@@ -49,13 +52,18 @@ const Coaching = () => {
           purchaseDateMs: Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
-        const url = recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session";
-        console.log("coaching:open-scheduler-tap", { url, source: "coaching-page" });
-        const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
-        if (!res.ok) {
+        // iOS MUST open the prefilled no-payment Cal.com event so Apple isn't
+        // followed by a Cal.com card form (double-charge).
+        const url = recorded.iosBookingUrl ?? recorded.calComUrl ?? CAL_IOS_NO_PAYMENT_URL;
+        const res = await openExternalUrl(url, { logTag: "coaching:booking-link" });
+        if (res.ok) {
+          console.log("coaching:booking-link-opened", { native: res.native, source: "coaching-page" });
+        } else {
+          console.warn("coaching:booking-link-open-failed", { error: res.error, source: "coaching-page" });
           toast.error("Payment received — we couldn't open the scheduler automatically. Visit " + url + " to book.");
         }
         return;
+
       }
 
       // Web: existing Stripe flow.
@@ -110,9 +118,14 @@ const Coaching = () => {
 
         <div className="ios-card p-5">
           <div className="text-center mb-3">
-            <p className="text-2xl font-bold text-foreground">$99.99</p>
+            <p className="text-2xl font-bold text-foreground">
+              {useNative && paywall.packages.coaching?.priceString
+                ? paywall.packages.coaching.priceString
+                : "$99.99"}
+            </p>
             <p className="text-xs text-muted-foreground">per 1-hour session</p>
           </div>
+
           {!user ? (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2 text-center">
               <p className="text-sm font-medium text-foreground">
