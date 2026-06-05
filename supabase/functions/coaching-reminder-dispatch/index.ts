@@ -143,7 +143,17 @@ serve(async (req) => {
                     endpoint: sub.endpoint,
                     keys: { p256dh: sub.keys_p256dh, auth: sub.keys_auth },
                   },
-                  JSON.stringify({ title, body, url: s.booking_url ?? "/coaching" }),
+                  JSON.stringify({
+                    title,
+                    body,
+                    url: deepPath,
+                    data: {
+                      type: "coaching_reminder",
+                      target: "coaching_upcoming_session",
+                      session_id: s.id,
+                      path: deepPath,
+                    },
+                  }),
                 );
                 okAny = true;
               } catch (e: any) {
