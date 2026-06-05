@@ -12,6 +12,7 @@ import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
+import { getCachedAppleFullName } from "@/lib/appleDisplayName";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
