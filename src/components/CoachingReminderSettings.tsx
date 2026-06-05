@@ -135,6 +135,20 @@ export const CoachingReminderSettings = () => {
           </select>
         </div>
       )}
+      {enabled && (
+        <div className="mt-3 pt-3 border-t border-border/40">
+          <button
+            type="button"
+            onClick={sendTest}
+            disabled={!loaded || testing}
+            className="w-full text-sm font-semibold text-primary py-2 rounded-lg hover:bg-primary/5 disabled:opacity-50 transition-colors"
+          >
+            {testing
+              ? isFr ? "Envoi…" : "Sending…"
+              : isFr ? "Envoyer un rappel test" : "Send test reminder"}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
