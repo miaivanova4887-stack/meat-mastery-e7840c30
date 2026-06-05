@@ -19,6 +19,9 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		FB1E000000000000000F0002 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FB1E000000000000000F0001 /* GoogleService-Info.plist */; };
+		FB0001000000000000000002 /* CarnivoreXPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB0001000000000000000001 /* CarnivoreXPush.swift */; };
+		FB0002000000000000000004 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FB0002000000000000000002 /* FirebaseCore */; };
+		FB0002000000000000000005 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FB0002000000000000000003 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +40,7 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		FB1E000000000000000F0001 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		FB0001000000000000000001 /* CarnivoreXPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarnivoreXPush.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -45,6 +49,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+				FB0002000000000000000004 /* FirebaseCore in Frameworks */,
+				FB0002000000000000000005 /* FirebaseMessaging in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +90,7 @@
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				FB1E000000000000000F0001 /* GoogleService-Info.plist */,
+				FB0001000000000000000001 /* CarnivoreXPush.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -106,6 +113,8 @@
 			name = App;
 			packageProductDependencies = (
 				4D22ABE82AF431CB00220026 /* CapApp-SPM */,
+				FB0002000000000000000002 /* FirebaseCore */,
+				FB0002000000000000000003 /* FirebaseMessaging */,
 			);
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
@@ -139,6 +148,7 @@
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
 				D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */,
+				FB0002000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
@@ -175,6 +185,7 @@
 				0DAF6AD72F931295001EDBDB /* HealthConnectPlugin.swift in Sources */,
 				0DAF6AF12F950001001EDBDB /* AudioSessionPlugin.swift in Sources */,
 				0DAF6AE12F940001001EDBDB /* MainViewController.swift in Sources */,
+				FB0001000000000000000002 /* CarnivoreXPush.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -397,11 +408,32 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		FB0002000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		4D22ABE82AF431CB00220026 /* CapApp-SPM */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */;
 			productName = "CapApp-SPM";
+		};
+		FB0002000000000000000002 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB0002000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		FB0002000000000000000003 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FB0002000000000000000001 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
