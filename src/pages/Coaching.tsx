@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { openExternalUrl } from "@/lib/openExternalUrl";
 
 const Coaching = () => {
   const navigate = useNavigate();
@@ -48,18 +49,19 @@ const Coaching = () => {
           purchaseDateMs: Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
-        window.open(
-          recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session",
-          "_blank",
-          "noopener,noreferrer"
-        );
+        const url = recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session";
+        console.log("coaching:open-scheduler-tap", { url, source: "coaching-page" });
+        const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
+        if (!res.ok) {
+          toast.error("Payment received — we couldn't open the scheduler automatically. Visit " + url + " to book.");
+        }
         return;
       }
 
       // Web: existing Stripe flow.
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
       if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank", "noopener,noreferrer");
+      if (data?.url) await openExternalUrl(data.url, { logTag: "coaching:stripe-checkout" });
     } catch (e: any) {
       toast.error(e?.message || "Failed to start checkout");
     } finally {

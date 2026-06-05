@@ -147,7 +147,11 @@ const Pricing = () => {
       });
       toast.success("Coaching call purchased — choose your time.");
       const url = recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session";
-      window.open(url, "_blank", "noopener,noreferrer");
+      console.log("coaching:open-scheduler-tap", { url, source: "pricing-page" });
+      const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
+      if (!res.ok) {
+        toast.error("Payment received — we couldn't open the scheduler automatically. Visit " + url + " to book.");
+      }
     } finally {
       setLoading(null);
     }
