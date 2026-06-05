@@ -87,15 +87,21 @@ serve(async (req) => {
       : new Date();
     const sessionMonth = purchasedAt.toISOString().slice(0, 7); // YYYY-MM
 
-    const { error: insertErr } = await admin.from("coaching_sessions").insert({
-      user_id: user.id,
-      session_type: source === "appstore" ? "paid_ios" : "paid_web",
-      session_month: sessionMonth,
-      transaction_id: transactionId,
-      source,
-      stripe_payment_intent: source === "stripe" ? transactionId : null,
-      status: "pending",
-    });
+    const { data: inserted, error: insertErr } = await admin
+      .from("coaching_sessions")
+      .insert({
+        user_id: user.id,
+        session_type: source === "appstore" ? "paid_ios" : "paid_web",
+        session_month: sessionMonth,
+        transaction_id: transactionId,
+        source,
+        stripe_payment_intent: source === "stripe" ? transactionId : null,
+        status: "pending",
+      })
+      .select("id")
+      .maybeSingle();
+
+    let sessionRowId: string | null = inserted?.id ?? null;
 
     if (insertErr) {
       // 23505 = unique_violation → idempotent replay, treat as success.
@@ -109,6 +115,14 @@ serve(async (req) => {
         userId: user.id,
         transactionId,
       });
+      // On duplicate, look up the existing row so we can still attach metadata.
+      const { data: existing } = await admin
+        .from("coaching_sessions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("transaction_id", transactionId)
+        .maybeSingle();
+      sessionRowId = existing?.id ?? null;
     }
 
     // For iOS: build a prefilled no-payment Cal.com URL. Falls back through
@@ -144,6 +158,12 @@ serve(async (req) => {
       const params = new URLSearchParams();
       if (displayName) params.set("name", displayName);
       if (email) params.set("email", email);
+      // Embed our internal user_id (and session row id when known) as Cal.com
+      // booking metadata so the cal-webhook can link the booking back to the
+      // correct account even when the user enters a different email at
+      // booking time (e.g. Apple private relay accounts).
+      params.set("metadata[user_id]", user.id);
+      if (sessionRowId) params.set("metadata[session_row_id]", sessionRowId);
       const qs = params.toString();
       iosBookingUrl = qs
         ? `${CAL_IOS_NO_PAYMENT_URL}?${qs}`
@@ -151,6 +171,7 @@ serve(async (req) => {
 
       console.info("coaching:booking-link-issued", {
         userId: user.id,
+        sessionRowId,
         hasName: Boolean(displayName),
         hasEmail: Boolean(email),
       });
