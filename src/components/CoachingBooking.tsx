@@ -11,7 +11,7 @@ import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
-import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL } from "@/lib/coachingUrls";
+import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -35,6 +35,24 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [schedulerUrl, setSchedulerUrl] = useState<string>(useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL);
+
+  // Whenever the user is known, refresh the default scheduler URL with
+  // metadata[user_id] so the cal-webhook can link the booking back even when
+  // the user enters a different email at booking time (Apple private relay,
+  // shared inbox, etc). The iOS path overrides this with the prefilled URL
+  // returned by record-coaching-purchase after the StoreKit purchase.
+  useEffect(() => {
+    if (!user?.id) return;
+    const base = useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL;
+    setSchedulerUrl(
+      buildCalUrl({
+        base,
+        userId: user.id,
+        name: (user.user_metadata as Record<string, unknown> | undefined)?.display_name as string | undefined ?? null,
+        email: user.email ?? null,
+      })
+    );
+  }, [user?.id, user?.email, useNative]);
   const [showFallback, setShowFallback] = useState(false);
 
 

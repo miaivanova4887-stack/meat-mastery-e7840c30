@@ -90,9 +90,44 @@ serve(async (req) => {
     { auth: { persistSession: false } },
   );
 
-  // Match user via email
+  // Match user. Prefer our embedded metadata.user_id (set by
+  // record-coaching-purchase when building the Cal.com URL) since the
+  // attendee email at booking time can differ from the app login email
+  // (e.g. Apple private relay accounts). Fall back to session_row_id, then
+  // attendee email, then most-recent pending session for that email.
+  const metaUserId: string | undefined =
+    payload?.metadata?.user_id ?? payload?.bookingFieldsResponses?.user_id;
+  const metaSessionRowId: string | undefined =
+    payload?.metadata?.session_row_id ?? payload?.bookingFieldsResponses?.session_row_id;
+
   let userId: string | null = null;
-  if (attendeeEmail) {
+  let preMatchedSessionId: string | null = null;
+
+  // 1) Metadata user_id (most reliable)
+  if (metaUserId && /^[0-9a-f-]{36}$/i.test(metaUserId)) {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("id", metaUserId)
+      .maybeSingle();
+    if (prof?.id) userId = prof.id;
+  }
+
+  // 2) Metadata session_row_id — also resolves user
+  if (!userId && metaSessionRowId && /^[0-9a-f-]{36}$/i.test(metaSessionRowId)) {
+    const { data: row } = await admin
+      .from("coaching_sessions")
+      .select("id, user_id")
+      .eq("id", metaSessionRowId)
+      .maybeSingle();
+    if (row?.user_id) {
+      userId = row.user_id;
+      preMatchedSessionId = row.id;
+    }
+  }
+
+  // 3) Attendee email → profiles.email
+  if (!userId && attendeeEmail) {
     const { data: profile } = await admin
       .from("profiles")
       .select("id")
@@ -100,20 +135,30 @@ serve(async (req) => {
       .maybeSingle();
     userId = profile?.id ?? null;
   }
+
   if (!userId) {
-    console.warn("[cal-webhook] no profile match for email", attendeeEmail);
+    console.warn("[cal-webhook] no user match", {
+      attendeeEmail,
+      metaUserId,
+      metaSessionRowId,
+    });
     return json({ ok: true, skipped: "no-user-match" });
   }
 
   const isCancel = triggerEvent === "BOOKING_CANCELLED";
   const status = isCancel ? "cancelled" : "scheduled";
 
-  // Try update by external_booking_id; if no row, find latest pending row for user and attach.
-  const { data: existing } = await admin
-    .from("coaching_sessions")
-    .select("id")
-    .eq("external_booking_id", bookingUid)
-    .maybeSingle();
+  // Prefer the pre-matched session (from metadata.session_row_id); else find
+  // by external_booking_id; else fall through to "latest pending for user".
+  let targetSessionId: string | null = preMatchedSessionId;
+  if (!targetSessionId) {
+    const { data: existing } = await admin
+      .from("coaching_sessions")
+      .select("id")
+      .eq("external_booking_id", bookingUid)
+      .maybeSingle();
+    targetSessionId = existing?.id ?? null;
+  }
 
   const patch: Record<string, unknown> = {
     scheduled_at: startTime ?? null,
@@ -126,8 +171,8 @@ serve(async (req) => {
     user_id: userId,
   };
 
-  if (existing?.id) {
-    const { error } = await admin.from("coaching_sessions").update(patch).eq("id", existing.id);
+  if (targetSessionId) {
+    const { error } = await admin.from("coaching_sessions").update(patch).eq("id", targetSessionId);
     if (error) {
       console.error("[cal-webhook] update failed", error);
       return json({ error: "DB update failed" }, 500);
