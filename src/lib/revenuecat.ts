@@ -274,7 +274,28 @@ export function findPackage(
   if (tier === "pro") {
     if (cycle === "monthly" && offering.monthly) return offering.monthly;
     if (cycle === "yearly" && offering.annual) return offering.annual;
-  }
+}
+
+/**
+ * Locate the coaching consumable package in an offering. We match by package
+ * identifier first (`coaching_call`), then by underlying StoreKit product id
+ * (`com.mi4labs.carnivorex.coaching_call`) as a safety net so a dashboard
+ * typo doesn't make the button inert during App Review.
+ */
+export function findCoachingPackage(
+  offering: PurchasesOffering | null
+): PurchasesPackage | null {
+  if (!offering) return null;
+  const byId = offering.availablePackages.find(
+    (p) => p.identifier.toLowerCase() === COACHING_PACKAGE_ID
+  );
+  if (byId) return byId;
+  return (
+    offering.availablePackages.find(
+      (p) => p.product?.identifier === COACHING_PRODUCT_ID
+    ) ?? null
+  );
+}
 
   // Last resort: substring match on both tier + cycle keywords.
   return (
