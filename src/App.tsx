@@ -184,6 +184,7 @@ const App = () => {
                 <Route path="/admin/notifications" element={<AdminNotifications />} />
                 <Route path="/admin/analytics" element={<AdminAnalytics />} />
                 <Route path="/admin/scheduled-push" element={<AdminScheduledPush />} />
+                <Route path="/admin/coaching-reminders" element={<AdminCoachingReminders />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/coaching" element={<Coaching />} />
                 <Route path="/privacy" element={<LegalPage ns="privacy" />} />
