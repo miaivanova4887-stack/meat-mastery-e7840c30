@@ -1142,31 +1142,38 @@ const Profile = () => {
             {/* User Notification Preferences */}
             <button
               onClick={async () => {
-                console.info("[PushDecision] source=profile-settings branch=manual-tap");
+                console.info("[NotifSettings] manual CTA tapped (profile)");
+                // 1) On native, ALWAYS check OS permission first. If denied
+                //    or prompt-with-rationale, jump straight to system
+                //    settings — saved app prefs must not block this path.
+                if (Capacitor.isNativePlatform()) {
+                  try {
+                    const { getNativePushPermission } = await import("@/lib/pushFcm");
+                    const perm = await getNativePushPermission();
+                    console.info("[NotifSettings] manual CTA os-perm=", perm);
+                    if (perm !== "granted") {
+                      const { openAppSettings } = await import("@/lib/openAppSettings");
+                      toast.info("Opening system notification settings…");
+                      await openAppSettings();
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn("[NotifSettings] manual CTA os-check failed", e);
+                  }
+                }
+                // 2) Permission is granted (or we're on web). Open the
+                //    consent sheet so the user can review per-topic prefs.
                 try {
                   const { auditPushDecision } = await import("@/lib/pushDecision");
                   const decision = await auditPushDecision("profile-settings", { ignoreSessionFlag: true });
                   if (decision.show) {
                     setShowPushConsent(true);
-                  } else if (
-                    decision.reason === "local-consent-set" ||
-                    decision.reason === "profile-consent-set"
-                  ) {
-                    // User previously denied — give them a one-tap path to
-                    // flip the iOS/Android system toggle.
-                    const { openAppSettings } = await import("@/lib/openAppSettings");
-                    toast.info("Opening system notification settings…");
-                    await openAppSettings();
                   } else {
-                    console.info("[PushDecision] source=profile-settings branch=suppress-open reason=", decision.reason);
-                    toast.info(
-                      decision.reason === "os-already-granted"
-                        ? "Notifications are already enabled."
-                        : "Notification preferences already saved.",
-                    );
+                    toast.info("Notifications are already enabled.");
+                    setShowPushConsent(true);
                   }
                 } catch (e) {
-                  console.error("[PushDecision] source=profile-settings audit-threw — opening anyway", e);
+                  console.error("[NotifSettings] manual CTA audit-threw — opening sheet", e);
                   setShowPushConsent(true);
                 }
               }}
