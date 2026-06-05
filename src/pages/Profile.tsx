@@ -451,11 +451,22 @@ const Profile = () => {
   });
   const progressMilestones = milestonesQuery.data ?? [];
 
-  // Redirect unauthenticated users. The queries above are gated on `user`
-  // so they won’t actually fire before this redirect runs.
+  // Redirect unauthenticated users — but only AFTER auth bootstrap finishes.
+  // Otherwise a push-tap cold start can overwrite the deep-linked /profile
+  // route with /auth before the session hydrates.
   useEffect(() => {
-    if (!user) navigate("/auth");
-  }, [user, navigate]);
+    if (authLoading) {
+      console.info("[PushRoute] auth still loading — defer auth redirect");
+      return;
+    }
+    if (!user) {
+      console.info("[PushRoute] no user after auth load — redirect /auth", {
+        path: window.location.pathname + window.location.search,
+      });
+      const returnTo = window.location.pathname + window.location.search;
+      navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+    }
+  }, [authLoading, user, navigate]);
 
   // Only show the big splash loader on the first-ever load when we truly
   // have nothing to paint. On revisits, cached data is already present so
