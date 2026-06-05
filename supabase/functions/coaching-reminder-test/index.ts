@@ -51,17 +51,29 @@ serve(async (req) => {
   }
   const userId = claimsData.claims.sub as string;
 
-  const last = lastSend.get(userId) ?? 0;
-  if (Date.now() - last < RATE_LIMIT_MS) {
-    return json({ error: "Please wait before sending another test." }, 429);
-  }
-  lastSend.set(userId, Date.now());
-
   const admin = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     { auth: { persistSession: false } },
   );
+
+  // Admin-only gate (enforced server-side; frontend also hides the button)
+  const { data: roleRow } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!roleRow) {
+    console.warn("[reminder-test] forbidden non-admin", { userId });
+    return json({ ok: false, code: "forbidden", error: "Admins only" }, 403);
+  }
+
+  const last = lastSend.get(userId) ?? 0;
+  if (Date.now() - last < RATE_LIMIT_MS) {
+    return json({ ok: false, code: "rate_limited", error: "Please wait before sending another test." }, 429);
+  }
+  lastSend.set(userId, Date.now());
 
   const { data: profile } = await admin
     .from("profiles")
@@ -72,6 +84,11 @@ serve(async (req) => {
   const tz = profile?.timezone ?? undefined;
   const locale = profile?.locale === "fr" ? "fr" : "en";
   const pushConsent = profile?.push_consent ?? "unset";
+
+  if (pushConsent === "denied") {
+    console.info("[reminder-test] permission_denied", { userId });
+    return json({ ok: false, code: "permission_denied", pushConsent, delivered: 0, devices: 0 }, 200);
+  }
 
   const fakeStart = new Date(Date.now() + 5 * 60_000);
   const whenLocal = (() => {
