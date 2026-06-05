@@ -1,6 +1,5 @@
 import UIKit
 import Capacitor
-import CapApp_SPM
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -8,9 +7,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Firebase + FCM setup lives in the CapApp-SPM package (where the
-        // Firebase SwiftPM products are linked). FirebaseAppDelegateProxyEnabled
-        // is NO in Info.plist, so we forward APNs / errors manually below.
+        // Firebase + FCM setup lives in CarnivoreXPush (App target links
+        // FirebaseCore / FirebaseMessaging via remote SPM in project.pbxproj).
+        // FirebaseAppDelegateProxyEnabled is NO in Info.plist, so we forward
+        // APNs registration / errors manually below.
         CarnivoreXPush.shared.configure()
         return true
     }
