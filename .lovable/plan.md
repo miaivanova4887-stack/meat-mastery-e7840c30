@@ -1,54 +1,204 @@
-Evidence gathered so far
+# Stabilization pass — SIWA name, bottom nav, notification CTA
 
-- Push/Profile route: the app does reach `/profile?tab=settings&section=coaching`, and `Profile` parses `tab=settings` and `section=coaching`.
-- The route is then redirected to `/auth` when auth bootstrap finishes with no user in the preview session: `[PushRoute] no user after auth load — redirect /auth`.
-- `Profile` also attempts to scroll before the coaching section exists: `[PushRoute] coaching-section element { found: false }`. So there are two real failure modes: auth/bootstrap can steal the route, and Profile can ignore the query intent because the section has not rendered yet.
-- Coaching data exists for the reported user. Latest row `daeb1931-286e-4271-82f4-af5f3340d33a` is `status='pending'`, `source='appstore'`, `scheduled_at=null`, tied to user `7c33371c-d1e4-4344-9f00-0707c06b0686`.
-- Bottom nav is currently portaled, but the native drift report means CSS-only `fixed` is still not stable enough in the iOS scroll context.
+Three targeted fixes. No business logic changes.
 
-Implementation plan
+## 1) Sign in with Apple — name not parsed into Cal.com
 
-1. Push deep-link stabilization
-   - Add a small durable `pushRouteIntent` helper that stores `{ path, createdAt, consumedAt?, verifiedAt? }` in localStorage/sessionStorage.
-   - In `pushFcm.ts`, write the intent before dispatching `push-nav`, and include a `sessionId` when present.
-   - In `usePushNavigation.ts`, navigate with `replace: true`, log each stage, and verify after 250ms/1s/3s whether the route stayed on target.
-   - In `Profile.tsx`, do not immediately redirect `/profile?...section=coaching` to `/auth` while there is an active push intent; preserve the full `returnTo` and log whether auth or Profile consumed the route.
-   - Replace the one-shot coaching scroll with a retry loop that waits until the settings tab content and `#coaching-section` actually exist, then scrolls and logs success/failure.
+**Symptom (IMG_0495):** Cal.com "Your name *" is empty; email is `…@privaterelay.appleid.com`. Apple's keyboard suggests "Maria Ivanova", proving the OS has the name but our prefill didn't include it.
 
-2. Enable-notifications CTA wiring
-   - Make the visible Profile notifications CTA always log a single trace ID from tap → OS permission check → `openAppSettings()` call → plugin result.
-   - If native permission is `denied`, `prompt`, or `prompt-with-rationale`, open iOS notification/app settings directly instead of opening the in-app consent sheet first.
-   - Add fallback logging inside `openAppSettings.ts` for `IOSSettings.AppNotification`, `IOSSettings.App`, and `CapacitorApp.openSettings` so the native console proves which branch ran.
+**Root cause:** `CoachingBooking.buildCalUrl` reads `user.user_metadata.display_name` only. For Apple users, the name lives in `profiles.display_name` (written by `reconcileAppleDisplayName`) or in the local cache (`getCachedAppleFullName`), not in `user_metadata` at the moment the dialog opens.
 
-3. Paid-unscheduled coaching flow
-   - Keep the Profile query loading `pending` rows and add explicit logs for row totals/counts and whether pending rows rendered.
-   - Make the pending card visibly render under `Action needed — Schedule your session` even when there are scheduled sessions above/below it.
-   - On Schedule tap, open `CoachingBooking` with `mode='already_paid'`, `sessionId`, and `sessionSource` and log those values.
-   - In already-paid mode, ensure payment code is unreachable, auto-build the no-payment URL for `source='appstore'`, and log the base URL host/path plus metadata presence without logging private email details.
-   - Ensure `source='appstore'` uses `https://cal.com/carnivorex/coaching-session-ios`, never the paid Cal.com event.
+**Change:** In `src/components/CoachingBooking.tsx`:
 
-4. Bottom tab bar P0 regression
-   - Replace the current pure fixed nav with a native-safe viewport-anchored implementation:
-     - keep the portal to `document.body`
-     - attach a `visualViewport` listener on native/mobile
-     - set explicit `top/left/width` from `visualViewport.offsetTop`, `visualViewport.height`, and safe-area inset so the bar follows the real visible viewport during scroll/keyboard/address-bar changes
-     - add a fixed bottom spacer CSS variable so content does not hide behind the bar
-   - Remove any nav dependency on parent layout/scroll and add a one-time diagnostic log with measured viewport/nav positions.
+- Resolve the prefill name in this order and pass it to `buildCalUrl`:
+  1. `user.user_metadata.display_name` / `full_name` / `name`
+  2. `profiles.display_name` (single `select` on open, cached in state)
+  3. `getCachedAppleFullName()` from `@/lib/appleDisplayName`
+- Log `[CoachingBooking] prefill-name source=…` so we can verify which source won.
+- No change to Cal.com URL builder or to webhook contract.
 
-5. Verification pass before reporting done
-   - Browser/mobile-size screenshot after scrolling a long page showing the tab bar pinned at the bottom.
-   - Browser console evidence for Profile route consumption and retry-scroll success.
-   - Database evidence for the latest pending `appstore` row and current user linkage.
-   - Browser/native-console log hooks for notification CTA tap → native-settings helper invocation.
-   - Console evidence that Schedule opens already-paid mode and builds the iOS no-payment Cal.com URL.
+## 2) Bottom nav — visible gap and drift on scroll
 
-Files expected to change
+**Symptom:** A faint empty band appears under the tab bar and the bar visibly shifts a few px while scrolling.
 
-- `src/lib/pushFcm.ts`
-- `src/hooks/usePushNavigation.ts`
-- `src/pages/Profile.tsx`
-- `src/lib/openAppSettings.ts`
-- `src/components/CoachingSessionsList.tsx`
+**Root cause:** `BottomNav.tsx` repositions itself every `visualViewport.scroll` tick by setting an explicit `top`. On iOS WKWebView those events lag one frame behind the page scroll, which produces the wobble; the safe-area padding plus the computed `top` rounding also produces a 1–2px band below the bar.
+
+**Change:** In `src/components/BottomNav.tsx`:
+
+- Remove the `visualViewport`/`scroll`/`orientationchange` listeners and the `top` state entirely.
+- Use a single static style: `position: fixed; left: 0; right: 0; bottom: 0; width: 100%; padding-bottom: env(safe-area-inset-bottom, 0px); transform: none;`.
+- Keep the `createPortal(nav, document.body)` (still required to escape any ancestor containing block).
+- Keep `contain: layout style` so paints stay local.
+- Verify in the preview at 402×606 that no gap is rendered below the bar and that no movement occurs during a long-list scroll.
+
+## 3) "Enable notifications" CTA opens the wrong settings page
+
+**Symptom (IMG_0493):** Tapping the CTA opens iOS' **global** Notifications screen, not CarnivoreX's app-specific notification page.
+
+**Root cause:** `capacitor-native-settings`' `IOSSettings.AppNotification` resolves to the global Notifications panel on some iOS builds. Apple's documented reliable way to land on the app's own settings (which contains the Notifications row pre-selected for our bundle) is the `app-settings:` URL scheme via `App.openUrl`.
+
+**Change:** In `src/lib/openAppSettings.ts`:
+
+- New attempt order on iOS:
+  1. `App.openUrl({ url: "app-settings:" })` — opens **CarnivoreX → Settings** directly. Success when `completed === true`.
+  2. Fallback: existing `NativeSettings.open({ optionIOS: IOSSettings.App })`.
+  3. Fallback: existing `NativeSettings.open({ optionIOS: IOSSettings.AppNotification })`.
+  4. Last resort: `CapacitorApp.openSettings()`.
+- Android branch unchanged (`AndroidSettings.ApplicationDetails`).
+- Keep all `[NotifSettings]` trace logs so we can confirm which branch ran.
+
+No changes to the CTA caller in `Profile.tsx` — it already calls `openAppSettings(traceId)` when `perm !== "granted"`.
+
+Approved with two safeguards added.
+
+Stabilization pass — SIWA name, bottom nav, notification CTA
+
+Three targeted fixes. No business logic changes.
+
+1) Sign in with Apple — name not parsed into [Cal.com](http://Cal.com)
+
+Symptom: [Cal.com](http://Cal.com) “Your name” is blank while the Apple relay email is prefilled; iOS keyboard suggests the real full name, which shows the OS has it but our app did not pass it through.
+
+IMG_0493.jpeg
+
+Root cause: CoachingBooking is likely relying too narrowly on user.user_metadata.display_name, while Apple users may have the usable name in profile storage or Apple name cache instead.
+
+IMG_0493.jpeg
+
+Change in src/components/CoachingBooking.tsx:
+
+Resolve prefill name in this order:
+
+user.user_metadata.display_name, full_name, name
+
+profiles.display_name
+
+getCachedAppleFullName() from @/lib/appleDisplayName
+
+Cache the resolved profile name in component state when the dialog opens.
+
+Log [CoachingBooking] prefill-name source=metadata|profile|cache|missing.
+
+Pass the resolved value into buildCalUrl.
+
+No webhook contract change.
+
+Safeguard: trim whitespace and reject placeholder/empty strings before falling through to the next source, so a blank profile value does not incorrectly “win.”
+
+2) Bottom nav — visible gap and drift on scroll
+
+Symptom: There is still a visible slot below the tab bar and slight movement during scroll.
+
+IMG_0490.jpeg
+
++1
+
+Root cause: viewport-driven repositioning on scroll is likely introducing lag and rounding artifacts on iOS WKWebView, especially when combined with safe-area math. The screenshot pattern is consistent with a fixed element being over-managed rather than statically anchored.
+
+IMG_0491.jpeg
+
++1
+
+Change in src/components/BottomNav.tsx:
+
+Remove visualViewport listeners, scroll listeners, orientation-driven manual top calculation, and any top state.
+
+Keep createPortal(nav, document.body).
+
+Use a single static layout rule:
+
+position: fixed
+
+left: 0
+
+right: 0
+
+bottom: 0
+
+width: 100%
+
+padding-bottom: env(safe-area-inset-bottom, 0px)
+
+transform: none
+
+Keep contain: layout style.
+
+Safeguard: make sure the page content container gets bottom padding equal to nav height plus safe-area inset, otherwise the nav may stop drifting but still cover the final content rows.
+
+IMG_0490.jpeg
+
++1
+
+3) “Enable notifications” CTA opens the wrong settings page
+
+Symptom: The CTA is landing in general iOS Notifications or generic app settings, not the app-specific notification permissions destination. The screenshots show global Notifications and CarnivoreX app settings, but not a successful app notification landing target.
+
+IMG_0494.jpeg
+
++2
+
+Root cause: IOSSettings.AppNotification is not reliably landing on the desired destination on this iOS/device combination, so the current attempt order is not producing the correct user outcome.
+
+IMG_0495.jpeg
+
++2
+
+Change in src/lib/openAppSettings.ts:
+
+iOS attempt order:
+
+App.openUrl({ url: "app-settings:" })
+
+[NativeSettings.open](http://NativeSettings.open)({ optionIOS: [IOSSettings.App](http://IOSSettings.App) })
+
+[NativeSettings.open](http://NativeSettings.open)({ optionIOS: IOSSettings.AppNotification })
+
+CapacitorApp.openSettings()
+
+Android unchanged.
+
+Keep [NotifSettings] logs for each branch and result.
+
+Safeguard: log both the attempted branch and the returned completion/result value, because “settings opened” is not the same as “correct destination opened.”
+
+Verification
+
+After clean install on device, capture:
+
+[CoachingBooking] prefill-name source=profile|cache|metadata and [Cal.com](http://Cal.com) shows the real Apple name prefilled. 
+
+IMG_0493.jpeg
+
+Bottom nav remains visually pinned with no band beneath it and no wobble during long scroll on Profile and Recipes.
+
+IMG_0491.jpeg
+
++1
+
+Notification CTA logs show which branch ran, and the user lands on CarnivoreX settings via the most direct supported destination rather than the generic Notifications list.
+
+IMG_0489.jpeg
+
++2
+
+Files touched
+
+src/components/CoachingBooking.tsx
+
+src/components/BottomNav.tsx
+
+src/lib/openAppSettings.ts
+
+## Verification
+
+After build + clean install on device, capture:
+
+- Xcode console: `[CoachingBooking] prefill-name source=profile` (or `cache`/`metadata`) and the resulting Cal.com page shows the Apple name pre-filled in "Your name".
+- Bottom nav: scroll Recipes / Profile — bar stays pinned; no band underneath at 402×606.
+- Notification CTA: `[NotifSettings] open() result=app-settings:` followed by iOS landing on **Settings → CarnivoreX** (not the global Notifications list).
+
+## Files touched
+
 - `src/components/CoachingBooking.tsx`
 - `src/components/BottomNav.tsx`
-- `src/index.css`
+- `src/lib/openAppSettings.ts`
