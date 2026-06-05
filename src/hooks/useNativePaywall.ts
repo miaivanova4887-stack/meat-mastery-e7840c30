@@ -10,6 +10,7 @@ import {
   isRevenueCatAvailable,
   getCurrentOffering,
   findPackage,
+  findCoachingPackage,
   purchasePackage,
   restorePurchases,
   type PurchaseResult,
