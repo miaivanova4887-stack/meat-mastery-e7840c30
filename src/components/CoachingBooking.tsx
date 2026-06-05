@@ -208,9 +208,12 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
               </div>
               <div className="bg-muted/50 rounded-xl p-4 text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  {content.paid_label || "CA$99 per session"}
+                  {useNative && paywall.packages.coaching?.priceString
+                    ? `${paywall.packages.coaching.priceString} per session`
+                    : (content.paid_label || "$99.99 per session")}
                 </p>
               </div>
+
               <Button onClick={() => { handlePayment(); setScreen("payment"); }} className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-12 font-semibold">
                 {content.pay_button || "Proceed to Payment"}
               </Button>
