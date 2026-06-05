@@ -56,6 +56,40 @@ export const CoachingReminderSettings = () => {
     toast.success(isFr ? "Préférences mises à jour" : "Preferences updated");
   };
 
+  const sendTest = async () => {
+    if (!user || testing) return;
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("coaching-reminder-test", {
+        body: {},
+      });
+      if (error) {
+        toast.error(
+          isFr ? "Échec de l'envoi du test" : "Failed to send test reminder",
+        );
+        return;
+      }
+      const delivered = (data?.deliveredNative ?? 0) + (data?.deliveredWeb ?? 0);
+      if (delivered === 0) {
+        toast.error(
+          isFr
+            ? "Aucun appareil enregistré — activez d'abord les notifications."
+            : "No registered devices — enable notifications first.",
+        );
+      } else {
+        toast.success(
+          isFr
+            ? `Test envoyé à ${delivered} appareil(s).`
+            : `Test reminder sent to ${delivered} device${delivered === 1 ? "" : "s"}.`,
+        );
+      }
+    } catch (e) {
+      toast.error(isFr ? "Échec de l'envoi du test" : "Failed to send test reminder");
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
     <div className="ios-card p-4">
       <div className="flex items-center justify-between">
