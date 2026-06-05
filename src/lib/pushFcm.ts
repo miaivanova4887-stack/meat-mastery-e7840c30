@@ -310,6 +310,14 @@ if (typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.g
   bindFcmTokenListenerOnce();
 }
 
+// Bind the push-tap action listener at module load on any native platform so
+// cold-start taps (where the OS launches the app from a notification) are
+// captured before React Router mounts. The handler queues the path in a
+// module-level variable + sessionStorage; usePushNavigation drains both.
+if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
+  bindActionListenerOnce();
+}
+
 export async function triggerPushEvent(
   eventName: string,
   eventData?: Record<string, unknown>,
