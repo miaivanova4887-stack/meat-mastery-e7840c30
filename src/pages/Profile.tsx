@@ -99,6 +99,25 @@ const Profile = () => {
   const [tab, setTab] = useState<"feed" | "goals" | "community" | "settings">(initialTab);
   const highlightSessionId = searchParams.get("sessionId") || undefined;
   const section = searchParams.get("section") || undefined;
+
+  // React to query-param updates that arrive while Profile is already mounted
+  // (e.g., push tap when app was already on /profile). Switch tab + scroll.
+  useEffect(() => {
+    const q = searchParams.get("tab");
+    if (q === "feed" || q === "goals" || q === "community" || q === "settings") {
+      setTab(q);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (section !== "coaching") return;
+    if (tab !== "settings") return;
+    const id = window.setTimeout(() => {
+      const el = document.getElementById("coaching-section");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+    return () => window.clearTimeout(id);
+  }, [section, tab, highlightSessionId]);
   const userProfile = useUserProfile();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const favoriteRecipes = useMemo(() => recipes.filter(r => favorites.has(r.name)), [favorites]);
