@@ -320,14 +320,16 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
   }, [highlightSessionId, loading, sessions]);
 
   const now = Date.now();
-  const visible = sessions.filter((s) => s.status !== "pending");
-  const upcoming = visible.filter(
+  // Paid but never picked a date/time. Treated as a first-class state and
+  // surfaced as "Action needed — Schedule your session".
+  const pending = sessions.filter((s) => s.status === "pending");
+  const upcoming = sessions.filter(
     (s) =>
       s.status === "scheduled" &&
       s.scheduled_at &&
       new Date(s.scheduled_at).getTime() > now
   );
-  const past = visible
+  const past = sessions
     .filter(
       (s) =>
         s.status === "completed" ||
@@ -355,7 +357,7 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
     );
   }
 
-  const isEmpty = upcoming.length === 0 && past.length === 0;
+  const isEmpty = pending.length === 0 && upcoming.length === 0 && past.length === 0;
 
   if (isEmpty) {
     return (
@@ -448,8 +450,59 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
     );
   };
 
+  const renderPendingCard = (s: CoachingSession) => {
+    const isPulsing = pulseId === s.id;
+    const busy = schedulingId === s.id;
+    return (
+      <div
+        key={s.id}
+        id={`coaching-session-${s.id}`}
+        className={`ios-card p-4 space-y-3 scroll-mt-24 border-l-4 border-l-primary transition-shadow duration-500 ${
+          isPulsing ? "ring-2 ring-primary shadow-lg" : ""
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
+            <AlertCircle className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-display font-bold text-foreground text-[15px]">
+              1-hour coaching call
+            </h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Paid — awaiting your time slot.
+            </p>
+          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full bg-primary text-primary-foreground">
+            Action
+          </span>
+        </div>
+        <Button
+          size="sm"
+          onClick={() => handleSchedule(s)}
+          disabled={busy}
+          className="w-full h-9 text-xs"
+        >
+          <CalendarPlus className="w-3.5 h-3.5 mr-1.5" />
+          {busy ? "Opening scheduler…" : "Schedule your session"}
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
+      {pending.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-display font-bold text-foreground">
+            Action needed
+          </h3>
+          <div className="space-y-2">
+            {pending.map((s) => renderPendingCard(s))}
+          </div>
+        </div>
+      )}
+
       {upcoming.length > 0 && (
         <div className="space-y-2">
           <h3 className="text-sm font-display font-bold text-foreground">
