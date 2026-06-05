@@ -692,7 +692,7 @@ const Onboarding = () => {
                     maxLength={field.type === "number" ? 6 : 200}
                   />
                   {field.unit && (
-                    <span className="text-[11px] font-medium text-muted-foreground w-10 uppercase tracking-wider">
+                    <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap uppercase tracking-wider">
                       {field.unit}
                     </span>
                   )}
