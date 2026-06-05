@@ -46,6 +46,7 @@ let appStateListenerBound = false;
 // sets `path` explicitly; we also support a `target`+`session_id` fallback
 // and a legacy `url` field used by older notifications.
 const PENDING_NAV_KEY = "push-nav-pending";
+const PENDING_NAV_KEY_PERSIST = "push-nav-pending-persist";
 let pendingPushNav: string | null = null;
 
 function safeAbsPath(p: unknown): string | null {
@@ -89,20 +90,51 @@ function resolvePushNavPath(data: Record<string, unknown> | undefined | null): s
 
 function queuePushNav(path: string) {
   pendingPushNav = path;
-  let stored = false;
-  try { sessionStorage.setItem(PENDING_NAV_KEY, path); stored = true; } catch {/* ignore */}
+  let sessionStored = false;
+  let localStored = false;
+  try { sessionStorage.setItem(PENDING_NAV_KEY, path); sessionStored = true; } catch {/* ignore */}
+  // Belt-and-suspenders: localStorage survives WebView reloads and any
+  // sessionStorage flushes during cold start. usePushNavigation drains
+  // and clears it on the first successful consume.
+  try {
+    localStorage.setItem(
+      PENDING_NAV_KEY_PERSIST,
+      JSON.stringify({ path, ts: Date.now() })
+    );
+    localStored = true;
+  } catch {/* ignore */}
   let dispatched = false;
   try {
     window.dispatchEvent(new CustomEvent("push-nav", { detail: { path } }));
     dispatched = true;
   } catch {/* ignore */}
-  console.info("[PushTap] queue", { path, stored, dispatched });
+  console.info("[PushTap] queue", { path, sessionStored, localStored, dispatched });
 }
 
 export function consumePendingPushNav(): string | null {
   const v = pendingPushNav;
   pendingPushNav = null;
   return v;
+}
+
+/** Drain the localStorage fallback (persists across WebView reloads). */
+export function consumePersistedPushNav(maxAgeMs = 60_000): string | null {
+  try {
+    const raw = localStorage.getItem(PENDING_NAV_KEY_PERSIST);
+    if (!raw) return null;
+    localStorage.removeItem(PENDING_NAV_KEY_PERSIST);
+    const parsed = JSON.parse(raw) as { path?: unknown; ts?: unknown };
+    const path = safeAbsPath(parsed?.path);
+    const ts = typeof parsed?.ts === "number" ? parsed.ts : 0;
+    if (!path) return null;
+    if (Date.now() - ts > maxAgeMs) {
+      console.info("[PushTap] persisted intent expired", { ageMs: Date.now() - ts });
+      return null;
+    }
+    return path;
+  } catch {
+    return null;
+  }
 }
 
 export async function savePushConsent(
