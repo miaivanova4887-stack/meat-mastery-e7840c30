@@ -93,6 +93,7 @@ export function useNativePaywall(): NativePaywallState {
         pro_yearly: toInfo(findPackage(off, "pro", "yearly"), "yearly"),
         elite_monthly: toInfo(findPackage(off, "elite", "monthly"), "monthly"),
         elite_yearly: toInfo(findPackage(off, "elite", "yearly"), "yearly"),
+        coaching: toCoachingInfo(findCoachingPackage(off)),
       };
       console.info("[RC DEBUG] paywall packages", {
         offeringId: off?.identifier ?? null,
