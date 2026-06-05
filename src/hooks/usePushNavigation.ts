@@ -37,15 +37,13 @@ export function usePushNavigation() {
       console.info("[PushNav] navigate scheduled", { path, reason });
       requestAnimationFrame(() => {
         console.info("[PushNav] navigate calling", { path });
-        navigate(path);
+        navigate(path, { replace: true });
+        import("@/lib/pushRouteIntent").then((m) => m.markPushRouteIntentConsumed()).catch(() => {});
         requestAnimationFrame(() => {
           console.info("[PushNav] post-nav location", {
             path: window.location.pathname + window.location.search,
           });
         });
-        // Route-watch: log any subsequent route changes within 3s so we can
-        // prove whether another effect (e.g. an auth-guard) overwrote the
-        // push route after we navigated.
         const startedAt = Date.now();
         const expected = path;
         const check = (label: string) => {
@@ -54,6 +52,8 @@ export function usePushNavigation() {
             console.warn("[PushNav] route changed away from push target", {
               expected, current, ageMs: Date.now() - startedAt, label,
             });
+          } else {
+            console.info("[PushNav] route held", { label, current });
           }
         };
         setTimeout(() => check("t+250ms"), 250);

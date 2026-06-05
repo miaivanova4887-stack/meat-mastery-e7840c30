@@ -93,15 +93,16 @@ function queuePushNav(path: string) {
   let sessionStored = false;
   let localStored = false;
   try { sessionStorage.setItem(PENDING_NAV_KEY, path); sessionStored = true; } catch {/* ignore */}
-  // Belt-and-suspenders: localStorage survives WebView reloads and any
-  // sessionStorage flushes during cold start. usePushNavigation drains
-  // and clears it on the first successful consume.
   try {
     localStorage.setItem(
       PENDING_NAV_KEY_PERSIST,
       JSON.stringify({ path, ts: Date.now() })
     );
     localStored = true;
+  } catch {/* ignore */}
+  // Durable intent — survives auth redirects, scroll retries, etc.
+  try {
+    void import("@/lib/pushRouteIntent").then((m) => m.recordPushRouteIntent(path));
   } catch {/* ignore */}
   let dispatched = false;
   try {

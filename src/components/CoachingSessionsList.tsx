@@ -260,7 +260,10 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
       acc[r.status] = (acc[r.status] ?? 0) + 1;
       return acc;
     }, {});
-    console.info("[CoachingSessions] fetched", { total: list.length, counts });
+    const pendingSummary = list
+      .filter((r) => r.status === "pending")
+      .map((r) => ({ id: r.id, source: r.source, created_at: r.created_at }));
+    console.info("[CoachingSessions] fetched", { total: list.length, counts, pendingSummary });
     setSessions(list);
     setUserTz(profile?.timezone || null);
     setLoading(false);
@@ -274,6 +277,7 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
       sessionId: session.id,
       source: session.source,
       status: session.status,
+      mode: "already_paid",
     });
     setScheduleSession(session);
     setBookingOpen(true);
