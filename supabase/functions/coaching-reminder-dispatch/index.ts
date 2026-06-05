@@ -8,6 +8,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 import { sendFcmToToken } from "../_shared/fcm.ts";
+import { loadReminderCopy, renderReminder } from "../_shared/reminderCopy.ts";
 import webPush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
@@ -37,6 +38,11 @@ serve(async (req) => {
   const offsets = [15, 30, 60, 120, 1440];
   let sent = 0;
   let skipped = 0;
+
+  // Resolve copy from CMS once per invocation; falls back to defaults if rows
+  // are missing. Never throws.
+  const copy = await loadReminderCopy(admin);
+
 
   for (const offset of offsets) {
     const target = new Date(now.getTime() + offset * 60_000);
@@ -77,19 +83,16 @@ serve(async (req) => {
         if (!profile || !profile.reminders_enabled) { skipped++; continue; }
         if (profile.reminder_offset_minutes !== offset) { skipped++; continue; }
 
-        const title = profile.locale === "fr"
-          ? "Rappel : appel de coaching"
-          : "Coaching call reminder";
+        const locale = profile.locale === "fr" ? "fr" : "en";
         const whenLocal = s.scheduled_at
-          ? new Date(s.scheduled_at).toLocaleString(profile.locale === "fr" ? "fr-FR" : "en-US", {
+          ? new Date(s.scheduled_at).toLocaleString(locale === "fr" ? "fr-FR" : "en-US", {
               timeZone: s.timezone ?? undefined,
               hour: "numeric",
               minute: "2-digit",
             })
           : "";
-        const body = profile.locale === "fr"
-          ? `Votre appel commence à ${whenLocal}.`
-          : `Your call starts at ${whenLocal}.`;
+        const { title, body } = renderReminder(copy, locale, whenLocal);
+
 
         // Native FCM tokens
         const { data: tokens } = await admin

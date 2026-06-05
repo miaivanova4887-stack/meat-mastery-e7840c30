@@ -28,6 +28,7 @@ export const CoachingReminderSettings = () => {
   const [enabled, setEnabled] = useState(true);
   const [offset, setOffset] = useState(60);
   const [loaded, setLoaded] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -53,6 +54,40 @@ export const CoachingReminderSettings = () => {
       return;
     }
     toast.success(isFr ? "Préférences mises à jour" : "Preferences updated");
+  };
+
+  const sendTest = async () => {
+    if (!user || testing) return;
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("coaching-reminder-test", {
+        body: {},
+      });
+      if (error) {
+        toast.error(
+          isFr ? "Échec de l'envoi du test" : "Failed to send test reminder",
+        );
+        return;
+      }
+      const delivered = (data?.deliveredNative ?? 0) + (data?.deliveredWeb ?? 0);
+      if (delivered === 0) {
+        toast.error(
+          isFr
+            ? "Aucun appareil enregistré — activez d'abord les notifications."
+            : "No registered devices — enable notifications first.",
+        );
+      } else {
+        toast.success(
+          isFr
+            ? `Test envoyé à ${delivered} appareil(s).`
+            : `Test reminder sent to ${delivered} device${delivered === 1 ? "" : "s"}.`,
+        );
+      }
+    } catch (e) {
+      toast.error(isFr ? "Échec de l'envoi du test" : "Failed to send test reminder");
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (
@@ -98,6 +133,20 @@ export const CoachingReminderSettings = () => {
               </option>
             ))}
           </select>
+        </div>
+      )}
+      {enabled && (
+        <div className="mt-3 pt-3 border-t border-border/40">
+          <button
+            type="button"
+            onClick={sendTest}
+            disabled={!loaded || testing}
+            className="w-full text-sm font-semibold text-primary py-2 rounded-lg hover:bg-primary/5 disabled:opacity-50 transition-colors"
+          >
+            {testing
+              ? isFr ? "Envoi…" : "Sending…"
+              : isFr ? "Envoyer un rappel test" : "Send test reminder"}
+          </button>
         </div>
       )}
     </div>
