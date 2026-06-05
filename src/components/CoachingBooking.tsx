@@ -27,6 +27,9 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const navigate = useNavigate();
   const location = useLocation();
 
+  const paywall = useNativePaywall();
+  const useNative = isRevenueCatAvailable();
+
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
