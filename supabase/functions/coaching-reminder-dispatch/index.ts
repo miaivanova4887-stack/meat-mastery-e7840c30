@@ -103,12 +103,18 @@ serve(async (req) => {
         let okAny = false;
         let lastErr = "";
 
+        const deepPath =
+          `/profile?tab=settings&section=coaching&sessionId=${encodeURIComponent(s.id)}`;
+
         for (const t of tokens ?? []) {
           try {
             const res = await sendFcmToToken(t.token, { title, body }, {
               type: "coaching_reminder",
+              target: "coaching_upcoming_session",
               session_id: s.id,
-              url: s.booking_url ?? "",
+              path: deepPath,
+              url: deepPath,
+              booking_url: s.booking_url ?? "",
             });
             if (res.ok) okAny = true;
             else lastErr = res.error ?? `status ${res.status}`;
