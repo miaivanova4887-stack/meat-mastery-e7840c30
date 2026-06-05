@@ -93,6 +93,8 @@ export function usePushNavigation() {
     return () => {
       window.removeEventListener("push-nav", handler);
       clearTimeout(t);
+      clearTimeout(t2);
+      clearTimeout(t3);
     };
   }, [navigate]);
 }
