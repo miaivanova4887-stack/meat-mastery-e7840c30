@@ -190,6 +190,16 @@ const Pricing = () => {
   };
 
   // --- Plan data ---------------------------------------------------------
+  // Coaching bullet uses StoreKit's localized price on native (so US shows
+  // $99.99 and CA shows $129.99 from the same binary). Falls back to the
+  // Stripe US literal on web.
+  const nativeCoachingPrice = paywall.packages.coaching?.priceString;
+  const coachingBullet = paywall.enabled
+    ? (nativeCoachingPrice
+        ? `Coaching calls (${nativeCoachingPrice}/session)`
+        : "Coaching calls")
+    : `Coaching calls (${TIERS.coaching.amount}/session)`;
+
   const plans: {
     tier: SubscriptionTier;
     name: string;
@@ -208,7 +218,7 @@ const Pricing = () => {
         "My Feed & News",
         "Basic meal logging",
         "EN/FR language toggle",
-        "Coaching calls ($99.99/session)",
+        coachingBullet,
       ],
     },
     {
@@ -224,7 +234,7 @@ const Pricing = () => {
         "Community Feed (post & comment)",
         "AI Carnivore Coach chat",
         "Personalized recommendations",
-        "Coaching calls ($99.99/session)",
+        coachingBullet,
       ],
     },
     {
@@ -568,7 +578,7 @@ const Pricing = () => {
                 {isBusy ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
-                  `Book a Call — ${coachingPkg.priceLabel || "$99.99"}`
+                  `Book a Call — ${coachingPkg.priceLabel}`
                 )}
               </Button>
             );

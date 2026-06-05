@@ -1,153 +1,108 @@
-# Refactor: OS permission is the source of truth for the push toggle
+## Goal
 
-## Problem
+On iOS, every coaching price shown must come from the StoreKit product metadata (`paywall.packages.coaching.priceString`) for the current Apple ID's storefront — not from a hardcoded `$99.99` literal. Web/Stripe continues to use the Stripe-side amount.
 
-Today the **Enable Notifications** switch in Profile is bound to a per-user saved preference (`notifPrefs.enabled`) from the DB/local cache. That means:
+## Audit — coaching price surfaces today
 
-- After signing out of SIWA and back in with email/password, the saved pref can be `false` while the OS permission is already `granted`, so the user sees the toggle off and (worse) flipping it on triggers extra logic instead of just enabling app prefs.
-- Conversely the toggle can show ON while iOS Settings has revoked the permission, because we never reconcile against the OS.
-- The on-toggle handler mixes "save user pref" with "request OS permission" instead of branching purely on OS state.
 
-The fix is to treat **OS permission as the source of truth for whether push is enabled on this device**, and use `notifPrefs.enabled` only as a soft "the user wants categories on once permission exists".
+| File                                 | Line     | Current                                                                                                                                    | Issue                                                                     |
+| ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `src/components/CoachingBooking.tsx` | 313      | `content.paid_label                                                                                                                        | &nbsp;                                                                    |
+| `src/pages/Coaching.tsx`             | 127–128  | `paywall.packages.coaching?.priceString ?? "$99.99"`                                                                                       | Correct precedence but on a slow RC load it briefly shows the US literal. |
+| `src/pages/Pricing.tsx`              | 571      | `coachingPkg.priceLabel                                                                                                                    | &nbsp;                                                                    |
+| `src/pages/Pricing.tsx`              | 585      | `Book a Call — ${TIERS.coaching.amount}` (`$99.99`) — web Stripe branch only                                                               | OK (web).                                                                 |
+| `src/pages/Pricing.tsx`              | 211, 227 | Plan feature bullets `"Coaching calls ($99.99/session)"` (the bullet under Elite "YOUR PLAN" card visible in IMG_0498 comes via this list) | Hardcoded US price shown on iOS. Should reflect StoreKit price on native. |
 
-## Scope (single file)
-
-`**src/pages/Profile.tsx**` — Enable Notifications card + a small reconciliation effect. No backend changes, no new files, no changes to other notification sub-toggles' logic (they keep using `notifPrefs.*`).
 
 ## Changes
 
-### 1. Track OS permission state in Profile
+### 1. `src/components/CoachingBooking.tsx` (line 309–315)
 
-- Add `const [osPushPerm, setOsPushPerm] = useState<NativePushPermission>("unsupported")`.
-- New `refreshOsPushPerm()` helper: on native, `await getNativePushPermission()` and `setOsPushPerm(...)`; on web, leave as `"unsupported"`.
-- Call it:
-  - once on mount,
-  - whenever the Profile tab becomes visible (existing `tab === "settings"` effect),
-  - on Capacitor `App.appStateChange` `isActive=true` (bind listener inside an effect, unsubscribe on unmount),
-  - right after any toggle action below.
+Make StoreKit the source of truth on iOS, and ignore the CMS `paid_label` when running native:
 
-### 2. Derive the displayed switch state from OS perm
-
-Replace the Switch `checked` binding with:
-
-```
-const pushEnabledEffective =
-  Capacitor.isNativePlatform()
-    ? (osPushPerm === "granted" && notifPrefs.enabled)
-    : notifPrefs.enabled;
+```tsx
+const nativePrice = useNative ? paywall.packages.coaching?.priceString : null;
+const priceCopy = nativePrice
+  ? `${nativePrice} per session`
+  : (content.paid_label || "$99.99 per session");
 ```
 
-`<Switch checked={pushEnabledEffective} ... />` and the dependent block (`opacity-50 pointer-events-none`) keys off `pushEnabledEffective` instead of `notifPrefs.enabled`. This makes the UI honest: if iOS Settings revoked permission, the toggle reads OFF even if the saved pref is true.
+Render `priceCopy`. (Web/Stripe path keeps CMS/$99.99 fallback.)
 
-### 3. Rewrite `onCheckedChange` to branch on OS state only
+### 2. `src/pages/Coaching.tsx` (line 122–129)
 
-```text
-onCheckedChange(v):
-  traceId = nsx_tog_<ts>
-  log [NotifSettings] toggle v= permBefore=
+Same precedence already exists, but suppress the `$99.99` fallback while RC is still loading on native. Show `—` (or a small skeleton) when `useNative && !paywall.packages.coaching?.priceString`, and only fall back to `$99.99` on web.
 
-  if (!v) {
-    // Turning OFF is purely an app-pref change. Never touch OS.
-    updateNotifPref("enabled", false)
-    return
-  }
+### 3. `src/pages/Pricing.tsx` plan feature bullets (lines 192–245)
 
-  // Turning ON.
-  if (!Capacitor.isNativePlatform()) {
-    updateNotifPref("enabled", true)   // web path unchanged
-    return
-  }
+Compute the coaching bullet text dynamically instead of a hardcoded string. Add near the `plans` definition:
 
-  const perm = await getNativePushPermission()
-  switch (perm) {
-    case "granted":
-      // Permission already exists for this device. No prompt, no settings jump.
-      updateNotifPref("enabled", true)
-      await savePushConsent("granted", {})       // server reconciliation only
-      toast.success("Notifications enabled")
-      break
-
-    case "prompt":
-    case "prompt-with-rationale":
-      // First-ever ask on this device → fire the native prompt exactly once.
-      const result = await requestNativePush()
-      if (result === "granted") {
-        updateNotifPref("enabled", true)
-        // savePushConsent already called inside requestNativePush
-        toast.success("Notifications enabled")
-      } else {
-        updateNotifPref("enabled", false)
-        toast.info("Notifications were not enabled.")
-      }
-      break
-
-    case "denied":
-      // OS has permanently denied — re-requesting is a no-op. Send user to
-      // the app-specific Settings pane and keep pref OFF until OS flips it.
-      toast.info("Opening system notification settings…")
-      await openAppSettings(traceId)
-      updateNotifPref("enabled", false)
-      break
-
-    case "unsupported":
-    default:
-      updateNotifPref("enabled", true)
-      break
-  }
-
-  await refreshOsPushPerm()
-  log [NotifSettings] toggle permAfter=
+```ts
+const nativeCoachingPrice = paywall.packages.coaching?.priceString;
+const coachingBullet = paywall.enabled
+  ? (nativeCoachingPrice ? `Coaching calls (${nativeCoachingPrice}/session)` : "Coaching calls")
+  : `Coaching calls (${TIERS.coaching.amount}/session)`;
 ```
 
-Critically: the `granted` branch never calls `requestNativePush()` (no prompt) and never opens Settings — exactly the SIWA→email login scenario the user described.
+Use `coachingBullet` in the Free and Pro feature arrays in place of the two `"Coaching calls ($99.99/session)"` literals. Wrap `plans` in `useMemo` keyed on `coachingBullet` so it re-renders when RC resolves.
 
-### 4. Reconcile saved pref on resume / on permission change
+### 4. `src/pages/Pricing.tsx` line 571 (book button)
 
-After `refreshOsPushPerm()` resolves:
+Drop the `"$99.99"` fallback in the native branch — only render the button label once `coachingPkg.priceLabel` is set; the existing "Loading coaching…" state at line 553 already covers the pre-resolve state, so this is a one-line safety cleanup: `Book a Call — ${coachingPkg.priceLabel}`.
 
-- If `osPushPerm === "denied"` and `notifPrefs.enabled === true`, write `updateNotifPref("enabled", false)` locally so stale "on" state from another device or a previous OS-grant disappears. Do NOT call `savePushConsent("denied")` here — pref is per-device UI, server consent is updated only via the explicit toggle/native prompt path.
-- If `osPushPerm === "granted"` we leave `notifPrefs.enabled` alone (user may legitimately want it off in-app).
+### 5. Leave alone
 
-### 5. Logging for evidence
+- `src/pages/Pricing.tsx` line 25/27 `TIERS.coaching.amount` and line 585 — these power the **web Stripe** branch only and `$99.99` is the correct US Stripe price.
+- Stripe checkout / Cal.com URLs.
+- `revenuecat.ts`, `useNativePaywall.ts` (already pass `product.priceString` through correctly).
 
-Keep the existing `[NotifSettings] toggle-*` trace lines and add:
+## Verification (evidence to capture)
 
-- `[NotifSettings] osPerm refresh perm=<...> source=<mount|resume|tabSwitch|postToggle>`
-- `[NotifSettings] reconcile action=<force-off|noop> osPerm=<...> savedPref=<...>`
+Build a fresh TestFlight APK. With two Apple IDs / storefronts:
 
-Approved with one clarification and one safeguard.
+1. **US storefront** sign-in on device:
+  - Pricing page Free/Pro bullets read `Coaching calls ($99.99/session)`.
+  - `Book a Call` button reads `$99.99`.
+  - CoachingBooking modal reads `$99.99 per session`.
+  - StoreKit sheet reads `$99.99`.
+  - Console: `[RC DEBUG] paywall packages` includes `coaching:$99.99`.
+2. **Canada storefront** sign-in (same binary, switch Apple ID in Settings → Media & Purchases):
+  - All four surfaces above read `$129.99` (or whatever CA price StoreKit returns).
+  - StoreKit sheet reads `$129.99`.
+  - Console: `[RC DEBUG] paywall packages` includes `coaching:$129.99`.
 
-I agree with the refactor direction: the toggle flow must branch on current OS notification permission state, not login method or stale saved user preference.
+Screenshot all four in-app surfaces + the StoreKit sheet per storefront for the build report.
 
-Please implement exactly this logic:
+Approved.
 
-prompt / undetermined → request native permission once
+This is the right fix direction.
 
-granted → never request again, just enable app prefs
+On iOS, every coaching price surface should use the localized RevenueCat / StoreKit product price string for the current App Store storefront, not a hardcoded US literal and not CMS price copy.
 
-denied → never request again, open settings and keep effective UI off
+I agree with:
 
-Two notes:
+making StoreKit/RevenueCat the source of truth in CoachingBooking.tsx
 
-Please describe this as “OS permission is the source of truth for whether push is possible on this device,” since the visible ON state still depends on both OS permission and notifPrefs.enabled.
+suppressing native $99.99 fallback in Coaching.tsx
 
-Be explicit whether updateNotifPref("enabled", false) in the denied/reconcile path is local-only or synced, because I do not want cross-device user intent accidentally overwritten by a single device’s OS state.
+replacing hardcoded coaching bullet text in Pricing.tsx
 
-Also add a log line for:
+removing native button fallback where the loading state already exists
 
-[NotifSettings] action=already-granted
+leaving web/Stripe pricing unchanged
 
-That is the key proof for the SIWA → email-login same-device case.
+Two small notes:
+
+In Coaching.tsx, prefer a loading skeleton or “Loading price…” instead of a bare dash while RevenueCat is unresolved.
+
+After these file changes, run a full codebase grep for remaining coaching $99.99 literals and CMS fallback labels.
+
+Verification should show:
+
+US storefront: all in-app coaching surfaces and StoreKit sheet show $99.99
+
+Canada storefront: all in-app coaching surfaces and StoreKit sheet show $129.99
 
 ## Out of scope
 
-- No changes to `requestNativePush`, `openAppSettings`, consent sheet, CTA button, Daily Reminder / Streak / Weekly / News sub-toggles, server schema, or push edge functions.
-- No changes to the SIWA login flow itself — the perceived "fresh prompt after relogin" disappears as a side effect of step 3's `granted` branch never prompting.
-
-## Verification (manual, on device)
-
-1. Fresh install, OS perm = `prompt`. Toggle ON → native dialog shown once. Allow → toast, toggle stays ON. Logs show `permBefore=prompt action=request permAfter=granted`.
-2. Same device, sign out of SIWA, sign back in with email/password. Open Profile → toggle reads ON (because OS=granted). Flip OFF then ON → no native dialog, no Settings jump, just `permBefore=granted action=already-granted`.
-3. Revoke notifications in iOS Settings, return to app. Toggle now reads OFF automatically (reconciliation). Tap ON → Settings opens, toggle stays OFF.
-4. Web build: behavior unchanged (OS is `unsupported`, toggle = saved pref).
-5. Xcode console shows the new `[NotifSettings] osPerm refresh` and `reconcile` lines on mount, tab switch, and app resume.
+SIWA name parsing, BottomNav spacing, notification permission flow, Stripe price changes.
