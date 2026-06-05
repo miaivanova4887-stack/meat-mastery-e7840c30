@@ -5,11 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState } from "react";
+import { useNativePaywall } from "@/hooks/useNativePaywall";
+import { isRevenueCatAvailable } from "@/lib/revenuecat";
+import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 
 const Coaching = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const paywall = useNativePaywall();
+  const useNative = isRevenueCatAvailable();
 
   const handleBookPaid = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -19,9 +24,42 @@ const Coaching = () => {
     }
     setLoading(true);
     try {
+      if (useNative) {
+        // iOS: StoreKit consumable via RevenueCat. Stripe must not be reachable
+        // from inside the iOS app (Apple Guideline 3.1.1).
+        const pkg = paywall.packages.coaching;
+        if (!pkg) {
+          // RC offering hasn't resolved (or product missing). Surface and
+          // attempt a refresh so App Review never sees an inert button.
+          await paywall.refresh();
+          toast.error("Coaching isn't available right now. Please try again in a moment.");
+          return;
+        }
+        const result = await paywall.purchase(pkg.pkg);
+        if (result.cancelled) return;
+        if (!result.ok) {
+          toast.error(result.error ?? "Purchase failed");
+          return;
+        }
+        const recorded = await recordCoachingPurchase({
+          source: "appstore",
+          productId: pkg.pkg.product?.identifier ?? "coaching_call",
+          transactionId: `rc_${session.user.id}_${Date.now()}`,
+          purchaseDateMs: Date.now(),
+        });
+        toast.success("Coaching call purchased — choose your time.");
+        window.open(
+          recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session",
+          "_blank",
+          "noopener,noreferrer"
+        );
+        return;
+      }
+
+      // Web: existing Stripe flow.
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
       if (error) throw error;
-      if (data?.url) window.open(data.url, "_blank");
+      if (data?.url) window.open(data.url, "_blank", "noopener,noreferrer");
     } catch (e: any) {
       toast.error(e?.message || "Failed to start checkout");
     } finally {
