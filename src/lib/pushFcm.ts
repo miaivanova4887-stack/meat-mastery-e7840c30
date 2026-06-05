@@ -39,6 +39,49 @@ let listenersBound = false;
 let fcmTokenListenerBound = false;
 let appStateListenerBound = false;
 
+// ---------------------------------------------------------------------------
+// Push-tap deep linking
+// ---------------------------------------------------------------------------
+// Resolves an in-app path from a notification's data payload. The dispatcher
+// sets `path` explicitly; we also support a `target`+`session_id` fallback
+// and a legacy `url` field used by older notifications.
+const PENDING_NAV_KEY = "push-nav-pending";
+let pendingPushNav: string | null = null;
+
+function safeAbsPath(p: unknown): string | null {
+  if (typeof p !== "string") return null;
+  if (!p.startsWith("/")) return null;
+  return p;
+}
+
+function resolvePushNavPath(data: Record<string, unknown> | undefined | null): string | null {
+  if (!data) return null;
+  const direct = safeAbsPath(data.path);
+  if (direct) return direct;
+  if (data.target === "coaching_upcoming_session") {
+    const base = "/profile?tab=settings&section=coaching";
+    const sid = typeof data.session_id === "string" ? data.session_id : "";
+    return sid ? `${base}&sessionId=${encodeURIComponent(sid)}` : base;
+  }
+  const url = safeAbsPath(data.url);
+  if (url) return url;
+  return null;
+}
+
+function queuePushNav(path: string) {
+  pendingPushNav = path;
+  try { sessionStorage.setItem(PENDING_NAV_KEY, path); } catch {/* ignore */}
+  try {
+    window.dispatchEvent(new CustomEvent("push-nav", { detail: { path } }));
+  } catch {/* ignore */}
+}
+
+export function consumePendingPushNav(): string | null {
+  const v = pendingPushNav;
+  pendingPushNav = null;
+  return v;
+}
+
 export async function savePushConsent(
   state: PushConsentState,
   preferences?: Record<string, boolean>,
