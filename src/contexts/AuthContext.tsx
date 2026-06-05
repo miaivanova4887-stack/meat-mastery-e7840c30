@@ -97,6 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       reconciledForUserRef.current = nextUser.id;
       // Defer so we never block auth state propagation.
       setTimeout(() => { void reconcileLocalConsent(nextUser.id); }, 0);
+      setTimeout(() => { reconcileCachedAppleName(nextUser.id); }, 0);
     };
 
     const isCallbackPath = () => {
