@@ -16,14 +16,6 @@ function getServiceAccount(): ServiceAccount {
   const raw = Deno.env.get("FIREBASE_SERVICE_ACCOUNT");
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT not set");
   cachedSa = JSON.parse(raw) as ServiceAccount;
-  // TEMP DIAGNOSTIC: confirm which Firebase project this service account targets.
-  // Safe to log — project_id and client_email are not secrets. Remove after verification.
-  console.log(
-    "[fcm] service account project_id=",
-    cachedSa.project_id,
-    "client_email=",
-    cachedSa.client_email,
-  );
   return cachedSa;
 }
 
@@ -120,7 +112,25 @@ export async function sendFcmToToken(
       token,
       notification,
       data: data ?? {},
-      android: { priority: "HIGH" },
+      android: {
+        priority: "HIGH",
+        notification: { sound: "default" },
+      },
+      apns: {
+        headers: {
+          "apns-priority": "10",
+          "apns-push-type": "alert",
+        },
+        payload: {
+          aps: {
+            alert: { title: notification.title, body: notification.body },
+            sound: "default",
+            badge: 1,
+            "mutable-content": 1,
+          },
+        },
+      },
+      fcm_options: { analytics_label: "carnivorex_push" },
     },
   };
   const res = await fetch(url, {
