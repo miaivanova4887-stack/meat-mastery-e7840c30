@@ -457,7 +457,7 @@ const Auth = () => {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full py-3 rounded-2xl bg-secondary text-foreground font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-3 border border-border/40"
+                className="w-full py-3 rounded-2xl bg-card text-foreground font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-3 border border-border shadow-sm"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -472,7 +472,7 @@ const Auth = () => {
                   type="button"
                   onClick={handleAppleSignIn}
                   disabled={loading}
-                  className="w-full py-3 rounded-2xl bg-foreground text-background font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-3"
+                  className="w-full py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-3 ring-1 ring-border/40 shadow-sm"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                     <path d="M17.05 12.04c-.03-2.95 2.41-4.36 2.52-4.43-1.37-2.01-3.51-2.28-4.27-2.31-1.82-.18-3.55 1.07-4.47 1.07-.93 0-2.36-1.05-3.88-1.02-2 .03-3.84 1.16-4.87 2.95-2.08 3.6-.53 8.93 1.5 11.85.99 1.43 2.17 3.04 3.71 2.98 1.49-.06 2.05-.96 3.85-.96 1.79 0 2.31.96 3.88.93 1.6-.03 2.62-1.46 3.6-2.9 1.13-1.66 1.6-3.27 1.62-3.36-.04-.02-3.11-1.19-3.14-4.72zM14.16 3.4c.82-.99 1.37-2.37 1.22-3.74-1.18.05-2.6.78-3.45 1.77-.76.87-1.42 2.27-1.24 3.62 1.31.1 2.65-.66 3.47-1.65z"/>
