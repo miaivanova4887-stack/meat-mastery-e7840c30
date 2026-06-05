@@ -9,7 +9,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, apikey, content-type, x-client-info, x-supabase-api-version",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 function json(p: unknown, status = 200) {

@@ -13,7 +13,10 @@ import webPush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, apikey, content-type, x-client-info, x-supabase-api-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 function json(p: unknown, status = 200) {
@@ -62,12 +65,13 @@ serve(async (req) => {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("locale, timezone")
+    .select("locale, timezone, push_consent")
     .eq("id", userId)
     .maybeSingle();
 
   const tz = profile?.timezone ?? undefined;
   const locale = profile?.locale === "fr" ? "fr" : "en";
+  const pushConsent = profile?.push_consent ?? "unset";
 
   const fakeStart = new Date(Date.now() + 5 * 60_000);
   const whenLocal = (() => {
@@ -110,15 +114,24 @@ serve(async (req) => {
     }
   }
 
+  let webSubCount = 0;
+  let fcmAttempts = 0;
+  let webAttempts = 0;
+  fcmAttempts = (tokens ?? []).length;
+
   const vapidPub = Deno.env.get("VAPID_PUBLIC_KEY");
   const vapidPriv = Deno.env.get("VAPID_PRIVATE_KEY");
-  if (vapidPub && vapidPriv) {
+  if (!vapidPub || !vapidPriv) {
+    console.warn("[reminder-test] VAPID not configured — web push skipped");
+  } else {
     try {
       webPush.setVapidDetails("mailto:noreply@carnivorex.app", vapidPub, vapidPriv);
       const { data: subs } = await admin
         .from("push_subscriptions")
         .select("endpoint, keys_p256dh, keys_auth")
         .eq("user_id", userId);
+      webSubCount = (subs ?? []).length;
+      webAttempts = webSubCount;
       for (const sub of subs ?? []) {
         try {
           await webPush.sendNotification(
@@ -138,20 +151,53 @@ serve(async (req) => {
     }
   }
 
+  const totalDevices = fcmAttempts + webSubCount;
+  const totalDelivered = deliveredNative + deliveredWeb;
+
+  // Determine structured outcome code
+  let code: string;
+  let httpStatus = 200;
+  if (totalDevices === 0) {
+    code = "no_devices";
+    httpStatus = 200;
+  } else if (totalDelivered === 0) {
+    // Everything failed
+    const fcmFailed = fcmAttempts > 0 && deliveredNative === 0;
+    const webFailed = webAttempts > 0 && deliveredWeb === 0;
+    if (fcmFailed && !webFailed) code = "fcm_failed";
+    else if (webFailed && !fcmFailed) code = "web_push_failed";
+    else code = "send_failed";
+    httpStatus = 502;
+  } else if (totalDelivered < totalDevices) {
+    code = "partial_success";
+  } else {
+    code = "ok";
+  }
+
   console.info("[reminder-test] sent", {
     userId,
+    code,
+    pushConsent,
     deliveredNative,
     deliveredWeb,
+    fcmAttempts,
+    webAttempts,
     errors: errors.length,
   });
 
   return json({
-    ok: deliveredNative + deliveredWeb > 0,
+    ok: totalDelivered > 0,
+    code,
     deliveredNative,
     deliveredWeb,
-    devices: (tokens?.length ?? 0),
+    delivered: totalDelivered,
+    devices: totalDevices,
+    fcmAttempts,
+    webAttempts,
+    pushConsent,
     title,
     body,
     errors: errors.slice(0, 5),
-  });
+  }, httpStatus);
 });
+

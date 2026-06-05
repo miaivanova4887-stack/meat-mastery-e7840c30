@@ -63,28 +63,70 @@ export const CoachingReminderSettings = () => {
       const { data, error } = await supabase.functions.invoke("coaching-reminder-test", {
         body: {},
       });
-      if (error) {
+      console.info("[coaching-reminder-test] response", { data, error });
+
+      // Network / CORS / function-not-deployed errors
+      if (error && !data) {
         toast.error(
-          isFr ? "Échec de l'envoi du test" : "Failed to send test reminder",
+          isFr
+            ? "Impossible de joindre le service de rappel. Veuillez réessayer."
+            : "Couldn't reach the reminder service. Please try again.",
         );
         return;
       }
-      const delivered = (data?.deliveredNative ?? 0) + (data?.deliveredWeb ?? 0);
-      if (delivered === 0) {
-        toast.error(
-          isFr
-            ? "Aucun appareil enregistré — activez d'abord les notifications."
-            : "No registered devices — enable notifications first.",
-        );
-      } else {
-        toast.success(
-          isFr
-            ? `Test envoyé à ${delivered} appareil(s).`
-            : `Test reminder sent to ${delivered} device${delivered === 1 ? "" : "s"}.`,
-        );
-      }
+
+      const code: string = data?.code ?? (data?.ok ? "ok" : "send_failed");
+      const delivered = data?.delivered ?? 0;
+      const devices = data?.devices ?? 0;
+
+      const msgs: Record<string, { en: string; fr: string; type: "success" | "error" }> = {
+        ok: {
+          en: `Test reminder sent to ${delivered} device${delivered === 1 ? "" : "s"}.`,
+          fr: `Test envoyé à ${delivered} appareil(s).`,
+          type: "success",
+        },
+        partial_success: {
+          en: `Sent to ${delivered} of ${devices} devices.`,
+          fr: `Envoyé à ${delivered} appareil(s) sur ${devices}.`,
+          type: "success",
+        },
+        no_devices: {
+          en: "No registered devices on this account. Enable notifications first.",
+          fr: "Aucun appareil enregistré. Activez d'abord les notifications.",
+          type: "error",
+        },
+        permission_denied: {
+          en: "Notifications are disabled in your settings.",
+          fr: "Les notifications sont désactivées dans vos réglages.",
+          type: "error",
+        },
+        fcm_failed: {
+          en: "Push provider rejected the message. Check that notifications are enabled on this device.",
+          fr: "Le fournisseur de push a rejeté le message. Vérifiez que les notifications sont activées sur cet appareil.",
+          type: "error",
+        },
+        web_push_failed: {
+          en: "Web push failed. Try re-enabling browser notifications.",
+          fr: "L'envoi web a échoué. Réactivez les notifications du navigateur.",
+          type: "error",
+        },
+        send_failed: {
+          en: "Failed to send test reminder. Please try again.",
+          fr: "Échec de l'envoi du test. Veuillez réessayer.",
+          type: "error",
+        },
+      };
+      const m = msgs[code] ?? msgs.send_failed;
+      const text = isFr ? m.fr : m.en;
+      if (m.type === "success") toast.success(text);
+      else toast.error(text);
     } catch (e) {
-      toast.error(isFr ? "Échec de l'envoi du test" : "Failed to send test reminder");
+      console.error("[coaching-reminder-test] invoke threw", e);
+      toast.error(
+        isFr
+          ? "Impossible de joindre le service de rappel. Veuillez réessayer."
+          : "Couldn't reach the reminder service. Please try again.",
+      );
     } finally {
       setTesting(false);
     }
