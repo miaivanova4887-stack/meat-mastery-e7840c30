@@ -1,94 +1,95 @@
-## Problem
+## Diagnosis
 
-Xcode reports `Unable to resolve module dependency: 'FirebaseCore' / 'FirebaseMessaging'` when building `AppDelegate.swift`.
+`ios/App/CapApp-SPM/Package.swift` does declare `firebase-ios-sdk` as a dependency and lists `FirebaseCore` / `FirebaseMessaging` as target products — that part is correct. But:
 
-Root cause confirmed by inspecting `ios/App/App.xcodeproj/project.pbxproj`:
+1. `**Package.resolved` has not been refreshed.** The current file pins only `capacitor-swift-pm`, `purchases-hybrid-common`, and `purchases-ios-spm` — no `firebase-ios-sdk` entry. Xcode is still operating on the old resolution graph, so the Firebase modules genuinely don't exist in the build, exactly as the errors say.
+2. `**Package.swift` is marked "DO NOT MODIFY — managed by Capacitor CLI".** The next `npx cap sync ios` will rewrite it from `node_modules` and silently strip the Firebase dependency, putting us right back here. The wrapper-package approach is structurally fragile.
 
-- The App target links only one package product: the local `CapApp-SPM` package.
-- `Firebase` is declared as a dependency of the `CapApp-SPM` target inside `ios/App/CapApp-SPM/Package.swift`, but `FirebaseCore` / `FirebaseMessaging` are **not** linked to the `App` target itself.
-- `AppDelegate.swift` lives in the App target, not in the SPM package, so it cannot `import FirebaseCore` — the modules aren't visible to that target.
-- `grep -i firebase ios/App/App.xcodeproj/project.pbxproj` returns nothing, confirming no `XCRemoteSwiftPackageReference` / product dependency exists for Firebase in the Xcode project.
+The fix is the one the user is already pointing at: stop fighting the local SPM wrapper and integrate Firebase **directly** into `App.xcodeproj` as a remote Swift package, where Capacitor's sync will not touch it.
 
-This is why iOS never reached the runtime push code at all — the build never completed.
+## Plan
 
-## Fix Strategy
+### 1. Revert the wrapper-package detour
 
-Avoid hand-editing `project.pbxproj` (fragile and gets clobbered by `npx cap sync`). Instead, **move all Firebase code into the `CapApp-SPM` Swift package** (which already declares Firebase as a dependency and compiles fine), and have `AppDelegate.swift` call into it. The App target only needs to `import CapApp_SPM` — no new Xcode package wiring required.
+- `ios/App/CapApp-SPM/Package.swift` — remove the `firebase-ios-sdk` package dependency and the `FirebaseCore` / `FirebaseMessaging` products from the `CapApp-SPM` target. Restore it to the Capacitor-managed shape so future `cap sync` runs are a no-op on this file.
+- `ios/App/CapApp-SPM/Sources/CapApp-SPM/CapApp-SPM.swift` — return to the original placeholder. The `CarnivoreXPush` helper moves into the App target.
 
-### Files to change
+### 2. Add Firebase as a remote SPM package on the App project
 
-1. `**ios/App/CapApp-SPM/Sources/CapApp-SPM/CapApp-SPM.swift**` — replace placeholder with a `CarnivoreXPush` helper:
-  - `public final class CarnivoreXPush: NSObject, MessagingDelegate`
-  - `public static let shared = CarnivoreXPush()`
-  - `public func configure()` — calls `FirebaseApp.configure()`, sets `Messaging.messaging().delegate = self`. Logs `[Push] FirebaseApp.configure done`.
-  - `public func handleAPNsToken(_ deviceToken: Data, window: UIWindow?)` — logs APNs token length, sets `Messaging.messaging().apnsToken = deviceToken`, posts the `Capacitor.didRegisterForRemoteNotificationsWithDeviceToken` NSNotification (preserves Capacitor PushNotifications plugin behavior).
-  - `public func handleAPNsError(_ error: Error)` — logs `[Push] registrationError` and posts `Capacitor.didFailToRegisterForRemoteNotificationsWithError`.
-  - `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)` — logs FCM token length, dispatches the `fcm-token` JS CustomEvent via the active `CAPBridgeViewController`'s webview (uses `UIApplication.shared.connectedScenes` to locate the key window, since `window` here is not retained).
-  - Holds reference to itself via `shared` to keep the delegate alive.
-2. `**ios/App/App/AppDelegate.swift**` — strip Firebase imports/code, delegate to the package:
-  - Remove `import FirebaseCore`, `import FirebaseMessaging`, and `MessagingDelegate` conformance.
-  - Add `import CapApp_SPM`.
-  - `didFinishLaunchingWithOptions` calls `CarnivoreXPush.shared.configure()`.
-  - `didRegisterForRemoteNotificationsWithDeviceToken` calls `CarnivoreXPush.shared.handleAPNsToken(deviceToken, window: window)`.
-  - `didFailToRegisterForRemoteNotificationsWithError` calls `CarnivoreXPush.shared.handleAPNsError(error)`.
-  - Keep existing `application(_:open:)` and `continue userActivity` proxy methods untouched.
-3. `**ios/App/CapApp-SPM/Package.swift**` — already lists `firebase-ios-sdk` as a dependency, and the `CapApp-SPM` target already pulls in `FirebaseCore` + `FirebaseMessaging` products. No change needed. `Capacitor` is already a dependency of the target, so `CAPBridgeViewController` is available.
+Edit `ios/App/App.xcodeproj/project.pbxproj` to add:
 
-### Why this resolves the build error
+- An `XCRemoteSwiftPackageReference` for `https://github.com/firebase/firebase-ios-sdk.git` with `minimumVersion = 11.0.0`, registered in the project's `packageReferences` list (alongside the existing local `CapApp-SPM` reference).
+- Two `XCSwiftPackageProductDependency` entries (`FirebaseCore`, `FirebaseMessaging`) tied to that package reference.
+- Both product dependencies added to the **App** target's `packageProductDependencies` and to the `Frameworks` build phase (`PBXBuildFile` + `PBXFrameworksBuildPhase` files list) so they actually link.
 
-Once Firebase usage lives inside `CapApp-SPM`, only that package needs Firebase resolved — which it already does (its `Package.swift` declares it and SPM resolves it). The App target's existing single link to `CapApp-SPM` is sufficient; `AppDelegate.swift` no longer references Firebase symbols, so the missing module imports disappear.
+### 3. Move the push bridge into the App target
 
-### Verification steps for the user (after build mode applies the changes)
+- New file `ios/App/App/CarnivoreXPush.swift` containing `FirebaseApp.configure()`, the `MessagingDelegate` implementation, APNs token forwarding, and the `evaluateJavaScript("window.dispatchEvent(new CustomEvent('fcm-token', …))")` bridge. Register it in `project.pbxproj` (PBXFileReference + PBXBuildFile + Sources build phase + App group), same pattern as `HealthConnectPlugin.swift`.
+- `ios/App/App/AppDelegate.swift` — keep the current shape, just drop `import CapApp_SPM` (the helper now lives in the App target) and call `CarnivoreXPush.shared.configure()` / `handleAPNsToken` / `handleAPNsError` directly.
+
+### 4. Force a clean resolution
+
+After the edits, the user runs the line-by-line cleanup from `~/Desktop/carnivore-coach-pro`:
 
 ```bash
-cd ~/Desktop/carnivore-coach-pro
 git pull
 npm install
 npx cap sync ios
-cd ios/App
 rm -rf ~/Library/Developer/Xcode/DerivedData/App-*
-rm -rf App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+rm -rf ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+rm -rf ios/App/.build ios/App/CapApp-SPM/.build
+cd ios/App
 xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
-open App.xcodeproj
 ```
 
-Then in Xcode: Product → Clean Build Folder → Run on iPhone.
+Expected: the resolve step prints fetches for `firebase-ios-sdk`, `GoogleUtilities`, `GoogleDataTransport`, `nanopb`, `abseil`, `grpc-binary`, `gtm-session-fetcher`, `promises`, `swift-protobuf`, and a refreshed `Package.resolved` now contains a `firebase-ios-sdk` pin. Then open Xcode → clean build → run on device.
 
-Expected: build succeeds; on launch, Xcode console shows `[Push] FirebaseApp.configure done`. After tapping "Send test reminder" as admin, the `[Push] requestPermissions called` → `result receive=…` → `register called` → `iOS APNs token registered len=…` → `FCM token registered len=…` sequence appears, and iOS Settings → CarnivoreX gains a Notifications section.
+### 5. Evidence to return
 
-Approved. The root-cause analysis is sound:
+- `Package.resolved` diff showing the new `firebase-ios-sdk` pin.
+- Xcode → App target → General → "Frameworks, Libraries, and Embedded Content" listing `FirebaseCore` and `FirebaseMessaging`.
+- Xcode console on launch: `[Push] FirebaseApp.configure done`.
+- After tapping "Send test reminder" as admin: the full `[Push] requestPermissions called → register called → iOS APNs token registered (xx bytes) → FCM token registered (…)` sequence.
+- iOS Settings → CarnivoreX now shows a **Notifications** section.
 
-Firebase is not linked to the App target,
+## Why this resolves it
 
-AppDelegate lives in the App target,
+- Firebase becomes a first-class App-target dependency that `npx cap sync ios` cannot rewrite away, so the resolution is stable across rebuilds.
+- `AppDelegate.swift` and `CarnivoreXPush.swift` live in the same target where Firebase is linked, so `import FirebaseCore` / `import FirebaseMessaging` resolve directly — no cross-package import gymnastics.
+- Deleting `Package.resolved` + DerivedData forces SwiftPM to re-pin from scratch, which is the only way to recover from the current stale resolution graph.
 
-so direct import FirebaseCore / FirebaseMessaging in AppDelegate cannot work.
+Approved. This is the first plan that targets the right integration layer.
 
-I agree with the workaround:
+I agree with:
 
-move all Firebase-specific native code into CapApp-SPM,
+abandoning the Capacitor-managed CapApp-SPM Firebase workaround,
 
-keep AppDelegate.swift thin and only delegate into CapApp_SPM,
+restoring CapApp-SPM to a Capacitor-managed state,
 
-avoid fragile project.pbxproj edits that can be clobbered by Capacitor sync.
+adding Firebase directly to App.xcodeproj as a remote Swift package,
+
+moving CarnivoreXPush.swift into the App target,
+
+forcing a full package re-resolution by deleting stale resolution artifacts.
 
 Two requirements:
 
-Preserve Capacitor push notifications behavior by reposting the native registration success/failure notifications exactly as before.
+Prefer real Xcode-equivalent package wiring over fragile raw project.pbxproj edits where possible.
 
-Verify the package can reliably find the active Capacitor bridge/webview to dispatch the fcm-token JS event.
+After implementation, I need proof that the App target itself links FirebaseCore and FirebaseMessaging, not just that files were changed.
 
-After implementation, I want:
+Required evidence:
 
-successful iOS build,
+refreshed Package.resolved containing firebase-ios-sdk
 
-[Push] FirebaseApp.configure done on launch,
+App target lists FirebaseCore and FirebaseMessaging
 
-the full permission → APNs → FCM → persisted-token sequence,
+[Push] FirebaseApp.configure done
 
-Notifications appearing in iOS Settings for the app.
+full iOS permission → APNs → FCM → persisted token sequence
 
-### Out of scope
+## Out of scope
 
-- No changes to the JS-side push code (`pushFcm.ts`, `CoachingReminderSettings.tsx`, `pushDecision.ts`) — those are already correct and will take effect once the native build succeeds.
-- No `project.pbxproj` edits, so `npx cap sync ios` remains safe.
+- No changes to JS-side push logic (`pushFcm.ts`, `pushDecision.ts`, `CoachingReminderSettings.tsx`, `usePushConsentFallback.ts`) — those are already correct.
+- No Android changes.
+- No Supabase / edge-function changes.
