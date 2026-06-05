@@ -3,6 +3,10 @@ project_id = "gueosugzlebbaijzcxgh"
 [functions]
   [functions.auth-email-hook]
     verify_jwt = false
+  [functions.cal-webhook]
+    verify_jwt = false
+  [functions.coaching-reminder-dispatch]
+    verify_jwt = false
   [functions.check-subscription]
     verify_jwt = false
   [functions.create-checkout]
