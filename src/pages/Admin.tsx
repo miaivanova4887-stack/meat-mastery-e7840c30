@@ -52,6 +52,7 @@ const Admin = () => {
     { to: "/admin/analytics", label: "Analytics", icon: BarChart3, desc: "Revenue, retention, LTV" },
     { to: "/admin/notifications", label: "Notifications", icon: Bell, desc: "Send push & feed posts" },
     { to: "/admin/scheduled-push", label: "Scheduled Push", icon: BellRing, desc: "Review, edit & activate scheduled campaigns" },
+    { to: "/admin/coaching-reminders", label: "Coaching reminders", icon: BellRing, desc: "Audit sent reminders & failures" },
     { to: "/cms", label: "CMS Editor", icon: FileEdit, desc: "Content, layouts & pages" },
   ];
 
