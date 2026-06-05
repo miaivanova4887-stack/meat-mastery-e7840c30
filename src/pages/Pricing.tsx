@@ -32,7 +32,6 @@ const Pricing = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
-  const [coachingBookingOpen, setCoachingBookingOpen] = useState(false);
   const paywall = useNativePaywall();
 
   // `paywall.enabled` is true only on native iOS/Android. On web, every buy
