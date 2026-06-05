@@ -6,6 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { useNativePaywall } from "@/hooks/useNativePaywall";
+import { isRevenueCatAvailable } from "@/lib/revenuecat";
+import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
