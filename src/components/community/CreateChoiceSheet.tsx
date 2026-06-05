@@ -18,8 +18,8 @@ const CreateChoiceSheet = ({ open, onClose, onShareRecipe, onWritePost }: Props)
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-card rounded-t-2xl p-5 pb-8 shadow-xl animate-in slide-in-from-bottom"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" }}
+        className="w-full max-w-md bg-card rounded-t-2xl p-5 shadow-xl animate-in slide-in-from-bottom max-h-[85dvh] overflow-y-auto"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6rem)" }}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-display font-bold text-foreground">

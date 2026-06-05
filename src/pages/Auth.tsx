@@ -350,7 +350,7 @@ const Auth = () => {
     "w-full bg-secondary rounded-xl pl-10 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-dvh bg-background flex flex-col">
       <div className="sticky top-0 z-40 bg-card/85 ios-blur border-b border-border/30 shadow-xs px-4 pb-3 flex items-center gap-3" style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
         <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
           <ArrowLeft size={20} />
@@ -361,7 +361,7 @@ const Auth = () => {
       </div>
 
       <div
-        className="flex-1 flex flex-col items-center justify-center px-6 pt-6"
+        className="flex-1 flex flex-col items-center justify-start px-6 pt-8"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10rem)" }}
       >
         <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
