@@ -1,78 +1,94 @@
-## What I will fix
+## Problem
 
-The screenshots are valid evidence: iOS has not recorded a notification authorization request, so this is earlier than token registration.
+Xcode reports `Unable to resolve module dependency: 'FirebaseCore' / 'FirebaseMessaging'` when building `AppDelegate.swift`.
 
-I will change the flow so the app must call the native iOS permission request when OS permission is still undetermined, then call registration only after a granted result.
+Root cause confirmed by inspecting `ios/App/App.xcodeproj/project.pbxproj`:
 
-## Plan
+- The App target links only one package product: the local `CapApp-SPM` package.
+- `Firebase` is declared as a dependency of the `CapApp-SPM` target inside `ios/App/CapApp-SPM/Package.swift`, but `FirebaseCore` / `FirebaseMessaging` are **not** linked to the `App` target itself.
+- `AppDelegate.swift` lives in the App target, not in the SPM package, so it cannot `import FirebaseCore` — the modules aren't visible to that target.
+- `grep -i firebase ios/App/App.xcodeproj/project.pbxproj` returns nothing, confirming no `XCRemoteSwiftPackageReference` / product dependency exists for Firebase in the Xcode project.
 
-1. **Fix the iOS shell consent path**
-  - Keep the shell-only timing for iOS.
-  - Make the shell audit explicitly log iOS eligibility and OS permission state.
-  - Ensure the shell sheet does not merely update local/profile state without invoking the native permission request.
-2. **Fix the admin reminder path**
-  - In the admin “Send test reminder” flow, before calling the test reminder backend, check native iOS notification permission.
-  - If iOS permission is `prompt` / undetermined, call `requestNativePush()` from the admin action.
-  - Only continue to send the test reminder if OS permission is granted and registration has run.
-  - This prevents the admin path from depending only on the in-app toggle or existing local consent.
-3. **Add exact native permission logs**
-  - Add these JS logs around the Capacitor plugin calls:
-    - `[Push] requestPermissions called`
-    - `[Push] requestPermissions result receive=...`
-    - `[Push] register called`
-    - `[Push] registration success ...`
-    - `[Push] registrationError ...`
-  - Preserve the existing Swift logs for APNs/FCM:
-    - `[Push] iOS APNs token registered len=...`
-    - `[Push] iOS registrationError: ...`
-    - `[Push] FCM token registered len=...`
-4. **Make registration order explicit**
-  - `PushNotifications.requestPermissions()` runs first when permission is not already granted.
-  - `PushNotifications.register()` runs only after `receive === "granted"`.
-  - Existing granted permission can still proceed directly to registration.
-5. **Reset admin consent again**
-  - Reset the admin profile push consent to `unset` again so the next shipped build can re-trigger the iOS permission path cleanly.
+This is why iOS never reached the runtime push code at all — the build never completed.
 
-## Files to change
+## Fix Strategy
 
-- `src/lib/pushFcm.ts`
-- `src/components/CoachingReminderSettings.tsx`
-- Possibly `src/lib/pushDecision.ts` / `src/hooks/usePushConsentFallback.ts` only if inspection shows another iOS suppression remains.
+Avoid hand-editing `project.pbxproj` (fragile and gets clobbered by `npx cap sync`). Instead, **move all Firebase code into the `CapApp-SPM` Swift package** (which already declares Firebase as a dependency and compiles fine), and have `AppDelegate.swift` call into it. The App target only needs to `import CapApp_SPM` — no new Xcode package wiring required.
 
-## Verification I will provide after implementation
+### Files to change
 
-Because I cannot physically press the iOS system permission dialog from here, I will add deterministic logs that you can capture in Xcode. The expected log sequence for the iPhone admin account will be:
+1. `**ios/App/CapApp-SPM/Sources/CapApp-SPM/CapApp-SPM.swift**` — replace placeholder with a `CarnivoreXPush` helper:
+  - `public final class CarnivoreXPush: NSObject, MessagingDelegate`
+  - `public static let shared = CarnivoreXPush()`
+  - `public func configure()` — calls `FirebaseApp.configure()`, sets `Messaging.messaging().delegate = self`. Logs `[Push] FirebaseApp.configure done`.
+  - `public func handleAPNsToken(_ deviceToken: Data, window: UIWindow?)` — logs APNs token length, sets `Messaging.messaging().apnsToken = deviceToken`, posts the `Capacitor.didRegisterForRemoteNotificationsWithDeviceToken` NSNotification (preserves Capacitor PushNotifications plugin behavior).
+  - `public func handleAPNsError(_ error: Error)` — logs `[Push] registrationError` and posts `Capacitor.didFailToRegisterForRemoteNotificationsWithError`.
+  - `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)` — logs FCM token length, dispatches the `fcm-token` JS CustomEvent via the active `CAPBridgeViewController`'s webview (uses `UIApplication.shared.connectedScenes` to locate the key window, since `window` here is not retained).
+  - Holds reference to itself via `shared` to keep the delegate alive.
+2. `**ios/App/App/AppDelegate.swift**` — strip Firebase imports/code, delegate to the package:
+  - Remove `import FirebaseCore`, `import FirebaseMessaging`, and `MessagingDelegate` conformance.
+  - Add `import CapApp_SPM`.
+  - `didFinishLaunchingWithOptions` calls `CarnivoreXPush.shared.configure()`.
+  - `didRegisterForRemoteNotificationsWithDeviceToken` calls `CarnivoreXPush.shared.handleAPNsToken(deviceToken, window: window)`.
+  - `didFailToRegisterForRemoteNotificationsWithError` calls `CarnivoreXPush.shared.handleAPNsError(error)`.
+  - Keep existing `application(_:open:)` and `continue userActivity` proxy methods untouched.
+3. `**ios/App/CapApp-SPM/Package.swift**` — already lists `firebase-ios-sdk` as a dependency, and the `CapApp-SPM` target already pulls in `FirebaseCore` + `FirebaseMessaging` products. No change needed. `Capacitor` is already a dependency of the target, so `CAPBridgeViewController` is available.
 
-```text
-[PushDecision] source=shell branch=mount ... platform=ios
-[PushDecision] source=shell branch=show-sheet reason=eligible
-[Push] requestPermissions called platform=ios existing=prompt
-[Push] requestPermissions result receive=granted|denied
-[Push] register called platform=ios reason=fresh-grant
-[Push] registration success platform=ios valueLen=...
-[Push] iOS APNs-token registration event len=...
-[Push] window:fcm-token received platform=ios len=...
-[Push] device token persisted platform=ios len=...
+### Why this resolves the build error
+
+Once Firebase usage lives inside `CapApp-SPM`, only that package needs Firebase resolved — which it already does (its `Package.swift` declares it and SPM resolves it). The App target's existing single link to `CapApp-SPM` is sufficient; `AppDelegate.swift` no longer references Firebase symbols, so the missing module imports disappear.
+
+### Verification steps for the user (after build mode applies the changes)
+
+```bash
+cd ~/Desktop/carnivore-coach-pro
+git pull
+npm install
+npx cap sync ios
+cd ios/App
+rm -rf ~/Library/Developer/Xcode/DerivedData/App-*
+rm -rf App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm
+xcodebuild -resolvePackageDependencies -project App.xcodeproj -scheme App
+open App.xcodeproj
 ```
 
-If `receive=denied`, iOS should then show the Notifications section in Settings with disabled notification controls. If `receive=granted`, it should show enabled notification controls and registration should proceed.
+Then in Xcode: Product → Clean Build Folder → Run on iPhone.
 
-User: Approved with one implementation adjustment:
+Expected: build succeeds; on launch, Xcode console shows `[Push] FirebaseApp.configure done`. After tapping "Send test reminder" as admin, the `[Push] requestPermissions called` → `result receive=…` → `register called` → `iOS APNs token registered len=…` → `FCM token registered len=…` sequence appears, and iOS Settings → CarnivoreX gains a Notifications section.
 
-Keep the added iOS permission and registration logs exactly as proposed.
+Approved. The root-cause analysis is sound:
 
-Keep the admin test flow bootstrap when OS permission is undetermined.
+Firebase is not linked to the App target,
 
-But on iOS, please do not over-couple APNs registration to only the granted branch. I want the implementation reviewed so the app still performs the proper native remote notification registration flow needed for iOS system recognition, while UI messaging still respects granted vs denied.
+AppDelegate lives in the App target,
 
-I need the resulting logs to show clearly:
+so direct import FirebaseCore / FirebaseMessaging in AppDelegate cannot work.
 
-whether requestPermissions() was called,
+I agree with the workaround:
 
-what it returned,
+move all Firebase-specific native code into CapApp-SPM,
 
-whether native registration was attempted,
+keep AppDelegate.swift thin and only delegate into CapApp_SPM,
 
-whether APNs/FCM registration succeeded or failed.
+avoid fragile project.pbxproj edits that can be clobbered by Capacitor sync.
 
-&nbsp;
+Two requirements:
+
+Preserve Capacitor push notifications behavior by reposting the native registration success/failure notifications exactly as before.
+
+Verify the package can reliably find the active Capacitor bridge/webview to dispatch the fcm-token JS event.
+
+After implementation, I want:
+
+successful iOS build,
+
+[Push] FirebaseApp.configure done on launch,
+
+the full permission → APNs → FCM → persisted-token sequence,
+
+Notifications appearing in iOS Settings for the app.
+
+### Out of scope
+
+- No changes to the JS-side push code (`pushFcm.ts`, `CoachingReminderSettings.tsx`, `pushDecision.ts`) — those are already correct and will take effect once the native build succeeds.
+- No `project.pbxproj` edits, so `npx cap sync ios` remains safe.
