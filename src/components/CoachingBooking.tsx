@@ -308,8 +308,10 @@ const CoachingBooking = ({
               </div>
               <div className="bg-muted/50 rounded-xl p-4 text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  {useNative && paywall.packages.coaching?.priceString
-                    ? `${paywall.packages.coaching.priceString} per session`
+                  {useNative
+                    ? (paywall.packages.coaching?.priceString
+                        ? `${paywall.packages.coaching.priceString} per session`
+                        : "Loading price…")
                     : (content.paid_label || "$99.99 per session")}
                 </p>
               </div>

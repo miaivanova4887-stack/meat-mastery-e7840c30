@@ -568,7 +568,7 @@ const Pricing = () => {
                 {isBusy ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
-                  `Book a Call — ${coachingPkg.priceLabel || "$99.99"}`
+                  `Book a Call — ${coachingPkg.priceLabel}`
                 )}
               </Button>
             );
