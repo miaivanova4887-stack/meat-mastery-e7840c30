@@ -116,40 +116,35 @@ async function addToCalendar(session: CoachingSession) {
 
   const platform = Capacitor.getPlatform();
 
-  // Android → open Google Calendar template URL: drops user straight into
-  // the Calendar app's "New event" screen, pre-filled with the join link.
-  if (platform === "android") {
+  // Native (iOS + Android) → open Google Calendar template URL in the
+  // in-app browser. It renders a real "Add to Calendar" page with the
+  // event pre-filled (title, time, join link). On iOS, tapping the date
+  // gives an "Add to Apple Calendar" option; on Android it drops straight
+  // into the Google Calendar app. This avoids the iOS share sheet that
+  // appears when opening a `data:text/calendar` URL.
+  if (platform === "android" || platform === "ios") {
     const url = buildGoogleCalendarUrl(session);
     if (url) {
-      const res = await openExternalUrl(url, { logTag: "coaching:add-to-calendar-android" });
+      const res = await openExternalUrl(url, { logTag: `coaching:add-to-calendar-${platform}` });
       if (res.ok) return;
-      console.warn("coaching:add-to-calendar-android-failed", { error: res.error });
-    }
-  }
-
-  // iOS → open .ics via system browser; Safari shows the native
-  // "Add to Calendar" prompt that hands it to Apple Calendar.
-  if (platform === "ios") {
-    const ics = buildIcs(session);
-    if (ics) {
-      const dataUrl = `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`;
-      const res = await openExternalUrl(dataUrl, { logTag: "coaching:add-to-calendar-ios" });
-      if (res.ok) return;
-      console.warn("coaching:add-to-calendar-ios-failed", { error: res.error });
-      // Last-resort fallback: share sheet.
-      try {
-        await Share.share({
-          title: "CarnivoreX Coaching Call",
-          text: "Add your coaching session to your calendar.",
-          url: dataUrl,
-          dialogTitle: "Add to calendar",
-        });
-        return;
-      } catch (err) {
-        console.warn("coaching:add-to-calendar-ios-share-failed", err);
-        toast.error("Couldn't open calendar. Please try again.");
-        return;
+      console.warn(`coaching:add-to-calendar-${platform}-failed`, { error: res.error });
+      // Last-resort fallback: native share sheet with .ics.
+      const ics = buildIcs(session);
+      if (ics) {
+        try {
+          await Share.share({
+            title: "CarnivoreX Coaching Call",
+            text: "Add your coaching session to your calendar.",
+            url: `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`,
+            dialogTitle: "Add to calendar",
+          });
+          return;
+        } catch (err) {
+          console.warn(`coaching:add-to-calendar-${platform}-share-failed`, err);
+        }
       }
+      toast.error("Couldn't open calendar. Please try again.");
+      return;
     }
   }
 
@@ -328,7 +323,7 @@ export default function CoachingSessionsList() {
                   rel="noopener noreferrer"
                 >
                   <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                  Join / Reschedule
+                  Join
                 </a>
               </Button>
             )}
