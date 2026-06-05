@@ -171,20 +171,19 @@ serve(async (req) => {
   const totalDevices = fcmAttempts + webSubCount;
   const totalDelivered = deliveredNative + deliveredWeb;
 
-  // Determine structured outcome code
+  // Determine structured outcome code. We always return HTTP 200 for these
+  // expected outcomes so the frontend reliably parses `data.code` (non-2xx
+  // bodies are placed on FunctionsHttpError.context, not `data`).
   let code: string;
-  let httpStatus = 200;
+  const httpStatus = 200;
   if (totalDevices === 0) {
     code = "no_devices";
-    httpStatus = 200;
   } else if (totalDelivered === 0) {
-    // Everything failed
     const fcmFailed = fcmAttempts > 0 && deliveredNative === 0;
     const webFailed = webAttempts > 0 && deliveredWeb === 0;
     if (fcmFailed && !webFailed) code = "fcm_failed";
     else if (webFailed && !fcmFailed) code = "web_push_failed";
     else code = "send_failed";
-    httpStatus = 502;
   } else if (totalDelivered < totalDevices) {
     code = "partial_success";
   } else {
