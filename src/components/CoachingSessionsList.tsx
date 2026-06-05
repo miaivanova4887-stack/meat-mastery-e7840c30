@@ -323,7 +323,7 @@ export default function CoachingSessionsList() {
                   rel="noopener noreferrer"
                 >
                   <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                  Join / Reschedule
+                  Join
                 </a>
               </Button>
             )}
