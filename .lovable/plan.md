@@ -1,152 +1,137 @@
-Two parallel tracks. Push-tap diagnostics from the previous turn stay in place until you confirm cold-start / background / foreground routing all work — no log removal in this plan.
+## Current verified findings
 
----
+1. **Push tap route is likely being overwritten after startup**
+  - `pushNotificationActionPerformed` is bound at module load and queues `/profile?tab=settings&section=coaching...`.
+  - `usePushNavigation()` drains pending paths and calls `navigate(path)`.
+  - `Profile.tsx` currently redirects immediately when `user` is temporarily `null`:
+    ```ts
+    if (!user) navigate('/auth')
+    ```
+  - On cold start, auth is still loading when `/profile...` mounts, so this can overwrite the push route to `/auth` before the session hydrates.
+2. **Notification settings plugin exists, but CTA wiring is incomplete**
+  - `capacitor-native-settings` is installed in `package.json` and included in `ios/App/CapApp-SPM/Package.swift`.
+  - `openAppSettings()` currently uses `IOSSettings.App`; the plugin also supports `IOSSettings.AppNotification` for iOS 15.4+.
+  - The Profile “Enable notifications” switch only toggles local/server prefs and does not open OS settings.
+  - The manual Profile notification CTA can be suppressed by `prefs-opted-in`, so it may never open settings even when OS notifications are denied.
+3. **Paid-unscheduled rows do exist, but the scheduling flow is wrong**
+  - Database evidence shows recent `coaching_sessions` rows with `status='pending'`, tied to the current user.
+  - `CoachingSessionsList` fetches pending rows and renders an Action needed section.
+  - The pending Schedule button bypasses `CoachingBooking`; it directly opens an external URL.
+  - It checks `session.source === 'paid_ios'`, but the backend stores `source='appstore'`, so iOS pending sessions can choose the paid Cal.com URL instead of the no-payment iOS URL.
 
-## Track 1 — Why CarnivoreX isn't in iOS Settings → Notifications, and a real "Open settings" fallback
+## Implementation plan
 
-### Diagnosis (from current code)
+### 1. Make push tap deep-linking evidence-first and stop route overwrites
 
-- `App.entitlements` has `aps-environment = development` ✓ (correct for dev/TestFlight debug build; release build needs `aps-environment = production` — Xcode flips this automatically when archiving with the matching provisioning profile, but confirm the Release entitlements override is not stripped).
-- `Info.plist` has `UIBackgroundModes → remote-notification` ✓.
-- `FirebaseAppDelegateProxyEnabled = false` ✓ (matches our manual APNs forwarding in `CarnivoreXPush.swift`).
-- We never call `UIApplication.unregisterForRemoteNotifications` anywhere — confirmed by ripgrep target.
-- `pushFcm.ts` already calls `PushNotifications.register()` on iOS regardless of grant verdict (lines 308–326), which is what causes iOS to register the app under Settings → Notifications.
+- Update `AuthContext` usage in `Profile.tsx` to read `loading`.
+- Change the unauthenticated redirect so it only runs after auth bootstrap finishes:
+  ```ts
+  if (!loading && !user) navigate('/auth')
+  ```
+- Add explicit `[PushRoute]` logs in `Profile.tsx` for:
+  - initial mount path/search
+  - auth loading/user state before any redirect
+  - query params read: `tab`, `section`, `sessionId`
+  - `setTab('settings')` from query params
+  - coaching section scroll attempt, success/failure
+  - `CoachingSessionsList` highlight session received/found/missing
+- Add a small route-watch logger in the push navigation handler after `navigate()` to prove whether another effect overwrote the route shortly after startup.
+- Keep all existing `[PushTap]` and `[PushNav]` diagnostics until cold start, background, and foreground tap are confirmed.
 
-The most likely real cause the app is missing from Settings → Notifications:
+### 2. Fix “Enable notifications” denied-state settings fallback
 
-1. On the test device, the user never tapped **Allow** on the system prompt, OR the prompt was suppressed because our pre-check returned `denied` from a previous run. iOS only adds an entry to Settings → Notifications **after** the app calls `registerForRemoteNotifications` (which we do) **and** the user has answered the prompt (allow or deny). If `requestPermissions` resolved to `denied` without a visible prompt, iOS will not show the row.
-2. The Xcode project may be missing the **Push Notifications** capability (separate from the `aps-environment` entitlement key). The entitlement key alone is sometimes set without the capability checkbox, which causes APNs registration to silently fail on the first real provisioning sync.
+- Add a dedicated helper/log flow around opening settings:
+  - `[NotifSettings] CTA tapped`
+  - `[NotifSettings] opening iOS app settings`
+  - `[NotifSettings] plugin result` with success/failure
+- Update `openAppSettings()` to prefer `IOSSettings.AppNotification` on iOS, then fall back to `IOSSettings.App`, then Capacitor App fallback if available.
+- Wire every denied-state notification CTA to the helper:
+  - `NotificationConsentSheet` denied result
+  - Profile manual notification preferences CTA
+  - Profile “Enable notifications” switch when turning on while OS permission is denied
+- Avoid `auditPushDecision()` suppressing the manual CTA due to saved prefs; manual settings taps should check OS permission directly and open settings when denied.
 
-### Changes
+### 3. Fix paid-unscheduled coaching scheduling flow end-to-end
 
-**1. Add Xcode capability verification step (manual + script)**
+- Add logs in `recordCoachingPurchase()` client wrapper for:
+  - function invoke start
+  - returned `ok`, `calComUrl`/`iosBookingUrl` presence
+  - returned session row ID if added by backend
+- Update `record-coaching-purchase` function to return `sessionRowId` so client logs can prove which pending row was created/reused.
+- Add `sessionRowId` to `RecordCoachingPurchaseResult`.
+- Extend `CoachingBooking` with an already-paid mode, for example:
+  ```ts
+  mode="already_paid"
+  sessionId="..."
+  sessionSource="appstore"
+  ```
+- In already-paid mode:
+  - skip StoreKit/Stripe payment entirely
+  - build the scheduler URL with `metadata[user_id]` and `metadata[session_row_id]`
+  - use `CAL_IOS_NO_PAYMENT_URL` when `source='appstore'` or native iOS is active
+  - log `[CoachingPending] already_paid open scheduler` with session ID/source and URL type, not full private URL
+- Change `CoachingSessionsList` pending Schedule button to open `CoachingBooking` in already-paid mode instead of directly calling `openExternalUrl()`.
+- Add logs in `CoachingSessionsList` for:
+  - fetch user ID
+  - row counts by status
+  - pending rows found
+  - pending section render
+  - Schedule tap session ID/source
 
-- Add a short README in `ios/README-push-capability.md` with the exact Xcode steps: Target → Signing & Capabilities → `+` → "Push Notifications" and "Background Modes → Remote notifications". (User-actionable; can't be set from code.)
-- Add a one-time diagnostic log on launch in `src/lib/pushFcm.ts` that prints the resolved `aps-environment` consequence — i.e. after `register()` returns, log `existing` permission, `finalReceive`, whether APNs token event fired within 4s (timer). This makes "stuck in `prompt` with no APNs callback" visible in Xcode logs.
+### 4. Evidence and validation after implementation
 
-**2. Force-show the iOS prompt even after a prior `denied**`
+- Run a read-only DB query for recent coaching sessions to show pending/scheduled counts by user.
+- Review or fetch edge logs for `record-coaching-purchase` after a test purchase to confirm insert/reuse and returned `sessionRowId`.
+- Provide exact expected Xcode console log sequences for:
+  1. cold start from locked phone
+  2. backgrounded app
+  3. already-open app with banner tap
+  4. denied notification CTA tap
+  5. pending coaching Schedule tap
 
-- In `requestNativePush()`: if `existing === "denied"`, do not silently bail — open the system settings deep link via the new fallback (below) so the user can flip the toggle. Currently we just return `"denied"` and the row never appears.
+## Files to update
 
-**3. "Enable notifications" CTA → real system-settings deep link**
+- `src/pages/Profile.tsx`
+- `src/hooks/usePushNavigation.ts`
+- `src/lib/openAppSettings.ts`
+- `src/components/NotificationConsentSheet.tsx`
+- `src/components/CoachingSessionsList.tsx`
+- `src/components/CoachingBooking.tsx`
+- `src/lib/coachingPurchase.ts`
+- `supabase/functions/record-coaching-purchase/index.ts`
 
-- `src/lib/openAppSettings.ts` already wraps `capacitor-native-settings` (`IOSSettings.App`). That opens the **app's settings page**, which on iOS contains the **Notifications** row — this is as deep as iOS allows without private API. Verify it works; document the limitation.
-- Update every "Enable notifications" CTA (NotificationConsentSheet "Open Settings" branch when denied, and Profile → Notifications section) to call `openAppSettings()` instead of any in-app re-prompt when `permission === "denied"`.
-- Add a new helper `openNotificationSettings()` that on iOS tries `App-Prefs:NOTIFICATIONS_ID&path=<bundle-id>` first (works on some iOS versions) and falls back to `openAppSettings()`. On Android it stays at app-details. Wire this everywhere a "Open settings" CTA exists.
+No schema migration is needed for these fixes.
 
-**4. Confirm we never unregister**
+Approved.
 
-- Already verified — no `unregisterForRemoteNotifications` call exists. No change needed; note this in the diagnostic README.
+This plan correctly identifies three likely root causes:
 
----
+push route overwritten by premature /auth redirect during auth hydration
 
-## Track 2 — Paid-but-unscheduled coaching sessions
+notification settings plugin exists but denied-state CTA wiring is incomplete
 
-### Data model
-
-`public.coaching_sessions` already supports `status = 'pending'` (CHECK constraint includes it). `record-coaching-purchase` already inserts new purchases with `status='pending'`. We just need to:
-
-- Treat `status='pending'` as the canonical **paid_unscheduled** state. No schema change required beyond optionally renaming via a tolerant UI label.
-- Add an index helper: nothing new; existing `status_scheduled_idx` is enough.
-- Migration: add two nullable columns to `coaching_sessions`:
-  - `unscheduled_reminder_count int not null default 0`
-  - `unscheduled_reminder_last_sent_at timestamptz`
-  These let the new dispatcher rate-limit nudges (no schema change to existing rows; defaults backfill).
-
-### UI: Profile → Your Coaching
-
-`src/components/CoachingSessionsList.tsx` currently filters out `pending` (`visible = sessions.filter(s => s.status !== "pending")`). Change to:
-
-- New section **"Action needed — Schedule your session"** rendered above Upcoming, listing all `status='pending'` rows.
-- Each row shows: "1-hour coaching call — paid, awaiting schedule" + a primary CTA **Schedule** that opens `CoachingBooking` modal (already exists) in **no-payment / already-paid** mode using the iOS no-payment Cal.com URL when `source='paid_ios'` and the regular paid URL fallback for web.
-- Keep the existing Upcoming / Past sections unchanged for `status='scheduled'` etc.
-
-### Booking flow
-
-- `CoachingBooking.tsx`: accept an optional `mode: "already_paid"` + `sessionId` prop. When set, skip payment, open `CAL_IOS_NO_PAYMENT_URL` (iOS) or paid URL with `?reschedule=...` for web. Listen to `cal-webhook` flipping the row to `status='scheduled'` (already happens). The pending row's `id` is used as `external_booking_id` linkage via existing webhook matching by `attendee_email`/`transaction_id` — no change needed if we pass the same email.
-
-### Reminder nudges (paid but unscheduled)
-
-- New shared utility in `supabase/functions/_shared/reminderCopy.ts`: add `unscheduledNudge` copy (en/fr) with a CMS row fallback.
-- New edge function `supabase/functions/coaching-unscheduled-nudge/index.ts`:
-  - Selects `coaching_sessions` where `status='pending'` AND `created_at < now() - interval '15 minutes'` (immediate "schedule now" nudge) OR `unscheduled_reminder_last_sent_at IS NULL OR < now() - interval '2 days'` (every 48h follow-up).
-  - Caps at `unscheduled_reminder_count < 4` so we never spam.
-  - Dispatches FCM + web push with payload `{ type: "coaching_unscheduled", target: "coaching_upcoming_session", path: "/profile?tab=settings&section=coaching&sessionId=<id>" }` — reuses existing push-tap deep-link plumbing.
-  - On send: increment counter, set `unscheduled_reminder_last_sent_at`.
-- Schedule via `pg_cron` every 30 minutes using `supabase--insert` (URL + anon key, per project rules).
-
-### Once scheduled, switch to normal reminders
-
-- No code change needed. The existing `coaching-reminder-dispatch` already keys off `status='scheduled'`. The new nudge function keys off `status='pending'`. The `cal-webhook` flip from `pending → scheduled` is the natural cut-over.
-
----
-
-## Track 3 — Keep push-tap diagnostics
-
-- No changes to `src/lib/pushFcm.ts` and `src/hooks/usePushNavigation.ts` diagnostic logs.
-- Do **not** remove `[PushTap]` / `[PushNav]` lines until you've shared logs for cold-start, background, and foreground tap and we've confirmed `/profile?tab=settings&section=coaching&sessionId=...` actually mounts.
-
----
-
-## Files touched
-
-- `ios/README-push-capability.md` (new) — Xcode capability checklist.
-- `src/lib/pushFcm.ts` — add APNs-callback watchdog log + force-settings on prior denial.
-- `src/lib/openAppSettings.ts` — add `openNotificationSettings()` with iOS preference-URL attempt, app-details fallback.
-- `src/components/NotificationConsentSheet.tsx` + Profile notifications section — use `openNotificationSettings()` when denied.
-- `src/components/CoachingSessionsList.tsx` — render Action-needed section for `status='pending'`, wire Schedule CTA.
-- `src/components/CoachingBooking.tsx` — accept `mode="already_paid"` + `sessionId`.
-- `supabase/functions/_shared/reminderCopy.ts` — add unscheduled nudge copy.
-- `supabase/functions/coaching-unscheduled-nudge/index.ts` (new).
-- Migration: add `unscheduled_reminder_count` + `unscheduled_reminder_last_sent_at` to `coaching_sessions`.
-- `supabase--insert` SQL: cron schedule for the new function every 30 minutes.
-
-User: Approved, with two adjustments.
-
-Track 1
-
-I agree with:
-
-Xcode Push Notifications + Background Modes verification
-
-keeping APNs registration watchdog logs
-
-sending denied users to system settings
-
-updating all “Enable notifications” CTAs to open settings instead of trying to re-prompt
-
-Adjustment:
-
-use openAppSettings() as the primary supported iOS path
-
-do not depend on App-Prefs:... notification URLs as core behavior, since they are not consistently supported across iOS versions
-
-Track 2
+paid-unscheduled data exists, but scheduling uses the wrong flow/source mapping
 
 I agree with:
 
-using status='pending' as the canonical paid-but-unscheduled state
+adding loading-aware auth gating for Profile
 
-showing a visible Schedule card in Profile → Your Coaching
+keeping all [PushTap], [PushNav], and new [PushRoute] diagnostics
 
-adding a no-payment scheduling mode
+preferring IOSSettings.AppNotification with fallback to [IOSSettings.App](http://IOSSettings.App)
 
-adding rate-limited unscheduled reminder nudges
+wiring every denied-state notification CTA to the settings helper
 
-switching naturally to existing scheduled reminders after booking
+extending CoachingBooking with an already-paid mode
 
-One required confirmation:
+changing pending Schedule to open the already-paid booking flow instead of raw external URL
 
-explicitly verify the exact linkage mechanism that converts a pending coaching_sessions row into the later scheduled booking row, so we do not create orphaned pending purchases or duplicate scheduled sessions
+fixing source handling for iOS pending sessions (appstore)
 
-Track 3
+Two implementation notes:
 
-Keep all current push-tap diagnostics until we have confirmed routing works from cold start, background, and foreground tap.
+in Profile.tsx, prefer a guarded render/loading state over an eager imperative redirect while auth is still hydrating
 
-## Verification
+keep fallback logging for notification settings because AppNotification behavior can vary by iOS version
 
-1. iOS: clean build, launch, tap "Enable notifications". Confirm prompt appears AND a row now exists in Settings → Notifications → CarnivoreX. If previously denied, confirm CTA deep-links to settings.
-2. Buy a coaching session via TestFlight → backgrounds App Store sheet → return to Profile → confirm new **Schedule** card appears. Tap it → CoachingBooking opens in no-payment mode.
-3. After 15 min with the row still pending, confirm a push arrives with title "Schedule your coaching call". Tap it → app deep-links to the Schedule card.
-4. Complete a Cal.com booking → confirm the row moves from Action-needed to Upcoming, and standard reminder cadence resumes.
-5. Push-tap diagnostics: re-run cold-start / background / foreground tests and capture `[PushTap]` / `[PushNav]` logs.
+No schema migration is needed for this pass.

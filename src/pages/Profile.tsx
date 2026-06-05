@@ -81,12 +81,9 @@ function SubscriptionBadge() {
 const Profile = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, signOut } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { t } = useTranslation();
   const qc = useQueryClient();
-  // Local UI-only shadow of the profile row — reads initialize from the
-  // React Query cache so the first paint is instant on revisits; writes
-  // stay optimistic via saveField + query invalidation.
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPushConsent, setShowPushConsent] = useState(false);
@@ -100,11 +97,26 @@ const Profile = () => {
   const highlightSessionId = searchParams.get("sessionId") || undefined;
   const section = searchParams.get("section") || undefined;
 
+  // [PushRoute] Mount log — proves Profile received the push route params.
+  useEffect(() => {
+    console.info("[PushRoute] Profile mount", {
+      path: window.location.pathname,
+      search: window.location.search,
+      tab: searchParams.get("tab"),
+      section: searchParams.get("section"),
+      sessionId: searchParams.get("sessionId"),
+      authLoading,
+      hasUser: !!user,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // React to query-param updates that arrive while Profile is already mounted
   // (e.g., push tap when app was already on /profile). Switch tab + scroll.
   useEffect(() => {
     const q = searchParams.get("tab");
     if (q === "feed" || q === "goals" || q === "community" || q === "settings") {
+      console.info("[PushRoute] setTab from query", { q });
       setTab(q);
     }
   }, [searchParams]);
@@ -112,8 +124,10 @@ const Profile = () => {
   useEffect(() => {
     if (section !== "coaching") return;
     if (tab !== "settings") return;
+    console.info("[PushRoute] scroll to coaching attempt", { tab, highlightSessionId });
     const id = window.setTimeout(() => {
       const el = document.getElementById("coaching-section");
+      console.info("[PushRoute] coaching-section element", { found: !!el });
       if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 120);
     return () => window.clearTimeout(id);
@@ -437,11 +451,22 @@ const Profile = () => {
   });
   const progressMilestones = milestonesQuery.data ?? [];
 
-  // Redirect unauthenticated users. The queries above are gated on `user`
-  // so they won’t actually fire before this redirect runs.
+  // Redirect unauthenticated users — but only AFTER auth bootstrap finishes.
+  // Otherwise a push-tap cold start can overwrite the deep-linked /profile
+  // route with /auth before the session hydrates.
   useEffect(() => {
-    if (!user) navigate("/auth");
-  }, [user, navigate]);
+    if (authLoading) {
+      console.info("[PushRoute] auth still loading — defer auth redirect");
+      return;
+    }
+    if (!user) {
+      console.info("[PushRoute] no user after auth load — redirect /auth", {
+        path: window.location.pathname + window.location.search,
+      });
+      const returnTo = window.location.pathname + window.location.search;
+      navigate(`/auth?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
+    }
+  }, [authLoading, user, navigate]);
 
   // Only show the big splash loader on the first-ever load when we truly
   // have nothing to paint. On revisits, cached data is already present so
@@ -1016,7 +1041,28 @@ const Profile = () => {
                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.enableNotifications")}</h3>
                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.enableNotificationsDesc")}</p>
                 </div>
-                <Switch checked={notifPrefs.enabled} onCheckedChange={(v) => updateNotifPref("enabled", v)} />
+                <Switch
+                  checked={notifPrefs.enabled}
+                  onCheckedChange={async (v) => {
+                    updateNotifPref("enabled", v);
+                    if (!v) return;
+                    // If turning ON while OS notifications are denied, jump to system settings.
+                    if (Capacitor.isNativePlatform()) {
+                      try {
+                        const { getNativePushPermission } = await import("@/lib/pushFcm");
+                        const perm = await getNativePushPermission();
+                        console.info("[NotifSettings] enable-switch os-perm=", perm);
+                        if (perm !== "granted") {
+                          const { openAppSettings } = await import("@/lib/openAppSettings");
+                          toast.info("Opening system notification settings…");
+                          await openAppSettings();
+                        }
+                      } catch (e) {
+                        console.warn("[NotifSettings] enable-switch check failed", e);
+                      }
+                    }
+                  }}
+                />
               </div>
             </div>
 
@@ -1096,31 +1142,38 @@ const Profile = () => {
             {/* User Notification Preferences */}
             <button
               onClick={async () => {
-                console.info("[PushDecision] source=profile-settings branch=manual-tap");
+                console.info("[NotifSettings] manual CTA tapped (profile)");
+                // 1) On native, ALWAYS check OS permission first. If denied
+                //    or prompt-with-rationale, jump straight to system
+                //    settings — saved app prefs must not block this path.
+                if (Capacitor.isNativePlatform()) {
+                  try {
+                    const { getNativePushPermission } = await import("@/lib/pushFcm");
+                    const perm = await getNativePushPermission();
+                    console.info("[NotifSettings] manual CTA os-perm=", perm);
+                    if (perm !== "granted") {
+                      const { openAppSettings } = await import("@/lib/openAppSettings");
+                      toast.info("Opening system notification settings…");
+                      await openAppSettings();
+                      return;
+                    }
+                  } catch (e) {
+                    console.warn("[NotifSettings] manual CTA os-check failed", e);
+                  }
+                }
+                // 2) Permission is granted (or we're on web). Open the
+                //    consent sheet so the user can review per-topic prefs.
                 try {
                   const { auditPushDecision } = await import("@/lib/pushDecision");
                   const decision = await auditPushDecision("profile-settings", { ignoreSessionFlag: true });
                   if (decision.show) {
                     setShowPushConsent(true);
-                  } else if (
-                    decision.reason === "local-consent-set" ||
-                    decision.reason === "profile-consent-set"
-                  ) {
-                    // User previously denied — give them a one-tap path to
-                    // flip the iOS/Android system toggle.
-                    const { openAppSettings } = await import("@/lib/openAppSettings");
-                    toast.info("Opening system notification settings…");
-                    await openAppSettings();
                   } else {
-                    console.info("[PushDecision] source=profile-settings branch=suppress-open reason=", decision.reason);
-                    toast.info(
-                      decision.reason === "os-already-granted"
-                        ? "Notifications are already enabled."
-                        : "Notification preferences already saved.",
-                    );
+                    toast.info("Notifications are already enabled.");
+                    setShowPushConsent(true);
                   }
                 } catch (e) {
-                  console.error("[PushDecision] source=profile-settings audit-threw — opening anyway", e);
+                  console.error("[NotifSettings] manual CTA audit-threw — opening sheet", e);
                   setShowPushConsent(true);
                 }
               }}

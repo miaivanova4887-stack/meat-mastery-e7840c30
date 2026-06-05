@@ -43,6 +43,22 @@ export function usePushNavigation() {
             path: window.location.pathname + window.location.search,
           });
         });
+        // Route-watch: log any subsequent route changes within 3s so we can
+        // prove whether another effect (e.g. an auth-guard) overwrote the
+        // push route after we navigated.
+        const startedAt = Date.now();
+        const expected = path;
+        const check = (label: string) => {
+          const current = window.location.pathname + window.location.search;
+          if (current !== expected) {
+            console.warn("[PushNav] route changed away from push target", {
+              expected, current, ageMs: Date.now() - startedAt, label,
+            });
+          }
+        };
+        setTimeout(() => check("t+250ms"), 250);
+        setTimeout(() => check("t+1000ms"), 1000);
+        setTimeout(() => check("t+3000ms"), 3000);
       });
     };
 
