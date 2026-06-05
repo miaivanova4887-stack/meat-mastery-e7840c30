@@ -1,6 +1,8 @@
 import { ArrowLeft, Heart, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe, Crosshair, Crown } from "lucide-react";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
+import type { NativePushPermission } from "@/lib/pushFcm";
 import ConsentBanner from "@/components/ConsentBanner";
 import CommunityFeed from "@/components/CommunityFeed";
 import { useFavorites } from "@/hooks/useFavorites";
