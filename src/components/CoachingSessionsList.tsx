@@ -1,13 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, ExternalLink, CalendarPlus } from "lucide-react";
+import { Calendar, Clock, ExternalLink, CalendarPlus, AlertCircle } from "lucide-react";
 import CoachingBooking from "@/components/CoachingBooking";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem";
 import { FileOpener } from "@capacitor-community/file-opener";
 import { openExternalUrl } from "@/lib/openExternalUrl";
+import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface CoachingSession {
@@ -21,6 +23,7 @@ interface CoachingSession {
   session_month: string;
   created_at: string;
   external_booking_id: string | null;
+  source: string | null;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -225,11 +228,13 @@ interface CoachingSessionsListProps {
 }
 
 export default function CoachingSessionsList({ highlightSessionId }: CoachingSessionsListProps = {}) {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [userTz, setUserTz] = useState<string | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [pulseId, setPulseId] = useState<string | null>(null);
+  const [schedulingId, setSchedulingId] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -243,7 +248,7 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
       supabase
         .from("coaching_sessions")
         .select(
-          "id, status, scheduled_at, booking_url, attendee_email, attendee_name, timezone, session_month, created_at, external_booking_id"
+          "id, status, scheduled_at, booking_url, attendee_email, attendee_name, timezone, session_month, created_at, external_booking_id, source"
         )
         .eq("user_id", uid)
         .order("scheduled_at", { ascending: true, nullsFirst: false }),
@@ -253,6 +258,39 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
     setUserTz(profile?.timezone || null);
     setLoading(false);
   }, []);
+
+  // Opens Cal.com for a paid-but-unscheduled session in "already paid" mode
+  // (iOS no-payment URL, or paid URL for web/legacy). We embed
+  // metadata[session_row_id] so the cal-webhook attaches the booking to
+  // THIS exact pending row (no orphans, no duplicate scheduled rows).
+  const handleSchedule = useCallback(
+    async (session: CoachingSession) => {
+      setSchedulingId(session.id);
+      try {
+        // iOS-paid sessions MUST go to the no-payment Cal.com event to avoid
+        // double-charging the user. Web/Stripe sessions use the paid URL
+        // (Cal.com will recognise the pre-payment via the same session_row_id).
+        const base = session.source === "paid_ios" ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL;
+        const url = buildCalUrl({
+          base,
+          userId: user?.id ?? null,
+          sessionRowId: session.id,
+          name:
+            (user?.user_metadata as Record<string, unknown> | undefined)?.display_name as
+              | string
+              | undefined ?? session.attendee_name ?? null,
+          email: user?.email ?? session.attendee_email ?? null,
+        });
+        const res = await openExternalUrl(url, { logTag: "coaching:schedule-pending" });
+        if (!res.ok) {
+          toast.error("Couldn't open the scheduler. Please try again.");
+        }
+      } finally {
+        setSchedulingId(null);
+      }
+    },
+    [user?.id, user?.email, user?.user_metadata],
+  );
 
   useEffect(() => {
     fetchSessions();
