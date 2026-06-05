@@ -83,19 +83,16 @@ serve(async (req) => {
         if (!profile || !profile.reminders_enabled) { skipped++; continue; }
         if (profile.reminder_offset_minutes !== offset) { skipped++; continue; }
 
-        const title = profile.locale === "fr"
-          ? "Rappel : appel de coaching"
-          : "Coaching call reminder";
+        const locale = profile.locale === "fr" ? "fr" : "en";
         const whenLocal = s.scheduled_at
-          ? new Date(s.scheduled_at).toLocaleString(profile.locale === "fr" ? "fr-FR" : "en-US", {
+          ? new Date(s.scheduled_at).toLocaleString(locale === "fr" ? "fr-FR" : "en-US", {
               timeZone: s.timezone ?? undefined,
               hour: "numeric",
               minute: "2-digit",
             })
           : "";
-        const body = profile.locale === "fr"
-          ? `Votre appel commence à ${whenLocal}.`
-          : `Your call starts at ${whenLocal}.`;
+        const { title, body } = renderReminder(copy, locale, whenLocal);
+
 
         // Native FCM tokens
         const { data: tokens } = await admin
