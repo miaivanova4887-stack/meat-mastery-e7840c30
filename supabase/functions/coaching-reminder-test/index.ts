@@ -65,12 +65,13 @@ serve(async (req) => {
 
   const { data: profile } = await admin
     .from("profiles")
-    .select("locale, timezone")
+    .select("locale, timezone, push_consent")
     .eq("id", userId)
     .maybeSingle();
 
   const tz = profile?.timezone ?? undefined;
   const locale = profile?.locale === "fr" ? "fr" : "en";
+  const pushConsent = profile?.push_consent ?? "unset";
 
   const fakeStart = new Date(Date.now() + 5 * 60_000);
   const whenLocal = (() => {
