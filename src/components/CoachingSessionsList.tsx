@@ -218,11 +218,18 @@ async function addToCalendar(session: CoachingSession) {
   }
 }
 
-export default function CoachingSessionsList() {
+interface CoachingSessionsListProps {
+  /** When set, scroll the matching upcoming session card into view and
+   *  briefly highlight it. Used by push-tap deep linking. */
+  highlightSessionId?: string;
+}
+
+export default function CoachingSessionsList({ highlightSessionId }: CoachingSessionsListProps = {}) {
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [userTz, setUserTz] = useState<string | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [pulseId, setPulseId] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -258,6 +265,21 @@ export default function CoachingSessionsList() {
       window.removeEventListener("coaching-booked", onBooked);
     };
   }, [fetchSessions]);
+
+  // Scroll & highlight the targeted upcoming session when arriving via a push tap.
+  useEffect(() => {
+    if (!highlightSessionId) return;
+    if (loading) return;
+    const match = sessions.find((s) => s.id === highlightSessionId);
+    if (!match) return;
+    const id = window.setTimeout(() => {
+      const el = document.getElementById(`coaching-session-${match.id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setPulseId(match.id);
+      window.setTimeout(() => setPulseId((cur) => (cur === match.id ? null : cur)), 2800);
+    }, 200);
+    return () => window.clearTimeout(id);
+  }, [highlightSessionId, loading, sessions]);
 
   const now = Date.now();
   const visible = sessions.filter((s) => s.status !== "pending");
@@ -326,8 +348,15 @@ export default function CoachingSessionsList() {
         : s.status === "completed"
         ? "bg-muted text-muted-foreground"
         : "bg-primary/15 text-primary";
+    const isPulsing = pulseId === s.id;
     return (
-      <div key={s.id} className="ios-card p-4 space-y-2">
+      <div
+        key={s.id}
+        id={`coaching-session-${s.id}`}
+        className={`ios-card p-4 space-y-2 scroll-mt-24 transition-shadow duration-500 ${
+          isPulsing ? "ring-2 ring-primary shadow-lg" : ""
+        }`}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <h4 className="font-display font-bold text-foreground text-[15px]">

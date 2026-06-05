@@ -39,6 +39,49 @@ let listenersBound = false;
 let fcmTokenListenerBound = false;
 let appStateListenerBound = false;
 
+// ---------------------------------------------------------------------------
+// Push-tap deep linking
+// ---------------------------------------------------------------------------
+// Resolves an in-app path from a notification's data payload. The dispatcher
+// sets `path` explicitly; we also support a `target`+`session_id` fallback
+// and a legacy `url` field used by older notifications.
+const PENDING_NAV_KEY = "push-nav-pending";
+let pendingPushNav: string | null = null;
+
+function safeAbsPath(p: unknown): string | null {
+  if (typeof p !== "string") return null;
+  if (!p.startsWith("/")) return null;
+  return p;
+}
+
+function resolvePushNavPath(data: Record<string, unknown> | undefined | null): string | null {
+  if (!data) return null;
+  const direct = safeAbsPath(data.path);
+  if (direct) return direct;
+  if (data.target === "coaching_upcoming_session") {
+    const base = "/profile?tab=settings&section=coaching";
+    const sid = typeof data.session_id === "string" ? data.session_id : "";
+    return sid ? `${base}&sessionId=${encodeURIComponent(sid)}` : base;
+  }
+  const url = safeAbsPath(data.url);
+  if (url) return url;
+  return null;
+}
+
+function queuePushNav(path: string) {
+  pendingPushNav = path;
+  try { sessionStorage.setItem(PENDING_NAV_KEY, path); } catch {/* ignore */}
+  try {
+    window.dispatchEvent(new CustomEvent("push-nav", { detail: { path } }));
+  } catch {/* ignore */}
+}
+
+export function consumePendingPushNav(): string | null {
+  const v = pendingPushNav;
+  pendingPushNav = null;
+  return v;
+}
+
 export async function savePushConsent(
   state: PushConsentState,
   preferences?: Record<string, boolean>,
@@ -107,6 +150,31 @@ function bindFcmTokenListenerOnce() {
   console.info("[Push] window:fcm-token listener bound");
 }
 
+let actionListenerBound = false;
+
+function bindActionListenerOnce() {
+  if (actionListenerBound) return;
+  if (!Capacitor.isNativePlatform()) return;
+  actionListenerBound = true;
+  try {
+    PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+      const data = (action?.notification?.data ?? {}) as Record<string, unknown>;
+      const path = resolvePushNavPath(data);
+      console.info("[Push] actionPerformed", { hasData: !!data, path, type: data?.type });
+      if (path) queuePushNav(path);
+    });
+    PushNotifications.addListener("pushNotificationReceived", (n) => {
+      // Foreground receive — do not auto-navigate. iOS shows the banner;
+      // tap will route via actionPerformed.
+      const data = (n?.data ?? {}) as Record<string, unknown>;
+      console.info("[Push] notificationReceived (foreground)", { type: data?.type });
+    });
+    console.info("[Push] action listeners bound");
+  } catch (e) {
+    console.warn("[Push] action listener bind failed", e);
+  }
+}
+
 function bindListenersOnce(platform: "android" | "ios") {
   if (!isNativeFcmEnabled()) {
     console.info("[PushDecision] bindListeners skipped reason=native-fcm-disabled");
@@ -114,6 +182,9 @@ function bindListenersOnce(platform: "android" | "ios") {
   }
   // iOS sources tokens via window event (FCM), Android via PushNotifications.registration.
   if (platform === "ios") bindFcmTokenListenerOnce();
+
+  // Action listener should bind regardless of token-source path.
+  bindActionListenerOnce();
 
   if (listenersBound) {
     console.info("[Push] plugin listeners already bound — skip");
@@ -237,6 +308,14 @@ export async function requestNativePush(): Promise<PushConsentState> {
 // arrives before requestNativePush() ran (warm starts) is still captured.
 if (typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios" && NATIVE_FCM_ENABLED_IOS) {
   bindFcmTokenListenerOnce();
+}
+
+// Bind the push-tap action listener at module load on any native platform so
+// cold-start taps (where the OS launches the app from a notification) are
+// captured before React Router mounts. The handler queues the path in a
+// module-level variable + sessionStorage; usePushNavigation drains both.
+if (typeof window !== "undefined" && Capacitor.isNativePlatform()) {
+  bindActionListenerOnce();
 }
 
 export async function triggerPushEvent(

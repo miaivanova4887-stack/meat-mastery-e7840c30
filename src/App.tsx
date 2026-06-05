@@ -58,6 +58,7 @@ import { useContentOverrides } from "./hooks/useContentOverrides";
 import { useEdgeSwipeBack } from "./hooks/useEdgeSwipeBack";
 import { useTabSwipe } from "./hooks/useTabSwipe";
 import { useDeepLinks } from "./hooks/useDeepLinks";
+import { usePushNavigation } from "./hooks/usePushNavigation";
 import PushConsentFallbackHost from "./components/PushConsentFallbackHost";
 
 const queryClient = new QueryClient();
@@ -92,6 +93,12 @@ function TabSwipeHandler() {
 /** Routes Android App Link / appUrlOpen events into React Router. */
 function DeepLinkHandler() {
   useDeepLinks();
+  return null;
+}
+
+/** Routes push-notification taps into React Router. */
+function PushNavHandler() {
+  usePushNavigation();
   return null;
 }
 
@@ -147,6 +154,7 @@ const App = () => {
               <EdgeSwipeBackHandler />
               <TabSwipeHandler />
               <DeepLinkHandler />
+              <PushNavHandler />
               <PushConsentFallbackHost />
               <Routes>
                 <Route path="/onboarding" element={<Onboarding />} />
