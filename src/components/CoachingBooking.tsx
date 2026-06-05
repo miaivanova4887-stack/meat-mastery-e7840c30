@@ -158,6 +158,26 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
 
   const close = () => onOpenChange(false);
 
+  const handleOpenScheduler = useCallback(async () => {
+    console.log("coaching:open-scheduler-tap", { url: schedulerUrl });
+    if (!schedulerUrl) {
+      toast.error("Booking link unavailable — please contact support.");
+      setShowFallback(true);
+      return;
+    }
+    const res = await openExternalUrl(schedulerUrl, { logTag: "coaching:open-scheduler" });
+    if (!res.ok) {
+      setShowFallback(true);
+      toast.error("Payment received — we couldn't open the scheduler automatically.");
+    }
+  }, [schedulerUrl]);
+
+  const handleCopyLink = useCallback(async () => {
+    const ok = await copyToClipboard(schedulerUrl);
+    if (ok) toast.success("Booking link copied");
+    else toast.error("Couldn't copy — please long-press the link to copy.");
+  }, [schedulerUrl]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0 gap-0 bg-card border-border/50 rounded-2xl overflow-hidden [&>button]:hidden">
@@ -213,12 +233,31 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
               </h2>
               <p className="text-xs text-muted-foreground">Your payment is confirmed. Complete your booking in the browser.</p>
               <Button
-                onClick={() => window.open(CAL_URL, "_blank")}
+                onClick={handleOpenScheduler}
                 variant="outline"
                 className="w-full rounded-xl"
+                disabled={!schedulerUrl}
               >
                 Open Cal.com Scheduler
               </Button>
+              {showFallback && (
+                <div className="rounded-xl border border-border/50 bg-muted/40 p-3 space-y-2 text-left">
+                  <p className="text-xs text-muted-foreground">
+                    If the scheduler didn't open, copy this link and paste it into Safari:
+                  </p>
+                  <p className="text-xs font-mono break-all text-foreground select-all">
+                    {schedulerUrl}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    onClick={handleCopyLink}
+                    className="w-full gap-2 rounded-xl"
+                  >
+                    <Copy size={14} />
+                    Copy booking link
+                  </Button>
+                </div>
+              )}
               <Button onClick={handleDone} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 font-semibold">
                 Done
               </Button>
