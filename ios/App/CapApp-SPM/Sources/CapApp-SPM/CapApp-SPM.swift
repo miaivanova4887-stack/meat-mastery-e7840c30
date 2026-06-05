@@ -124,4 +124,3 @@ public final class CarnivoreXPush: NSObject, MessagingDelegate {
 }
 
 // Needed for the WKWebView return type above.
-import WebKit
