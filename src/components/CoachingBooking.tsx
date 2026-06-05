@@ -150,21 +150,11 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   }, [navigate, onOpenChange, location, useNative, paywall]);
 
   const handleDone = useCallback(async () => {
-    if (!user?.id) {
-      setScreen("success");
-      return;
-    }
-    try {
-      await supabase.from("coaching_sessions").insert({
-        user_id: user.id,
-        session_type: "paid",
-        session_month: new Date().toISOString().slice(0, 7),
-      });
-    } catch (e) {
-      console.warn("[CoachingBooking] session log failed", e);
-    }
+    // The Cal.com webhook (cal-webhook edge function) is the canonical writer
+    // for the booked session — scheduled_at, timezone, attendee info etc.
+    // We intentionally do not insert here to avoid creating duplicate rows.
     setScreen("success");
-  }, [user]);
+  }, []);
 
   const close = () => onOpenChange(false);
 
