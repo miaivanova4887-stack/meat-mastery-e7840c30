@@ -335,15 +335,15 @@ const RecipeCoach = () => {
             placeholder={hasAccess("pro") ? t("recipeCoach.inputPlaceholder") : t("recipeCoach.lockedPlaceholder")}
             rows={1}
             disabled={!hasAccess("pro")}
-            className="flex-1 resize-none bg-secondary rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 max-h-32 disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ minHeight: "40px" }}
+            className="flex-1 resize-none bg-secondary rounded-xl px-4 py-3 text-base text-foreground placeholder:text-muted-foreground border border-border/40 focus:outline-none focus:ring-1 focus:ring-primary/30 max-h-32 disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{ minHeight: "48px" }}
           />
           <button
             type="submit"
             disabled={!input.trim() || isLoading || !hasAccess("pro")}
-            className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 transition-opacity"
+            className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-40 transition-opacity"
           >
-            <Send size={16} />
+            <Send size={18} />
           </button>
         </div>
       </form>
