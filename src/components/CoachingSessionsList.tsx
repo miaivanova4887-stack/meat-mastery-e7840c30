@@ -348,8 +348,15 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
         : s.status === "completed"
         ? "bg-muted text-muted-foreground"
         : "bg-primary/15 text-primary";
+    const isPulsing = pulseId === s.id;
     return (
-      <div key={s.id} className="ios-card p-4 space-y-2">
+      <div
+        key={s.id}
+        id={`coaching-session-${s.id}`}
+        className={`ios-card p-4 space-y-2 scroll-mt-24 transition-shadow duration-500 ${
+          isPulsing ? "ring-2 ring-primary shadow-lg" : ""
+        }`}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <h4 className="font-display font-bold text-foreground text-[15px]">
