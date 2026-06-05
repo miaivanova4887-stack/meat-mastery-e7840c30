@@ -511,6 +511,16 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
           </div>
         </div>
       )}
+      <CoachingBooking
+        open={bookingOpen}
+        onOpenChange={(v) => {
+          setBookingOpen(v);
+          if (!v) setScheduleSession(null);
+        }}
+        mode={scheduleSession ? "already_paid" : "default"}
+        sessionId={scheduleSession?.id}
+        sessionSource={(scheduleSession?.source as "appstore" | "stripe" | "paid_ios" | "paid_web" | null) ?? null}
+      />
     </div>
   );
 }
