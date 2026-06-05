@@ -28,6 +28,7 @@ export const CoachingReminderSettings = () => {
   const [enabled, setEnabled] = useState(true);
   const [offset, setOffset] = useState(60);
   const [loaded, setLoaded] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     if (!user) return;
