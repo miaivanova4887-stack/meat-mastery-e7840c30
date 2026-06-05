@@ -315,6 +315,19 @@ export interface PurchaseResult {
   cancelled?: boolean;
   error?: string;
   summary?: RcEntitlementSummary;
+  /**
+   * Real store transaction id from RC's MakePurchaseResult.transaction.
+   * On iOS this is the StoreKit transactionIdentifier; on Android the order
+   * id. Use this — not a synthesized id — to make `record-coaching-purchase`
+   * truly idempotent and to allow future webhook reconciliation.
+   * Undefined only if the installed RC SDK didn't surface a transaction
+   * object (older runtimes / unexpected shape).
+   */
+  transactionId?: string;
+  /** Real product id from the store (matches App Store Connect product). */
+  productId?: string;
+  /** Real purchase timestamp from the store, in ms since epoch. */
+  purchaseDateMs?: number;
 }
 
 export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseResult> {
@@ -323,7 +336,36 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseRe
   }
   try {
     const result = await Purchases.purchasePackage({ aPackage: pkg });
-    return { ok: true, summary: summarize(result.customerInfo) };
+    // Defensively read the transaction fields at runtime — older RC builds
+    // may omit `transaction` even when current types declare it.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tx = (result as any)?.transaction as
+      | { transactionIdentifier?: string; productIdentifier?: string; purchaseDate?: string }
+      | undefined;
+    const txId = tx?.transactionIdentifier;
+    const productId =
+      tx?.productIdentifier ??
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ((result as any)?.productIdentifier as string | undefined) ??
+      pkg.product?.identifier;
+    let purchaseDateMs: number | undefined;
+    if (tx?.purchaseDate) {
+      const t = Date.parse(tx.purchaseDate);
+      if (!Number.isNaN(t)) purchaseDateMs = t;
+    }
+    if (!txId) {
+      console.warn("[revenuecat] purchase succeeded but no transactionIdentifier surfaced", {
+        hasTransaction: Boolean(tx),
+        productId,
+      });
+    }
+    return {
+      ok: true,
+      summary: summarize(result.customerInfo),
+      transactionId: txId,
+      productId,
+      purchaseDateMs,
+    };
   } catch (e: unknown) {
     // RC attaches `userCancelled` on the error object when the sheet was
     // dismissed. Treat that as a non-error UX-wise.

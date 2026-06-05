@@ -1,90 +1,98 @@
-## Goal
+## Audit findings
 
-Tapping "Add to calendar" on a coaching session should:
-1. Open an actual **calendar app** (Google Calendar / Apple Calendar), not a generic share sheet.
-2. Pre-fill the event with the **meeting link** (Zoom / Google Meet / Cal.com room) so the user can join straight from their calendar reminder.
+I inspected every IAP code path (RevenueCat init, subscription purchase, coaching consumable, restore, entitlement read, `record-coaching-purchase` edge function, `SubscriptionContext`). Summary:
 
-## What's wrong today
+**Already production-safe (no changes needed):**
 
-In `src/components/CoachingSessionsList.tsx`:
+- `src/lib/revenuecat.ts` — no sandbox/TestFlight branching. RC auto-detects sandbox vs production receipts; we use the same `appl_…` public key for both, which is correct.
+- `src/contexts/SubscriptionContext.tsx` — calls `getEntitlements()` from RC on every auth change and every 60s, takes the higher of RC vs Stripe, and persists state. Subscription unlock + relaunch persistence + restore are wired correctly.
+- `src/pages/Pricing.tsx` `handleNativeRestore` → calls `Purchases.restorePurchases()` then `refreshSubscription()`. Correct.
+- `src/pages/Coaching.tsx` and `CoachingBooking.tsx` — Stripe path is correctly gated behind `!isRevenueCatAvailable()` so iOS never hits Stripe (Apple 3.1.1 compliant).
+- `record-coaching-purchase` — idempotent on `(user_id, transaction_id)` via unique-violation handling. Service-role insert is correct.
 
-- Native path uses `Share.share({ url: 'data:text/calendar,...' })`. Android treats this as a generic share → user sees Files / Drive / Gmail, not Calendar. iOS shows the share sheet too, with inconsistent "Add to Calendar" behavior.
-- The `.ics` we build only sets `URL:` (rarely surfaced by calendar UIs) and a generic description. The user doesn't see the meeting link inside the event.
+**One real bug that hurts production reliability:**
 
-In `supabase/functions/cal-webhook/index.ts` (lines 77–80), `booking_url` is computed with broken `??`/ternary precedence:
+- `src/pages/Pricing.tsx:144` and `src/pages/Coaching.tsx:~58` synthesize `transactionId = "rc_${user.id}_${Date.now()}"` instead of using the real Apple transaction id. The RC SDK actually returns it on `MakePurchaseResult.transaction.transactionIdentifier` (confirmed in `@revenuecat/purchases-typescript-internal-esm/dist/callbackTypes.d.ts`). Consequences:
+  - A user double-tapping "Buy" while the network is slow can produce two rows (different timestamps) instead of one idempotent row.
+  - A future RC server-side webhook (which carries the real Apple transaction id) cannot reconcile against rows we wrote with synthetic ids.
+  - Refund/chargeback reconciliation is impossible without the real id.
+
+**Not a code issue, but flagged for you:**
+
+- App Store production IAP also requires: (a) the `coaching_call` product and both subscription products are in "Ready to Submit / Approved" state in App Store Connect, (b) the Paid Apps agreement is active, (c) the products are attached to the RC offering marked "Current" in the RC dashboard, and (d) Apple's App-Specific Shared Secret + App Store Connect API key are configured in RC. These are dashboard settings, not code.
+
+## Changes I will make in build mode
+
+### 1. `src/lib/revenuecat.ts` — return the real transaction id
+
+Update `PurchaseResult` and `purchasePackage`:
 
 ```ts
-const bookingUrl =
-  payload?.metadata?.videoCallUrl ?? payload?.location ?? payload?.bookingUrl ?? payload?.uid
-    ? `https://cal.com/booking/${payload?.uid}`
-    : undefined;
+export interface PurchaseResult {
+  ok: boolean;
+  cancelled?: boolean;
+  error?: string;
+  summary?: RcEntitlementSummary;
+  transactionId?: string;          // NEW: real Apple/Google transaction id
+  originalTransactionId?: string;  // NEW: iOS originalTransactionIdentifier
+  productId?: string;              // NEW: real product id from store
+  purchaseDateMs?: number;         // NEW: real purchase date
+}
 ```
 
-→ It always returns the `https://cal.com/booking/<uid>` fallback (a reschedule page), never the real `videoCallUrl`. So even if we surface the link nicely, it points to the wrong place.
+Inside `purchasePackage`, read `result.transaction.transactionIdentifier`, `result.transaction.productIdentifier`, and `result.transaction.purchaseDate` (and `originalTransactionIdentifier` when present on iOS) and surface them.
 
-## Plan
+### 2. `src/pages/Pricing.tsx` and `src/pages/Coaching.tsx` — use real ids
 
-### 1. Fix `booking_url` to be the real meeting link (backend)
-
-In `supabase/functions/cal-webhook/index.ts`, rewrite the booking URL resolution so it actually prefers the video call URL:
+Replace the synthetic id with the real one, falling back only if RC returned nothing:
 
 ```ts
-const videoCallUrl = payload?.metadata?.videoCallUrl;
-const locationUrl = typeof payload?.location === "string" && /^https?:\/\//.test(payload.location)
-  ? payload.location
-  : undefined;
-const bookingUrl =
-  videoCallUrl
-  ?? locationUrl
-  ?? payload?.bookingUrl
-  ?? (payload?.uid ? `https://cal.com/booking/${payload.uid}` : undefined);
+const transactionId =
+  result.transactionId ?? `rc_${user.id}_${Date.now()}`;
+await recordCoachingPurchase({
+  source: "appstore",
+  productId: result.productId ?? info.pkg.product?.identifier ?? "coaching_call",
+  transactionId,
+  originalTransactionId: result.originalTransactionId,
+  purchaseDateMs: result.purchaseDateMs ?? Date.now(),
+});
 ```
 
-This way `coaching_sessions.booking_url` holds the join link when Cal provides one, and we fall back to the booking management page only if nothing else is available.
+(`CoachingBooking.tsx` gets the same treatment if it duplicates the call.)
 
-### 2. Open a real calendar app from the client
+### 3. `supabase/functions/record-coaching-purchase/index.ts` — persist originalTransactionId
 
-In `src/components/CoachingSessionsList.tsx`, replace `downloadIcs(session)` with `addToCalendar(session)` that picks the best strategy per platform:
+It already accepts `originalTransactionId` in the `Body` type but ignores it. Add it to the insert so refund webhooks (and a future RC webhook) can join on it.
 
-- **Android (native):** open a **Google Calendar template URL** via `openExternalUrl`:
-  ```
-  https://calendar.google.com/calendar/render?action=TEMPLATE
-    &text=CarnivoreX%20Coaching%20Call
-    &dates=YYYYMMDDTHHMMSSZ/YYYYMMDDTHHMMSSZ
-    &details=<encoded description incl. join link>
-    &location=<encoded booking_url>
-  ```
-  Android resolves this directly into the Google Calendar app's "New event" screen, with all fields pre-filled. No share sheet.
+### 4. No other code changes
 
-- **iOS (native):** Apple Calendar doesn't accept template URLs, but it does respect `.ics` opened via the system browser. Use `openExternalUrl` with a `data:text/calendar;charset=utf-8,<encoded ics>` URL — Safari shows a native "Add to Calendar" prompt that drops it straight into Apple Calendar. Keep `Share.share` only as a last-resort fallback if `openExternalUrl` fails.
+I will NOT add sandbox-detection branches, StoreKit Configuration file fallbacks, or environment-conditional product ids. The current code is already environment-agnostic and that is the correct posture.
 
-- **Web:** keep the existing Blob + `<a download>` flow. Most desktop OSes open `.ics` files in the default calendar app.
+## What I can validate from code; what only you can validate on-device
 
-Detection uses `Capacitor.getPlatform()` (`'android'` / `'ios'` / `'web'`).
+I can confirm (and will after the edits): types compile, no sandbox-only branches exist, the same purchase code path runs in Sandbox/TestFlight/Production, RC is configured once with the production-shape public key.
 
-### 3. Put the meeting link inside the event
+I **cannot** run on-device IAP tests from here. The checklist you listed (buy subscription → relaunch → restore; buy coaching → reach booking → relaunch) has to be run by you against:
 
-Update `buildIcs(session)` so the link shows up where calendar apps actually display it:
+1. A Sandbox Apple ID in a debug build,
+2. A TestFlight build (which runs in Apple's sandbox automatically),
+3. A real App Store build after release.
 
-- `LOCATION:<booking_url>` (Apple/Google Calendar render this as a tappable link).
-- `DESCRIPTION:` includes a "Join: <booking_url>" line plus the original blurb, with proper CRLF escaping (`\\n`).
-- Keep `URL:` for completeness.
-- Bump `SUMMARY:` to "CarnivoreX Coaching Call (1 hr)".
+After the code edits, I will hand back a step-by-step terminal + device checklist you can execute (clean build, install, run each scenario, what to look for in `Purchases.getCustomerInfo` logs and in the `coaching_sessions` table).
 
-The Google Calendar template URL built in step 2 uses the same `location` and `details` strings, so both paths show the join link identically.
+User: **lan approved with one adjustment:**
 
-### 4. Light UX polish
+- **The synthetic transaction ID issue is a real bug and should be fixed.**
+- **Please surface and persist the real Apple transaction ID and** `originalTransactionId` **when the installed RevenueCat runtime actually provides them.**
+- **Before relying on those fields, verify they exist in our exact SDK/runtime purchase result, not just in typings.**
+- **Keep the current environment-agnostic purchase flow; do not add sandbox/production branching.**
+- **Keep the fallback synthetic ID only as a last resort if RevenueCat does not expose a stable real transaction ID at runtime.**
+- **Also update the backend insert to persist** `originalTransactionId`**.**
 
-- If `booking_url` is missing, still allow "Add to calendar" but omit the location / join line (don't block the action).
-- Keep the existing `toast.error("No scheduled time yet for this session.")` guard for sessions with no `scheduled_at`.
-- Rename the button label internally only if needed; the visible text stays "Add to calendar".
-
-## Files touched
-
-- `src/components/CoachingSessionsList.tsx` — replace `downloadIcs` with `addToCalendar`, update `buildIcs`, drop the `Share` import (or keep as fallback only).
-- `supabase/functions/cal-webhook/index.ts` — fix `bookingUrl` precedence so we persist the real meeting link.
+**Separate from code, I will verify App Store Connect / RevenueCat dashboard requirements: products active, offering current, Paid Apps agreement, and required Apple credentials in RevenueCat.**
 
 ## Out of scope
 
-- Adding a dedicated native calendar plugin (e.g. `@capacitor-community/calendar`). The Google Calendar template URL + `.ics` data URL combo covers both platforms without a new Gradle dependency or Android rebuild.
-- Backfilling `booking_url` for sessions already stored with the wrong fallback. New bookings will be correct; old ones still show a working (if less ideal) Cal.com link.
+- Adding a RevenueCat → Supabase webhook (separate feature; would let us drop the client-side `recordCoachingPurchase` entirely).
+- Changing RC dashboard offerings/entitlements/products (you own that).
+- Apple sandbox testers, Paid Apps agreement, or shared-secret config in RC.
