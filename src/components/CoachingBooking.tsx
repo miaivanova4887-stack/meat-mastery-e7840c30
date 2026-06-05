@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, Calendar, CheckCircle2, Loader2 } from "lucide-react";
+import { X, Calendar, CheckCircle2, Loader2, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -33,6 +34,8 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [schedulerUrl, setSchedulerUrl] = useState<string>(CAL_URL);
+  const [showFallback, setShowFallback] = useState(false);
 
   // Reset screen when opened
   useEffect(() => {
@@ -110,9 +113,13 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
           purchaseDateMs: Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
-        if (recorded.calComUrl) {
-          window.open(recorded.calComUrl, "_blank", "noopener,noreferrer");
-        }
+        const url = recorded.calComUrl ?? CAL_URL;
+        setSchedulerUrl(url);
+        setShowFallback(false);
+        // Best-effort auto-open. If the native browser can't open, the
+        // calcom screen's CTA + fallback UI lets the user copy/open manually.
+        const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
+        if (!res.ok) setShowFallback(true);
         setScreen("calcom");
         return;
       }
@@ -121,7 +128,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
+        await openExternalUrl(data.url, { logTag: "coaching:stripe-checkout" });
       }
     } catch (e) {
       console.error("Coaching checkout error:", e);
@@ -150,6 +157,26 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   }, [user]);
 
   const close = () => onOpenChange(false);
+
+  const handleOpenScheduler = useCallback(async () => {
+    console.log("coaching:open-scheduler-tap", { url: schedulerUrl });
+    if (!schedulerUrl) {
+      toast.error("Booking link unavailable — please contact support.");
+      setShowFallback(true);
+      return;
+    }
+    const res = await openExternalUrl(schedulerUrl, { logTag: "coaching:open-scheduler" });
+    if (!res.ok) {
+      setShowFallback(true);
+      toast.error("Payment received — we couldn't open the scheduler automatically.");
+    }
+  }, [schedulerUrl]);
+
+  const handleCopyLink = useCallback(async () => {
+    const ok = await copyToClipboard(schedulerUrl);
+    if (ok) toast.success("Booking link copied");
+    else toast.error("Couldn't copy — please long-press the link to copy.");
+  }, [schedulerUrl]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,12 +233,31 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
               </h2>
               <p className="text-xs text-muted-foreground">Your payment is confirmed. Complete your booking in the browser.</p>
               <Button
-                onClick={() => window.open(CAL_URL, "_blank")}
+                onClick={handleOpenScheduler}
                 variant="outline"
                 className="w-full rounded-xl"
+                disabled={!schedulerUrl}
               >
                 Open Cal.com Scheduler
               </Button>
+              {showFallback && (
+                <div className="rounded-xl border border-border/50 bg-muted/40 p-3 space-y-2 text-left">
+                  <p className="text-xs text-muted-foreground">
+                    If the scheduler didn't open, copy this link and paste it into Safari:
+                  </p>
+                  <p className="text-xs font-mono break-all text-foreground select-all">
+                    {schedulerUrl}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    onClick={handleCopyLink}
+                    className="w-full gap-2 rounded-xl"
+                  >
+                    <Copy size={14} />
+                    Copy booking link
+                  </Button>
+                </div>
+              )}
               <Button onClick={handleDone} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-12 font-semibold">
                 Done
               </Button>

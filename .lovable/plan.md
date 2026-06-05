@@ -1,81 +1,67 @@
-# Regenerate App Store Subscription Promo Images
+## Goal
 
-Apple rejected the existing Pro Yearly image. Root cause: prior images used busy backgrounds and stylized "PRO YEARLY" lockups that read as marketing/ad creative. Apple wants the 1024×1024 subscription image to clearly identify the product to App Review with minimal, readable, on-brand styling.
+Fix the broken "Open Cal.com Scheduler" CTA after a successful iOS coaching IAP. Currently every coaching-scheduler launch uses `window.open(...)`, which is unreliable inside the Capacitor WKWebView and silently no-ops on iOS.
 
-## Deliverables
+## Root cause
 
-Four PNG files, 1024×1024, English only, ready to upload to App Store Connect:
+`window.open` calls in the coaching path:
 
-| File | Tier name (large) | Benefit line (smaller) | Accent |
-|------|--------------------|------------------------|--------|
-| `pro-monthly.png` | Pro Monthly | Premium coaching & meal plans | CarnivoreX red |
-| `pro-annual.png`  | Pro Annual  | Premium coaching & meal plans | CarnivoreX red |
-| `elite-monthly.png` | Elite Monthly | Everything in Pro + 1-on-1 expert sessions | Gold |
-| `elite-annual.png`  | Elite Annual  | Everything in Pro + 1-on-1 expert sessions | Gold |
+- `src/components/CoachingBooking.tsx:114, 124, 209` (post-purchase success modal CTA + redirect after Stripe/recordCoachingPurchase)
+- `src/pages/Coaching.tsx:51, 62`
+- `src/pages/Pricing.tsx:149` (post-IAP redirect to Cal.com)
 
-All four share the exact same layout — only the tier name, benefit line, and accent color change. This gives App Review a consistent, easy-to-distinguish set.
+On native iOS these get blocked → no browser opens, no error.
 
-## Visual spec
+The project already uses `@capacitor/browser` elsewhere (`src/pages/Auth.tsx`, `src/hooks/useDeepLinks.ts`), so the plugin is installed and proven.
 
-```text
-┌──────────────────────────────────────┐
-│                                      │
-│            CARNIVOREX                │   ← small wordmark, top, letterspaced
-│                                      │
-│                                      │
-│          ┌─────────────┐             │
-│          │  PRO MONTHLY│             │   ← huge bold sans (Inter/SF-style)
-│          └─────────────┘             │      red or gold accent underline
-│                                      │
-│   Premium coaching & meal plans      │   ← one short benefit line, lighter
-│                                      │
-│                                      │
-└──────────────────────────────────────┘
-```
+## Plan
 
-- Background: deep charcoal/onyx (`#0B0B0C` → `#15151A` radial), subtle vignette, no photography, no food, no UI screenshots.
-- Tier name: bold, extra-large, white, centered, single line.
-- Thin 2px accent rule beneath the tier name: red `#E03A2F` (Pro) or warm gold `#C9A84C` (Elite).
-- Benefit line: regular weight, ~38–44px, light gray `#C8C8CC`, single line.
-- Small `CARNIVOREX` wordmark at top, letter-spaced, muted.
-- No prices, no "$", no "/mo", no badges, no decorations beyond the accent rule.
+### 1. New shared helper `src/lib/openExternalUrl.ts`
 
-## Generation approach
+A single utility every coaching/scheduler launch goes through:
 
-Use the agent `generate_image` tool at premium tier (text legibility matters). Generate 1024×1024 PNGs directly to `/mnt/documents/app-store/`:
+- Accepts `(url, { logTag })`.
+- Logs `coaching:open-scheduler-url-ready` with the URL.
+- If `Capacitor.isNativePlatform()`: `await Browser.open({ url, windowName: "_blank" })`, log `coaching:open-scheduler-native-open-ok` on success, `coaching:open-scheduler-native-open-failed` with the error on failure.
+- On native failure or on web: fall back to `window.open(url, "_blank", "noopener,noreferrer")`.
+- Returns `{ ok: boolean, error?: unknown }` so callers can decide whether to show the fallback toast.
 
-- `/mnt/documents/app-store/pro-monthly.png`
-- `/mnt/documents/app-store/pro-annual.png`
-- `/mnt/documents/app-store/elite-monthly.png`
-- `/mnt/documents/app-store/elite-annual.png`
+### 2. `src/components/CoachingBooking.tsx`
 
-Each prompt locks the same composition, palette, and typography description, varying only the tier line + benefit + accent color, so the four images sit together as a clean family.
+- Replace the three `window.open` calls (lines 114, 124, 209) with `openExternalUrl(...)`.
+- On the success-modal CTA tap:
+  - Log `coaching:open-scheduler-tap`.
+  - Guard against missing URL → disable the button and surface "Booking link unavailable — please contact support" instead of a silent no-op.
+  - If `openExternalUrl` returns `ok: false`, show a fallback toast: "Payment received — we couldn't open the scheduler automatically." and reveal a copy-to-clipboard row with the booking URL plus a secondary "Copy booking link" button (uses `navigator.clipboard.writeText` with a `document.execCommand('copy')` textarea fallback).
+- Track `schedulerUrl` in component state so the fallback UI can render it.
 
-## QA before delivery
+### 3. `src/pages/Coaching.tsx` (lines 51, 62)
 
-After generation, inspect each PNG visually and confirm:
-1. Tier name and benefit line are crisp, correctly spelled, no AI typography glitches.
-2. No stray badges, prices, or extra words.
-3. Dimensions exactly 1024×1024.
-4. Background is clean dark, no food/photography artifacts.
+Replace `window.open` with `openExternalUrl` for both the post-IAP Cal.com redirect and the Stripe checkout URL. Same tap/ok/failed log tags. Same fallback toast + copy-link affordance when the post-purchase Cal.com open fails.
 
-If any image fails QA, regenerate just that one with a tightened prompt.
+### 4. `src/pages/Pricing.tsx` (line 149)
 
-## Delivery
+Same swap for the post-IAP Cal.com redirect (the other `window.open` calls at 61/77/455 are Stripe checkout / App Store management and out of scope for this bug; leave them).
 
-Surface all 4 as downloadable artifacts:
+### 5. Acceptance verification
 
-```
-<presentation-artifact path="app-store/pro-monthly.png" mime_type="image/png"></presentation-artifact>
-<presentation-artifact path="app-store/pro-annual.png" mime_type="image/png"></presentation-artifact>
-<presentation-artifact path="app-store/elite-monthly.png" mime_type="image/png"></presentation-artifact>
-<presentation-artifact path="app-store/elite-annual.png" mime_type="image/png"></presentation-artifact>
-```
+- `rg "window.open" src/components/CoachingBooking.tsx src/pages/Coaching.tsx` returns no coaching/scheduler hits.
+- Manual test on physical iPhone after a Sandbox coaching purchase: tap "Open Cal.com Scheduler" → Cal.com opens in the in-app Safari view every time.
+- If Browser.open is forced to fail (e.g. malformed URL), fallback toast + copy button appear and the URL is copyable.
+- Console shows the four diag tags in order: `coaching:open-scheduler-tap` → `coaching:open-scheduler-url-ready` → `coaching:open-scheduler-native-open-ok` (or `-failed`).
 
-Then give you the App Store Connect upload steps line-by-line (Subscriptions → each product → Promotional Image → Choose File → upload → Save).
+User: Approve the plan, but on native iOS please do not fall back from `Browser.open()` to `window.open()` if native open fails. Use `Browser.open()` as the only native launch path, and if it fails, immediately show the fallback toast + visible copyable booking URL + “Copy booking link” CTA. That avoids repeating the same WKWebView failure mode we’re trying to eliminate.
 
 ## Out of scope
 
-- No code changes. These are App Store Connect assets only, not in-app images.
-- No Coaching Call consumable image (per your scope answer).
-- No FR locale images.
+- Stripe checkout / App Store management URLs (work as expected).
+- Backend `record-coaching-purchase` function.
+- Cal.com URL configuration / CMS overrides.
+- Any RevenueCat / StoreKit changes — the purchase itself already succeeds.
+
+## Files touched
+
+- `src/lib/openExternalUrl.ts` (new)
+- `src/components/CoachingBooking.tsx`
+- `src/pages/Coaching.tsx`
+- `src/pages/Pricing.tsx`
