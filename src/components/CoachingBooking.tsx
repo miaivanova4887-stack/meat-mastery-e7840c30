@@ -107,6 +107,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
           setScreen("info");
           return;
         }
+        console.log("coaching:booking-link-requested", { userId: session.user.id });
         const recorded = await recordCoachingPurchase({
           source: "appstore",
           productId: pkg.pkg.product?.identifier ?? "coaching_call",
@@ -114,16 +115,24 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
           purchaseDateMs: Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
-        const url = recorded.calComUrl ?? CAL_URL;
+        // iOS MUST open the no-payment Cal.com event — never the paid one
+        // (otherwise Cal.com asks for a card on top of the Apple charge).
+        const url = recorded.iosBookingUrl ?? recorded.calComUrl ?? CAL_IOS_NO_PAYMENT_URL;
         setSchedulerUrl(url);
         setShowFallback(false);
         // Best-effort auto-open. If the native browser can't open, the
         // calcom screen's CTA + fallback UI lets the user copy/open manually.
-        const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
-        if (!res.ok) setShowFallback(true);
+        const res = await openExternalUrl(url, { logTag: "coaching:booking-link" });
+        if (res.ok) {
+          console.log("coaching:booking-link-opened", { native: res.native });
+        } else {
+          console.warn("coaching:booking-link-open-failed", { error: res.error });
+          setShowFallback(true);
+        }
         setScreen("calcom");
         return;
       }
+
 
       // Web: existing Stripe one-off flow.
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
