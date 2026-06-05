@@ -17,7 +17,8 @@ export type PushDecisionSource =
   | "requestNativePush";
 
 export type SuppressReason =
-  | "not-android"
+  | "unsupported-platform"
+  | "not-android" // legacy alias retained for back-compat in older logs
   | "already-shown-session"
   | "local-consent-set"
   | "profile-consent-set"
@@ -56,9 +57,11 @@ export async function auditPushDecision(
   const native = Capacitor.isNativePlatform();
   const platform = native ? Capacitor.getPlatform() : "web";
 
-  if (!native || platform !== "android") {
-    console.info(`[PushDecision] source=${source} branch=suppress reason=not-android native=${native} platform=${platform}`);
-    return { show: false, reason: "not-android" };
+  // Allow both Android and iOS native; suppress web and any other platform.
+  const isSupportedNative = native && (platform === "android" || platform === "ios");
+  if (!isSupportedNative) {
+    console.info(`[PushDecision] source=${source} branch=suppress reason=unsupported-platform native=${native} platform=${platform}`);
+    return { show: false, reason: "unsupported-platform" };
   }
 
   // Session-once flag

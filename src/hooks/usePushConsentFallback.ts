@@ -40,8 +40,10 @@ export function usePushConsentFallback(source: PushFallbackSource) {
       JSON.stringify({ source, appStartAt, elapsed, delayMs, remaining }),
     );
 
-    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") {
-      console.info("[PushDecision] source=shell branch=suppress reason=not-android (mount)");
+    const platform = Capacitor.isNativePlatform() ? Capacitor.getPlatform() : "web";
+    const isSupportedNative = Capacitor.isNativePlatform() && (platform === "android" || platform === "ios");
+    if (!isSupportedNative) {
+      console.info(`[PushDecision] source=shell branch=suppress reason=unsupported-platform (mount) platform=${platform}`);
       return;
     }
 

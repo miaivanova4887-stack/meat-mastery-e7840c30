@@ -391,17 +391,24 @@ const Onboarding = () => {
           // On native Android, prompt for Health Connect first; the
           // push opt-in sheet is shown right after (regardless of HC
           // grant), but only if the shared decision audit says eligible.
-          const isAndroid =
-            Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+          const platform = Capacitor.isNativePlatform() ? Capacitor.getPlatform() : "web";
+          const isAndroid = platform === "android";
+          const isIos = platform === "ios";
           console.info(
             "[Onboarding] step11 done — native=", Capacitor.isNativePlatform(),
-            "android=", isAndroid,
-            "→ next=", isAndroid ? "HC prompt" : "push audit",
+            "platform=", platform,
+            "→ next=", isAndroid ? "HC prompt" : isIos ? "skip (ios-shell-only)" : "push audit",
           );
           if (isAndroid) {
             setShowHcPrompt(true);
+          } else if (isIos) {
+            // iOS: do NOT prompt at onboarding completion. The shell
+            // auto-prompt (~90s after app start) handles native push so the
+            // user isn't hit with multiple system dialogs back-to-back.
+            console.info("[PushDecision] source=onboarding branch=skip reason=ios-shell-only");
+            navigate("/", { replace: true });
           } else {
-            // Non-Android: audit will short-circuit with not-android,
+            // Web: audit will short-circuit with unsupported-platform,
             // and the sheet's web subscribeToPush() handles browser push.
             const { auditPushDecision } = await import("@/lib/pushDecision");
             const decision = await auditPushDecision("onboarding");

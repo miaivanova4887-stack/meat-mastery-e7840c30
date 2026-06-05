@@ -1,120 +1,101 @@
-# iOS Native Push (FCM/APNs) — enablement plan
+## Root cause
 
-`GoogleService-Info.plist` received (bundle `com.mi4labs.carnivorex`, project `carnivore-84bd2`, GCM sender `963699055181`). This plan turns on real iOS push so an admin's `Send test reminder` lands on the device.
+iOS native FCM is wired (AppDelegate + SPM + GoogleService-Info.plist) but the **JS consent gate** that triggers `requestNativePush()` is still Android-only. Three call sites suppress on iOS:
 
-## Prerequisite confirmations (you, outside Lovable)
+1. `src/lib/pushDecision.ts` → `if (!native || platform !== "android") return not-android`
+2. `src/hooks/usePushConsentFallback.ts` → same hard-coded Android check in the shell timer
+3. `src/pages/Onboarding.tsx` step 11 → invokes audit but it returns `not-android`
 
-Before this plan can succeed at runtime, please confirm all three:
+Result: iOS users are never prompted → no APNs registration → no `fcm-token` event → no row in `device_tokens` → Send test reminder returns `no_devices` / `permission_denied`.
 
-1. **APNs Auth Key (.p8) uploaded to Firebase** → Firebase Console → Project Settings → Cloud Messaging → *Apple app configuration* → APNs Authentication Key (with Key ID + Team ID).
-2. **Push Notifications capability enabled** on App ID `com.mi4labs.carnivorex` in Apple Developer Portal → Identifiers.
-3. You are building with a provisioning profile that includes the Push Notifications entitlement (automatic signing in Xcode normally handles this once capability is added).
+Logs prove it:
 
-Code/config below is safe to ship even if 1–3 are still pending — registration will simply fail with a clear `registrationError` until they are in place.
+- `[PushDecision] source=shell branch=suppress reason=not-android native=true platform=ios`
+- `[reminder-test] permission_denied { userId: e90213d4… }` (your account is `push_consent='denied'`)
 
-## What gets changed
+## Fix
 
-### A. Drop the plist into the iOS target
+### A. JS — let iOS through the consent flow (shell only)
 
-- Add `ios/App/App/GoogleService-Info.plist` (from upload).
-- Register it in `ios/App/App.xcodeproj/project.pbxproj` so it's bundled into the app target (Copy Bundle Resources).
+1. `**src/lib/pushDecision.ts**` — replace the `!== "android"` guard with a check that allows both `android` and `ios` when `isNativeFcmEnabled()` is true. Suppression reason for unsupported platforms stays `"not-android"` (rename to `"unsupported-platform"` for clarity, plus a back-compat alias kept in the union).
+2. `**src/hooks/usePushConsentFallback.ts**` — same: allow `platform === "android" || platform === "ios"`. Keep the 90s delay. This is the auto-prompt path iOS users will hit ~90s after app start.
+3. **Onboarding step 11 stays as-is** — per your choice ("shell auto-prompt only"), we do NOT trigger the audit on iOS at onboarding completion. Add an explicit `platform === "ios"` early-return in the step-11 push call (around the existing `[Onboarding] step11 done` log) so it logs `branch=skip reason=ios-shell-only` instead of running the audit.
+4. No change to `pushFcm.ts` / `pushNativeConfig.ts` — `NATIVE_FCM_ENABLED_IOS=true` is already correct; `requestNativePush()` already handles iOS once it's actually called.
 
-### B. iOS entitlements + Info.plist
+### B. Backend — reset your admin account's denied consent
 
-- `ios/App/App/App.entitlements`: add `aps-environment = development` (Xcode automatically promotes to `production` for App Store builds via capability).
-- `ios/App/App/Info.plist`: add `UIBackgroundModes` → `remote-notification`, and `FirebaseAppDelegateProxyEnabled = NO` (we'll forward APNs token to FCM ourselves so it composes cleanly with Capacitor's proxy).
+Single `UPDATE` on `profiles` for the admin user `e90213d4-7b8a-4ae7-a980-b0f212fac206`:
 
-### C. Firebase iOS SDK via SPM
+- `push_consent = 'unset'`
+- `push_consent_at = null`
 
-- `ios/App/CapApp-SPM/Package.swift`: add `https://github.com/firebase/firebase-ios-sdk.git` (>= 11.0.0) and depend on products `FirebaseCore` + `FirebaseMessaging` in the `CapApp-SPM` target.
+This re-arms the audit so on the next iOS launch the consent sheet will open after 90s and `requestNativePush()` will call APNs → FCM token will arrive → `register-device-token` will insert into `device_tokens` (platform=`ios`).
 
-### D. AppDelegate wiring
+(Local-storage mirror `push-consent` also needs to be cleared on-device; you'll do that by uninstalling+reinstalling the app, which we already do for every fresh build.)
 
-- `ios/App/App/AppDelegate.swift`:
-  - `import FirebaseCore`, `import FirebaseMessaging`, `import UserNotifications`.
-  - In `didFinishLaunchingWithOptions`: `FirebaseApp.configure()`, set `Messaging.messaging().delegate = self`, set `UNUserNotificationCenter.current().delegate = self`.
-  - Implement `didRegisterForRemoteNotificationsWithDeviceToken` → `Messaging.messaging().apnsToken = deviceToken`.
-  - Implement `didFailToRegisterForRemoteNotificationsWithError` → log + forward to Capacitor PushNotifications via `NotificationCenter` (the Capacitor plugin already observes these).
-  - Conform to `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)` → forward FCM token to Capacitor PushNotifications `registration` event so the existing JS listener in `src/lib/pushFcm.ts` calls `register-device-token`.
-  - Conform to `UNUserNotificationCenterDelegate` for foreground presentation (banner/sound) and tap routing.
+### C. Memory update
 
-### E. JS gating split
+Update `mem://constraints/native-fcm-disabled-until-google-services` to reflect: iOS gate is now open in JS too; Android stays disabled until `google-services.json` ships.
 
-- `src/lib/pushNativeConfig.ts`: replace single `NATIVE_FCM_ENABLED` with `NATIVE_FCM_ENABLED_IOS = true` and `NATIVE_FCM_ENABLED_ANDROID = false`, plus helper `isNativeFcmEnabled()` that reads `Capacitor.getPlatform()`.
-- `src/lib/pushFcm.ts`: swap all `NATIVE_FCM_ENABLED` reads for `isNativeFcmEnabled()` so iOS now actually calls `PushNotifications.register()` while Android stays disabled.
+## Out of scope
 
-### F. Token lifecycle hardening (iOS only)
+- No edge-function changes (`coaching-reminder-test` is already correct; it just had nothing to send to).
+- No Android FCM enable.
+- No changes to admin gating (already correct).
 
-- In `src/lib/pushFcm.ts`, add `App.addListener('appStateChange', ...)` that re-calls `PushNotifications.register()` on `isActive=true` when consent is `granted` and platform is iOS (FCM token can rotate; cheap idempotent call).
-- Bind `registrationError` once to surface APNs failures into console with a stable tag (`[Push] iOS registrationError`) so we can read them from Xcode console / Console.app.
-
-### G. Admin gating (already in place — keep + reverify)
-
-- Frontend: `CoachingReminderSettings.tsx` continues to hide Send test reminder unless `has_role('admin')`.
-- Backend: `supabase/functions/coaching-reminder-test/index.ts` continues to return **403** for non-admin callers (already implemented).
-
-## Out of scope (do not change)
-
-- Android FCM (`google-services.json`) — still disabled.
-- Web push (VAPID) — unchanged.
-- Writing test sends to `coaching_reminder_log` — admin audit stays cron-only.
-
-## Verification (line-by-line, after Lovable applies the change)
+## Verification (line-by-line, after build mode)
 
 ```bash
 git pull
 npm install
 npm run build
 npx cap sync ios
-npx cap open ios
 ```
 
-In Xcode:
+Then in Xcode: clean build folder, run on physical iPhone signed in as `mia.ivanova.4887@gmail.com` (admin).
 
-1. Select the **App** target → **Signing & Capabilities** → **+ Capability** → **Push Notifications**.
-2. **+ Capability** → **Background Modes** → tick **Remote notifications**.
-3. Confirm `GoogleService-Info.plist` appears under *Build Phases → Copy Bundle Resources*.
-4. Select a real iPhone (push does **not** work in the iOS Simulator).
-5. Cmd+R to build & run; allow notifications when prompted.
+Evidence to capture and paste back:
 
-In the app:
-6. Sign in as the admin account.
-7. Open Xcode console, filter on `[Push]` — expect:
+1. **Xcode console** within ~95s of launch should show, in order:
+  - `[PushDecision] source=shell branch=mount`
+  - `[PushDecision] source=shell branch=show-sheet reason=eligible`
+  - System APNs prompt → tap Allow
+  - `[Push] FCM token registered` (from AppDelegate) **or** `[Push] window:fcm-token received platform=ios len=…`
+  - `[Push] device token persisted platform=ios len=…`
+2. **DB check** (I'll run this for you after the build):
+  ```sql
+   SELECT platform, length(token), created_at
+   FROM device_tokens WHERE user_id='e90213d4-7b8a-4ae7-a980-b0f212fac206'
+   ORDER BY created_at DESC LIMIT 3;
+  ```
+   Expect at least one fresh `ios` row.
+3. **Tap Send test reminder** in Profile → Coaching Reminder Settings.
+  - Toast: "Sent (1 native, 0 web)".
+  - Edge logs: `[reminder-test] sent { code: 'ok', deliveredNative: 1, ... }`.
+  - Push banner appears on the iPhone.
 
-- `[Push] checkPermissions receive=granted`
-- `[Push] FCM token registered len=<140–170>`
+If step 1 stalls at `show-sheet` without an FCM token, the cause will be one of: APNs key not uploaded to Firebase, `aps-environment` mismatch (dev vs prod build), or Push Notifications capability missing in Xcode — none of which are code-fixable from here.
 
-In Lovable Cloud:
-8. `SELECT user_id, platform, length(token) FROM device_tokens WHERE platform='ios' ORDER BY updated_at DESC LIMIT 5;` — confirm a fresh iOS row for your user.
+User: Approved with two adjustments:
 
-In the app:
-9. Profile → Coaching Call Reminders → **Send test reminder**.
-10. Edge logs for `coaching-reminder-test` should show:
-    `[reminder-test] sent { code: "ok", deliveredNative: 1, fcmAttempts: 1, ... }` and a push banner appears on the device.
+Proceed with the JS fix so iOS is allowed through the shell consent flow and no longer suppressed by Android-only checks.
 
-If step 7 logs `registrationError`, that's the APNs/Firebase config (prereqs 1–3) — the message body will name the cause (`no valid "aps-environment"`, `BadDeviceToken`, etc.) and we'll address it without further code changes.
+Rename the active suppression reason from not-android to unsupported-platform so future logs are not misleading.
 
-## Risk notes
+Also:
 
-- Setting `FirebaseAppDelegateProxyEnabled=NO` means we *must* assign `apnsToken` manually — already covered in step D. If left at default (`YES`), it would also work but can collide with Capacitor's swizzling on some Capacitor versions; explicit is safer.
-- SPM resolution adds ~30 MB to the iOS build's first compile and ~6 MB to the IPA. Acceptable for this app.
+treat uninstall/reinstall as required for this admin test because iOS denied notification permission previously,
 
-User: Approved with one clarification:
+keep backend admin enforcement unchanged,
 
-Proceed with A–G as written.
+keep the frontend button hidden until admin status is positively resolved.
 
-Keep FirebaseAppDelegateProxyEnabled = NO and manual APNs token forwarding exactly as described.
+After shipping, I want proof logs showing:
 
-Also verify notification tap/deep-link handling still works correctly through the Capacitor push flow after the AppDelegate changes.
+[PushDecision] source=shell branch=show-sheet reason=eligible
 
-For aps-environment, please validate the actual entitlement in the built app/profile used for testing rather than assuming Xcode will always “promote” it correctly.
+APNs/FCM token registration
 
-Once implemented, I’ll rebuild on a physical iPhone and verify:
+persisted ios token row
 
-[Push] checkPermissions receive=granted
-
-[Push] FCM token registered len=...
-
-fresh device_tokens row with platform='ios'
-
-successful admin test reminder delivery end-to-end.
+successful admin test reminder delivery
