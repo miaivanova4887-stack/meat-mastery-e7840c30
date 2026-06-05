@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywall";
+import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import CoachingBooking from "@/components/CoachingBooking";
 
 // --- Web / Stripe configuration ------------------------------------------
 // These price IDs drive Stripe Checkout on the web. On native iOS we ignore
