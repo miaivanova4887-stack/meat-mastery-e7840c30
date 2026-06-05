@@ -6,6 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { useNativePaywall } from "@/hooks/useNativePaywall";
+import { isRevenueCatAvailable } from "@/lib/revenuecat";
+import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -22,6 +26,9 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const { i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const paywall = useNativePaywall();
+  const useNative = isRevenueCatAvailable();
 
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
@@ -76,17 +83,54 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
     }
     setLoading(true);
     try {
+      if (useNative) {
+        // iOS in-app: StoreKit consumable via RevenueCat. Stripe must not
+        // be reached from inside the iOS app (Apple Guideline 3.1.1).
+        const pkg = paywall.packages.coaching;
+        if (!pkg) {
+          await paywall.refresh();
+          toast.error("Coaching isn't available right now. Please try again in a moment.");
+          setScreen("info");
+          return;
+        }
+        const result = await paywall.purchase(pkg.pkg);
+        if (result.cancelled) {
+          setScreen("info");
+          return;
+        }
+        if (!result.ok) {
+          toast.error(result.error ?? "Purchase failed");
+          setScreen("info");
+          return;
+        }
+        const recorded = await recordCoachingPurchase({
+          source: "appstore",
+          productId: pkg.pkg.product?.identifier ?? "coaching_call",
+          transactionId: `rc_${session.user.id}_${Date.now()}`,
+          purchaseDateMs: Date.now(),
+        });
+        toast.success("Coaching call purchased — choose your time.");
+        if (recorded.calComUrl) {
+          window.open(recorded.calComUrl, "_blank", "noopener,noreferrer");
+        }
+        setScreen("calcom");
+        return;
+      }
+
+      // Web: existing Stripe one-off flow.
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        window.open(data.url, "_blank", "noopener,noreferrer");
       }
     } catch (e) {
       console.error("Coaching checkout error:", e);
+      toast.error("Couldn't open checkout. Please try again.");
+      setScreen("info");
     } finally {
       setLoading(false);
     }
-  }, [navigate, onOpenChange, location]);
+  }, [navigate, onOpenChange, location, useNative, paywall]);
 
   const handleDone = useCallback(async () => {
     if (!user?.id) {

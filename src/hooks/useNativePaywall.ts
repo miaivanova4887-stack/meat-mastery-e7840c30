@@ -10,6 +10,7 @@ import {
   isRevenueCatAvailable,
   getCurrentOffering,
   findPackage,
+  findCoachingPackage,
   purchasePackage,
   restorePurchases,
   type PurchaseResult,
@@ -35,6 +36,13 @@ export interface NativePaywallState {
     pro_yearly?: NativePackageInfo;
     elite_monthly?: NativePackageInfo;
     elite_yearly?: NativePackageInfo;
+    /**
+     * One-off coaching consumable. Independent of subscription tiers — never
+     * gated by Elite. Undefined until RC returns the offering; if it's still
+     * undefined after `loading` flips to false, the UI shows a disabled
+     * "Coaching unavailable" state instead of a stuck spinner.
+     */
+    coaching?: NativePackageInfo;
   };
   refresh: () => Promise<void>;
   purchase: (pkg: PurchasesPackage) => Promise<PurchaseResult>;
@@ -49,6 +57,17 @@ function toInfo(pkg: PurchasesPackage | null, cycle: "monthly" | "yearly"): Nati
     pkg,
     priceString: price,
     priceLabel: price ? `${price}${suffix}` : suffix,
+  };
+}
+
+/** Consumable price formatter — no /mo or /yr suffix, just the localized price. */
+function toCoachingInfo(pkg: PurchasesPackage | null): NativePackageInfo | undefined {
+  if (!pkg) return undefined;
+  const price = pkg.product?.priceString ?? "";
+  return {
+    pkg,
+    priceString: price,
+    priceLabel: price || "",
   };
 }
 
@@ -74,6 +93,7 @@ export function useNativePaywall(): NativePaywallState {
         pro_yearly: toInfo(findPackage(off, "pro", "yearly"), "yearly"),
         elite_monthly: toInfo(findPackage(off, "elite", "monthly"), "monthly"),
         elite_yearly: toInfo(findPackage(off, "elite", "yearly"), "yearly"),
+        coaching: toCoachingInfo(findCoachingPackage(off)),
       };
       console.info("[RC DEBUG] paywall packages", {
         offeringId: off?.identifier ?? null,

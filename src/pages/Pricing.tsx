@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywall";
+import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 
 // --- Web / Stripe configuration ------------------------------------------
 // These price IDs drive Stripe Checkout on the web. On native iOS we ignore
@@ -102,6 +103,51 @@ const Pricing = () => {
       } else {
         toast.error(result.error ?? "Purchase failed");
       }
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  /**
+   * Native (iOS) coaching call purchase — StoreKit consumable via RevenueCat.
+   * Apple Guideline 3.1.1 requires digital services sold in-app to use IAP,
+   * so on native we MUST take this path instead of Stripe checkout.
+   *
+   * After a successful purchase we record it server-side (idempotent) and
+   * open the Cal.com scheduler. No "restore" — consumables are one-shot.
+   */
+  const handleNativeCoachingPurchase = async (info: NativePackageInfo) => {
+    if (!user) {
+      toast("Please sign in first");
+      navigate(`/auth?returnTo=${encodeURIComponent("/pricing")}`);
+      return;
+    }
+    const id = info.pkg.identifier;
+    setLoading(id);
+    try {
+      const result = await paywall.purchase(info.pkg);
+      if (result.cancelled) {
+        return;
+      }
+      if (!result.ok) {
+        toast.error(result.error ?? "Purchase failed");
+        return;
+      }
+      const productId = info.pkg.product?.identifier ?? "coaching_call";
+      // RC doesn't surface the StoreKit transaction id directly on the result;
+      // fall back to a synthesized id based on user + timestamp so the server
+      // row is unique. The webhook (when added) will reconcile against the
+      // real Apple transactionId.
+      const transactionId = `rc_${user.id}_${Date.now()}`;
+      const recorded = await recordCoachingPurchase({
+        source: "appstore",
+        productId,
+        transactionId,
+        purchaseDateMs: Date.now(),
+      });
+      toast.success("Coaching call purchased — choose your time.");
+      const url = recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session";
+      window.open(url, "_blank", "noopener,noreferrer");
     } finally {
       setLoading(null);
     }
@@ -444,13 +490,15 @@ const Pricing = () => {
           );
         })}
 
-        {/* Coaching add-on
-         * Coaching is a one-time purchase, not a subscription, so it stays
-         * on Stripe even on iOS (Apple IAP is required for digital
-         * subscriptions and recurring in-app content, but one-off coaching
-         * calls delivered outside the app are considered physical-world
-         * services and can use external payment). If we later change this
-         * to be an in-app consumable we'll need to move it to RC too. */}
+        {/* Coaching add-on.
+         *
+         * iOS (native): StoreKit consumable via RevenueCat — Apple Guideline
+         * 3.1.1 requires digital services sold in-app to use IAP.
+         * Web: Stripe one-off checkout, unchanged.
+         *
+         * Modeled as a standalone consumable — never tied to Elite or any
+         * subscription entitlement. No "restore" surface: consumables can't
+         * be restored by design. */}
         <div className="ios-card p-5">
           <div className="flex items-center gap-2.5 mb-2">
             <div className="w-9 h-9 rounded-xl bg-[hsl(var(--gold))]/15 flex items-center justify-center">
@@ -464,19 +512,65 @@ const Pricing = () => {
           <p className="text-xs text-foreground/70 mb-3 leading-relaxed">
             Book a 1-on-1 coaching session with a carnivore diet expert.
           </p>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => handleStripeCheckout(TIERS.coaching.priceId)}
-            disabled={loading === TIERS.coaching.priceId}
-          >
-            {loading === TIERS.coaching.priceId ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              `Book a Call — ${TIERS.coaching.amount}`
-            )}
-          </Button>
+
+          {useNative ? (() => {
+            const coachingPkg = paywall.packages.coaching;
+            const loadingKey = coachingPkg?.pkg.identifier ?? "coaching_pending";
+            const isBusy = loading === loadingKey;
+            // While RC is still resolving the offering on iPad sandbox, show
+            // a clear (but tappable-after-load) state. If RC has finished
+            // loading and the package is still missing, render a retry
+            // button — App Review must never see a permanent spinner.
+            if (!coachingPkg) {
+              const stillLoading = paywall.loading;
+              return (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => paywall.refresh()}
+                  disabled={stillLoading}
+                >
+                  {stillLoading ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin mr-2" />
+                      Loading coaching…
+                    </>
+                  ) : (
+                    "Tap to retry loading coaching"
+                  )}
+                </Button>
+              );
+            }
+            return (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleNativeCoachingPurchase(coachingPkg)}
+                disabled={isBusy}
+              >
+                {isBusy ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  `Book a Call — ${coachingPkg.priceLabel || "$99.99"}`
+                )}
+              </Button>
+            );
+          })() : (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => handleStripeCheckout(TIERS.coaching.priceId)}
+              disabled={loading === TIERS.coaching.priceId}
+            >
+              {loading === TIERS.coaching.priceId ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                `Book a Call — ${TIERS.coaching.amount}`
+              )}
+            </Button>
+          )}
         </div>
+
 
         {/* Restore Purchases — required by Apple when IAP is enabled. Only
          * surfaced on native; on web there's nothing to restore. */}

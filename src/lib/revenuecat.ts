@@ -50,6 +50,20 @@ export const ENTITLEMENT_PRO = "pro";
 export const ENTITLEMENT_ELITE = "elite";
 
 /**
+ * Coaching call — sold as a StoreKit **consumable** IAP. It is intentionally
+ * NOT tied to any RevenueCat entitlement (and definitely not Elite): every
+ * purchase grants exactly one 1-hour coaching session, recorded server-side
+ * via the `record-coaching-purchase` edge function. We also do NOT surface
+ * "restore" for this product — consumables are one-shot by Apple's design.
+ *
+ * IMPORTANT: these strings MUST match the App Store Connect product ID and
+ * the RevenueCat package identifier exactly, otherwise iPad sandbox / App
+ * Review will see a stuck "Loading…" state for the Book a Call button.
+ */
+export const COACHING_PRODUCT_ID = "com.mi4labs.carnivorex.coaching_call";
+export const COACHING_PACKAGE_ID = "coaching_call";
+
+/**
  * RevenueCat "offering" identifier. RC lets you define multiple offerings
  * (e.g. "default", "holiday_promo") but we only use the default one.
  * Leave as `null` to use whatever offering is marked Current in the dashboard.
@@ -268,6 +282,27 @@ export function findPackage(
       const id = p.identifier.toLowerCase();
       return id.includes(tier) && id.includes(cycle === "yearly" ? "year" : "month");
     }) ?? null
+  );
+}
+
+/**
+ * Locate the coaching consumable package in an offering. We match by package
+ * identifier first (`coaching_call`), then by underlying StoreKit product id
+ * (`com.mi4labs.carnivorex.coaching_call`) as a safety net so a dashboard
+ * typo doesn't make the button inert during App Review.
+ */
+export function findCoachingPackage(
+  offering: PurchasesOffering | null
+): PurchasesPackage | null {
+  if (!offering) return null;
+  const byId = offering.availablePackages.find(
+    (p) => p.identifier.toLowerCase() === COACHING_PACKAGE_ID
+  );
+  if (byId) return byId;
+  return (
+    offering.availablePackages.find(
+      (p) => p.product?.identifier === COACHING_PRODUCT_ID
+    ) ?? null
   );
 }
 
