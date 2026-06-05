@@ -6,6 +6,11 @@ import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthDiag, redactUrl } from "@/lib/authDiagnostics";
 import { markGoogleOAuthInFlight } from "@/lib/oauthFlowState";
+import {
+  extractAppleFullName,
+  cacheAppleFullName,
+  reconcileAppleDisplayName,
+} from "@/lib/appleDisplayName";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
