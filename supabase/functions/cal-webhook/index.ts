@@ -74,10 +74,16 @@ serve(async (req) => {
   const attendee = Array.isArray(payload?.attendees) ? payload.attendees[0] : payload?.attendee;
   const attendeeEmail: string | undefined = attendee?.email ?? payload?.responses?.email?.value;
   const attendeeName: string | undefined = attendee?.name ?? payload?.responses?.name?.value;
-  const bookingUrl: string | undefined =
-    payload?.metadata?.videoCallUrl ?? payload?.location ?? payload?.bookingUrl ?? payload?.uid
-      ? `https://cal.com/booking/${payload?.uid}`
+  const videoCallUrl: string | undefined = payload?.metadata?.videoCallUrl;
+  const locationUrl: string | undefined =
+    typeof payload?.location === "string" && /^https?:\/\//i.test(payload.location)
+      ? payload.location
       : undefined;
+  const bookingUrl: string | undefined =
+    videoCallUrl
+    ?? locationUrl
+    ?? payload?.bookingUrl
+    ?? (payload?.uid ? `https://cal.com/booking/${payload.uid}` : undefined);
 
   if (!triggerEvent || !bookingUid) {
     console.warn("[cal-webhook] missing triggerEvent or bookingUid", { triggerEvent });
