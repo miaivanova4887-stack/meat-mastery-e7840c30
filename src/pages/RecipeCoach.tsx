@@ -323,7 +323,8 @@ const RecipeCoach = () => {
        */}
       <form
         onSubmit={handleSubmit}
-        className="flex-shrink-0 border-t border-border/40 bg-card/80 ios-blur px-4 py-3 safe-area-bottom"
+        className="flex-shrink-0 border-t border-border/40 bg-card/80 ios-blur px-4 pt-3"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
       >
         <div className="flex items-end gap-2">
           <textarea
