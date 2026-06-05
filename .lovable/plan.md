@@ -1,60 +1,31 @@
-# Fix Sign in with Apple display name (Apple rejection)
+## Goal
 
-Apple requires the name returned by Sign in with Apple on the **first** authorization to be captured and used as the user's display name — the app must not ask for/derive a name again.
-
-## Current behavior
-
-- `src/pages/Auth.tsx` calls native `SocialLogin.login({ provider: "apple", options: { scopes: ["email","name"], ... } })`. The plugin returns `apple.profile.givenName` / `apple.profile.familyName` on first authorization, but we **discard it**.
-- We then call `supabase.auth.signInWithIdToken({ provider: "apple", token: idToken, nonce })`. The Supabase `handle_new_user` trigger inserts a `profiles` row using `raw_user_meta_data->>'display_name'` (absent for Apple) → falls back to `split_part(email,'@',1)`, producing the auto-generated `zrhnd7k97h` shown in the screenshot.
-- Apple only returns the name on the **very first** authorization; subsequent sign-ins never include it, so we must persist it immediately.
+On `/progress`, when a signed-out user lands on the gate, add warm, user-friendly copy explaining *why* they need an account: to track progress consistently, set personal goals, and get a personalized experience. Keep it consistent with the recent Auth-page "whyAccount" addition.
 
 ## Changes
 
-### 1. `src/pages/Auth.tsx` — capture Apple name and persist after sign-in
+### 1. `src/i18n/en.json` — update `progress.signInDesc`
 
-In the native Apple branch (after `signInWithIdToken` succeeds, before navigating):
+Replace the current dry sync-focused string with a benefit-led one:
 
-- Build `fullName` from `apple.profile.givenName` + `apple.profile.familyName` (trimmed, single space, fallback to either one if only one is present).
-- If `fullName` is non-empty:
-  - `await supabase.auth.updateUser({ data: { display_name: fullName, full_name: fullName } })` so it lives on `raw_user_meta_data` (handy for any future trigger / re-creation).
-  - Call a new helper `reconcileAppleDisplayName(userId, fullName)` (see #2) that updates `profiles.display_name` only when the current value is empty or looks auto-generated (matches `email local-part` or `^[a-z0-9]{6,12}$` random slug).
-- Log via `logAuthDiag("oauth:apple-name-captured", { hasGiven, hasFamily, length })` and `"oauth:apple-name-skipped"` when Apple returned nothing (re-sign-in case).
-- Never block the flow on a failure — if the profile update errors, log and continue (the name can be re-applied next time Apple returns it; we don't ask the user).
+- `signInToTrack` (kept): `"Sign in to unlock your progress"`
+- `signInDesc` (revised): `"Create a free account to track your progress consistently, set personal goals, and enjoy a tailored carnivore experience — your data stays secure and synced across devices."`
 
-### 2. New helper: `src/lib/appleDisplayName.ts`
+### 2. `src/i18n/fr.json` — matching French copy
 
-Exports:
+- `signInToTrack`: `"Connectez-vous pour débloquer vos progrès"`
+- `signInDesc`: `"Créez un compte gratuit pour suivre vos progrès en continu, définir vos objectifs et profiter d'une expérience carnivore personnalisée — vos données restent sécurisées et synchronisées sur tous vos appareils."`
 
-- `extractAppleFullName(profile?: { givenName?: string|null; familyName?: string|null; name?: { firstName?: string|null; lastName?: string|null } | null }): string | null` — handles both shapes returned by the Capacitor social-login plugin.
-- `reconcileAppleDisplayName(userId: string, fullName: string): Promise<void>` — mirrors the `reconcileLocalConsent` pattern in `AuthContext.tsx`:
-  - Reads current `profiles.display_name`.
-  - Considers it "replaceable" when null/empty, equals the email local-part, or matches a random-slug regex (`/^[a-z0-9]{6,16}$/i` and not containing a space).
-  - Updates `profiles.display_name = fullName` only when replaceable.
-  - Retries with the same `[500, 1500, 4000]` delays used for push-consent reconciliation, because `handle_new_user` inserts asynchronously.
-- Also writes `localStorage["carnivore-apple-fullname-v1"] = fullName` as a safety net so a later runtime can still reconcile if the network update fails. `AuthContext` calls a one-time reconcile from this key on session bootstrap (parallel to `reconcileLocalConsent`).
+### 3. `src/pages/Progress.tsx` — light layout polish on the gate (lines 36–46)
 
-### 3. `src/contexts/AuthContext.tsx` — opportunistic reconcile on session restore
+Keep the existing structure but give the description a bit more room so the longer copy reads cleanly:
 
-- After the existing `reconcileLocalConsent` setTimeout block in `maybeReconcile`, schedule a second deferred call that reads the localStorage Apple name (if present) and calls `reconcileAppleDisplayName(user.id, name)`. On success, clear the localStorage key. This ensures a name captured on device A is never lost if the first reconcile attempt failed (e.g., offline).
-
-### 4. Remove any "post-SIWA name" prompts
-
-Search for and confirm there is no required name step blocking SIWA users. The current `src/pages/Profile.tsx` only shows display_name as inline-editable (optional) — no required input — so no UI changes are needed beyond #1–#3. The plan explicitly does **not** add any "please enter your name" prompt and does **not** ask the user to fill the name again on later sign-ins.
-
-&nbsp;
-
-User feedback: Approve the plan, but please revise the failure handling: do not assume Apple will return the name again later. Persist the Apple full name captured on first authorization as a high-priority operation, cache it locally before any network writes, retry reconciliation until success, and only clear the local cache after `profiles.display_name` has been confirmed updated.
-
-&nbsp;
-
-## Files touched
-
-- `src/pages/Auth.tsx` — persist Apple name after `signInWithIdToken`.
-- `src/lib/appleDisplayName.ts` — new helper (extract + reconcile + localStorage cache).
-- `src/contexts/AuthContext.tsx` — on session bootstrap, attempt to reconcile any cached Apple name.
+- Wrap the description in `max-w-sm` so it doesn't run edge-to-edge on phones.
+- Bump bottom margin from `mb-4` to `mb-6` between description and CTA.
+- No logic changes, no new components, no extra strings.
 
 ## Out of scope
 
-- No DB migration (existing `profiles.display_name` column is sufficient).
-- No changes to Google flow, email/password flow, or onboarding.
-- No new UI.
+- No changes to the Auth page, sign-in flow, or any other gated screens.
+- No new translations beyond the two revised keys.
+- No design system / token changes.
