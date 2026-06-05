@@ -19,6 +19,7 @@ import { METRICS, CATEGORY_META, type ProgressCategory } from "@/hooks/useProgre
 import { useUserProfile, type Goal, type Experience, type ActivityLevel, type Struggle, type Interest, type Sex } from "@/contexts/UserProfileContext";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 import { CoachingReminderSettings } from "@/components/CoachingReminderSettings";
+import CoachingSessionsList from "@/components/CoachingSessionsList";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 // Push consent fallback now lives in PushConsentFallbackHost (App-level shell).
 
@@ -1035,6 +1036,10 @@ const Profile = () => {
                   <Switch checked={notifPrefs.weeklySummary} onCheckedChange={(v) => updateNotifPref("weeklySummary", v)} />
                 </div>
               </div>
+
+              {/* Your Coaching */}
+              <h3 className="text-sm font-display font-bold text-foreground pt-2">Your coaching</h3>
+              <CoachingSessionsList />
 
               {/* Coaching Call Reminders */}
               <CoachingReminderSettings />
