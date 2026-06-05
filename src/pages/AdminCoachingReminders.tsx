@@ -70,12 +70,6 @@ const AdminCoachingReminders = () => {
   const fetchRows = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("admin-coaching-reminders", {
-        method: "GET" as any,
-        body: undefined,
-        // supabase-js v2 doesn't pass query params on invoke; use fetch fallback
-      });
-      // Fallback fetch with query params for status filter
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-coaching-reminders?status=${status}&limit=200`;
       const session = (await supabase.auth.getSession()).data.session;
       const res = await fetch(url, {
