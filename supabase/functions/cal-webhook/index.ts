@@ -148,12 +148,17 @@ serve(async (req) => {
   const isCancel = triggerEvent === "BOOKING_CANCELLED";
   const status = isCancel ? "cancelled" : "scheduled";
 
-  // Try update by external_booking_id; if no row, find latest pending row for user and attach.
-  const { data: existing } = await admin
-    .from("coaching_sessions")
-    .select("id")
-    .eq("external_booking_id", bookingUid)
-    .maybeSingle();
+  // Prefer the pre-matched session (from metadata.session_row_id); else find
+  // by external_booking_id; else fall through to "latest pending for user".
+  let targetSessionId: string | null = preMatchedSessionId;
+  if (!targetSessionId) {
+    const { data: existing } = await admin
+      .from("coaching_sessions")
+      .select("id")
+      .eq("external_booking_id", bookingUid)
+      .maybeSingle();
+    targetSessionId = existing?.id ?? null;
+  }
 
   const patch: Record<string, unknown> = {
     scheduled_at: startTime ?? null,
@@ -166,8 +171,8 @@ serve(async (req) => {
     user_id: userId,
   };
 
-  if (existing?.id) {
-    const { error } = await admin.from("coaching_sessions").update(patch).eq("id", existing.id);
+  if (targetSessionId) {
+    const { error } = await admin.from("coaching_sessions").update(patch).eq("id", targetSessionId);
     if (error) {
       console.error("[cal-webhook] update failed", error);
       return json({ error: "DB update failed" }, 500);
