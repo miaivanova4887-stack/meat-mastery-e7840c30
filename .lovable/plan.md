@@ -1,93 +1,108 @@
-# Fix: "Send test reminder" failing + misleading admin empty state
+## Goal
 
-## Root cause
+Make a signed-in admin on iOS land a valid FCM-routable device token in `device_tokens` on app launch / foreground, so **Send test reminder** delivers end-to-end. Keep the existing admin-only gate.
 
-The `coaching-reminder-test` edge function only ever sees `OPTIONS` preflights — no `POST` ever lands (confirmed in edge logs, function_id `48d35635…`: only `OPTIONS | 200` entries, zero invocations of the handler body).
+## Confirmation
 
-The function's `Access-Control-Allow-Headers` is:
+- Native iOS push registration is **currently disabled by design** in this build (`NATIVE_FCM_ENABLED = false` in `src/lib/pushNativeConfig.ts`). The flag was added to protect Android (no `google-services.json`), but it disables iOS too.
+- Even after flipping the flag, iOS cannot produce a token the backend dispatcher can use, because the iOS target is missing: push entitlement, APNs delegate methods, Firebase iOS SDK, `GoogleService-Info.plist`, and APNs Auth Key uploaded to Firebase.
+
+## Prerequisites you (the user) must provide
+
+These cannot be generated from the sandbox.
+
+1. **GoogleService-Info.plist** for bundle id `com.mi4labs.carnivorex` — download from the Firebase Console → Project Settings → iOS app. Upload it to me, I'll drop it into `ios/App/App/GoogleService-Info.plist`.
+2. **APNs Auth Key (.p8)** — generated once in Apple Developer Portal → Keys → "+" → Apple Push Notifications service (APNs). Note the **Key ID** and your **Team ID**. Upload the `.p8` + Key ID + Team ID to the Firebase Console → Project Settings → Cloud Messaging → Apple app configuration. (You don't share these with me; Firebase keeps them.)
+3. **Push Notifications capability** enabled on App ID `com.mi4labs.carnivorex` in Apple Developer Portal → Identifiers.
+
+Until #1 lands in the repo and #2/#3 are done in the consoles, no iOS device can produce an FCM token — flipping any flag is cosmetic.
+
+## What I will change once #1 is uploaded
+
+### A. iOS native plumbing
+- `ios/App/App/App.entitlements`: add `aps-environment = development` (Xcode will swap to `production` on Release).
+- `ios/App/App/Info.plist`: add `UIBackgroundModes` containing `remote-notification`, and `FirebaseAppDelegateProxyEnabled = false` so we control APNs token handoff.
+- `ios/App/App/AppDelegate.swift`:
+  - `import Firebase` and `import FirebaseMessaging`.
+  - In `didFinishLaunchingWithOptions`: `FirebaseApp.configure()`, set `Messaging.messaging().delegate`, set `UNUserNotificationCenter.current().delegate`.
+  - Implement `didRegisterForRemoteNotificationsWithDeviceToken` → `Messaging.messaging().apnsToken = deviceToken`.
+  - Implement `didFailToRegisterForRemoteNotificationsWithError` → log only.
+  - Conform to `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)` — forward the FCM token to JS via a Capacitor notification so the existing `registration` listener fires.
+- Add Firebase iOS pods via Swift Package Manager (Capacitor 7 uses SPM): `firebase-ios-sdk` with products `FirebaseMessaging`, `FirebaseAnalytics`. Update `ios/App/CapApp-SPM/Package.swift`.
+
+### B. JS gating split
+- Replace single `NATIVE_FCM_ENABLED` with platform-aware gates in `src/lib/pushNativeConfig.ts`:
+  ```ts
+  export const NATIVE_FCM_ENABLED_IOS = true;     // turn on with iOS Firebase wiring
+  export const NATIVE_FCM_ENABLED_ANDROID = false; // stays off until google-services.json ships
+  export function isNativeFcmEnabled(platform: 'ios' | 'android'): boolean { ... }
+  ```
+- Update `src/lib/pushFcm.ts` to consult `isNativeFcmEnabled(platform)` instead of the single flag.
+
+### C. Token refresh on launch / foreground
+- In `AuthContext` (or a dedicated `usePushBootstrap` hook mounted at app root): after sign-in, when `Capacitor.isNativePlatform()` and the user is admin **or** consent is granted, call `requestNativePush()` once. Already idempotent.
+- Add a Capacitor `App` `appStateChange` listener: on `isActive=true`, if consent is granted and platform is iOS, call `PushNotifications.register()` so a refreshed FCM token re-fires the `registration` listener.
+
+### D. Stale-token cleanup
+- Already in place server-side: `sendFcmToToken` flags `UNREGISTERED` / `INVALID_ARGUMENT` / 404 as `invalid`, and both `coaching-reminder-test` and `coaching-reminder-dispatch` delete invalid `device_tokens` rows.
+- Add a one-line client-side mop-up: when `registrationError` fires on iOS, log and surface a toast via a custom event so admins know.
+
+### E. Admin gating (already done — keep)
+- Frontend hides **Send test reminder** unless `useIsAdmin(user.id)` is true.
+- `coaching-reminder-test` returns **403 `forbidden`** for non-admin callers via `user_roles` lookup.
+
+## Verification (evidence-first, per your standing rule)
+
+After you provide the prereqs and I implement A–D, you run these copy-pasteable steps on macOS with Xcode installed:
 
 ```
-authorization, apikey, content-type
+# 1. Pull latest
+cd ~/your-clone-of-the-repo
+git pull
+
+# 2. Install JS deps
+npm install
+
+# 3. Build web bundle
+npm run build
+
+# 4. Sync into iOS Capacitor project
+npx cap sync ios
+
+# 5. Open in Xcode
+npx cap open ios
+
+# 6. In Xcode: Signing & Capabilities → + Capability → "Push Notifications"
+# 7. In Xcode: Signing & Capabilities → + Capability → "Background Modes" → tick "Remote notifications"
+# 8. Build & Run on a physical iPhone (push does NOT work on iOS Simulator)
+
+# 9. In the running app: sign in as admin, accept the iOS notification prompt
+# 10. In the Lovable sandbox terminal verify the token landed:
 ```
 
-But `supabase.functions.invoke()` always adds `x-client-info` (and sometimes `x-supabase-api-version`). The browser sees those headers are not in the preflight's allow-list and silently blocks the POST. The frontend then catches a generic error and shows "Failed to send a test reminder".
+Then I'll run, against the project DB, immediately after step 9:
 
-Verified DB state for the signed-in user (`e90213d4-7b8a-4ae7-a980-b0f212fac206`):
+```sql
+SELECT id, platform, length(token) AS token_len, created_at, last_seen_at
+FROM device_tokens
+WHERE user_id = 'e90213d4-7b8a-4ae7-a980-b0f212fac206'
+ORDER BY created_at DESC;
+```
 
-- `device_tokens`: 1 android token (registered Apr 2026) ✅
-- `push_subscriptions`: 0 ✅ (web push never granted)
-- `coaching_reminder_log`: 0 rows globally → admin audit is correctly empty; test sends are intentionally not logged.
+Expected: at least one row with `platform='ios'`, `token_len ≈ 140–170` (FCM token, not raw 64-char APNs hex).
 
-So tokens, JWT, and auth are all fine. It's purely CORS blocking the POST.
+Then tap **Send test reminder** in the app. Edge logs must show:
+```
+[reminder-test] sent { code: "ok", deliveredNative: 1, fcmAttempts: 1, ... }
+```
+and your iPhone displays the push.
 
-## Changes
+## Scope I will NOT do in this pass
 
-### 1. Fix CORS on `coaching-reminder-test`
+- Android FCM enablement (still blocked on `google-services.json`).
+- Web push bootstrap for browsers (separate VAPID flow).
+- Logging test sends into `coaching_reminder_log`.
 
-- Expand `Access-Control-Allow-Headers` to: `authorization, apikey, content-type, x-client-info, x-supabase-api-version`.
-- Add `Access-Control-Allow-Methods: POST, OPTIONS`.
-- Add `Access-Control-Max-Age: 86400` so the preflight is cached.
+## What I need from you to start
 
-### 2. Fix CORS on `admin-coaching-reminders` (same hardening, prevent future breakage)
-
-- Same expanded allow-headers + `GET, OPTIONS` methods.
-
-### 3. Sharper errors in `coaching-reminder-test`
-
-Today the function returns generic 200 even when nothing is delivered. Make it return structured error codes the frontend can map:
-
-- `no_devices` — user has 0 device_tokens AND 0 push_subscriptions.
-- `permission_denied` — profile.push_consent !== 'granted' (best-effort hint).
-- `fcm_failed` / `web_push_failed` — provider rejected; include sanitized provider error in `errors[]`.
-- `vapid_missing` — VAPID env not configured (defensive log only).
-- Keep existing rate-limit `429` and `401` paths.
-
-### 4. Frontend: precise toasts in `CoachingReminderSettings.tsx`
-
-Replace the single generic toast with mapped messages (EN/FR):
-
-- `no_devices` → "No registered devices on this account. Enable notifications first."
-- `permission_denied` → "Notifications are disabled in your settings."
-- `fcm_failed` / `web_push_failed` → "Push provider rejected the message. Check that notifications are enabled on this device."
-- network/CORS catch → "Couldn't reach the reminder service. Please try again."
-- success → "Test reminder sent to N device(s)."
-
-Also log the structured response to the console for in-app debugging.
-
-### 5. Clarify Admin → Coaching reminders empty state
-
-Test sends are intentionally **not** written to `coaching_reminder_log` (keeps the audit a clean record of real scheduled sends). Update the empty card on `AdminCoachingReminders.tsx`:
-
-- Title: "No reminder attempts yet."
-- Subline: "Only scheduled cron reminders are logged here. Test reminders triggered from Profile are not recorded."
-
-No schema, no new tables. No change to the cron dispatcher or to which rows count toward the audit.
-
-User feedback: **Approved. The CORS diagnosis is correct and matches the edge logs.**
-
-**Please proceed with:**
-
-- **fixing CORS on** `coaching-reminder-test` **and** `admin-coaching-reminders`**,**
-- **ensuring the same CORS headers are included on all responses, not just** `OPTIONS`**,**
-- **preferably using Supabase’s shared** `corsHeaders` **helper if our SDK version supports it,**
-- **returning structured error codes for the test-send flow,**
-- **updating the frontend to map those codes to clear toasts,**
-- **clarifying the admin empty state that only scheduled cron reminders are logged there.**
-
-**One addition:**
-
-- **if delivery succeeds on at least one device but fails on another, return a partial-success response and show the success count instead of a full failure.**
-- &nbsp;
-
-## Out of scope
-
-- Logging test sends into the audit table.
-- Bootstrapping web push for users who haven't granted it.
-- Cleaning up stale FCM tokens (already handled in dispatcher on `invalid` response — the test path will reuse the same delete-on-invalid logic).
-
-## Verification
-
-1. Redeploy `coaching-reminder-test` + `admin-coaching-reminders`.
-2. In edge logs, the next "Send test reminder" tap shows a `POST | 200` entry (not just OPTIONS) and a `[reminder-test] sent { deliveredNative: 1, … }` log line.
-3. Toast in the app reflects the actual outcome (success count or specific error).
-4. Admin page empty-state copy now reads the clarified subline.
+Reply with the `GoogleService-Info.plist` file uploaded to chat, and confirm you've done the two Apple/Firebase console steps (APNs key in Firebase + Push capability in Apple Dev Portal). I'll then implement A–D in a single pass and walk you through the line-by-line Xcode steps.
