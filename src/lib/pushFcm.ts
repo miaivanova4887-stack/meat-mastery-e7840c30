@@ -55,25 +55,48 @@ function safeAbsPath(p: unknown): string | null {
 }
 
 function resolvePushNavPath(data: Record<string, unknown> | undefined | null): string | null {
-  if (!data) return null;
+  if (!data) {
+    console.info("[PushTap] resolve branch=null reason=no-data");
+    return null;
+  }
+  const hasPath = typeof data.path === "string";
+  const hasTarget = typeof data.target === "string";
+  const hasSessionId = typeof data.session_id === "string";
+  console.info("[PushTap] resolve inputs", {
+    hasPath, hasTarget, hasSessionId,
+    target: data.target, type: data.type,
+  });
   const direct = safeAbsPath(data.path);
-  if (direct) return direct;
+  if (direct) {
+    console.info("[PushTap] resolve branch=path path=", direct);
+    return direct;
+  }
   if (data.target === "coaching_upcoming_session") {
     const base = "/profile?tab=settings&section=coaching";
     const sid = typeof data.session_id === "string" ? data.session_id : "";
-    return sid ? `${base}&sessionId=${encodeURIComponent(sid)}` : base;
+    const out = sid ? `${base}&sessionId=${encodeURIComponent(sid)}` : base;
+    console.info("[PushTap] resolve branch=target path=", out);
+    return out;
   }
   const url = safeAbsPath(data.url);
-  if (url) return url;
+  if (url) {
+    console.info("[PushTap] resolve branch=url path=", url);
+    return url;
+  }
+  console.info("[PushTap] resolve branch=null reason=no-match");
   return null;
 }
 
 function queuePushNav(path: string) {
   pendingPushNav = path;
-  try { sessionStorage.setItem(PENDING_NAV_KEY, path); } catch {/* ignore */}
+  let stored = false;
+  try { sessionStorage.setItem(PENDING_NAV_KEY, path); stored = true; } catch {/* ignore */}
+  let dispatched = false;
   try {
     window.dispatchEvent(new CustomEvent("push-nav", { detail: { path } }));
+    dispatched = true;
   } catch {/* ignore */}
+  console.info("[PushTap] queue", { path, stored, dispatched });
 }
 
 export function consumePendingPushNav(): string | null {
