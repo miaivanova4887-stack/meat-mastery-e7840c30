@@ -108,6 +108,51 @@ const Pricing = () => {
     }
   };
 
+  /**
+   * Native (iOS) coaching call purchase — StoreKit consumable via RevenueCat.
+   * Apple Guideline 3.1.1 requires digital services sold in-app to use IAP,
+   * so on native we MUST take this path instead of Stripe checkout.
+   *
+   * After a successful purchase we record it server-side (idempotent) and
+   * open the Cal.com scheduler. No "restore" — consumables are one-shot.
+   */
+  const handleNativeCoachingPurchase = async (info: NativePackageInfo) => {
+    if (!user) {
+      toast("Please sign in first");
+      navigate(`/auth?returnTo=${encodeURIComponent("/pricing")}`);
+      return;
+    }
+    const id = info.pkg.identifier;
+    setLoading(id);
+    try {
+      const result = await paywall.purchase(info.pkg);
+      if (result.cancelled) {
+        return;
+      }
+      if (!result.ok) {
+        toast.error(result.error ?? "Purchase failed");
+        return;
+      }
+      const productId = info.pkg.product?.identifier ?? "coaching_call";
+      // RC doesn't surface the StoreKit transaction id directly on the result;
+      // fall back to a synthesized id based on user + timestamp so the server
+      // row is unique. The webhook (when added) will reconcile against the
+      // real Apple transactionId.
+      const transactionId = `rc_${user.id}_${Date.now()}`;
+      const recorded = await recordCoachingPurchase({
+        source: "appstore",
+        productId,
+        transactionId,
+        purchaseDateMs: Date.now(),
+      });
+      toast.success("Coaching call purchased — choose your time.");
+      const url = recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session";
+      window.open(url, "_blank", "noopener,noreferrer");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const handleNativeRestore = async () => {
     setLoading("restore");
     try {
