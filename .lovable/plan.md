@@ -1,76 +1,100 @@
-## iOS coaching booking — eliminate double charge, prefill identity, align price
+## Goal
 
-### Goal
+Make booked coaching sessions and their reminders reliable by treating our DB (not Cal.com) as source of truth. Adds a Cal.com webhook to persist scheduled times, a device-token capture path on app bootstrap, reminder preferences on the profile, and a cron-driven reminder dispatcher.
 
-After a successful iOS StoreKit coaching purchase, the user is sent to a **no-payment** Cal.com event (`coaching-session-ios`) with name + email prefilled. Web Stripe flow stays untouched.
+## 1. Schema changes (single migration)
 
-### Backend
+`**profiles**` — add:
 
-`**record-coaching-purchase` (update)**
+- `email text` (mirrored from `auth.users` via `handle_new_user` + an update trigger; needed so the reminder worker doesn't have to read `auth.users` per row)
+- `reminders_enabled boolean not null default true`
+- `reminder_offset_minutes int not null default 60` (allowed values: 15, 30, 60, 120, 1440 — enforced via CHECK)
 
-- After inserting the `coaching_sessions` row, look up the caller's `auth.users.email` and `profiles.display_name`.
-- If `source === "appstore"`, build:
-  - `iosBookingUrl = https://cal.com/carnivorex/coaching-session-ios?name={encoded}&email={encoded}` (Cal.com supports `name` + `email` query prefill on its booking form).
-  - Log `coaching:booking-link-issued` with `{ userId, hasName, hasEmail }`.
-  - Log `coaching:booking-link-prefill-missing` if name or email is empty.
-- Response payload becomes `{ ok, calComUrl, iosBookingUrl? }`. Web path keeps returning the existing paid `calComUrl` unchanged.
+Push token is **already** in `device_tokens` (token, platform, user_id, last_seen_at) — reuse it, do not add `push_token` to profiles.
 
-No DB migration required for the simple gate — the existing `coaching_sessions` row + auth check is the gate.
+`**coaching_sessions**` — extend (currently only has user_id/session_month/source/transaction_id):
 
-### Client — `src/lib/coachingPurchase.ts`
+- `scheduled_at timestamptz null`
+- `timezone text null`
+- `status text not null default 'pending'` — `pending | scheduled | completed | cancelled | no_show`
+- `booking_url text null`
+- `external_booking_id text null unique` (Cal.com booking uid)
+- `attendee_email text null`, `attendee_name text null`
+- `created_at timestamptz not null default now()`, `updated_at timestamptz not null default now()` + touch trigger
+- Index: `(status, scheduled_at)` for the reminder scanner
 
-- Extend `RecordCoachingPurchaseResult` with `iosBookingUrl?: string` and propagate it through.
+`**coaching_reminder_log**` (new) — prevents duplicate sends:
 
-### Client — `src/components/CoachingBooking.tsx`
+- `id`, `session_id uuid`, `user_id uuid`, `offset_minutes int`, `sent_at timestamptz default now()`
+- Unique `(session_id, offset_minutes)`
+- RLS: user can read own; service_role full. GRANTs included.
 
-- iOS branch after `recordCoachingPurchase`:
-  - Log `coaching:booking-link-requested` before invoking.
-  - `schedulerUrl = recorded.iosBookingUrl ?? recorded.calComUrl ?? IOS_NO_PAYMENT_FALLBACK` where the fallback constant is the no-payment URL (not the paid one).
-  - Open via `openExternalUrl(schedulerUrl, { logTag: "coaching:booking-link" })`; on `ok` log `coaching:booking-link-opened`, else log `coaching:booking-link-open-failed` and show existing fallback UI.
-- Web branch: unchanged (still hits `create-coaching-checkout` → Stripe).
-- Replace the paid `CAL_URL` fallback used by iOS with the no-payment URL so a backend failure still avoids double charge.
-- Replace hardcoded `"CA$99 per session"` info-screen price with the StoreKit-localized string when `useNative && paywall.packages.coaching?.priceString` is available; fall back to CMS `paid_label` only on web.
+All new tables get explicit GRANTs (authenticated select-own, service_role all).
 
-### Client — `src/pages/Coaching.tsx` and `src/pages/Pricing.tsx`
+## 2. Edge functions
 
-- Same iOS branch updates: prefer `recorded.iosBookingUrl`, fall back to the no-payment URL, never the paid one. Web Stripe redirect stays as-is.
-- Where any hardcoded "$99" / "CA$99" appears on the iOS path, swap for `paywall.packages.coaching?.priceString` (already loaded by `useNativePaywall`).
+`**cal-webhook**` (new, `verify_jwt = false`, public)
 
-### Constants
+- Receives Cal.com `BOOKING_CREATED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`.
+- Validates an `X-Cal-Signature` HMAC against `CAL_WEBHOOK_SECRET` (new secret — will request via add_secret).
+- Matches user by attendee email → `profiles.email`. If no match, inserts a row with `user_id = null` only for audit log? — instead: reject with 200 + log, no orphan row.
+- Upserts on `external_booking_id`: writes `scheduled_at`, `timezone`, `booking_url`, `status`, `attendee_*`. On cancel sets `status='cancelled'`.
 
-Add a single module `src/lib/coachingUrls.ts`:
+`**record-coaching-purchase**` (existing) — unchanged, still inserts the `pending` row at purchase time so we have a paid-but-unscheduled record. The webhook later fills `scheduled_at`.
 
-```ts
-export const CAL_PAID_URL = "https://cal.com/carnivorex/coaching-session";
-export const CAL_IOS_NO_PAYMENT_URL = "https://cal.com/carnivorex/coaching-session-ios";
-```
+`**coaching-reminder-dispatch**` (new, `verify_jwt = false`, called by cron)
 
-All call sites import from here.
+- Selects sessions where `status='scheduled'` AND `scheduled_at` is within `[now() + offset - 5min, now() + offset + 5min]` for each user's `reminder_offset_minutes`, AND no row in `coaching_reminder_log` for `(session_id, offset)`.
+- Joins `device_tokens` for the user; sends via existing `fcm-send` shared helper for native and existing web-push path for web subscriptions.
+- Inserts `coaching_reminder_log` row on success. Skips users with `reminders_enabled=false`.
 
-### Diag logs (console)
+**Cron** (via `supabase--insert`, not migration): `pg_cron` schedule every 5 minutes calling `coaching-reminder-dispatch` with the anon key header.
 
-- `coaching:booking-link-requested` — client, before invoke
-- `coaching:booking-link-issued` — server
-- `coaching:booking-link-prefill-missing` — server, when name/email blank
-- `coaching:booking-link-opened` — client, after successful `openExternalUrl`
-- `coaching:booking-link-open-failed` — client, on failure (already triggers fallback UI)
+## 3. Client changes
 
-### Out of scope
+**Push-token capture on bootstrap** — already implemented in `src/lib/pushFcm.ts` (`register-device-token` invoked from the `registration` listener once user has a session). Confirm it runs after sign-in by calling `requestNativePush()` (or just `bindListenersOnce + register` if perm already granted) from `AuthContext` after auth state becomes signed-in, gated by `NATIVE_FCM_ENABLED`. No prompt added — uses existing user-action gated consent flow. **No change to iOS push prompt timing.**
 
-- Web Stripe / paid Cal.com flow — untouched.
-- Single-use signed token (rejected in favor of simple gate).
-- Cal.com event configuration itself — you'll handle in Cal.com dashboard (disable payment on `coaching-session-ios`).
+**Reminder preferences UI** — small section in `src/pages/Profile.tsx` (Settings tab) with a toggle (`reminders_enabled`) and a select for offset (15m / 30m / 1h / 2h / 1day). Writes to `profiles`. Optional; default on but booking never blocks on it.
 
-### Acceptance verification
+**Coaching booking flow** — no UX redesign. After successful purchase, `record-coaching-purchase` already inserts the row (now as `status='pending'`). The Cal.com webhook fills in `scheduled_at` once the user picks a time. Remove the duplicate client-side insert in `CoachingBooking.handleDone` (the edge function is already the canonical writer).
 
-After build:
+**Profile email backfill** — migration backfills `profiles.email` from `auth.users` for existing rows; `handle_new_user` updated to set it on signup; trigger on `auth.users` email-change updates the mirror.
 
-1. iOS sandbox purchase → Cal.com opens directly to `coaching-session-ios` time picker — no card form, no price screen.
-2. Name + email pre-filled on the Cal.com "Confirm your details" step.
-3. App pricing CTA reads the StoreKit storefront price (e.g. `$99.99`, `CA$129.99`), not `CA$99`.
-4. Web Stripe coaching purchase still lands on the existing paid Cal.com event.
+## 4. iOS / Apple
 
-User feedback: If `profiles.display_name` is missing, Lovable should fall back to:
+- No new permission prompts at app launch. Push permission is still requested only from the existing user-initiated consent UI (`NotificationConsentSheet`).
+- Reminders toggle defaults on but is independent of OS push permission — if denied, booking still succeeds, we simply have nothing to send to.
+- Native FCM register remains gated by `NATIVE_FCM_ENABLED`; reminder dispatch via FCM is a no-op for iOS until that flag flips. Web push works today.
 
-- SIWA / auth metadata display name,
-- then email local-part only as a last resort.
+## 5. Out of scope (confirmed)
+
+- No change to Stripe or StoreKit purchase UX.
+- No Cal.com page redesign — only the booking record is captured via webhook.
+- No changes to existing `record-coaching-purchase` response shape.
+
+User: **Approved with minor adjustments:**
+
+- **Keep** `profiles.email`**,** `reminders_enabled`**, and** `reminder_offset_minutes`**.**
+- **Reuse** `device_tokens`**; do not add** `push_token` **to** `profiles`**.**
+- **Add CHECK constraints for** `reminder_offset_minutes` **and** `coaching_sessions.status`**.**
+- **Add** `coaching_reminder_log(session_id, offset_minutes)` **uniqueness for dedupe.**
+- **Keep the Cal.com webhook as the canonical source for** `scheduled_at`**,** `timezone`**,** `booking_url`**,** `external_booking_id`**, and attendee fields.**
+- **Remove the duplicate client-side insert in** `CoachingBooking.handleDone`**.**
+- **Cron every 5 minutes is fine.**
+- **Use one reminder at the selected offset only; no second reminder for now.**
+
+**Open items:**
+
+1. **Confirm the Cal.com webhook URL can be registered.**
+2. **Confirm** `reminder_offset_minutes` **stays on the preset list.**
+3. **Confirm no second reminder is needed.**
+
+## Secrets to add (will prompt)
+
+- `CAL_WEBHOOK_SECRET` — HMAC signing secret configured in Cal.com webhook settings.
+
+## Open questions
+
+1. **Cal.com webhook URL & secret**: do you already have a Cal.com account with webhook access on the `coaching-session` + `coaching-session-ios` event types? I need to register `https://gueosugzlebbaijzcxgh.functions.supabase.co/cal-webhook` and copy the signing secret into `CAL_WEBHOOK_SECRET`.
+2. **Reminder offsets**: OK with the preset list (15m / 30m / 1h / 2h / 1day, default 1h), or do you want a free-form minute input?
+3. **Multi-reminder**: send one reminder at the chosen offset, or also a fixed second reminder at 15 min before the call?
