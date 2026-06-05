@@ -80,6 +80,7 @@ function SubscriptionBadge() {
 
 const Profile = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
   const qc = useQueryClient();
@@ -89,7 +90,15 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showPushConsent, setShowPushConsent] = useState(false);
-  const [tab, setTab] = useState<"feed" | "goals" | "community" | "settings">("feed");
+  const initialTab = (() => {
+    const q = searchParams.get("tab");
+    return q === "feed" || q === "goals" || q === "community" || q === "settings"
+      ? q
+      : "feed";
+  })();
+  const [tab, setTab] = useState<"feed" | "goals" | "community" | "settings">(initialTab);
+  const highlightSessionId = searchParams.get("sessionId") || undefined;
+  const section = searchParams.get("section") || undefined;
   const userProfile = useUserProfile();
   const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const favoriteRecipes = useMemo(() => recipes.filter(r => favorites.has(r.name)), [favorites]);
