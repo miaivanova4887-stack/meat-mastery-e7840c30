@@ -17,7 +17,8 @@ export type PushDecisionSource =
   | "requestNativePush";
 
 export type SuppressReason =
-  | "not-android"
+  | "unsupported-platform"
+  | "not-android" // legacy alias retained for back-compat in older logs
   | "already-shown-session"
   | "local-consent-set"
   | "profile-consent-set"
