@@ -177,7 +177,10 @@ const AdminCoachingReminders = () => {
         ) : rows.length === 0 ? (
           <div className="ios-card p-6 text-center">
             <BellRing className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No reminder attempts yet.</p>
+            <p className="text-sm font-semibold text-foreground">No reminder attempts yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Only scheduled cron reminders are logged here. Test reminders triggered from Profile are not recorded.
+            </p>
           </div>
         ) : (
           rows.map((r) => (
