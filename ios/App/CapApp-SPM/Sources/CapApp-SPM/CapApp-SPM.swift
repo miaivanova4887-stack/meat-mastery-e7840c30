@@ -16,6 +16,7 @@
 
 import Foundation
 import UIKit
+import WebKit
 import Capacitor
 import FirebaseCore
 import FirebaseMessaging
