@@ -163,9 +163,20 @@ const Auth = () => {
         // Narrow to the apple branch of the discriminated union.
         const apple = res.provider === "apple" ? res.result : null;
         const idToken = apple?.idToken ?? null;
+        // Capture Apple-provided full name BEFORE any network call so it
+        // survives a failed sign-in. Apple only returns name on the very
+        // first authorization — we must never lose it.
+        const appleFullName = extractAppleFullName(apple?.profile as any);
+        if (appleFullName) {
+          cacheAppleFullName(appleFullName);
+          logAuthDiag("oauth:apple-name-captured", { length: appleFullName.length });
+        } else {
+          logAuthDiag("oauth:apple-name-skipped", { reason: "not-returned" });
+        }
         logAuthDiag("oauth:apple-native-result", {
           hasIdToken: Boolean(idToken),
           hasEmail: Boolean(apple?.profile?.email),
+          hasName: Boolean(appleFullName),
         });
         if (!idToken) {
           toast.error("Apple sign-in failed: no identity token returned");
@@ -173,7 +184,7 @@ const Auth = () => {
           return;
         }
         logAuthDiag("oauth:apple-idtoken-start", { tokenLen: idToken.length });
-        const { error } = await supabase.auth.signInWithIdToken({
+        const { data: signInData, error } = await supabase.auth.signInWithIdToken({
           provider: "apple",
           token: idToken,
           nonce: rawNonce,
@@ -183,6 +194,12 @@ const Auth = () => {
           toast.error(error.message || "Apple sign-in failed");
           setLoading(false);
           return;
+        }
+        // Kick off persistent reconciliation — retries until profiles.display_name
+        // confirms the Apple-provided name (or the user already has a real one).
+        const signedInUserId = signInData.user?.id;
+        if (appleFullName && signedInUserId) {
+          void reconcileAppleDisplayName(signedInUserId, appleFullName);
         }
         toast.success(t("auth.welcomeBackToast"));
         navigate(returnTo, { replace: true });
