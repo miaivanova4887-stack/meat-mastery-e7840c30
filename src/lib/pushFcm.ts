@@ -170,60 +170,67 @@ export async function requestNativePush(): Promise<PushConsentState> {
   const platform = Capacitor.getPlatform() as "android" | "ios";
   console.info(`[PushDecision] source=requestNativePush branch=start platform=${platform}`);
 
-  try {
-    let existing: NativePushPermission = "prompt";
-    try { existing = await withTimeout(getNativePushPermission(), 4000, "checkPermissions"); } catch (e) {
-      console.warn("[PushDecision] check-os-threw", e);
-    }
-    if (existing === "granted") {
-      console.info("[PushDecision] os-already-granted");
-      if (isNativeFcmEnabled()) {
-        bindListenersOnce(platform);
-        bindAppStateListenerOnce(platform);
-        try {
-          await withTimeout(PushNotifications.register(), 4000, "register");
-        } catch (e) {
-          console.warn("[PushDecision] register-threw os-already-granted", e);
-        }
-      } else {
-        console.info("[PushDecision] register-skipped native-fcm-disabled");
-      }
-      try { await savePushConsent("granted"); } catch {}
-      return "granted";
-    }
-
-    let perm: { receive: NativePushPermission } | undefined;
-    try {
-      perm = await withTimeout(PushNotifications.requestPermissions(), 15000, "requestPermissions");
-    } catch (e) {
-      console.error("[PushDecision] requestPermissions-threw — swallowed", e);
-      try { await savePushConsent("denied"); } catch {}
-      return "denied";
-    }
-    console.info(`[PushDecision] requestPermissions-result receive=${perm?.receive}`);
-    if (perm?.receive !== "granted") {
-      try { await savePushConsent("denied"); } catch {}
-      return "denied";
-    }
-
-    if (isNativeFcmEnabled()) {
-      bindListenersOnce(platform);
-      bindAppStateListenerOnce(platform);
-      try {
-        await withTimeout(PushNotifications.register(), 4000, "register");
-      } catch (e) {
-        console.warn("[PushDecision] register-threw fresh-grant", e);
-      }
-    } else {
-      console.info("[PushDecision] register-skipped native-fcm-disabled");
-    }
-    try { await savePushConsent("granted"); } catch {}
-    return "granted";
-  } catch (e) {
-    console.error("[PushDecision] outer-threw — swallowed", e);
-    try { await savePushConsent("denied"); } catch {}
-    return "denied";
+  // Bind plugin listeners up front so any registration / registrationError
+  // event that fires after register() is observed (and logged) regardless
+  // of which branch we take below.
+  if (isNativeFcmEnabled()) {
+    bindListenersOnce(platform);
+    bindAppStateListenerOnce(platform);
   }
+
+  let existing: NativePushPermission = "prompt";
+  try {
+    existing = await withTimeout(getNativePushPermission(), 4000, "checkPermissions");
+  } catch (e) {
+    console.warn("[Push] checkPermissions threw", e);
+  }
+  console.info(`[Push] requestPermissions existing=${existing} platform=${platform}`);
+
+  let finalReceive: NativePushPermission = existing;
+
+  if (existing !== "granted") {
+    try {
+      console.info(`[Push] requestPermissions called platform=${platform}`);
+      const perm = await withTimeout(
+        PushNotifications.requestPermissions(),
+        15000,
+        "requestPermissions",
+      );
+      finalReceive = (perm?.receive as NativePushPermission) ?? "denied";
+      console.info(`[Push] requestPermissions result receive=${finalReceive}`);
+    } catch (e) {
+      console.error("[Push] requestPermissions threw — treating as denied", e);
+      finalReceive = "denied";
+    }
+  } else {
+    console.info("[Push] requestPermissions skipped reason=os-already-granted");
+  }
+
+  // iOS-specific behavior: call register() regardless of permission verdict.
+  // This invokes UIApplication.registerForRemoteNotifications, which is what
+  // makes iOS record the app under Settings → Notifications and is required
+  // for APNs/FCM token issuance once permission is granted (now or later).
+  // On Android, register() is only meaningful after grant.
+  const shouldRegister = isNativeFcmEnabled() &&
+    (platform === "ios" || finalReceive === "granted");
+
+  if (shouldRegister) {
+    try {
+      console.info(`[Push] register called platform=${platform} receive=${finalReceive}`);
+      await withTimeout(PushNotifications.register(), 4000, "register");
+      console.info(`[Push] register() returned platform=${platform} — registration/registrationError event will follow`);
+    } catch (e) {
+      console.warn(`[Push] register threw platform=${platform}`, e);
+    }
+  } else {
+    console.info(`[Push] register skipped platform=${platform} fcmEnabled=${isNativeFcmEnabled()} receive=${finalReceive}`);
+  }
+
+  const consent: PushConsentState = finalReceive === "granted" ? "granted" : "denied";
+  try { await savePushConsent(consent); } catch (e) {
+    console.warn("[Push] savePushConsent failed", e);
+  }
+  return consent;
 }
 
 // Bind the FCM window event as early as possible on iOS so a token that
