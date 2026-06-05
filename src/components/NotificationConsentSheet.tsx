@@ -10,6 +10,7 @@ import {
   getNativePushPermission,
 } from "@/lib/pushFcm";
 import { subscribeToPush } from "@/lib/pushNotifications";
+import { openAppSettings } from "@/lib/openAppSettings";
 import { toast } from "sonner";
 
 interface NotificationConsentSheetProps {
@@ -79,8 +80,19 @@ export default function NotificationConsentSheet({
       try { await savePushConsent(granted ? "granted" : "denied", prefs); } catch (e) {
         console.warn("[PushDecision] sheet final savePushConsent failed", e);
       }
-      if (granted) toast.success("Notifications enabled");
-      else toast.info("Notifications declined — you can enable them later in Settings.");
+      if (granted) {
+        toast.success("Notifications enabled");
+      } else if (native) {
+        // On native, a "denied" result almost always means the OS prompt
+        // was suppressed because the user previously tapped "Don't allow".
+        // The only way to recover is via system settings — open them.
+        toast.info("Notifications are off. Opening system settings…");
+        try { await openAppSettings(); } catch (e) {
+          console.warn("[PushDecision] openAppSettings failed", e);
+        }
+      } else {
+        toast.info("Notifications declined — you can enable them later in Settings.");
+      }
       onComplete?.(granted);
       onClose();
     } catch (e) {
