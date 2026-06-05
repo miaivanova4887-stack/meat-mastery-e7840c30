@@ -318,6 +318,25 @@ export async function requestNativePush(): Promise<PushConsentState> {
       console.info(`[Push] register called platform=${platform} receive=${finalReceive}`);
       await withTimeout(PushNotifications.register(), 4000, "register");
       console.info(`[Push] register() returned platform=${platform} — registration/registrationError event will follow`);
+
+      // Watchdog: if no APNs/FCM token event fires within 4s on iOS, the
+      // Push Notifications Xcode capability is most likely missing. Log a
+      // distinctive line so we can spot this in Xcode console quickly.
+      if (platform === "ios") {
+        let tokenSeen = false;
+        const oneShot = (ev: Event) => {
+          const d = (ev as CustomEvent).detail as { token?: string } | undefined;
+          if (d?.token) tokenSeen = true;
+          window.removeEventListener("fcm-token", oneShot);
+        };
+        try { window.addEventListener("fcm-token", oneShot); } catch {/* noop */}
+        setTimeout(() => {
+          if (!tokenSeen) {
+            console.warn("[Push] WATCHDOG no APNs token after register() within 4000ms — capability likely missing (see ios/README-push-capability.md)");
+          }
+          try { window.removeEventListener("fcm-token", oneShot); } catch {/* noop */}
+        }, 4000);
+      }
     } catch (e) {
       console.warn(`[Push] register threw platform=${platform}`, e);
     }

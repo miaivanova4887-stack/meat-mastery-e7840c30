@@ -163,6 +163,8 @@ export type Database = {
           stripe_payment_intent: string | null
           timezone: string | null
           transaction_id: string | null
+          unscheduled_reminder_count: number
+          unscheduled_reminder_last_sent_at: string | null
           updated_at: string
           user_id: string
         }
@@ -182,6 +184,8 @@ export type Database = {
           stripe_payment_intent?: string | null
           timezone?: string | null
           transaction_id?: string | null
+          unscheduled_reminder_count?: number
+          unscheduled_reminder_last_sent_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -201,6 +205,8 @@ export type Database = {
           stripe_payment_intent?: string | null
           timezone?: string | null
           transaction_id?: string | null
+          unscheduled_reminder_count?: number
+          unscheduled_reminder_last_sent_at?: string | null
           updated_at?: string
           user_id?: string
         }
