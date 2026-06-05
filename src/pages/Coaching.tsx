@@ -118,9 +118,14 @@ const Coaching = () => {
 
         <div className="ios-card p-5">
           <div className="text-center mb-3">
-            <p className="text-2xl font-bold text-foreground">$99.99</p>
+            <p className="text-2xl font-bold text-foreground">
+              {useNative && paywall.packages.coaching?.priceString
+                ? paywall.packages.coaching.priceString
+                : "$99.99"}
+            </p>
             <p className="text-xs text-muted-foreground">per 1-hour session</p>
           </div>
+
           {!user ? (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2 text-center">
               <p className="text-sm font-medium text-foreground">
