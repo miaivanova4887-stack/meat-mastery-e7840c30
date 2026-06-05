@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
+import { getNativePushPermission, requestNativePush } from "@/lib/pushFcm";
 
 const OFFSETS = [
   { value: 15, labelKey: "15 min before" },
