@@ -1,6 +1,8 @@
 import { ArrowLeft, Heart, Settings, LogOut, Loader2, Clock, Flame, Pencil, Check, X as XIcon, UtensilsCrossed, ChevronRight, ChevronDown, BookOpen, Zap, Newspaper, ThumbsUp, ThumbsDown, Trophy, TrendingUp, Target, Activity, Share2, Mail, Copy, MessageCircle, Users, Bell, BarChart3, Globe, Crosshair, Crown } from "lucide-react";
 import { Share } from "@capacitor/share";
 import { Capacitor } from "@capacitor/core";
+import { App as CapApp } from "@capacitor/app";
+import type { NativePushPermission } from "@/lib/pushFcm";
 import ConsentBanner from "@/components/ConsentBanner";
 import CommunityFeed from "@/components/CommunityFeed";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -228,6 +230,85 @@ const Profile = () => {
       })();
     }
   };
+
+  // ---- OS-permission-driven push toggle state -------------------------------
+  // OS permission is the source of truth for whether push is *possible* on
+  // this device. The visible ON state still depends on both OS permission
+  // AND the user's saved in-app preference (notifPrefs.enabled).
+  const [osPushPerm, setOsPushPerm] = useState<NativePushPermission>(
+    Capacitor.isNativePlatform() ? "prompt" : "unsupported",
+  );
+
+  const refreshOsPushPerm = useCallback(
+    async (source: "mount" | "resume" | "tabSwitch" | "postToggle") => {
+      if (!Capacitor.isNativePlatform()) {
+        setOsPushPerm("unsupported");
+        return "unsupported" as NativePushPermission;
+      }
+      try {
+        const { getNativePushPermission } = await import("@/lib/pushFcm");
+        const perm = await getNativePushPermission();
+        setOsPushPerm(perm);
+        console.info("[NotifSettings] osPerm refresh", { source, perm });
+        // Reconcile: if OS revoked, force the local pref OFF (UI honesty)
+        // without touching server consent — saved cross-device intent is
+        // preserved in profiles.notification_preferences.
+        try {
+          const raw = localStorage.getItem("carnivore-notif-prefs");
+          const saved = raw ? JSON.parse(raw) : null;
+          const savedEnabled = saved?.enabled !== false;
+          if (perm === "denied" && savedEnabled) {
+            const next = { ...(saved || {}), enabled: false };
+            localStorage.setItem("carnivore-notif-prefs", JSON.stringify(next));
+            setNotifPrefs(next);
+            window.dispatchEvent(new Event("profile-update"));
+            console.info("[NotifSettings] reconcile action=force-off", {
+              osPerm: perm, savedPref: savedEnabled,
+            });
+          } else {
+            console.info("[NotifSettings] reconcile action=noop", {
+              osPerm: perm, savedPref: savedEnabled,
+            });
+          }
+        } catch {/* ignore */}
+        return perm;
+      } catch (e) {
+        console.warn("[NotifSettings] osPerm refresh threw", e);
+        return "unsupported" as NativePushPermission;
+      }
+    },
+    [],
+  );
+
+  // Refresh on mount.
+  useEffect(() => { void refreshOsPushPerm("mount"); }, [refreshOsPushPerm]);
+
+  // Refresh when Settings tab becomes visible.
+  useEffect(() => {
+    if (tab !== "settings") return;
+    void refreshOsPushPerm("tabSwitch");
+  }, [tab, refreshOsPushPerm]);
+
+  // Refresh when app resumes (covers user toggling iOS Settings then returning).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let sub: { remove: () => void } | undefined;
+    (async () => {
+      try {
+        sub = await CapApp.addListener("appStateChange", ({ isActive }) => {
+          if (isActive) void refreshOsPushPerm("resume");
+        });
+      } catch (e) {
+        console.warn("[NotifSettings] appStateChange bind failed", e);
+      }
+    })();
+    return () => { try { sub?.remove(); } catch {/* ignore */} };
+  }, [refreshOsPushPerm]);
+
+  const pushEnabledEffective = Capacitor.isNativePlatform()
+    ? (osPushPerm === "granted" && notifPrefs.enabled)
+    : notifPrefs.enabled;
+
   const [loading, setLoading] = useState(true);
 
   // Settings editing state
@@ -1058,59 +1139,76 @@ const Profile = () => {
                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.enableNotificationsDesc")}</p>
                 </div>
                 <Switch
-                  checked={notifPrefs.enabled}
+                  checked={pushEnabledEffective}
                   onCheckedChange={async (v) => {
-                    updateNotifPref("enabled", v);
-                    if (!v) return;
-                    if (!Capacitor.isNativePlatform()) return;
                     const traceId = `nsx_tog_${Date.now()}`;
+
+                    // OFF: purely a local app-pref change. Never touch OS.
+                    if (!v) {
+                      console.info("[NotifSettings] toggle v=false action=local-off", { traceId });
+                      updateNotifPref("enabled", false);
+                      return;
+                    }
+
+                    // Web: no OS gating — just save the pref.
+                    if (!Capacitor.isNativePlatform()) {
+                      console.info("[NotifSettings] toggle v=true action=web-local-on", { traceId });
+                      updateNotifPref("enabled", true);
+                      return;
+                    }
+
+                    // Native ON: branch purely on current OS permission state.
                     try {
                       const { getNativePushPermission, requestNativePush, savePushConsent } =
                         await import("@/lib/pushFcm");
                       const permBefore = await getNativePushPermission();
-                      console.info("[NotifSettings] toggle-enable perm-before", { traceId, permBefore });
+                      console.info("[NotifSettings] toggle v=true permBefore", { traceId, permBefore });
 
                       if (permBefore === "granted") {
+                        // SIWA→email-login case: OS already granted, never prompt again.
+                        console.info("[NotifSettings] action=already-granted", { traceId });
+                        updateNotifPref("enabled", true);
                         try { await savePushConsent("granted", {}); } catch {}
                         toast.success("Notifications enabled");
-                        console.info("[NotifSettings] toggle-enable action=already-granted", { traceId });
-                        return;
-                      }
-
-                      if (permBefore === "prompt" || permBefore === "prompt-with-rationale") {
-                        console.info("[NotifSettings] toggle-enable action=request-native", { traceId });
+                      } else if (permBefore === "prompt" || permBefore === "prompt-with-rationale") {
+                        console.info("[NotifSettings] action=request-native", { traceId });
                         let result: string = "denied";
                         try {
                           result = await requestNativePush();
                         } catch (e) {
-                          console.error("[NotifSettings] toggle-enable requestNativePush threw", { traceId, error: String(e) });
+                          console.error("[NotifSettings] requestNativePush threw", { traceId, error: String(e) });
                         }
-                        console.info("[NotifSettings] toggle-enable perm-after", { traceId, result });
                         if (result === "granted") {
-                          try { await savePushConsent("granted", {}); } catch {}
+                          updateNotifPref("enabled", true);
                           toast.success("Notifications enabled");
                         } else {
                           updateNotifPref("enabled", false);
                           toast.info("Notifications were not enabled.");
                         }
-                        return;
+                      } else if (permBefore === "denied") {
+                        // OS will not reshow the prompt — open app-specific settings.
+                        console.info("[NotifSettings] action=open-settings", { traceId });
+                        const { openAppSettings } = await import("@/lib/openAppSettings");
+                        toast.info("Opening system notification settings…");
+                        await openAppSettings(traceId);
+                        updateNotifPref("enabled", false);
+                      } else {
+                        // "unsupported" — treat as web.
+                        console.info("[NotifSettings] action=unsupported-local-on", { traceId });
+                        updateNotifPref("enabled", true);
                       }
 
-                      // permBefore === "denied" — OS won't reshow the prompt.
-                      console.info("[NotifSettings] toggle-enable action=open-settings", { traceId });
-                      const { openAppSettings } = await import("@/lib/openAppSettings");
-                      toast.info("Opening system notification settings…");
-                      await openAppSettings(traceId);
-                      updateNotifPref("enabled", false);
+                      const permAfter = await refreshOsPushPerm("postToggle");
+                      console.info("[NotifSettings] toggle permAfter", { traceId, permAfter });
                     } catch (e) {
-                      console.warn("[NotifSettings] toggle-enable threw", { traceId, error: String(e) });
+                      console.warn("[NotifSettings] toggle threw", { traceId, error: String(e) });
                     }
                   }}
                 />
               </div>
             </div>
 
-            <div className={`space-y-3 transition-opacity ${!notifPrefs.enabled ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className={`space-y-3 transition-opacity ${!pushEnabledEffective ? "opacity-50 pointer-events-none" : ""}`}>
               {/* Daily Reminder */}
               <div className="ios-card p-4">
                 <div className="flex items-center justify-between">
