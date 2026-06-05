@@ -1,79 +1,46 @@
-## Findings
+## Current state
 
-- **Webhook is writing rows** ✅. `coaching_sessions` has 2 `status='scheduled'` rows for the current user (`7c33371c…`) with `scheduled_at = 2026-06-17 15:00 / 16:00 UTC`, plus several `pending` rows from earlier checkout starts.
-- **RLS is correct** ✅. Policy `Users can read own sessions` allows `auth.uid() = user_id`.
-- **Profile currently renders only `<CoachingReminderSettings />**` at `src/pages/Profile.tsx:1040`. There is **no query against `coaching_sessions` and no Upcoming/Past UI** — that's why nothing appears.
+`src/pages/Auth.tsx` lines 470–482 render the Apple button as a generic `rounded-2xl` pill with a tiny 18px glyph, 12px text, mismatched padding, and inverted colors in dark mode. None of this matches Apple's Sign in with Apple HIG.
 
-So the gap is purely frontend: the section was never added.
+## Apple HIG requirements being violated
 
-## Plan
+- **Color modes**: must be one of (a) white logo on black, (b) black logo on white, or (c) black logo on white with 1pt black outline — **not** auto-inverted per theme. We will pick **black background / white logo + text** to match the premium dark hero used elsewhere in the app.
+- **Logo**: official Apple glyph, optically centered, height ≈ 43% of the cap-height block (we'll use 16px glyph for ~20px text).
+- **Title**: "Sign in with Apple" (login mode) or "Sign up with Apple" (signup mode) — `Continue with Apple` is allowed but we'll switch to the mode-specific labels since the form already knows the mode. SF system font, semibold (`-apple-system, BlinkMacSystemFont, "SF Pro Text"`).
+- **Minimum touch target**: 44pt tall.
+- **Corner radius**: HIG allows 0–50% of height; to stay consistent with the rest of the auth form (which uses `rounded-2xl` = 16px) we'll keep 16px — explicitly allowed.
+- **Padding**: leading/trailing space ≥ logo height; gap between logo and title = logo height × ~0.5. We'll use `px-4` and `gap-2`.
+- **Do not modify the logo**: keep the official path, fill = white, no extra strokes.
+- **Parity**: Google button must share the same height (44px), radius, font stack, and weight so the two CTAs sit as a matched pair per HIG "match other buttons" guidance.
 
-Add a `CoachingSessionsList` component and mount it in Profile directly above `<CoachingReminderSettings />` inside the same coaching area.
+## Changes
 
-### 1. New component `src/components/CoachingSessionsList.tsx`
+**File: `src/pages/Auth.tsx`** (only the OAuth button block, lines 456–482)
 
-- Fetch on mount for `auth.uid()`:
-  ```ts
-  supabase
-    .from("coaching_sessions")
-    .select("id, status, scheduled_at, booking_url, attendee_email, attendee_name, timezone, session_month, created_at, external_booking_id")
-    .eq("user_id", user.id)
-    .order("scheduled_at", { ascending: true, nullsFirst: false })
-  ```
-- Partition client-side:
-  - **Upcoming**: `status === 'scheduled' && scheduled_at && new Date(scheduled_at) > now`
-  - **Past**: `status === 'completed'` OR (`status === 'scheduled' && scheduled_at < now`)
-  - **Cancelled**: `status === 'cancelled'` (shown in Past with muted badge)
-  - Hide `status === 'pending'` rows with no `scheduled_at` (those are abandoned checkouts).
-- Realtime subscription on `coaching_sessions` filtered by `user_id` so a fresh Cal.com booking appears without reload.
-- Render two stacked sections with i18n-friendly headings:
-  - **Upcoming session** (singular if 1, plural if >1)
-  - **Past sessions**
-- Each card shows: formatted local date+time (using user's `profile.timezone` if present, else browser tz), session type label ("1-hour coaching call"), status pill, and actions:
-  - Upcoming: "Add to calendar" (ICS download generated client-side) + "Reschedule"/"Cancel" links to `booking_url` when present.
-  - Past: read-only.
-- Empty state when no upcoming AND no past:
-  > "No coaching sessions yet. Book a 1-hour call to get started."
-  > with a button that opens the existing `CoachingBooking` modal (reuse the same trigger pattern already in Profile / MotivationCTA).
-- Loading skeleton (3 muted cards) while query is in flight.
-- Styling: reuse `.ios-card`, semantic tokens only (no hard-coded colors), match existing Profile section spacing.
+1. Add a constant for the Apple font stack:
+   ```ts
+   const APPLE_FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif';
+   ```
+2. Rewrite the **Apple button**:
+   - `className="w-full h-11 rounded-2xl bg-black text-white font-semibold text-[17px] tracking-[-0.01em] flex items-center justify-center gap-2 px-4 transition-transform active:scale-[0.98] disabled:opacity-50"`
+   - Inline `style={{ fontFamily: APPLE_FONT }}`
+   - Remove the `dark:bg-white dark:text-black` inversion (HIG forbids picking a non-approved combo and the black variant is HIG-compliant in both themes).
+   - Glyph: 16×16, `fill="currentColor"`, vertically nudged `-mt-0.5` so the Apple mark optically centers with the text cap height.
+   - Label: `mode === "signup" ? "Sign up with Apple" : "Sign in with Apple"`.
+   - `aria-label` matches the label.
+3. Update the **Google button** to match the new height (`h-11`), radius, font stack, and label sizing so the pair is visually balanced (text size unchanged to keep Google brand guideline — only height/font-family aligned). Replace `py-3` with `h-11`, drop `text-sm` in favor of `text-[15px] font-medium` per Google brand, keep multi-color glyph at 18px.
+4. No copy in i18n files because Apple HIG-compliant labels are not localized through translation keys today; "Sign in with Apple" is the exact HIG-approved English string. (If/when we ship more locales, we'll switch to Apple's official localized strings — out of scope here.)
 
-### 2. `src/pages/Profile.tsx`
+No other files touched. No backend, routing, or auth-logic changes — the existing `handleAppleSignIn` handler is unchanged.
 
-- Import `CoachingSessionsList`.
-- Insert `<CoachingSessionsList />` immediately above `<CoachingReminderSettings />` (~ line 1039) inside the same coaching block, with a section header "Your coaching".
-- No other changes.
+## Verification
 
-### 3. Verification
+- Visually confirm at `/auth` on iPhone 17 Pro preview that the Apple button is black with white SF text and the official glyph, 44px tall, matching the Google button width/height.
+- Confirm switching from Login → Sign up swaps the label to "Sign up with Apple".
+- Confirm dark mode no longer inverts the button (still black bg / white fg).
 
-- Sign in as the test user; expect to see two Upcoming cards (2026-06-17 15:00 and 16:00 UTC, rendered in local tz) and an empty Past section.
-- Sign in as a brand-new user; expect the empty state + "Book a call" CTA.
-- Cancel a booking in Cal.com → webhook flips `status` to `cancelled` → realtime moves it to Past with a "Cancelled" pill.
+## Out of scope
 
-User: Plan looks good and the diagnosis is correct: backend + RLS are working, Profile simply doesn’t render sessions yet.
-
-Approved with small refinements:
-
-Keep CoachingSessionsList mounted above CoachingReminderSettings.
-
-Show Upcoming only for future status='scheduled' sessions.
-
-Show Past for completed, cancelled, and scheduled sessions already in the past.
-
-Hide pending rows from the UI.
-
-Hide the Past section entirely when empty.
-
-Confirm coaching_sessions is enabled for Supabase Realtime, or fall back to refetch-on-focus / refetch-after-booking if realtime is unreliable.
-
-Keep the empty state CTA wired to the existing booking flow.
-
-For Add to Calendar, generate a valid .ics file with standard event fields.
-
-No backend changes needed.
-
-### Out of scope
-
-- No backend, webhook, or RLS changes (all already verified working).
-- No changes to `CoachingReminderSettings` itself.
-- No changes to `CoachingBooking` modal logic.
+- No change to the native sign-in handler or Supabase config.
+- No change to Google branding beyond height/font-family parity.
+- No new i18n strings.
