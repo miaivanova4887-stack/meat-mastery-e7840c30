@@ -24,6 +24,8 @@ export interface RecordCoachingPurchaseResult {
   calComUrl?: string;
   /** Prefilled no-payment Cal.com URL for iOS-paid users. Undefined on web. */
   iosBookingUrl?: string;
+  /** ID of the coaching_sessions row created (or matched on duplicate). */
+  sessionRowId?: string;
   error?: string;
 }
 
