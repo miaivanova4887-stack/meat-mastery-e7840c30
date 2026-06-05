@@ -12,6 +12,7 @@ import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
+import { getCachedAppleFullName } from "@/lib/appleDisplayName";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -68,16 +69,67 @@ const CoachingBooking = ({
   // metadata[user_id] (+ session_row_id for already-paid pending rows) so
   // cal-webhook can link the booking back even when the user enters a
   // different email at booking time (Apple private relay, shared inbox).
+  const [profileName, setProfileName] = useState<string | null>(null);
+
+  // Load profiles.display_name as a fallback for Apple-relay users whose
+  // user_metadata.display_name was never populated.
+  useEffect(() => {
+    if (!open || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (!cancelled) {
+          const v = (data?.display_name ?? "").toString().trim();
+          setProfileName(v.length > 0 ? v : null);
+        }
+      } catch {
+        if (!cancelled) setProfileName(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, user?.id]);
+
+  // Whenever the user is known, refresh the default scheduler URL with
+  // metadata[user_id] (+ session_row_id for already-paid pending rows) so
+  // cal-webhook can link the booking back even when the user enters a
+  // different email at booking time (Apple private relay, shared inbox).
   useEffect(() => {
     if (!user?.id) return;
     const base = isAlreadyPaid
       ? (isIosPaid ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL)
       : (useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL);
+
+    const meta = user.user_metadata as Record<string, unknown> | undefined;
+    const sanitize = (v: unknown): string | null => {
+      const s = typeof v === "string" ? v.trim() : "";
+      return s.length > 0 ? s : null;
+    };
+    const fromMetadata =
+      sanitize(meta?.display_name) ??
+      sanitize(meta?.full_name) ??
+      sanitize(meta?.name);
+    const fromProfile = sanitize(profileName);
+    const fromCache = sanitize(getCachedAppleFullName());
+    const resolvedName = fromMetadata ?? fromProfile ?? fromCache;
+    const source = fromMetadata
+      ? "metadata"
+      : fromProfile
+        ? "profile"
+        : fromCache
+          ? "cache"
+          : "missing";
+    console.info("[CoachingBooking] prefill-name", { source, hasName: Boolean(resolvedName) });
+
     const url = buildCalUrl({
       base,
       userId: user.id,
       sessionRowId: isAlreadyPaid ? sessionId ?? null : null,
-      name: (user.user_metadata as Record<string, unknown> | undefined)?.display_name as string | undefined ?? null,
+      name: resolvedName,
       email: user.email ?? null,
     });
     setSchedulerUrl(url);
@@ -89,7 +141,7 @@ const CoachingBooking = ({
         urlHost: (() => { try { return new URL(url).host; } catch { return "?"; } })(),
       });
     }
-  }, [user?.id, user?.email, useNative, isAlreadyPaid, isIosPaid, sessionId, sessionSource]);
+  }, [user?.id, user?.email, user?.user_metadata, useNative, isAlreadyPaid, isIosPaid, sessionId, sessionSource, profileName]);
   const [showFallback, setShowFallback] = useState(false);
 
 
