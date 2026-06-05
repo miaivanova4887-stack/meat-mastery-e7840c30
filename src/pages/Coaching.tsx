@@ -9,6 +9,8 @@ import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
+import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
+
 
 const Coaching = () => {
   const navigate = useNavigate();
