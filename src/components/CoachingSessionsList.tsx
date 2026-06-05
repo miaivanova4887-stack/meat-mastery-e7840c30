@@ -110,6 +110,30 @@ function buildGoogleCalendarUrl(s: CoachingSession): string | null {
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+async function openIcsOnIos(session: CoachingSession): Promise<boolean> {
+  const ics = buildIcs(session);
+  if (!ics) return false;
+  try {
+    const fileName = `coaching-${session.id.slice(0, 8)}.ics`;
+    const written = await Filesystem.writeFile({
+      path: fileName,
+      data: ics,
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8,
+    });
+    await FileOpener.open({
+      filePath: written.uri,
+      contentType: "text/calendar",
+      openWithDefault: true,
+    });
+    console.log("coaching:add-to-calendar-ios-ok", { uri: written.uri });
+    return true;
+  } catch (err) {
+    console.warn("coaching:add-to-calendar-ios-failed", err);
+    return false;
+  }
+}
+
 async function addToCalendar(session: CoachingSession) {
   if (!session.scheduled_at) {
     toast.error("No scheduled time yet for this session.");
@@ -118,19 +142,41 @@ async function addToCalendar(session: CoachingSession) {
 
   const platform = Capacitor.getPlatform();
 
-  // Native (iOS + Android) → open Google Calendar template URL in the
-  // in-app browser. It renders a real "Add to Calendar" page with the
-  // event pre-filled (title, time, join link). On iOS, tapping the date
-  // gives an "Add to Apple Calendar" option; on Android it drops straight
-  // into the Google Calendar app. This avoids the iOS share sheet that
-  // appears when opening a `data:text/calendar` URL.
-  if (platform === "android" || platform === "ios") {
+  // iOS → write .ics to cache and hand to system; opens Apple Calendar's
+  // native "Add Event" sheet directly.
+  if (platform === "ios") {
+    if (await openIcsOnIos(session)) return;
+    // Fallback chain: Google Calendar template URL → share sheet.
     const url = buildGoogleCalendarUrl(session);
     if (url) {
-      const res = await openExternalUrl(url, { logTag: `coaching:add-to-calendar-${platform}` });
+      const res = await openExternalUrl(url, { logTag: "coaching:add-to-calendar-ios-fallback" });
       if (res.ok) return;
-      console.warn(`coaching:add-to-calendar-${platform}-failed`, { error: res.error });
-      // Last-resort fallback: native share sheet with .ics.
+    }
+    const ics = buildIcs(session);
+    if (ics) {
+      try {
+        await Share.share({
+          title: "CarnivoreX Coaching Call",
+          text: "Add your coaching session to your calendar.",
+          url: `data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`,
+          dialogTitle: "Add to calendar",
+        });
+        return;
+      } catch (err) {
+        console.warn("coaching:add-to-calendar-ios-share-failed", err);
+      }
+    }
+    toast.error("Couldn't open calendar. Please try again.");
+    return;
+  }
+
+  // Android → Google Calendar template URL drops into the Google Calendar app.
+  if (platform === "android") {
+    const url = buildGoogleCalendarUrl(session);
+    if (url) {
+      const res = await openExternalUrl(url, { logTag: "coaching:add-to-calendar-android" });
+      if (res.ok) return;
+      console.warn("coaching:add-to-calendar-android-failed", { error: res.error });
       const ics = buildIcs(session);
       if (ics) {
         try {
@@ -142,7 +188,7 @@ async function addToCalendar(session: CoachingSession) {
           });
           return;
         } catch (err) {
-          console.warn(`coaching:add-to-calendar-${platform}-share-failed`, err);
+          console.warn("coaching:add-to-calendar-android-share-failed", err);
         }
       }
       toast.error("Couldn't open calendar. Please try again.");
