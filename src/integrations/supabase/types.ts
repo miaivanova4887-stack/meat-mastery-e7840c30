@@ -113,35 +113,95 @@ export type Database = {
         }
         Relationships: []
       }
-      coaching_sessions: {
+      coaching_reminder_log: {
         Row: {
-          booked_at: string | null
+          channel: string
+          error: string | null
           id: string
-          session_month: string
-          session_type: string
-          source: string | null
-          stripe_payment_intent: string | null
-          transaction_id: string | null
+          offset_minutes: number
+          sent_at: string
+          session_id: string
+          success: boolean
           user_id: string
         }
         Insert: {
-          booked_at?: string | null
+          channel?: string
+          error?: string | null
           id?: string
-          session_month: string
-          session_type: string
-          source?: string | null
-          stripe_payment_intent?: string | null
-          transaction_id?: string | null
+          offset_minutes: number
+          sent_at?: string
+          session_id: string
+          success?: boolean
           user_id: string
         }
         Update: {
-          booked_at?: string | null
+          channel?: string
+          error?: string | null
           id?: string
+          offset_minutes?: number
+          sent_at?: string
+          session_id?: string
+          success?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      coaching_sessions: {
+        Row: {
+          attendee_email: string | null
+          attendee_name: string | null
+          booked_at: string | null
+          booking_url: string | null
+          created_at: string
+          external_booking_id: string | null
+          id: string
+          scheduled_at: string | null
+          session_month: string
+          session_type: string
+          source: string | null
+          status: string
+          stripe_payment_intent: string | null
+          timezone: string | null
+          transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendee_email?: string | null
+          attendee_name?: string | null
+          booked_at?: string | null
+          booking_url?: string | null
+          created_at?: string
+          external_booking_id?: string | null
+          id?: string
+          scheduled_at?: string | null
+          session_month: string
+          session_type: string
+          source?: string | null
+          status?: string
+          stripe_payment_intent?: string | null
+          timezone?: string | null
+          transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendee_email?: string | null
+          attendee_name?: string | null
+          booked_at?: string | null
+          booking_url?: string | null
+          created_at?: string
+          external_booking_id?: string | null
+          id?: string
+          scheduled_at?: string | null
           session_month?: string
           session_type?: string
           source?: string | null
+          status?: string
           stripe_payment_intent?: string | null
+          timezone?: string | null
           transaction_id?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -483,12 +543,15 @@ export type Database = {
           created_at: string
           diet_tier: string | null
           display_name: string | null
+          email: string | null
           health_targets: string[]
           id: string
           locale: string
           notification_preferences: Json
           push_consent: string
           push_consent_at: string | null
+          reminder_offset_minutes: number
+          reminders_enabled: boolean
           timezone: string
           updated_at: string
           user_attributes: Json
@@ -503,12 +566,15 @@ export type Database = {
           created_at?: string
           diet_tier?: string | null
           display_name?: string | null
+          email?: string | null
           health_targets?: string[]
           id: string
           locale?: string
           notification_preferences?: Json
           push_consent?: string
           push_consent_at?: string | null
+          reminder_offset_minutes?: number
+          reminders_enabled?: boolean
           timezone?: string
           updated_at?: string
           user_attributes?: Json
@@ -523,12 +589,15 @@ export type Database = {
           created_at?: string
           diet_tier?: string | null
           display_name?: string | null
+          email?: string | null
           health_targets?: string[]
           id?: string
           locale?: string
           notification_preferences?: Json
           push_consent?: string
           push_consent_at?: string | null
+          reminder_offset_minutes?: number
+          reminders_enabled?: boolean
           timezone?: string
           updated_at?: string
           user_attributes?: Json
