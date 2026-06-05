@@ -3,6 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, ExternalLink, Download } from "lucide-react";
 import CoachingBooking from "@/components/CoachingBooking";
+import { Capacitor } from "@capacitor/core";
+import { Share } from "@capacitor/share";
+import { openExternalUrl } from "@/lib/openExternalUrl";
+import { toast } from "sonner";
 
 interface CoachingSession {
   id: string;
