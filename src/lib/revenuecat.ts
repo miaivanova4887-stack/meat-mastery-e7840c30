@@ -274,6 +274,15 @@ export function findPackage(
   if (tier === "pro") {
     if (cycle === "monthly" && offering.monthly) return offering.monthly;
     if (cycle === "yearly" && offering.annual) return offering.annual;
+  }
+
+  // Last resort: substring match on both tier + cycle keywords.
+  return (
+    offering.availablePackages.find((p) => {
+      const id = p.identifier.toLowerCase();
+      return id.includes(tier) && id.includes(cycle === "yearly" ? "year" : "month");
+    }) ?? null
+  );
 }
 
 /**
@@ -294,15 +303,6 @@ export function findCoachingPackage(
     offering.availablePackages.find(
       (p) => p.product?.identifier === COACHING_PRODUCT_ID
     ) ?? null
-  );
-}
-
-  // Last resort: substring match on both tier + cycle keywords.
-  return (
-    offering.availablePackages.find((p) => {
-      const id = p.identifier.toLowerCase();
-      return id.includes(tier) && id.includes(cycle === "yearly" ? "year" : "month");
-    }) ?? null
   );
 }
 
