@@ -37,7 +37,7 @@ const Progress = () => {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 pb-24">
         <p className="text-foreground font-bold text-lg mb-2">{t("progress.signInToTrack")}</p>
-        <p className="text-muted-foreground text-sm mb-4 text-center">
+        <p className="text-muted-foreground text-sm mb-6 text-center max-w-sm leading-relaxed">
           {t("progress.signInDesc")}
         </p>
         <Button onClick={() => navigate("/auth")}>{t("common.signIn")}</Button>
