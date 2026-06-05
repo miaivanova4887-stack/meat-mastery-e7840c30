@@ -218,11 +218,18 @@ async function addToCalendar(session: CoachingSession) {
   }
 }
 
-export default function CoachingSessionsList() {
+interface CoachingSessionsListProps {
+  /** When set, scroll the matching upcoming session card into view and
+   *  briefly highlight it. Used by push-tap deep linking. */
+  highlightSessionId?: string;
+}
+
+export default function CoachingSessionsList({ highlightSessionId }: CoachingSessionsListProps = {}) {
   const [sessions, setSessions] = useState<CoachingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [userTz, setUserTz] = useState<string | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [pulseId, setPulseId] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     const { data: auth } = await supabase.auth.getUser();
