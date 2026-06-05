@@ -192,6 +192,7 @@ serve(async (req) => {
         // Keep `calComUrl` for backward compatibility — web Stripe path uses it.
         calComUrl: source === "appstore" ? iosBookingUrl ?? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL,
         iosBookingUrl,
+        sessionRowId,
       },
       200
     );
