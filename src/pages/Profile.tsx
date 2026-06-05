@@ -1041,7 +1041,28 @@ const Profile = () => {
                    <h3 className="font-display font-bold text-foreground text-[15px]">{t("profile.enableNotifications")}</h3>
                    <p className="text-xs text-muted-foreground mt-0.5">{t("profile.enableNotificationsDesc")}</p>
                 </div>
-                <Switch checked={notifPrefs.enabled} onCheckedChange={(v) => updateNotifPref("enabled", v)} />
+                <Switch
+                  checked={notifPrefs.enabled}
+                  onCheckedChange={async (v) => {
+                    updateNotifPref("enabled", v);
+                    if (!v) return;
+                    // If turning ON while OS notifications are denied, jump to system settings.
+                    if (Capacitor.isNativePlatform()) {
+                      try {
+                        const { getNativePushPermission } = await import("@/lib/pushFcm");
+                        const perm = await getNativePushPermission();
+                        console.info("[NotifSettings] enable-switch os-perm=", perm);
+                        if (perm !== "granted") {
+                          const { openAppSettings } = await import("@/lib/openAppSettings");
+                          toast.info("Opening system notification settings…");
+                          await openAppSettings();
+                        }
+                      } catch (e) {
+                        console.warn("[NotifSettings] enable-switch check failed", e);
+                      }
+                    }
+                  }}
+                />
               </div>
             </div>
 
