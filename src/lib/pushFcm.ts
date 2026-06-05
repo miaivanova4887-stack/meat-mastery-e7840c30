@@ -181,20 +181,25 @@ function bindActionListenerOnce() {
   actionListenerBound = true;
   try {
     PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+      try {
+        console.info("[PushTap] actionPerformed RAW", JSON.stringify(action));
+      } catch {
+        console.info("[PushTap] actionPerformed RAW (unstringifiable)", action);
+      }
       const data = (action?.notification?.data ?? {}) as Record<string, unknown>;
+      console.info("[PushTap] data keys", Object.keys(data), "values", data);
       const path = resolvePushNavPath(data);
-      console.info("[Push] actionPerformed", { hasData: !!data, path, type: data?.type });
+      console.info("[PushTap] actionPerformed resolved", { path, type: data?.type });
       if (path) queuePushNav(path);
+      else console.warn("[PushTap] actionPerformed dropped — no path resolvable");
     });
     PushNotifications.addListener("pushNotificationReceived", (n) => {
-      // Foreground receive — do not auto-navigate. iOS shows the banner;
-      // tap will route via actionPerformed.
       const data = (n?.data ?? {}) as Record<string, unknown>;
-      console.info("[Push] notificationReceived (foreground)", { type: data?.type });
+      console.info("[PushTap] notificationReceived (foreground)", { type: data?.type, keys: Object.keys(data) });
     });
-    console.info("[Push] action listeners bound");
+    console.info("[PushTap] action listeners bound");
   } catch (e) {
-    console.warn("[Push] action listener bind failed", e);
+    console.warn("[PushTap] action listener bind failed", e);
   }
 }
 
