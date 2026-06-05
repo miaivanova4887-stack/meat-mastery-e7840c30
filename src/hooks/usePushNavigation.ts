@@ -7,7 +7,7 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { consumePendingPushNav } from "@/lib/pushFcm";
+import { consumePendingPushNav, consumePersistedPushNav } from "@/lib/pushFcm";
 
 const PENDING_KEY = "push-nav-pending";
 
