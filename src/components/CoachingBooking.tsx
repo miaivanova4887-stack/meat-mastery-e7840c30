@@ -11,6 +11,7 @@ import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
+import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL } from "@/lib/coachingUrls";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -20,7 +21,6 @@ interface CoachingBookingProps {
   initialScreen?: Screen;
 }
 
-const CAL_URL = "https://cal.com/carnivorex/coaching-session";
 
 const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: CoachingBookingProps) => {
   const { user } = useAuth();
