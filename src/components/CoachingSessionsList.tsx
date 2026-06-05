@@ -266,6 +266,21 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
     };
   }, [fetchSessions]);
 
+  // Scroll & highlight the targeted upcoming session when arriving via a push tap.
+  useEffect(() => {
+    if (!highlightSessionId) return;
+    if (loading) return;
+    const match = sessions.find((s) => s.id === highlightSessionId);
+    if (!match) return;
+    const id = window.setTimeout(() => {
+      const el = document.getElementById(`coaching-session-${match.id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setPulseId(match.id);
+      window.setTimeout(() => setPulseId((cur) => (cur === match.id ? null : cur)), 2800);
+    }, 200);
+    return () => window.clearTimeout(id);
+  }, [highlightSessionId, loading, sessions]);
+
   const now = Date.now();
   const visible = sessions.filter((s) => s.status !== "pending");
   const upcoming = visible.filter(
