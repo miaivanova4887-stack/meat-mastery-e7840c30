@@ -115,11 +115,14 @@ serve(async (req) => {
     .select("token, platform")
     .eq("user_id", userId);
 
+  const testPath = "/profile?tab=settings&section=coaching";
   for (const t of tokens ?? []) {
     try {
       const res = await sendFcmToToken(t.token, { title, body }, {
         type: "coaching_reminder_test",
-        url: "/coaching",
+        target: "coaching_upcoming_session",
+        path: testPath,
+        url: testPath,
       });
       if (res.ok) deliveredNative++;
       else errors.push(`fcm:${res.error ?? `status ${res.status}`}`);
