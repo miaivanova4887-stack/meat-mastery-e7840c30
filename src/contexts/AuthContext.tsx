@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
+import { reconcileCachedAppleName } from "@/lib/appleDisplayName";
 
 /** Where verification / recovery emails should send users back to.
  * Always app.carnivorex.app so the link works for both the installed
