@@ -360,7 +360,10 @@ const Auth = () => {
         </h1>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-16">
+      <div
+        className="flex-1 flex flex-col items-center justify-center px-6 pt-6"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8rem)" }}
+      >
         <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
           <span className="text-3xl">{mode === "forgot" ? "🔑" : "🥩"}</span>
         </div>
@@ -371,13 +374,19 @@ const Auth = () => {
             ? t("auth.joinThePack")
             : t("auth.resetTitle")}
         </h2>
-        <p className="text-sm text-muted-foreground mb-8 text-center max-w-sm">
+        <p className="text-sm text-muted-foreground mb-3 text-center max-w-sm">
           {mode === "login"
             ? t("auth.signInAccess")
             : mode === "signup"
             ? t("auth.createProfile")
             : t("auth.resetSubtitle")}
         </p>
+        {mode !== "forgot" && (
+          <p className="text-xs text-muted-foreground/80 mb-6 text-center max-w-sm leading-relaxed">
+            {t("auth.whyAccount")}
+          </p>
+        )}
+        {mode === "forgot" && <div className="mb-5" />}
 
         <form onSubmit={handleSubmit} className="w-full max-w-sm flex flex-col space-y-3">
           {mode === "signup" && (
