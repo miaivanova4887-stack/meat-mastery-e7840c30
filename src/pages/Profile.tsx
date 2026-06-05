@@ -1102,6 +1102,15 @@ const Profile = () => {
                   const decision = await auditPushDecision("profile-settings", { ignoreSessionFlag: true });
                   if (decision.show) {
                     setShowPushConsent(true);
+                  } else if (
+                    decision.reason === "local-consent-set" ||
+                    decision.reason === "profile-consent-set"
+                  ) {
+                    // User previously denied — give them a one-tap path to
+                    // flip the iOS/Android system toggle.
+                    const { openAppSettings } = await import("@/lib/openAppSettings");
+                    toast.info("Opening system notification settings…");
+                    await openAppSettings();
                   } else {
                     console.info("[PushDecision] source=profile-settings branch=suppress-open reason=", decision.reason);
                     toast.info(
