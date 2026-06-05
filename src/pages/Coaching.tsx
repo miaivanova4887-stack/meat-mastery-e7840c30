@@ -44,6 +44,7 @@ const Coaching = () => {
           toast.error(result.error ?? "Purchase failed");
           return;
         }
+        console.log("coaching:booking-link-requested", { userId: session.user.id, source: "coaching-page" });
         const recorded = await recordCoachingPurchase({
           source: "appstore",
           productId: pkg.pkg.product?.identifier ?? "coaching_call",
@@ -51,13 +52,18 @@ const Coaching = () => {
           purchaseDateMs: Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
-        const url = recorded.calComUrl ?? "https://cal.com/carnivorex/coaching-session";
-        console.log("coaching:open-scheduler-tap", { url, source: "coaching-page" });
-        const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
-        if (!res.ok) {
+        // iOS MUST open the prefilled no-payment Cal.com event so Apple isn't
+        // followed by a Cal.com card form (double-charge).
+        const url = recorded.iosBookingUrl ?? recorded.calComUrl ?? CAL_IOS_NO_PAYMENT_URL;
+        const res = await openExternalUrl(url, { logTag: "coaching:booking-link" });
+        if (res.ok) {
+          console.log("coaching:booking-link-opened", { native: res.native, source: "coaching-page" });
+        } else {
+          console.warn("coaching:booking-link-open-failed", { error: res.error, source: "coaching-page" });
           toast.error("Payment received — we couldn't open the scheduler automatically. Visit " + url + " to book.");
         }
         return;
+
       }
 
       // Web: existing Stripe flow.
