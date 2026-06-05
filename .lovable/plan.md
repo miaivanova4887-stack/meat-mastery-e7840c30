@@ -1,101 +1,78 @@
-## Root cause
+## What I will fix
 
-iOS native FCM is wired (AppDelegate + SPM + GoogleService-Info.plist) but the **JS consent gate** that triggers `requestNativePush()` is still Android-only. Three call sites suppress on iOS:
+The screenshots are valid evidence: iOS has not recorded a notification authorization request, so this is earlier than token registration.
 
-1. `src/lib/pushDecision.ts` → `if (!native || platform !== "android") return not-android`
-2. `src/hooks/usePushConsentFallback.ts` → same hard-coded Android check in the shell timer
-3. `src/pages/Onboarding.tsx` step 11 → invokes audit but it returns `not-android`
+I will change the flow so the app must call the native iOS permission request when OS permission is still undetermined, then call registration only after a granted result.
 
-Result: iOS users are never prompted → no APNs registration → no `fcm-token` event → no row in `device_tokens` → Send test reminder returns `no_devices` / `permission_denied`.
+## Plan
 
-Logs prove it:
+1. **Fix the iOS shell consent path**
+  - Keep the shell-only timing for iOS.
+  - Make the shell audit explicitly log iOS eligibility and OS permission state.
+  - Ensure the shell sheet does not merely update local/profile state without invoking the native permission request.
+2. **Fix the admin reminder path**
+  - In the admin “Send test reminder” flow, before calling the test reminder backend, check native iOS notification permission.
+  - If iOS permission is `prompt` / undetermined, call `requestNativePush()` from the admin action.
+  - Only continue to send the test reminder if OS permission is granted and registration has run.
+  - This prevents the admin path from depending only on the in-app toggle or existing local consent.
+3. **Add exact native permission logs**
+  - Add these JS logs around the Capacitor plugin calls:
+    - `[Push] requestPermissions called`
+    - `[Push] requestPermissions result receive=...`
+    - `[Push] register called`
+    - `[Push] registration success ...`
+    - `[Push] registrationError ...`
+  - Preserve the existing Swift logs for APNs/FCM:
+    - `[Push] iOS APNs token registered len=...`
+    - `[Push] iOS registrationError: ...`
+    - `[Push] FCM token registered len=...`
+4. **Make registration order explicit**
+  - `PushNotifications.requestPermissions()` runs first when permission is not already granted.
+  - `PushNotifications.register()` runs only after `receive === "granted"`.
+  - Existing granted permission can still proceed directly to registration.
+5. **Reset admin consent again**
+  - Reset the admin profile push consent to `unset` again so the next shipped build can re-trigger the iOS permission path cleanly.
 
-- `[PushDecision] source=shell branch=suppress reason=not-android native=true platform=ios`
-- `[reminder-test] permission_denied { userId: e90213d4… }` (your account is `push_consent='denied'`)
+## Files to change
 
-## Fix
+- `src/lib/pushFcm.ts`
+- `src/components/CoachingReminderSettings.tsx`
+- Possibly `src/lib/pushDecision.ts` / `src/hooks/usePushConsentFallback.ts` only if inspection shows another iOS suppression remains.
 
-### A. JS — let iOS through the consent flow (shell only)
+## Verification I will provide after implementation
 
-1. `**src/lib/pushDecision.ts**` — replace the `!== "android"` guard with a check that allows both `android` and `ios` when `isNativeFcmEnabled()` is true. Suppression reason for unsupported platforms stays `"not-android"` (rename to `"unsupported-platform"` for clarity, plus a back-compat alias kept in the union).
-2. `**src/hooks/usePushConsentFallback.ts**` — same: allow `platform === "android" || platform === "ios"`. Keep the 90s delay. This is the auto-prompt path iOS users will hit ~90s after app start.
-3. **Onboarding step 11 stays as-is** — per your choice ("shell auto-prompt only"), we do NOT trigger the audit on iOS at onboarding completion. Add an explicit `platform === "ios"` early-return in the step-11 push call (around the existing `[Onboarding] step11 done` log) so it logs `branch=skip reason=ios-shell-only` instead of running the audit.
-4. No change to `pushFcm.ts` / `pushNativeConfig.ts` — `NATIVE_FCM_ENABLED_IOS=true` is already correct; `requestNativePush()` already handles iOS once it's actually called.
+Because I cannot physically press the iOS system permission dialog from here, I will add deterministic logs that you can capture in Xcode. The expected log sequence for the iPhone admin account will be:
 
-### B. Backend — reset your admin account's denied consent
-
-Single `UPDATE` on `profiles` for the admin user `e90213d4-7b8a-4ae7-a980-b0f212fac206`:
-
-- `push_consent = 'unset'`
-- `push_consent_at = null`
-
-This re-arms the audit so on the next iOS launch the consent sheet will open after 90s and `requestNativePush()` will call APNs → FCM token will arrive → `register-device-token` will insert into `device_tokens` (platform=`ios`).
-
-(Local-storage mirror `push-consent` also needs to be cleared on-device; you'll do that by uninstalling+reinstalling the app, which we already do for every fresh build.)
-
-### C. Memory update
-
-Update `mem://constraints/native-fcm-disabled-until-google-services` to reflect: iOS gate is now open in JS too; Android stays disabled until `google-services.json` ships.
-
-## Out of scope
-
-- No edge-function changes (`coaching-reminder-test` is already correct; it just had nothing to send to).
-- No Android FCM enable.
-- No changes to admin gating (already correct).
-
-## Verification (line-by-line, after build mode)
-
-```bash
-git pull
-npm install
-npm run build
-npx cap sync ios
+```text
+[PushDecision] source=shell branch=mount ... platform=ios
+[PushDecision] source=shell branch=show-sheet reason=eligible
+[Push] requestPermissions called platform=ios existing=prompt
+[Push] requestPermissions result receive=granted|denied
+[Push] register called platform=ios reason=fresh-grant
+[Push] registration success platform=ios valueLen=...
+[Push] iOS APNs-token registration event len=...
+[Push] window:fcm-token received platform=ios len=...
+[Push] device token persisted platform=ios len=...
 ```
 
-Then in Xcode: clean build folder, run on physical iPhone signed in as `mia.ivanova.4887@gmail.com` (admin).
+If `receive=denied`, iOS should then show the Notifications section in Settings with disabled notification controls. If `receive=granted`, it should show enabled notification controls and registration should proceed.
 
-Evidence to capture and paste back:
+User: Approved with one implementation adjustment:
 
-1. **Xcode console** within ~95s of launch should show, in order:
-  - `[PushDecision] source=shell branch=mount`
-  - `[PushDecision] source=shell branch=show-sheet reason=eligible`
-  - System APNs prompt → tap Allow
-  - `[Push] FCM token registered` (from AppDelegate) **or** `[Push] window:fcm-token received platform=ios len=…`
-  - `[Push] device token persisted platform=ios len=…`
-2. **DB check** (I'll run this for you after the build):
-  ```sql
-   SELECT platform, length(token), created_at
-   FROM device_tokens WHERE user_id='e90213d4-7b8a-4ae7-a980-b0f212fac206'
-   ORDER BY created_at DESC LIMIT 3;
-  ```
-   Expect at least one fresh `ios` row.
-3. **Tap Send test reminder** in Profile → Coaching Reminder Settings.
-  - Toast: "Sent (1 native, 0 web)".
-  - Edge logs: `[reminder-test] sent { code: 'ok', deliveredNative: 1, ... }`.
-  - Push banner appears on the iPhone.
+Keep the added iOS permission and registration logs exactly as proposed.
 
-If step 1 stalls at `show-sheet` without an FCM token, the cause will be one of: APNs key not uploaded to Firebase, `aps-environment` mismatch (dev vs prod build), or Push Notifications capability missing in Xcode — none of which are code-fixable from here.
+Keep the admin test flow bootstrap when OS permission is undetermined.
 
-User: Approved with two adjustments:
+But on iOS, please do not over-couple APNs registration to only the granted branch. I want the implementation reviewed so the app still performs the proper native remote notification registration flow needed for iOS system recognition, while UI messaging still respects granted vs denied.
 
-Proceed with the JS fix so iOS is allowed through the shell consent flow and no longer suppressed by Android-only checks.
+I need the resulting logs to show clearly:
 
-Rename the active suppression reason from not-android to unsupported-platform so future logs are not misleading.
+whether requestPermissions() was called,
 
-Also:
+what it returned,
 
-treat uninstall/reinstall as required for this admin test because iOS denied notification permission previously,
+whether native registration was attempted,
 
-keep backend admin enforcement unchanged,
+whether APNs/FCM registration succeeded or failed.
 
-keep the frontend button hidden until admin status is positively resolved.
-
-After shipping, I want proof logs showing:
-
-[PushDecision] source=shell branch=show-sheet reason=eligible
-
-APNs/FCM token registration
-
-persisted ios token row
-
-successful admin test reminder delivery
+&nbsp;

@@ -5,6 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
+import { Capacitor } from "@capacitor/core";
+import { getNativePushPermission, requestNativePush } from "@/lib/pushFcm";
 
 const OFFSETS = [
   { value: 15, labelKey: "15 min before" },
@@ -62,6 +64,26 @@ export const CoachingReminderSettings = () => {
     if (!user || testing) return;
     setTesting(true);
     try {
+      // Bootstrap native iOS/Android permission if the OS hasn't recorded a
+      // decision yet. Without this, the admin button can succeed-as-noop
+      // because no device token ever existed.
+      if (Capacitor.isNativePlatform()) {
+        const platform = Capacitor.getPlatform();
+        try {
+          const osPerm = await getNativePushPermission();
+          console.info(`[Push] admin-test bootstrap platform=${platform} osPerm=${osPerm}`);
+          if (osPerm === "prompt" || osPerm === "prompt-with-rationale") {
+            console.info("[Push] admin-test triggering requestNativePush()");
+            await requestNativePush();
+            // Give APNs/FCM a moment to surface a token through the
+            // `fcm-token` window event so the backend has a device row.
+            await new Promise((r) => setTimeout(r, 1500));
+          }
+        } catch (e) {
+          console.warn("[Push] admin-test bootstrap threw", e);
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke("coaching-reminder-test", {
         body: {},
       });
