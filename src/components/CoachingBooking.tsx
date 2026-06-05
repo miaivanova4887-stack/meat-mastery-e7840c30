@@ -19,6 +19,16 @@ interface CoachingBookingProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialScreen?: Screen;
+  /**
+   * "already_paid" skips payment and opens the no-payment scheduler directly,
+   * stamping metadata[session_row_id] so cal-webhook can attach the booking
+   * to the existing pending coaching_sessions row. Used for paid-but-
+   * unscheduled flows surfaced by CoachingSessionsList's Schedule CTA.
+   */
+  mode?: "default" | "already_paid";
+  sessionId?: string;
+  /** Original purchase source for the pending row; controls Cal.com URL. */
+  sessionSource?: "appstore" | "stripe" | "paid_ios" | "paid_web" | null;
 }
 
 
