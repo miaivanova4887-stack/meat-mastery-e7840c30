@@ -1035,6 +1035,9 @@ const Profile = () => {
                 </div>
               </div>
 
+              {/* Coaching Call Reminders */}
+              <CoachingReminderSettings />
+
               {/* News Preferences */}
               <h3 className="text-sm font-display font-bold text-foreground pt-2">{t("profile.newsFeedPrefs")}</h3>
               <div className="ios-card p-4 space-y-4">
