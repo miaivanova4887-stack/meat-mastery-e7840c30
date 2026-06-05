@@ -34,8 +34,9 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [schedulerUrl, setSchedulerUrl] = useState<string>(CAL_URL);
+  const [schedulerUrl, setSchedulerUrl] = useState<string>(useNative ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL);
   const [showFallback, setShowFallback] = useState(false);
+
 
   // Reset screen when opened
   useEffect(() => {
