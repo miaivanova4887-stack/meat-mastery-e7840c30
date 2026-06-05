@@ -1,122 +1,93 @@
-# Coaching reminders — review tools + test send + editable copy
+# Fix: "Send test reminder" failing + misleading admin empty state
 
-Three additions, scoped tightly and independent of each other.
+## Root cause
 
----
+The `coaching-reminder-test` edge function only ever sees `OPTIONS` preflights — no `POST` ever lands (confirmed in edge logs, function_id `48d35635…`: only `OPTIONS | 200` entries, zero invocations of the handler body).
 
-## A. Admin "Coaching reminders" audit page
+The function's `Access-Control-Allow-Headers` is:
 
-New read-only admin page at `**/admin/coaching-reminders**` that lists every push sent (or attempted) by the `coaching-reminder-dispatch` cron, with filtering by status.
+```
+authorization, apikey, content-type
+```
 
-### Data source
+But `supabase.functions.invoke()` always adds `x-client-info` (and sometimes `x-supabase-api-version`). The browser sees those headers are not in the preflight's allow-list and silently blocks the POST. The frontend then catches a generic error and shows "Failed to send a test reminder".
 
-- Table: `public.coaching_reminder_log` (already exists, RLS lets users read own rows).
-- Joined fields: `coaching_sessions.scheduled_at`, `coaching_sessions.timezone`, `profiles.email`, `profiles.display_name`.
+Verified DB state for the signed-in user (`e90213d4-7b8a-4ae7-a980-b0f212fac206`):
 
-### Backend
+- `device_tokens`: 1 android token (registered Apr 2026) ✅
+- `push_subscriptions`: 0 ✅ (web push never granted)
+- `coaching_reminder_log`: 0 rows globally → admin audit is correctly empty; test sends are intentionally not logged.
 
-- **New edge function `admin-coaching-reminders**` (`verify_jwt = false`, auth-checked in code, admin-only via `has_role`). Uses service role to read across users + join, returns last 200 rows ordered by `sent_at desc`.
-- Optional query params: `?status=success|failure|all`, `?limit=50..500`.
-- Returns: `[{ id, sent_at, offset_minutes, channel, success, error, session_id, user_id, user_email, user_name, scheduled_at, timezone }]`.
+So tokens, JWT, and auth are all fine. It's purely CORS blocking the POST.
 
-### UI
+## Changes
 
-- `src/pages/AdminCoachingReminders.tsx` — matches existing `AdminNotifications`/`AdminScheduledPush` style (sticky header, admin gate via `has_role`, list of cards).
-- Each row shows: time sent, offset chip (15m / 30m / 1h / 2h / 24h), success/failure pill, recipient name+email, scheduled time, and (on failure) the error message in muted text.
-- Filter toggle: All / Success / Failures only.
-- Add tile to `src/pages/Admin.tsx` index list ("Coaching reminders — Audit sent reminders & failures").
-- Add route `/admin/coaching-reminders` in `src/App.tsx`.
+### 1. Fix CORS on `coaching-reminder-test`
 
-### Permissions
+- Expand `Access-Control-Allow-Headers` to: `authorization, apikey, content-type, x-client-info, x-supabase-api-version`.
+- Add `Access-Control-Allow-Methods: POST, OPTIONS`.
+- Add `Access-Control-Max-Age: 86400` so the preflight is cached.
 
-- Edge function rejects non-admin callers.
-- No schema change. Existing RLS on `coaching_reminder_log` already restricts user reads to own rows; admin path goes through the edge function with service role.
+### 2. Fix CORS on `admin-coaching-reminders` (same hardening, prevent future breakage)
 
----
+- Same expanded allow-headers + `GET, OPTIONS` methods.
 
-## B. "Send test reminder to me now" in user settings
+### 3. Sharper errors in `coaching-reminder-test`
 
-User-facing button inside `**src/components/CoachingReminderSettings.tsx**` so anyone can preview the actual push end-to-end (validates token registration, copy, deep-link).
+Today the function returns generic 200 even when nothing is delivered. Make it return structured error codes the frontend can map:
 
-### Backend
+- `no_devices` — user has 0 device_tokens AND 0 push_subscriptions.
+- `permission_denied` — profile.push_consent !== 'granted' (best-effort hint).
+- `fcm_failed` / `web_push_failed` — provider rejected; include sanitized provider error in `errors[]`.
+- `vapid_missing` — VAPID env not configured (defensive log only).
+- Keep existing rate-limit `429` and `401` paths.
 
-- **New edge function `coaching-reminder-test**` (`verify_jwt = false`, validates JWT in code).
-- Looks up caller's `profiles` (locale, display_name) and their `device_tokens` + `push_subscriptions`.
-- Sends the same title/body the cron would send, using a fake "now" target so the body reads `Your call starts at <current time + 5 min>.`
-- Reuses `sendFcmToToken()` and `web-push` exactly as `coaching-reminder-dispatch` does.
-- Does **not** write to `coaching_reminder_log` (keeps audit clean), but logs `[reminder-test] sent { native, web, errors }`.
-- Returns `{ ok, deliveredNative, deliveredWeb, errors }`.
+### 4. Frontend: precise toasts in `CoachingReminderSettings.tsx`
 
-### UI
+Replace the single generic toast with mapped messages (EN/FR):
 
-- "Send test reminder" button under the existing offset selector.
-- Toast on success: `Test reminder sent to N devices.` On zero devices: `No registered devices — enable notifications first.` On failure: shows truncated server error.
-- Disabled while in-flight.
+- `no_devices` → "No registered devices on this account. Enable notifications first."
+- `permission_denied` → "Notifications are disabled in your settings."
+- `fcm_failed` / `web_push_failed` → "Push provider rejected the message. Check that notifications are enabled on this device."
+- network/CORS catch → "Couldn't reach the reminder service. Please try again."
+- success → "Test reminder sent to N device(s)."
 
----
+Also log the structured response to the console for in-app debugging.
 
-## C. Move reminder copy into the CMS
+### 5. Clarify Admin → Coaching reminders empty state
 
-So you can edit title/body without redeploying. Uses the existing `content_blocks` table (page/section/key/locale/value).
+Test sends are intentionally **not** written to `coaching_reminder_log` (keeps the audit a clean record of real scheduled sends). Update the empty card on `AdminCoachingReminders.tsx`:
 
-### Seeded keys (page = `coaching`, section = `reminder`)
+- Title: "No reminder attempts yet."
+- Subline: "Only scheduled cron reminders are logged here. Test reminders triggered from Profile are not recorded."
 
+No schema, no new tables. No change to the cron dispatcher or to which rows count toward the audit.
 
-| key     | en value                      | fr value                         |
-| ------- | ----------------------------- | -------------------------------- |
-| `title` | `Coaching call reminder`      | `Rappel : appel de coaching`     |
-| `body`  | `Your call starts at {time}.` | `Votre appel commence à {time}.` |
+User feedback: **Approved. The CORS diagnosis is correct and matches the edge logs.**
 
+**Please proceed with:**
 
-`{time}` is a literal placeholder the dispatcher substitutes with the user's local start time.
+- **fixing CORS on** `coaching-reminder-test` **and** `admin-coaching-reminders`**,**
+- **ensuring the same CORS headers are included on all responses, not just** `OPTIONS`**,**
+- **preferably using Supabase’s shared** `corsHeaders` **helper if our SDK version supports it,**
+- **returning structured error codes for the test-send flow,**
+- **updating the frontend to map those codes to clear toasts,**
+- **clarifying the admin empty state that only scheduled cron reminders are logged there.**
 
-### Dispatcher change
+**One addition:**
 
-- `supabase/functions/coaching-reminder-dispatch/index.ts` and the new `coaching-reminder-test`:
-  - Fetch the four `content_blocks` rows once per invocation (cache for the run).
-  - Build title/body from CMS values per the user's locale; fall back to current hardcoded strings if a row is missing.
-  - Replace `{time}` with the existing `whenLocal` string.
-
-### Seed migration
-
-- One-shot insert of the four rows into `content_blocks` (idempotent via `ON CONFLICT (page, section, key, locale) DO NOTHING` — requires that unique index; check existing schema and add only if missing).
-
-### CMS exposure
-
-- No new UI: these are visible/editable via the existing CMS editor (already covers `content_blocks` rows).
-
----
+- **if delivery succeeds on at least one device but fails on another, return a partial-success response and show the success count instead of a full failure.**
+- &nbsp;
 
 ## Out of scope
 
-- Adding new offsets, channels (email/SMS), or A/B copy variants.
-- Editing reminder logic (still cron-only, 5-min window, one send per `(session_id, offset)`).
-- Backfilling history before this feature ships.
+- Logging test sends into the audit table.
+- Bootstrapping web push for users who haven't granted it.
+- Cleaning up stale FCM tokens (already handled in dispatcher on `invalid` response — the test path will reuse the same delete-on-invalid logic).
 
 ## Verification
 
-- **A.** Visit `/admin/coaching-reminders` as admin → see recent rows; non-admin → 403/redirect.
-- **B.** Tap "Send test reminder" with notifications enabled on iOS/Android/web → push arrives within seconds with correct localized copy and tappable deep link to booking URL.
-- **C.** Edit `coaching/reminder/title` in CMS → next dispatch (or "Send test") uses the new copy without redeploy. Delete a row → falls back to hardcoded string.
-
-User feedback: Plan approved with a few adjustments:
-
-Keep the three-part scope: admin audit page, user test-send button, and CMS-managed reminder copy.
-
-For admin-coaching-reminders, do not leave it publicly callable unless absolutely necessary. Require auth and verify admin role in code, then use service role only for the data read.
-
-For coaching-reminder-test, validate the caller identity before looking up tokens or sending anything; add simple rate limiting per user.
-
-Confirm coaching_reminder_log actually stores both successes and failures, plus channel / error fields if the admin page is going to display them. If not, update the dispatcher/logging so the audit page reflects all attempts, not only successful sends.
-
-CMS reminder copy is approved. Use locale fallback order: user locale → English → hardcoded default, and never fail a send if {time} is missing from the template.
-
-Keep the existing reminder timing logic unchanged.
-
-&nbsp;
-
-## Order of execution
-
-1. Migration: seed `content_blocks` rows (+ unique index if missing).
-2. Edge functions: `coaching-reminder-test` (new), `admin-coaching-reminders` (new), `coaching-reminder-dispatch` (CMS lookup).
-3. Frontend: `AdminCoachingReminders` page + route + Admin tile, "Send test" button in `CoachingReminderSettings`.
+1. Redeploy `coaching-reminder-test` + `admin-coaching-reminders`.
+2. In edge logs, the next "Send test reminder" tap shows a `POST | 200` entry (not just OPTIONS) and a `[reminder-test] sent { deliveredNative: 1, … }` log line.
+3. Toast in the app reflects the actual outcome (success count or specific error).
+4. Admin page empty-state copy now reads the clarified subline.
