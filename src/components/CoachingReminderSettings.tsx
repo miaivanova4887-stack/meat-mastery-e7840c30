@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
@@ -23,6 +24,7 @@ const OFFSETS_FR: Record<number, string> = {
 
 export const CoachingReminderSettings = () => {
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin(user?.id);
   const { i18n } = useTranslation();
   const isFr = i18n.language?.startsWith("fr");
   const [enabled, setEnabled] = useState(true);
@@ -63,10 +65,22 @@ export const CoachingReminderSettings = () => {
       const { data, error } = await supabase.functions.invoke("coaching-reminder-test", {
         body: {},
       });
-      console.info("[coaching-reminder-test] response", { data, error });
 
-      // Network / CORS / function-not-deployed errors
-      if (error && !data) {
+      // For non-2xx, supabase-js puts the body on error.context, not data.
+      let payload: any = data;
+      if (!payload && error && (error as any).context) {
+        try {
+          payload = await (error as any).context.json();
+        } catch {
+          try {
+            payload = JSON.parse(await (error as any).context.text());
+          } catch { /* ignore */ }
+        }
+      }
+      console.info("[coaching-reminder-test] response", { data, error, payload });
+
+      // True transport failure: no data AND no parseable payload
+      if (!payload) {
         toast.error(
           isFr
             ? "Impossible de joindre le service de rappel. Veuillez réessayer."
@@ -75,9 +89,9 @@ export const CoachingReminderSettings = () => {
         return;
       }
 
-      const code: string = data?.code ?? (data?.ok ? "ok" : "send_failed");
-      const delivered = data?.delivered ?? 0;
-      const devices = data?.devices ?? 0;
+      const code: string = payload?.code ?? (payload?.ok ? "ok" : "send_failed");
+      const delivered = payload?.delivered ?? 0;
+      const devices = payload?.devices ?? 0;
 
       const msgs: Record<string, { en: string; fr: string; type: "success" | "error" }> = {
         ok: {
@@ -91,18 +105,28 @@ export const CoachingReminderSettings = () => {
           type: "success",
         },
         no_devices: {
-          en: "No registered devices on this account. Enable notifications first.",
-          fr: "Aucun appareil enregistré. Activez d'abord les notifications.",
+          en: "No valid push device is registered for this admin account on this app install.",
+          fr: "Aucun appareil push valide n'est enregistré pour ce compte admin sur cette installation.",
           type: "error",
         },
         permission_denied: {
-          en: "Notifications are disabled in your settings.",
-          fr: "Les notifications sont désactivées dans vos réglages.",
+          en: "Notifications are disabled. Enable them in your device settings, then try again.",
+          fr: "Les notifications sont désactivées. Activez-les dans les réglages, puis réessayez.",
+          type: "error",
+        },
+        rate_limited: {
+          en: "Please wait 30 seconds before sending another test.",
+          fr: "Veuillez patienter 30 secondes avant de renvoyer un test.",
+          type: "error",
+        },
+        forbidden: {
+          en: "Test reminders are restricted to admins.",
+          fr: "Les rappels de test sont réservés aux administrateurs.",
           type: "error",
         },
         fcm_failed: {
-          en: "Push provider rejected the message. Check that notifications are enabled on this device.",
-          fr: "Le fournisseur de push a rejeté le message. Vérifiez que les notifications sont activées sur cet appareil.",
+          en: "Push provider rejected the message. Re-enable notifications on this device and try again.",
+          fr: "Le fournisseur push a rejeté le message. Réactivez les notifications sur cet appareil.",
           type: "error",
         },
         web_push_failed: {
@@ -177,7 +201,7 @@ export const CoachingReminderSettings = () => {
           </select>
         </div>
       )}
-      {enabled && (
+      {enabled && isAdmin && (
         <div className="mt-3 pt-3 border-t border-border/40">
           <button
             type="button"
@@ -187,7 +211,7 @@ export const CoachingReminderSettings = () => {
           >
             {testing
               ? isFr ? "Envoi…" : "Sending…"
-              : isFr ? "Envoyer un rappel test" : "Send test reminder"}
+              : isFr ? "Envoyer un rappel test (admin)" : "Send test reminder (admin)"}
           </button>
         </div>
       )}
