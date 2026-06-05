@@ -1,8 +1,21 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { Flame, BookOpen, CalendarDays, User, TrendingUp } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
 
+/**
+ * BottomNav is rendered through a portal directly into <body>.
+ *
+ * Why: in some native WKWebView / WebView scroll contexts, an ancestor that
+ * applies `transform`, `filter`, `backdrop-filter`, or `will-change` creates
+ * a new containing block for `position: fixed` descendants. When that
+ * ancestor scrolls (sticky page headers using `.ios-blur`, etc.), the
+ * "fixed" nav drifts mid-screen instead of staying pinned to the viewport.
+ *
+ * Portaling to <body> guarantees the nav is a direct child of the document
+ * body, so `position: fixed` always anchors to the layout viewport.
+ */
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -13,16 +26,24 @@ const BottomNav = () => {
     { path: "/", icon: Flame, label: t("nav.home") },
     { path: "/recipes", icon: BookOpen, label: t("nav.recipes") },
     { path: "/meal-plan", icon: CalendarDays, label: t("nav.plan") },
-    
     { path: "/progress", icon: TrendingUp, label: t("nav.progress") },
   ];
 
   // Hide bottom nav on full-screen flows where the fixed bar would cover
   // the page's own bottom input/composer (Recipe Coach chat box).
   if (location.pathname === "/onboarding" || location.pathname === "/recipe-coach") return null;
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 dark:bg-black/95 ios-blur shadow-lg bottom-nav border-t border-border/40 dark:border-white/5"
-      style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
+  if (typeof document === "undefined") return null;
+
+  const nav = (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 dark:bg-black/95 ios-blur shadow-lg bottom-nav border-t border-border/40 dark:border-white/5"
+      style={{
+        paddingBottom: "env(safe-area-inset-bottom, 8px)",
+        // Defensive: pin to the layout viewport and prevent any inherited
+        // transform/filter from creating a containing block here.
+        transform: "none",
+        willChange: "auto",
+      }}
     >
       <div className="flex items-center justify-around py-2 px-1">
         {tabs.map(({ path, icon: Icon, label }) => {
@@ -53,6 +74,8 @@ const BottomNav = () => {
       </div>
     </nav>
   );
+
+  return createPortal(nav, document.body);
 };
 
 export default BottomNav;

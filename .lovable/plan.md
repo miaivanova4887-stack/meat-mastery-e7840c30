@@ -1,137 +1,95 @@
-## Current verified findings
+## Evidence from code/database review
 
-1. **Push tap route is likely being overwritten after startup**
-  - `pushNotificationActionPerformed` is bound at module load and queues `/profile?tab=settings&section=coaching...`.
-  - `usePushNavigation()` drains pending paths and calls `navigate(path)`.
-  - `Profile.tsx` currently redirects immediately when `user` is temporarily `null`:
-    ```ts
-    if (!user) navigate('/auth')
-    ```
-  - On cold start, auth is still loading when `/profile...` mounts, so this can overwrite the push route to `/auth` before the session hydrates.
-2. **Notification settings plugin exists, but CTA wiring is incomplete**
-  - `capacitor-native-settings` is installed in `package.json` and included in `ios/App/CapApp-SPM/Package.swift`.
-  - `openAppSettings()` currently uses `IOSSettings.App`; the plugin also supports `IOSSettings.AppNotification` for iOS 15.4+.
-  - The Profile “Enable notifications” switch only toggles local/server prefs and does not open OS settings.
-  - The manual Profile notification CTA can be suppressed by `prefs-opted-in`, so it may never open settings even when OS notifications are denied.
-3. **Paid-unscheduled rows do exist, but the scheduling flow is wrong**
-  - Database evidence shows recent `coaching_sessions` rows with `status='pending'`, tied to the current user.
-  - `CoachingSessionsList` fetches pending rows and renders an Action needed section.
-  - The pending Schedule button bypasses `CoachingBooking`; it directly opens an external URL.
-  - It checks `session.source === 'paid_ios'`, but the backend stores `source='appstore'`, so iOS pending sessions can choose the paid Cal.com URL instead of the no-payment iOS URL.
+- Push payloads are being created with `data.path`, `data.target = coaching_upcoming_session`, and optional `data.session_id` in the coaching reminder functions.
+- The app currently queues push paths only in module memory + `sessionStorage`; on iOS cold start, `sessionStorage` can be too fragile if the native tap arrives before the web app is fully hydrated.
+- The push router consumer mounts inside React Router, but there is no persistent route-intent record that survives reload/auth/onboarding races beyond `sessionStorage`.
+- iOS push capability evidence exists in code: `aps-environment` is present and `UIBackgroundModes` includes `remote-notification`.
+- Database evidence shows paid-but-unscheduled rows exist now: `11` `pending` `appstore` coaching sessions, with recent pending row `daeb1931-286e-4271-82f4-af5f3340d33a` created at `2026-06-05 18:14:26 UTC`.
+- Backend evidence shows `record-coaching-purchase` returned `sessionRowId` for recent purchases.
+- The screenshot shows the bottom nav rendered in the middle of the scrollable page; I will treat this as a native WebView fixed-position stability bug, not just a styling issue.
 
 ## Implementation plan
 
-### 1. Make push tap deep-linking evidence-first and stop route overwrites
+### 1) Make push tap routing deterministic
+- Replace the fragile push pending queue with a durable helper that writes the route intent to both `localStorage` and `sessionStorage` before dispatching `push-nav`.
+- Add a short-lived diagnostic object containing:
+  - raw action timestamp
+  - extracted data keys
+  - resolved path
+  - queue storage success/failure
+  - drain attempts
+  - final navigation call
+- Update `usePushNavigation` to drain in this order:
+  1. module memory
+  2. `sessionStorage`
+  3. `localStorage`
+- Delay navigation with `requestAnimationFrame` plus a short timeout so Router/Auth/Profile have mounted.
+- Add route verification after navigation at `250ms`, `1s`, and `3s`, logging if anything overwrites `/profile?tab=settings&section=coaching...`.
 
-- Update `AuthContext` usage in `Profile.tsx` to read `loading`.
-- Change the unauthenticated redirect so it only runs after auth bootstrap finishes:
-  ```ts
-  if (!loading && !user) navigate('/auth')
-  ```
-- Add explicit `[PushRoute]` logs in `Profile.tsx` for:
-  - initial mount path/search
-  - auth loading/user state before any redirect
-  - query params read: `tab`, `section`, `sessionId`
-  - `setTab('settings')` from query params
-  - coaching section scroll attempt, success/failure
-  - `CoachingSessionsList` highlight session received/found/missing
-- Add a small route-watch logger in the push navigation handler after `navigate()` to prove whether another effect overwrote the route shortly after startup.
-- Keep all existing `[PushTap]` and `[PushNav]` diagnostics until cold start, background, and foreground tap are confirmed.
+### 2) Prevent app startup/auth flows from stealing the push route
+- Keep Profile auth redirect deferred until auth loading completes.
+- Add a global “push route intent” check so generic startup code does not scroll/reset or redirect over the push route while it is being consumed.
+- Update the scroll-to-top hook so it does not immediately scroll away from the coaching anchor when the push route includes `section=coaching`.
 
-### 2. Fix “Enable notifications” denied-state settings fallback
+### 3) Prove Profile consumes the route
+- Add/keep `[PushRoute]` logs in `Profile.tsx` for:
+  - mounted path/search
+  - auth state when mounted
+  - parsed `tab`, `section`, and `sessionId`
+  - settings tab activation
+  - coaching section element found/not found
+  - final scroll attempt
+- Ensure `tab=settings&section=coaching` always switches to Settings before scrolling.
 
-- Add a dedicated helper/log flow around opening settings:
-  - `[NotifSettings] CTA tapped`
-  - `[NotifSettings] opening iOS app settings`
-  - `[NotifSettings] plugin result` with success/failure
-- Update `openAppSettings()` to prefer `IOSSettings.AppNotification` on iOS, then fall back to `IOSSettings.App`, then Capacitor App fallback if available.
-- Wire every denied-state notification CTA to the helper:
-  - `NotificationConsentSheet` denied result
-  - Profile manual notification preferences CTA
-  - Profile “Enable notifications” switch when turning on while OS permission is denied
-- Avoid `auditPushDecision()` suppressing the manual CTA due to saved prefs; manual settings taps should check OS permission directly and open settings when denied.
+### 4) Fix coaching pending-session visibility and scheduling
+- Add targeted logs in `CoachingSessionsList` showing:
+  - current user id
+  - total sessions loaded
+  - count by status
+  - pending session ids
+  - whether the Action Needed section rendered
+- Keep pending rows included in the query and rendered in the “Action needed” section.
+- Make the pending “Schedule your session” CTA always open `CoachingBooking` in `already_paid` mode.
+- Ensure `already_paid` mode:
+  - skips payment
+  - builds a no-payment Cal.com URL for appstore/iOS rows
+  - includes `metadata[user_id]`
+  - includes `metadata[session_row_id]`
+  - logs the host/path and metadata presence without exposing sensitive values.
 
-### 3. Fix paid-unscheduled coaching scheduling flow end-to-end
+### 5) Fix native notification settings fallback
+- Keep using the native notification authorization flow (`PushNotifications.requestPermissions()` then `register()`).
+- Improve the denied-state CTA so it always opens native settings and logs:
+  - current OS permission
+  - plugin target used: iOS notification settings first, app settings fallback second
+  - success/failure from each settings-opening attempt.
+- Keep the existing native capability checks documented, and add runtime logs that identify if no APNs/FCM token arrives after `register()`.
 
-- Add logs in `recordCoachingPurchase()` client wrapper for:
-  - function invoke start
-  - returned `ok`, `calComUrl`/`iosBookingUrl` presence
-  - returned session row ID if added by backend
-- Update `record-coaching-purchase` function to return `sessionRowId` so client logs can prove which pending row was created/reused.
-- Add `sessionRowId` to `RecordCoachingPurchaseResult`.
-- Extend `CoachingBooking` with an already-paid mode, for example:
-  ```ts
-  mode="already_paid"
-  sessionId="..."
-  sessionSource="appstore"
-  ```
-- In already-paid mode:
-  - skip StoreKit/Stripe payment entirely
-  - build the scheduler URL with `metadata[user_id]` and `metadata[session_row_id]`
-  - use `CAL_IOS_NO_PAYMENT_URL` when `source='appstore'` or native iOS is active
-  - log `[CoachingPending] already_paid open scheduler` with session ID/source and URL type, not full private URL
-- Change `CoachingSessionsList` pending Schedule button to open `CoachingBooking` in already-paid mode instead of directly calling `openExternalUrl()`.
-- Add logs in `CoachingSessionsList` for:
-  - fetch user ID
-  - row counts by status
-  - pending rows found
-  - pending section render
-  - Schedule tap session ID/source
+### 6) Fix bottom menu drifting during scroll
+- Move `BottomNav` out of the scroll/layout stacking context by rendering it through a React portal directly into `document.body`.
+- Harden the nav CSS for native WebView scrolling:
+  - explicit `position: fixed`
+  - explicit `bottom: 0`
+  - full viewport width
+  - safe-area padding
+  - stable height
+  - high z-index
+  - no parent-dependent positioning.
+- Add a mobile-safe bottom spacer variable so page content still clears the nav without the nav participating in the page scroll.
 
-### 4. Evidence and validation after implementation
+### 7) Verification I will run after implementation
+- Static checks with code search confirming:
+  - iOS entitlements include `aps-environment`
+  - Info.plist includes `remote-notification`
+  - push payload contains `path` / `target` / `session_id`
+  - pending coaching rows are not filtered out
+  - BottomNav is portaled and fixed outside page flow.
+- Database read checks confirming pending/scheduled coaching rows still load shape expected by the UI.
+- Edge logs check for `record-coaching-purchase` showing `sessionRowId` issuance.
 
-- Run a read-only DB query for recent coaching sessions to show pending/scheduled counts by user.
-- Review or fetch edge logs for `record-coaching-purchase` after a test purchase to confirm insert/reuse and returned `sessionRowId`.
-- Provide exact expected Xcode console log sequences for:
-  1. cold start from locked phone
-  2. backgrounded app
-  3. already-open app with banner tap
-  4. denied notification CTA tap
-  5. pending coaching Schedule tap
-
-## Files to update
-
-- `src/pages/Profile.tsx`
-- `src/hooks/usePushNavigation.ts`
-- `src/lib/openAppSettings.ts`
-- `src/components/NotificationConsentSheet.tsx`
-- `src/components/CoachingSessionsList.tsx`
-- `src/components/CoachingBooking.tsx`
-- `src/lib/coachingPurchase.ts`
-- `supabase/functions/record-coaching-purchase/index.ts`
-
-No schema migration is needed for these fixes.
-
-Approved.
-
-This plan correctly identifies three likely root causes:
-
-push route overwritten by premature /auth redirect during auth hydration
-
-notification settings plugin exists but denied-state CTA wiring is incomplete
-
-paid-unscheduled data exists, but scheduling uses the wrong flow/source mapping
-
-I agree with:
-
-adding loading-aware auth gating for Profile
-
-keeping all [PushTap], [PushNav], and new [PushRoute] diagnostics
-
-preferring IOSSettings.AppNotification with fallback to [IOSSettings.App](http://IOSSettings.App)
-
-wiring every denied-state notification CTA to the settings helper
-
-extending CoachingBooking with an already-paid mode
-
-changing pending Schedule to open the already-paid booking flow instead of raw external URL
-
-fixing source handling for iOS pending sessions (appstore)
-
-Two implementation notes:
-
-in Profile.tsx, prefer a guarded render/loading state over an eager imperative redirect while auth is still hydrating
-
-keep fallback logging for notification settings because AppNotification behavior can vary by iOS version
-
-No schema migration is needed for this pass.
+## What you will still need to test on device
+- Cold start from locked phone: tap push and verify logs show `actionPerformed -> resolved path -> queued -> drained -> navigate calling -> Profile mount`.
+- Backgrounded app: same route log chain.
+- Already-open app/banner tap: same route log chain.
+- Denied notification state: tap Enable Notifications and verify native settings opens.
+- Paid unscheduled flow: buy, do not schedule, return to Profile and verify Action Needed appears and Schedule opens no-payment booking.
