@@ -362,7 +362,7 @@ const Auth = () => {
 
       <div
         className="flex-1 flex flex-col items-center justify-center px-6 pt-6"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8rem)" }}
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10rem)" }}
       >
         <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
           <span className="text-3xl">{mode === "forgot" ? "🔑" : "🥩"}</span>
@@ -382,7 +382,7 @@ const Auth = () => {
             : t("auth.resetSubtitle")}
         </p>
         {mode !== "forgot" && (
-          <p className="text-xs text-muted-foreground/80 mb-6 text-center max-w-sm leading-relaxed">
+          <p className="text-xs text-muted-foreground/80 mb-4 text-center max-w-sm leading-relaxed">
             {t("auth.whyAccount")}
           </p>
         )}
