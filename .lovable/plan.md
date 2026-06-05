@@ -1,108 +1,120 @@
-## Goal
+# iOS Native Push (FCM/APNs) — enablement plan
 
-Make a signed-in admin on iOS land a valid FCM-routable device token in `device_tokens` on app launch / foreground, so **Send test reminder** delivers end-to-end. Keep the existing admin-only gate.
+`GoogleService-Info.plist` received (bundle `com.mi4labs.carnivorex`, project `carnivore-84bd2`, GCM sender `963699055181`). This plan turns on real iOS push so an admin's `Send test reminder` lands on the device.
 
-## Confirmation
+## Prerequisite confirmations (you, outside Lovable)
 
-- Native iOS push registration is **currently disabled by design** in this build (`NATIVE_FCM_ENABLED = false` in `src/lib/pushNativeConfig.ts`). The flag was added to protect Android (no `google-services.json`), but it disables iOS too.
-- Even after flipping the flag, iOS cannot produce a token the backend dispatcher can use, because the iOS target is missing: push entitlement, APNs delegate methods, Firebase iOS SDK, `GoogleService-Info.plist`, and APNs Auth Key uploaded to Firebase.
+Before this plan can succeed at runtime, please confirm all three:
 
-## Prerequisites you (the user) must provide
+1. **APNs Auth Key (.p8) uploaded to Firebase** → Firebase Console → Project Settings → Cloud Messaging → *Apple app configuration* → APNs Authentication Key (with Key ID + Team ID).
+2. **Push Notifications capability enabled** on App ID `com.mi4labs.carnivorex` in Apple Developer Portal → Identifiers.
+3. You are building with a provisioning profile that includes the Push Notifications entitlement (automatic signing in Xcode normally handles this once capability is added).
 
-These cannot be generated from the sandbox.
+Code/config below is safe to ship even if 1–3 are still pending — registration will simply fail with a clear `registrationError` until they are in place.
 
-1. **GoogleService-Info.plist** for bundle id `com.mi4labs.carnivorex` — download from the Firebase Console → Project Settings → iOS app. Upload it to me, I'll drop it into `ios/App/App/GoogleService-Info.plist`.
-2. **APNs Auth Key (.p8)** — generated once in Apple Developer Portal → Keys → "+" → Apple Push Notifications service (APNs). Note the **Key ID** and your **Team ID**. Upload the `.p8` + Key ID + Team ID to the Firebase Console → Project Settings → Cloud Messaging → Apple app configuration. (You don't share these with me; Firebase keeps them.)
-3. **Push Notifications capability** enabled on App ID `com.mi4labs.carnivorex` in Apple Developer Portal → Identifiers.
+## What gets changed
 
-Until #1 lands in the repo and #2/#3 are done in the consoles, no iOS device can produce an FCM token — flipping any flag is cosmetic.
+### A. Drop the plist into the iOS target
 
-## What I will change once #1 is uploaded
+- Add `ios/App/App/GoogleService-Info.plist` (from upload).
+- Register it in `ios/App/App.xcodeproj/project.pbxproj` so it's bundled into the app target (Copy Bundle Resources).
 
-### A. iOS native plumbing
-- `ios/App/App/App.entitlements`: add `aps-environment = development` (Xcode will swap to `production` on Release).
-- `ios/App/App/Info.plist`: add `UIBackgroundModes` containing `remote-notification`, and `FirebaseAppDelegateProxyEnabled = false` so we control APNs token handoff.
+### B. iOS entitlements + Info.plist
+
+- `ios/App/App/App.entitlements`: add `aps-environment = development` (Xcode automatically promotes to `production` for App Store builds via capability).
+- `ios/App/App/Info.plist`: add `UIBackgroundModes` → `remote-notification`, and `FirebaseAppDelegateProxyEnabled = NO` (we'll forward APNs token to FCM ourselves so it composes cleanly with Capacitor's proxy).
+
+### C. Firebase iOS SDK via SPM
+
+- `ios/App/CapApp-SPM/Package.swift`: add `https://github.com/firebase/firebase-ios-sdk.git` (>= 11.0.0) and depend on products `FirebaseCore` + `FirebaseMessaging` in the `CapApp-SPM` target.
+
+### D. AppDelegate wiring
+
 - `ios/App/App/AppDelegate.swift`:
-  - `import Firebase` and `import FirebaseMessaging`.
-  - In `didFinishLaunchingWithOptions`: `FirebaseApp.configure()`, set `Messaging.messaging().delegate`, set `UNUserNotificationCenter.current().delegate`.
+  - `import FirebaseCore`, `import FirebaseMessaging`, `import UserNotifications`.
+  - In `didFinishLaunchingWithOptions`: `FirebaseApp.configure()`, set `Messaging.messaging().delegate = self`, set `UNUserNotificationCenter.current().delegate = self`.
   - Implement `didRegisterForRemoteNotificationsWithDeviceToken` → `Messaging.messaging().apnsToken = deviceToken`.
-  - Implement `didFailToRegisterForRemoteNotificationsWithError` → log only.
-  - Conform to `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)` — forward the FCM token to JS via a Capacitor notification so the existing `registration` listener fires.
-- Add Firebase iOS pods via Swift Package Manager (Capacitor 7 uses SPM): `firebase-ios-sdk` with products `FirebaseMessaging`, `FirebaseAnalytics`. Update `ios/App/CapApp-SPM/Package.swift`.
+  - Implement `didFailToRegisterForRemoteNotificationsWithError` → log + forward to Capacitor PushNotifications via `NotificationCenter` (the Capacitor plugin already observes these).
+  - Conform to `MessagingDelegate.messaging(_:didReceiveRegistrationToken:)` → forward FCM token to Capacitor PushNotifications `registration` event so the existing JS listener in `src/lib/pushFcm.ts` calls `register-device-token`.
+  - Conform to `UNUserNotificationCenterDelegate` for foreground presentation (banner/sound) and tap routing.
 
-### B. JS gating split
-- Replace single `NATIVE_FCM_ENABLED` with platform-aware gates in `src/lib/pushNativeConfig.ts`:
-  ```ts
-  export const NATIVE_FCM_ENABLED_IOS = true;     // turn on with iOS Firebase wiring
-  export const NATIVE_FCM_ENABLED_ANDROID = false; // stays off until google-services.json ships
-  export function isNativeFcmEnabled(platform: 'ios' | 'android'): boolean { ... }
-  ```
-- Update `src/lib/pushFcm.ts` to consult `isNativeFcmEnabled(platform)` instead of the single flag.
+### E. JS gating split
 
-### C. Token refresh on launch / foreground
-- In `AuthContext` (or a dedicated `usePushBootstrap` hook mounted at app root): after sign-in, when `Capacitor.isNativePlatform()` and the user is admin **or** consent is granted, call `requestNativePush()` once. Already idempotent.
-- Add a Capacitor `App` `appStateChange` listener: on `isActive=true`, if consent is granted and platform is iOS, call `PushNotifications.register()` so a refreshed FCM token re-fires the `registration` listener.
+- `src/lib/pushNativeConfig.ts`: replace single `NATIVE_FCM_ENABLED` with `NATIVE_FCM_ENABLED_IOS = true` and `NATIVE_FCM_ENABLED_ANDROID = false`, plus helper `isNativeFcmEnabled()` that reads `Capacitor.getPlatform()`.
+- `src/lib/pushFcm.ts`: swap all `NATIVE_FCM_ENABLED` reads for `isNativeFcmEnabled()` so iOS now actually calls `PushNotifications.register()` while Android stays disabled.
 
-### D. Stale-token cleanup
-- Already in place server-side: `sendFcmToToken` flags `UNREGISTERED` / `INVALID_ARGUMENT` / 404 as `invalid`, and both `coaching-reminder-test` and `coaching-reminder-dispatch` delete invalid `device_tokens` rows.
-- Add a one-line client-side mop-up: when `registrationError` fires on iOS, log and surface a toast via a custom event so admins know.
+### F. Token lifecycle hardening (iOS only)
 
-### E. Admin gating (already done — keep)
-- Frontend hides **Send test reminder** unless `useIsAdmin(user.id)` is true.
-- `coaching-reminder-test` returns **403 `forbidden`** for non-admin callers via `user_roles` lookup.
+- In `src/lib/pushFcm.ts`, add `App.addListener('appStateChange', ...)` that re-calls `PushNotifications.register()` on `isActive=true` when consent is `granted` and platform is iOS (FCM token can rotate; cheap idempotent call).
+- Bind `registrationError` once to surface APNs failures into console with a stable tag (`[Push] iOS registrationError`) so we can read them from Xcode console / Console.app.
 
-## Verification (evidence-first, per your standing rule)
+### G. Admin gating (already in place — keep + reverify)
 
-After you provide the prereqs and I implement A–D, you run these copy-pasteable steps on macOS with Xcode installed:
+- Frontend: `CoachingReminderSettings.tsx` continues to hide Send test reminder unless `has_role('admin')`.
+- Backend: `supabase/functions/coaching-reminder-test/index.ts` continues to return **403** for non-admin callers (already implemented).
 
-```
-# 1. Pull latest
-cd ~/your-clone-of-the-repo
+## Out of scope (do not change)
+
+- Android FCM (`google-services.json`) — still disabled.
+- Web push (VAPID) — unchanged.
+- Writing test sends to `coaching_reminder_log` — admin audit stays cron-only.
+
+## Verification (line-by-line, after Lovable applies the change)
+
+```bash
 git pull
-
-# 2. Install JS deps
 npm install
-
-# 3. Build web bundle
 npm run build
-
-# 4. Sync into iOS Capacitor project
 npx cap sync ios
-
-# 5. Open in Xcode
 npx cap open ios
-
-# 6. In Xcode: Signing & Capabilities → + Capability → "Push Notifications"
-# 7. In Xcode: Signing & Capabilities → + Capability → "Background Modes" → tick "Remote notifications"
-# 8. Build & Run on a physical iPhone (push does NOT work on iOS Simulator)
-
-# 9. In the running app: sign in as admin, accept the iOS notification prompt
-# 10. In the Lovable sandbox terminal verify the token landed:
 ```
 
-Then I'll run, against the project DB, immediately after step 9:
+In Xcode:
 
-```sql
-SELECT id, platform, length(token) AS token_len, created_at, last_seen_at
-FROM device_tokens
-WHERE user_id = 'e90213d4-7b8a-4ae7-a980-b0f212fac206'
-ORDER BY created_at DESC;
-```
+1. Select the **App** target → **Signing & Capabilities** → **+ Capability** → **Push Notifications**.
+2. **+ Capability** → **Background Modes** → tick **Remote notifications**.
+3. Confirm `GoogleService-Info.plist` appears under *Build Phases → Copy Bundle Resources*.
+4. Select a real iPhone (push does **not** work in the iOS Simulator).
+5. Cmd+R to build & run; allow notifications when prompted.
 
-Expected: at least one row with `platform='ios'`, `token_len ≈ 140–170` (FCM token, not raw 64-char APNs hex).
+In the app:
+6. Sign in as the admin account.
+7. Open Xcode console, filter on `[Push]` — expect:
 
-Then tap **Send test reminder** in the app. Edge logs must show:
-```
-[reminder-test] sent { code: "ok", deliveredNative: 1, fcmAttempts: 1, ... }
-```
-and your iPhone displays the push.
+- `[Push] checkPermissions receive=granted`
+- `[Push] FCM token registered len=<140–170>`
 
-## Scope I will NOT do in this pass
+In Lovable Cloud:
+8. `SELECT user_id, platform, length(token) FROM device_tokens WHERE platform='ios' ORDER BY updated_at DESC LIMIT 5;` — confirm a fresh iOS row for your user.
 
-- Android FCM enablement (still blocked on `google-services.json`).
-- Web push bootstrap for browsers (separate VAPID flow).
-- Logging test sends into `coaching_reminder_log`.
+In the app:
+9. Profile → Coaching Call Reminders → **Send test reminder**.
+10. Edge logs for `coaching-reminder-test` should show:
+    `[reminder-test] sent { code: "ok", deliveredNative: 1, fcmAttempts: 1, ... }` and a push banner appears on the device.
 
-## What I need from you to start
+If step 7 logs `registrationError`, that's the APNs/Firebase config (prereqs 1–3) — the message body will name the cause (`no valid "aps-environment"`, `BadDeviceToken`, etc.) and we'll address it without further code changes.
 
-Reply with the `GoogleService-Info.plist` file uploaded to chat, and confirm you've done the two Apple/Firebase console steps (APNs key in Firebase + Push capability in Apple Dev Portal). I'll then implement A–D in a single pass and walk you through the line-by-line Xcode steps.
+## Risk notes
+
+- Setting `FirebaseAppDelegateProxyEnabled=NO` means we *must* assign `apnsToken` manually — already covered in step D. If left at default (`YES`), it would also work but can collide with Capacitor's swizzling on some Capacitor versions; explicit is safer.
+- SPM resolution adds ~30 MB to the iOS build's first compile and ~6 MB to the IPA. Acceptable for this app.
+
+User: Approved with one clarification:
+
+Proceed with A–G as written.
+
+Keep FirebaseAppDelegateProxyEnabled = NO and manual APNs token forwarding exactly as described.
+
+Also verify notification tap/deep-link handling still works correctly through the Capacitor push flow after the AppDelegate changes.
+
+For aps-environment, please validate the actual entitlement in the built app/profile used for testing rather than assuming Xcode will always “promote” it correctly.
+
+Once implemented, I’ll rebuild on a physical iPhone and verify:
+
+[Push] checkPermissions receive=granted
+
+[Push] FCM token registered len=...
+
+fresh device_tokens row with platform='ios'
+
+successful admin test reminder delivery end-to-end.
