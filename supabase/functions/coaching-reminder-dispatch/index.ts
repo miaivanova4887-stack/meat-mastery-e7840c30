@@ -39,6 +39,11 @@ serve(async (req) => {
   let sent = 0;
   let skipped = 0;
 
+  // Resolve copy from CMS once per invocation; falls back to defaults if rows
+  // are missing. Never throws.
+  const copy = await loadReminderCopy(admin);
+
+
   for (const offset of offsets) {
     const target = new Date(now.getTime() + offset * 60_000);
     const lo = new Date(target.getTime() - WINDOW_MINUTES * 60_000).toISOString();
