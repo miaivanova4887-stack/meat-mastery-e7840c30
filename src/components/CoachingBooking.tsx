@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, Calendar, CheckCircle2, Loader2 } from "lucide-react";
+import { X, Calendar, CheckCircle2, Loader2, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -33,6 +34,8 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [schedulerUrl, setSchedulerUrl] = useState<string>(CAL_URL);
+  const [showFallback, setShowFallback] = useState(false);
 
   // Reset screen when opened
   useEffect(() => {
@@ -110,9 +113,13 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
           purchaseDateMs: Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
-        if (recorded.calComUrl) {
-          window.open(recorded.calComUrl, "_blank", "noopener,noreferrer");
-        }
+        const url = recorded.calComUrl ?? CAL_URL;
+        setSchedulerUrl(url);
+        setShowFallback(false);
+        // Best-effort auto-open. If the native browser can't open, the
+        // calcom screen's CTA + fallback UI lets the user copy/open manually.
+        const res = await openExternalUrl(url, { logTag: "coaching:open-scheduler" });
+        if (!res.ok) setShowFallback(true);
         setScreen("calcom");
         return;
       }
@@ -121,7 +128,7 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
       const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank", "noopener,noreferrer");
+        await openExternalUrl(data.url, { logTag: "coaching:stripe-checkout" });
       }
     } catch (e) {
       console.error("Coaching checkout error:", e);
