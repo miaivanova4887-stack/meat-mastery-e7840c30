@@ -65,8 +65,9 @@ export function usePushNavigation() {
     const drain = (reason: string) => {
       const m = safePath(consumePendingPushNav());
       const s = readStored();
-      console.info("[PushNav] drain", { reason, module: m, stored: s });
-      const path = m ?? s;
+      const p = safePath(consumePersistedPushNav());
+      console.info("[PushNav] drain", { reason, module: m, stored: s, persisted: p });
+      const path = m ?? s ?? p;
       if (path) go(path, `drain:${reason}`);
     };
 
@@ -75,6 +76,11 @@ export function usePushNavigation() {
     // Belt-and-suspenders: re-check after the current microtask in case the
     // native actionPerformed listener queued a path just after we mounted.
     const t = setTimeout(() => drain("post-mount-timeout"), 0);
+    // Cold-start native taps can arrive AFTER first React render because the
+    // OS hands the launch notification to the JS plugin only after the bridge
+    // finishes booting. Re-drain at 500ms and 1500ms to catch that window.
+    const t2 = setTimeout(() => drain("post-mount-500"), 500);
+    const t3 = setTimeout(() => drain("post-mount-1500"), 1500);
 
     const handler = (ev: Event) => {
       const detail = (ev as CustomEvent).detail as { path?: string } | undefined;
