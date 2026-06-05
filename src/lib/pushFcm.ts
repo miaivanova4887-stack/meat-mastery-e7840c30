@@ -125,6 +125,7 @@ function bindListenersOnce(platform: "android" | "ios") {
     PushNotifications.addListener("registration", async (t) => {
       // On iOS the value is the APNs hex token (not what the backend wants);
       // FCM token comes through the window 'fcm-token' event instead.
+      console.info(`[Push] registration success platform=${platform} valueLen=${t.value?.length ?? 0}`);
       if (platform === "android") {
         await registerDeviceTokenWithBackend(t.value, "android");
       } else {
@@ -132,7 +133,7 @@ function bindListenersOnce(platform: "android" | "ios") {
       }
     });
     PushNotifications.addListener("registrationError", (err) => {
-      console.error(`[Push] ${platform} registrationError`, err);
+      console.error(`[Push] registrationError platform=${platform}`, err);
     });
   } catch (e) {
     console.error("[Push] addListener threw — swallowed", e);
