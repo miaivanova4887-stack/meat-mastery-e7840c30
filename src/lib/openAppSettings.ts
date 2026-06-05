@@ -22,7 +22,29 @@ export const openAppSettings = async (traceId?: string): Promise<boolean> => {
   const platform = Capacitor.getPlatform();
   console.info("[NotifSettings] open() platform", { traceId: t, platform });
 
-  // Attempt 1: dedicated notifications screen (iOS 15.4+).
+  // Attempt 1 (iOS): app-settings: URL scheme — Apple's documented way to
+  // land directly on THIS app's settings page (which contains the
+  // Notifications row). Far more reliable than IOSSettings.AppNotification
+  // which on some iOS builds drops the user on the global Notifications list.
+  if (platform === "ios") {
+    try {
+      console.info("[NotifSettings] open() attempt=app-settings:", { traceId: t });
+      const openUrl = (CapacitorApp as unknown as {
+        openUrl?: (opts: { url: string }) => Promise<{ completed?: boolean }>;
+      })?.openUrl;
+      if (typeof openUrl === "function") {
+        const r = await openUrl.call(CapacitorApp, { url: "app-settings:" });
+        console.info("[NotifSettings] open() result=app-settings:", { traceId: t, completed: r?.completed });
+        if (r?.completed) return true;
+      } else {
+        console.warn("[NotifSettings] open() no CapacitorApp.openUrl", { traceId: t });
+      }
+    } catch (e) {
+      console.warn("[NotifSettings] open() app-settings: threw", { traceId: t, error: String(e) });
+    }
+  }
+
+  // Attempt 2: dedicated notifications screen (iOS 15.4+ / Android details).
   try {
     console.info("[NotifSettings] open() attempt=AppNotification", { traceId: t });
     const result = await NativeSettings.open({
