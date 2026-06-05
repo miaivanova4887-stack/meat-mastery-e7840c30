@@ -266,38 +266,18 @@ export default function CoachingSessionsList({ highlightSessionId }: CoachingSes
     setLoading(false);
   }, []);
 
-  // Opens Cal.com for a paid-but-unscheduled session in "already paid" mode
-  // (iOS no-payment URL, or paid URL for web/legacy). We embed
-  // metadata[session_row_id] so the cal-webhook attaches the booking to
-  // THIS exact pending row (no orphans, no duplicate scheduled rows).
-  const handleSchedule = useCallback(
-    async (session: CoachingSession) => {
-      setSchedulingId(session.id);
-      try {
-        // iOS-paid sessions MUST go to the no-payment Cal.com event to avoid
-        // double-charging the user. Web/Stripe sessions use the paid URL
-        // (Cal.com will recognise the pre-payment via the same session_row_id).
-        const base = session.source === "paid_ios" ? CAL_IOS_NO_PAYMENT_URL : CAL_PAID_URL;
-        const url = buildCalUrl({
-          base,
-          userId: user?.id ?? null,
-          sessionRowId: session.id,
-          name:
-            (user?.user_metadata as Record<string, unknown> | undefined)?.display_name as
-              | string
-              | undefined ?? session.attendee_name ?? null,
-          email: user?.email ?? session.attendee_email ?? null,
-        });
-        const res = await openExternalUrl(url, { logTag: "coaching:schedule-pending" });
-        if (!res.ok) {
-          toast.error("Couldn't open the scheduler. Please try again.");
-        }
-      } finally {
-        setSchedulingId(null);
-      }
-    },
-    [user?.id, user?.email, user?.user_metadata],
-  );
+  // Opens the CoachingBooking modal in already_paid mode for a pending
+  // (paid-but-unscheduled) session. The modal handles the no-payment Cal.com
+  // URL + metadata[session_row_id] stamping; we never bypass it here.
+  const handleSchedule = useCallback((session: CoachingSession) => {
+    console.info("[CoachingPending] Schedule tap", {
+      sessionId: session.id,
+      source: session.source,
+      status: session.status,
+    });
+    setScheduleSession(session);
+    setBookingOpen(true);
+  }, []);
 
   useEffect(() => {
     fetchSessions();
