@@ -1066,8 +1066,8 @@ const Profile = () => {
               </div>
 
               {/* Your Coaching */}
-              <h3 className="text-sm font-display font-bold text-foreground pt-2">Your coaching</h3>
-              <CoachingSessionsList />
+              <h3 id="coaching-section" className="text-sm font-display font-bold text-foreground pt-2 scroll-mt-24">Your coaching</h3>
+              <CoachingSessionsList highlightSessionId={highlightSessionId} />
 
               {/* Coaching Call Reminders */}
               <CoachingReminderSettings />
