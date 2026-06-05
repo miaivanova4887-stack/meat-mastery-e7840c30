@@ -201,7 +201,7 @@ export const CoachingReminderSettings = () => {
           </select>
         </div>
       )}
-      {enabled && (
+      {enabled && isAdmin && (
         <div className="mt-3 pt-3 border-t border-border/40">
           <button
             type="button"
@@ -211,7 +211,7 @@ export const CoachingReminderSettings = () => {
           >
             {testing
               ? isFr ? "Envoi…" : "Sending…"
-              : isFr ? "Envoyer un rappel test" : "Send test reminder"}
+              : isFr ? "Envoyer un rappel test (admin)" : "Send test reminder (admin)"}
           </button>
         </div>
       )}
