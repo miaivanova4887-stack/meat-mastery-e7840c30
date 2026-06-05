@@ -125,12 +125,15 @@ const CoachingBooking = ({ open, onOpenChange, initialScreen = "info" }: Coachin
           setScreen("info");
           return;
         }
-        console.log("coaching:booking-link-requested", { userId: session.user.id });
+        console.log("coaching:booking-link-requested", {
+          userId: session.user.id,
+          usingRealTxId: Boolean(result.transactionId),
+        });
         const recorded = await recordCoachingPurchase({
           source: "appstore",
-          productId: pkg.pkg.product?.identifier ?? "coaching_call",
-          transactionId: `rc_${session.user.id}_${Date.now()}`,
-          purchaseDateMs: Date.now(),
+          productId: result.productId ?? pkg.pkg.product?.identifier ?? "coaching_call",
+          transactionId: result.transactionId ?? `rc_${session.user.id}_${Date.now()}`,
+          purchaseDateMs: result.purchaseDateMs ?? Date.now(),
         });
         toast.success("Coaching call purchased — choose your time.");
         // iOS MUST open the no-payment Cal.com event — never the paid one
