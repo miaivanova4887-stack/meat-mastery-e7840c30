@@ -24,6 +24,7 @@ const OFFSETS_FR: Record<number, string> = {
 
 export const CoachingReminderSettings = () => {
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin(user?.id);
   const { i18n } = useTranslation();
   const isFr = i18n.language?.startsWith("fr");
   const [enabled, setEnabled] = useState(true);
