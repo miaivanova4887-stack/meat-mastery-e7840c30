@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 
 export interface ProgressEntry {
   id: string;
@@ -133,9 +134,14 @@ export function useAddEntry() {
         recorded_at: entry.recorded_at || new Date().toISOString(),
       });
       if (error) throw error;
+      return entry;
     },
-    onSuccess: () => {
+    onSuccess: (entry) => {
       qc.invalidateQueries({ queryKey: ["progress-entries"] });
+      logAfEvent(AF_EVENTS.progressLogged, {
+        category: entry.category,
+        metric: entry.metric,
+      });
       toast.success("Entry saved");
     },
     onError: (e) => toast.error(e.message),

@@ -4,12 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
 import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
+import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
+
 
 
 const Coaching = () => {
@@ -18,6 +20,11 @@ const Coaching = () => {
   const [loading, setLoading] = useState(false);
   const paywall = useNativePaywall();
   const useNative = isRevenueCatAvailable();
+
+  useEffect(() => {
+    logAfEvent(AF_EVENTS.paywallViewed, { source_screen: "coaching" });
+  }, []);
+
 
   const handleBookPaid = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -38,6 +45,14 @@ const Coaching = () => {
           toast.error("Coaching isn't available right now. Please try again in a moment.");
           return;
         }
+        logAfEvent(AF_EVENTS.initiatedCheckout, {
+          product_id: pkg.pkg.product?.identifier ?? "coaching_call",
+          product_type: "coaching_call",
+          price: pkg.pkg.product?.price ?? null,
+          currency: pkg.pkg.product?.currencyCode ?? null,
+          store: "appstore",
+          source_screen: "coaching",
+        });
         const result = await paywall.purchase(pkg.pkg);
         if (result.cancelled) return;
         if (!result.ok) {
@@ -49,6 +64,15 @@ const Coaching = () => {
           source: "coaching-page",
           usingRealTxId: Boolean(result.transactionId),
         });
+        logAfEvent(AF_EVENTS.coachingPurchaseSuccess, buildPurchaseParams({
+          productId: result.productId ?? pkg.pkg.product?.identifier ?? "coaching_call",
+          productType: "coaching_call",
+          price: pkg.pkg.product?.price ?? null,
+          currency: pkg.pkg.product?.currencyCode ?? null,
+          store: "appstore",
+          orderId: result.transactionId ?? null,
+          sourceScreen: "coaching",
+        }));
         const recorded = await recordCoachingPurchase({
           source: "appstore",
           productId: result.productId ?? pkg.pkg.product?.identifier ?? "coaching_call",

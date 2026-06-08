@@ -3,6 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n";
 import "./lib/firebase"; // Initialize Firebase services
+import { initAppsFlyer } from "./lib/appsflyer";
 import { logAuthDiag } from "./lib/authDiagnostics";
 import { AUTH_FLOW_BUILD } from "./lib/authFlowBuild";
 import { ensureInstallMarker } from "./lib/installMarker";
@@ -32,5 +33,7 @@ if (import.meta.env.DEV) {
 // paint. Awaited deliberately — a few extra ms at cold start is worth
 // the correctness guarantee. No-op on Android / web.
 void ensureInstallMarker().finally(() => {
+  // Kick off the AppsFlyer SDK on cold launch. No-op on web.
+  void initAppsFlyer();
   createRoot(document.getElementById("root")!).render(<App />);
 });

@@ -51,6 +51,7 @@
         "@revenuecat/purchases-capacitor": "^13.0.0",
         "@supabase/supabase-js": "^2.98.0",
         "@tanstack/react-query": "^5.83.0",
+        "appsflyer-capacitor-plugin": "^6.18.0",
         "capacitor-native-settings": "^8.1.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -786,6 +787,8 @@
     "any-promise": ["any-promise@1.3.0", "", {}, "sha512-7UvmKalWRt1wgjL1RrGxoSJW/0QZFIegpeGvZG9kjp8vrRu55XTHbwnqq2GpXm9uLbcuhxm3IqX9OB4MZR1b2A=="],
 
     "anymatch": ["anymatch@3.1.3", "", { "dependencies": { "normalize-path": "^3.0.0", "picomatch": "^2.0.4" } }, "sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw=="],
+
+    "appsflyer-capacitor-plugin": ["appsflyer-capacitor-plugin@6.18.0", "https://europe-west4-npm.pkg.dev/lovable-core-prod/sandbox-npm-cache/appsflyer-capacitor-plugin/-/appsflyer-capacitor-plugin-6.18.0.tgz", { "peerDependencies": { "@capacitor/core": ">=8.0.0" } }, "sha512-wt9HSOOTXH94QuJQMu8hWSzw4PqX5boYKPihXXuPkfNtr32AMjW3v00TWRBwr/aQZIri3hXS8DSFmBDYYTy2vg=="],
 
     "arg": ["arg@5.0.2", "", {}, "sha512-PYjyFOLKQ9y57JvQ6QLo8dAgNqswh8M1RMJYdQduT6xbWSgK36P/Z/v+p888pM69jMMfS8Xd8F6I1kQ/I9HUGg=="],
 

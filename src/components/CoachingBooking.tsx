@@ -13,6 +13,7 @@ import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
 import { getCachedAppleFullName } from "@/lib/appleDisplayName";
+import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -204,6 +205,14 @@ const CoachingBooking = ({
           setScreen("info");
           return;
         }
+        logAfEvent(AF_EVENTS.initiatedCheckout, {
+          product_id: pkg.pkg.product?.identifier ?? "coaching_call",
+          product_type: "coaching_call",
+          price: pkg.pkg.product?.price ?? null,
+          currency: pkg.pkg.product?.currencyCode ?? null,
+          store: "appstore",
+          source_screen: "coaching_booking_modal",
+        });
         const result = await paywall.purchase(pkg.pkg);
         if (result.cancelled) {
           setScreen("info");
@@ -218,6 +227,15 @@ const CoachingBooking = ({
           userId: session.user.id,
           usingRealTxId: Boolean(result.transactionId),
         });
+        logAfEvent(AF_EVENTS.coachingPurchaseSuccess, buildPurchaseParams({
+          productId: result.productId ?? pkg.pkg.product?.identifier ?? "coaching_call",
+          productType: "coaching_call",
+          price: pkg.pkg.product?.price ?? null,
+          currency: pkg.pkg.product?.currencyCode ?? null,
+          store: "appstore",
+          orderId: result.transactionId ?? null,
+          sourceScreen: "coaching_booking_modal",
+        }));
         const recorded = await recordCoachingPurchase({
           source: "appstore",
           productId: result.productId ?? pkg.pkg.product?.identifier ?? "coaching_call",
@@ -263,8 +281,11 @@ const CoachingBooking = ({
     // The Cal.com webhook (cal-webhook edge function) is the canonical writer
     // for the booked session — scheduled_at, timezone, attendee info etc.
     // We intentionally do not insert here to avoid creating duplicate rows.
+    logAfEvent(AF_EVENTS.coachingBookingCompleted, {
+      source_screen: isAlreadyPaid ? "coaching_pending" : "coaching_booking_modal",
+    });
     setScreen("success");
-  }, []);
+  }, [isAlreadyPaid]);
 
   const close = () => onOpenChange(false);
 

@@ -15,6 +15,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } f
 import { useMealSync } from "@/hooks/useMealSync";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import heroPlan from "@/assets/hero-plan.jpg";
+import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 
 type AIMode = "single" | "daily" | "weekly";
 
@@ -220,6 +221,11 @@ const MealPlan = () => {
       if (data?.error) { toast.error(data.error); return; }
 
       const result = data.plan;
+      logAfEvent(AF_EVENTS.mealPlanGenerated, {
+        mode: aiMode,
+        diet_tier: aiTier,
+        meals_per_day: profile.mealsPerDay,
+      });
 
       const toMeal = (m: any): PlannedMeal => ({
         id: crypto.randomUUID(),

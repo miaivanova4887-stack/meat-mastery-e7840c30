@@ -18,8 +18,27 @@ let package = Package(
         .package(name: "CapacitorApp", path: "../../../node_modules/@capacitor/app"),
         .package(name: "CapacitorPushNotifications", path: "../../../node_modules/@capacitor/push-notifications"),
         .package(name: "RevenuecatPurchasesCapacitor", path: "../../../node_modules/@revenuecat/purchases-capacitor"),
-        .package(name: "CapacitorNativeSettings", path: "../../../node_modules/capacitor-native-settings")
+        .package(name: "CapacitorNativeSettings", path: "../../../node_modules/capacitor-native-settings"),
+        .package(name: "AppsflyerCapacitorPlugin", path: "../../../node_modules/appsflyer-capacitor-plugin")
     ],
+    targets: [
+        .target(
+            name: "CapApp-SPM",
+            dependencies: [
+                .product(name: "Capacitor", package: "capacitor-swift-pm"),
+                .product(name: "Cordova", package: "capacitor-swift-pm"),
+                .product(name: "CapacitorCommunitySpeechRecognition", package: "CapacitorCommunitySpeechRecognition"),
+                .product(name: "CapacitorCommunityTextToSpeech", package: "CapacitorCommunityTextToSpeech"),
+                .product(name: "CapgoCapacitorSocialLogin", package: "CapgoCapacitorSocialLogin"),
+                .product(name: "CapacitorApp", package: "CapacitorApp"),
+                .product(name: "CapacitorPushNotifications", package: "CapacitorPushNotifications"),
+                .product(name: "RevenuecatPurchasesCapacitor", package: "RevenuecatPurchasesCapacitor"),
+                .product(name: "CapacitorNativeSettings", package: "CapacitorNativeSettings"),
+                .product(name: "AppsflyerCapacitorPlugin", package: "AppsflyerCapacitorPlugin")
+            ]
+        )
+    ]
+)
     targets: [
         .target(
             name: "CapApp-SPM",

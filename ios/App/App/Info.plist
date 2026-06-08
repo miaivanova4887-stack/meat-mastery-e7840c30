@@ -38,6 +38,8 @@
 	<string>CarnivoreX accesses your photo library so you can pick an existing meal photo to auto-detect nutrients.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>CarnivoreX saves meal photos you capture so you can revisit them in your nutrition log.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>We use this to measure ad performance and improve your CarnivoreX experience. Your data is never sold.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
