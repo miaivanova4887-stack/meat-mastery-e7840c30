@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useCallback, type ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -9,6 +9,7 @@ import {
   isRevenueCatAvailable,
   type RcEntitlementSummary,
 } from "@/lib/revenuecat";
+import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 
 export type SubscriptionTier = "free" | "pro" | "elite";
 
@@ -38,6 +39,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [source, setSource] = useState<"revenuecat" | "stripe" | "none">("none");
   const [loading, setLoading] = useState(true);
+  const prevTierRef = useRef<SubscriptionTier>("free");
 
   // Initialize RevenueCat once on mount (native platforms only).
   // We pass the user id lazily in a separate effect below so a signed-out
@@ -124,6 +126,20 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     refreshSubscription();
   }, [refreshSubscription]);
+
+  // Fire subscription_started once when the active tier moves up from free.
+  useEffect(() => {
+    if (loading) return;
+    const prev = prevTierRef.current;
+    if (prev === "free" && tier !== "free" && isActive) {
+      logAfEvent(AF_EVENTS.subscriptionStarted, {
+        plan_id: tier,
+        product_type: "subscription",
+        store: source === "revenuecat" ? "appstore" : source === "stripe" ? "stripe" : "unknown",
+      });
+    }
+    prevTierRef.current = tier;
+  }, [tier, isActive, source, loading]);
 
   // Auto-refresh every 60 seconds
   useEffect(() => {
