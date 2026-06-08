@@ -1,108 +1,165 @@
-## Goal
+## Stack detection
 
-On iOS, every coaching price shown must come from the StoreKit product metadata (`paywall.packages.coaching.priceString`) for the current Apple ID's storefront — not from a hardcoded `$99.99` literal. Web/Stripe continues to use the Stripe-side amount.
+This repo is **Capacitor 8** (React + Vite + TS) with native **iOS (SPM)** and **Android (Gradle)** projects already generated. RevenueCat is the IAP layer; Firebase Analytics is already wired. No React Native / Expo.
 
-## Audit — coaching price surfaces today
+Correct integration path: `**appsflyer-capacitor-plugin**` (official AppsFlyer plugin for Capacitor). It ships native iOS (SPM-compatible) and Android modules and exposes a JS API — no CocoaPods required, no manual Swift/Kotlin needed for the base SDK.
+
+## What I will do
+
+### 1. Add the plugin
+
+- `bun add appsflyer-capacitor-plugin`
+- Register it in `ios/App/CapApp-SPM/Package.swift` and confirm Android auto-link via `capacitor.build.gradle` after `npx cap sync`.
+- No changes to `Podfile` (none exists; iOS is SPM).
+- iOS: add `NSUserTrackingUsageDescription` to `Info.plist` (required by AppsFlyer for ATT-aware install attribution; safe even if we don't call ATT yet — value: "We use this to measure ad performance and improve your experience.").
+- Android: AppsFlyer plugin auto-adds `INTERNET` (already present) and `ACCESS_NETWORK_STATE`. No manual manifest edits.
+
+### 2. Secrets / config
+
+- `DEV_KEY` (`Uk5UhKPSaBzxQTYfqDWZsj`) and iOS `APP_ID` (`id6762581416` → numeric `6762581416`) are **client-side identifiers**, not server secrets — store them in code as constants in `src/lib/appsflyer.ts` (same pattern as the Supabase publishable key and Firebase config). No secrets tool needed.
+- Debug logging gated by `import.meta.env.DEV`.
+
+### 3. Centralized analytics wrapper
+
+New file `src/lib/appsflyer.ts`:
+
+- `initAppsFlyer()` — idempotent, native-only guard via `Capacitor.isNativePlatform()`. Calls `AppsFlyer.initSDK({ devKey, appId: '6762581416', isDebug: DEV, waitForATTUserAuthorization: 0, minTimeBetweenSessions: 4 })`.
+- `logAfEvent(name, params?)` — wraps `AppsFlyer.logEvent`; no-op + console.debug on web.
+- `AF_EVENTS` constants — AppsFlyer predefined names where applicable (`af_login`, `af_complete_registration`, `af_purchase`, `af_initiated_checkout`) plus snake_case customs (`onboarding_completed`, `paywall_viewed`, `subscription_started`, `coaching_cta_tapped`, `coaching_purchase_success`, `coaching_booking_completed`, `meal_plan_generated`, `progress_logged`).
+- Param helpers mapping to AppsFlyer predefined param keys (`af_revenue`, `af_currency`, `af_content_id`, `af_content_type`, `af_order_id`).
+
+### 4. Lifecycle init
+
+Call `initAppsFlyer()` from `src/main.tsx` right after `./lib/firebase` import — same place Firebase initializes — so SDK starts on cold launch before React mounts. The plugin's `initSDK` is what AppsFlyer documents as the "start" call for Capacitor, so no extra `start()` is needed.
+
+### 5. Event hooks (only at existing trigger points)
 
 
-| File                                 | Line     | Current                                                                                                                                    | Issue                                                                     |
-| ------------------------------------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
-| `src/components/CoachingBooking.tsx` | 313      | `content.paid_label                                                                                                                        | &nbsp;                                                                    |
-| `src/pages/Coaching.tsx`             | 127–128  | `paywall.packages.coaching?.priceString ?? "$99.99"`                                                                                       | Correct precedence but on a slow RC load it briefly shows the US literal. |
-| `src/pages/Pricing.tsx`              | 571      | `coachingPkg.priceLabel                                                                                                                    | &nbsp;                                                                    |
-| `src/pages/Pricing.tsx`              | 585      | `Book a Call — ${TIERS.coaching.amount}` (`$99.99`) — web Stripe branch only                                                               | OK (web).                                                                 |
-| `src/pages/Pricing.tsx`              | 211, 227 | Plan feature bullets `"Coaching calls ($99.99/session)"` (the bullet under Elite "YOUR PLAN" card visible in IMG_0498 comes via this list) | Hardcoded US price shown on iOS. Should reflect StoreKit price on native. |
+| Event                                                            | Trigger location                                                                                                     |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `af_complete_registration` (method)                              | `src/contexts/AuthContext.tsx` post-signup success                                                                   |
+| `af_login` (method: password/google/apple)                       | `src/contexts/AuthContext.tsx` post-signin success                                                                   |
+| `onboarding_completed`                                           | `src/pages/Onboarding.tsx` final wellness-consent step                                                               |
+| `paywall_viewed` (source_screen)                                 | `src/pages/Pricing.tsx` and `src/pages/Coaching.tsx` mount                                                           |
+| `af_initiated_checkout` (plan_id, price, currency, store)        | `src/hooks/useNativePaywall.ts` / `src/lib/coachingPurchase.ts` before purchase call                                 |
+| `subscription_started` (plan_id, price, currency, store)         | `SubscriptionContext` on tier upgrade detected                                                                       |
+| `coaching_cta_tapped` (source_screen)                            | `src/components/MotivationCTA.tsx` / `CoachingBooking.tsx` CTA click                                                 |
+| `coaching_purchase_success` (product_id, price, currency, store) | `src/lib/coachingPurchase.ts` post-RC success / `supabase/functions/record-coaching-purchase` client-side after-call |
+| `af_purchase` (revenue, currency, order_id, content_type)        | **See §6 — gated to avoid double counting**                                                                          |
+| `coaching_booking_completed`                                     | `src/components/CoachingBooking.tsx` after Cal.com redirect confirm                                                  |
+| `meal_plan_generated`                                            | `src/pages/MealPlan.tsx` / `supabase/functions/meal-plan-ai` client success handler                                  |
+| `progress_logged` (category)                                     | `src/hooks/useProgress.ts` on insert success                                                                         |
 
 
-## Changes
+### 6. Revenue de-duplication (important)
 
-### 1. `src/components/CoachingBooking.tsx` (line 309–315)
+RevenueCat is the source of truth for IAP. AppsFlyer has an **S2S RevenueCat integration** (RC → AppsFlyer purchase events) that is configured in the AppsFlyer dashboard, not in app code. If the user has enabled that integration, firing `af_purchase` client-side will **double-count revenue**.
 
-Make StoreKit the source of truth on iOS, and ignore the CMS `paid_label` when running native:
+Plan: ship `af_purchase`/`coaching_purchase_success` **without `af_revenue**` by default (only product_id + currency + store), and add a single flag `AF_CLIENT_REVENUE_ENABLED = false` in `src/lib/appsflyer.ts`. Flip to `true` only if the user confirms RC→AppsFlyer S2S is NOT configured. This is the "flag instead of blindly duplicate" behavior requested.
 
-```tsx
-const nativePrice = useNative ? paywall.packages.coaching?.priceString : null;
-const priceCopy = nativePrice
-  ? `${nativePrice} per session`
-  : (content.paid_label || "$99.99 per session");
-```
+### 7. Deep link / conversion listener
 
-Render `priceCopy`. (Web/Stripe path keeps CMS/$99.99 fallback.)
+A safe, non-intrusive listener that only logs to console + analytics buffer — does NOT navigate, so it cannot break the existing `useDeepLinks` / `usePushNavigation` routing:
 
-### 2. `src/pages/Coaching.tsx` (line 122–129)
+- `AppsFlyer.addListener('onConversionDataSuccess', …)` — log first-install source for attribution debugging.
+- `AppsFlyer.addListener('onAppOpenAttribution', …)` — log deep-link payload only.
+- Registered inside `initAppsFlyer()`. No router calls.
 
-Same precedence already exists, but suppress the `$99.99` fallback while RC is still loading on native. Show `—` (or a small skeleton) when `useNative && !paywall.packages.coaching?.priceString`, and only fall back to `$99.99` on web.
+### 8. Files changed
 
-### 3. `src/pages/Pricing.tsx` plan feature bullets (lines 192–245)
+- `package.json` (new dep)
+- `ios/App/CapApp-SPM/Package.swift` (plugin product; updated by `cap sync`)
+- `ios/App/App/Info.plist` (NSUserTrackingUsageDescription)
+- `android/app/capacitor.build.gradle` (auto by `cap sync`)
+- `src/lib/appsflyer.ts` (new — wrapper, constants, init, listeners)
+- `src/main.tsx` (call `initAppsFlyer()`)
+- `src/contexts/AuthContext.tsx` (login + signup hooks)
+- `src/contexts/SubscriptionContext.tsx` (subscription_started)
+- `src/pages/Onboarding.tsx` (onboarding_completed)
+- `src/pages/Pricing.tsx` (paywall_viewed)
+- `src/pages/Coaching.tsx` (paywall_viewed)
+- `src/hooks/useNativePaywall.ts` (initiated_checkout + purchase)
+- `src/lib/coachingPurchase.ts` (coaching_purchase_success)
+- `src/components/MotivationCTA.tsx` (coaching_cta_tapped)
+- `src/components/CoachingBooking.tsx` (coaching_cta_tapped + coaching_booking_completed)
+- `src/pages/MealPlan.tsx` (meal_plan_generated)
+- `src/hooks/useProgress.ts` (progress_logged)
 
-Compute the coaching bullet text dynamically instead of a hardcoded string. Add near the `plans` definition:
+### 9. Manual dashboard / external steps (user must do)
 
-```ts
-const nativeCoachingPrice = paywall.packages.coaching?.priceString;
-const coachingBullet = paywall.enabled
-  ? (nativeCoachingPrice ? `Coaching calls (${nativeCoachingPrice}/session)` : "Coaching calls")
-  : `Coaching calls (${TIERS.coaching.amount}/session)`;
-```
+1. In AppsFlyer dashboard → My Apps → confirm iOS app `id6762581416` and Android app `com.mi4labs.carnivorex` are both registered.
+2. Confirm or disable the **RevenueCat → AppsFlyer** S2S purchase integration. Tell me which, so I can set `AF_CLIENT_REVENUE_ENABLED` correctly.
+3. (iOS) SKAdNetwork IDs — AppsFlyer provides a list; add to `Info.plist` if running paid UA campaigns (not required for SDK init).
+4. (iOS) If you want ATT prompt, add `@capacitor-community/app-tracking-transparency` later — out of scope here; AppsFlyer still works (limited attribution) without it.
+5. After `npx cap sync ios`, open Xcode once to let SPM resolve the AppsFlyer package.
 
-Use `coachingBullet` in the Free and Pro feature arrays in place of the two `"Coaching calls ($99.99/session)"` literals. Wrap `plans` in `useMemo` keyed on `coachingBullet` so it re-renders when RC resolves.
+### 10. Verification checklist
 
-### 4. `src/pages/Pricing.tsx` line 571 (book button)
+**iOS**
 
-Drop the `"$99.99"` fallback in the native branch — only render the button label once `coachingPkg.priceLabel` is set; the existing "Loading coaching…" state at line 553 already covers the pre-resolve state, so this is a one-line safety cleanup: `Book a Call — ${coachingPkg.priceLabel}`.
+- `bun add` succeeds, `npx cap sync ios` succeeds, Xcode resolves SPM package.
+- App launches; Xcode console shows `[AppsFlyerSDK]` debug lines in Debug build only.
+- AppsFlyer dashboard → Real-time → install event appears within ~1 min of fresh install.
+- Trigger login → `af_login` visible in Real-time events.
+- Trigger a sandbox StoreKit purchase → `af_initiated_checkout` + `coaching_purchase_success` visible; revenue counted **once** (RC-side OR client-side, not both).
 
-### 5. Leave alone
+**Android**
 
-- `src/pages/Pricing.tsx` line 25/27 `TIERS.coaching.amount` and line 585 — these power the **web Stripe** branch only and `$99.99` is the correct US Stripe price.
-- Stripe checkout / Cal.com URLs.
-- `revenuecat.ts`, `useNativePaywall.ts` (already pass `product.priceString` through correctly).
+- `npx cap sync android` succeeds; `./gradlew :app:assembleDebug` succeeds.
+- Logcat filter `AppsFlyer_` shows debug logs.
+- Same dashboard checks as iOS for `com.mi4labs.carnivorex`.
 
-## Verification (evidence to capture)
+Correction before implementation:
 
-Build a fresh TestFlight APK. With two Apple IDs / storefronts:
+This app is iOS only. There is no Android project. Adjust the plan accordingly:
 
-1. **US storefront** sign-in on device:
-  - Pricing page Free/Pro bullets read `Coaching calls ($99.99/session)`.
-  - `Book a Call` button reads `$99.99`.
-  - CoachingBooking modal reads `$99.99 per session`.
-  - StoreKit sheet reads `$99.99`.
-  - Console: `[RC DEBUG] paywall packages` includes `coaching:$99.99`.
-2. **Canada storefront** sign-in (same binary, switch Apple ID in Settings → Media & Purchases):
-  - All four surfaces above read `$129.99` (or whatever CA price StoreKit returns).
-  - StoreKit sheet reads `$129.99`.
-  - Console: `[RC DEBUG] paywall packages` includes `coaching:$129.99`.
+Remove entirely:
 
-Screenshot all four in-app surfaces + the StoreKit sheet per storefront for the build report.
+All Android/Gradle steps
 
-Approved.
+npx cap sync android
 
-This is the right fix direction.
+./gradlew :app:assembleDebug verification
 
-On iOS, every coaching price surface should use the localized RevenueCat / StoreKit product price string for the current App Store storefront, not a hardcoded US literal and not CMS price copy.
+android/app/[capacitor.build](http://capacitor.build).gradle from files changed
 
-I agree with:
+Android Logcat verification steps
 
-making StoreKit/RevenueCat the source of truth in CoachingBooking.tsx
+Android FCM/uninstall measurement note
 
-suppressing native $99.99 fallback in Coaching.tsx
+Any reference to com.mi4labs.carnivorex Android package
 
-replacing hardcoded coaching bullet text in Pricing.tsx
+Keep everything iOS-related as planned:
 
-removing native button fallback where the loading state already exists
+bun add appsflyer-capacitor-plugin
 
-leaving web/Stripe pricing unchanged
+SPM registration in ios/App/CapApp-SPM/Package.swift via npx cap sync ios
 
-Two small notes:
+NSUserTrackingUsageDescription in Info.plist
 
-In Coaching.tsx, prefer a loading skeleton or “Loading price…” instead of a bare dash while RevenueCat is unresolved.
+initAppsFlyer() with iOS APP_ID: '6762581416' and DEV_KEY: 'Uk5UhKPSaBzxQTYfqDWZsj'
 
-After these file changes, run a full codebase grep for remaining coaching $99.99 literals and CMS fallback labels.
+All event hooks, the analytics wrapper, revenue de-duplication flag, and deep link listeners unchanged
 
-Verification should show:
+Adjust verification checklist to iOS only:
 
-US storefront: all in-app coaching surfaces and StoreKit sheet show $99.99
+bun add succeeds, npx cap sync ios succeeds, Xcode resolves SPM package
 
-Canada storefront: all in-app coaching surfaces and StoreKit sheet show $129.99
+[AppsFlyerSDK] debug lines visible in Xcode console on Debug builds only
 
-## Out of scope
+AppsFlyer dashboard Real-time → install event appears within ~1 min of fresh install on device
 
-SIWA name parsing, BottomNav spacing, notification permission flow, Stripe price changes.
+Trigger login → af_login visible in Real-time events
+
+Trigger sandbox StoreKit purchase → af_initiated_checkout + coaching_purchase_success visible; revenue counted once
+
+Adjust dashboard steps to remove Android app registration. Only iOS app id6762581416 needs to be confirmed in the AppsFlyer dashboard.
+
+Everything else in the plan — wrapper design, event list, revenue flag, deep link listener, SPM blocker callout — remains approved as written.
+
+### 11. Known assumptions / blockers (called out before implementation)
+
+- **No CocoaPods will be added.** If the AppsFlyer Capacitor plugin's current version requires CocoaPods on iOS (some older versions do), I will stop and surface it instead of converting your iOS project off SPM.
+- **Native FCM is currently gated** (`NATIVE_FCM_ENABLED` false). AppsFlyer Uninstall Measurement on iOS reuses APNs token — works regardless; on Android it uses FCM, so uninstall measurement will be limited until FCM is enabled. Not a blocker for install/event tracking.
+- **AppsFlyer MCP server is a tool for me**, not something deployed to the app — it won't appear in user-facing code.
+- I will not modify Stripe/Cal.com server flows, the RC IAP product config, or any backend edge functions.

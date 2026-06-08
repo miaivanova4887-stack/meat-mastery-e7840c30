@@ -61,6 +61,7 @@
     "@revenuecat/purchases-capacitor": "^13.0.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tanstack/react-query": "^5.83.0",
+    "appsflyer-capacitor-plugin": "^6.18.0",
     "capacitor-native-settings": "^8.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
