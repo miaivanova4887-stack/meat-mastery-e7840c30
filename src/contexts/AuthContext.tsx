@@ -166,20 +166,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       },
     });
     if (error) console.warn("[AuthVerify] signup error", error.message);
+    if (!error) {
+      logAfEvent(AF_EVENTS.completeRegistration, {
+        [AF_PARAMS.registrationMethod]: "email",
+        method: "email",
+      });
+    }
     return { error: error?.message ?? null };
   };
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
-    // Block sign-in if the user has not confirmed their email yet.
-    // Without this, a user can sign up, switch to the Login tab, and enter
-    // the app before clicking the verification link.
     if (data.user && !data.user.email_confirmed_at) {
       console.warn("[AuthVerify] blocked sign-in for unconfirmed email", email);
       await supabase.auth.signOut();
       return { error: "Email not confirmed" };
     }
+    logAfEvent(AF_EVENTS.login, {
+      [AF_PARAMS.loginMethod]: "email",
+      method: "email",
+    });
     return { error: null };
   };
 
