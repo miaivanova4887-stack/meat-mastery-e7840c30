@@ -3,6 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 import "./i18n";
 import "./lib/firebase"; // Initialize Firebase services
+import { initAppsFlyer } from "./lib/appsflyer";
 import { logAuthDiag } from "./lib/authDiagnostics";
 import { AUTH_FLOW_BUILD } from "./lib/authFlowBuild";
 import { ensureInstallMarker } from "./lib/installMarker";
