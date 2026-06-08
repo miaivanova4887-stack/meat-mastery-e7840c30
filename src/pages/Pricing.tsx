@@ -10,6 +10,7 @@ import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywa
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
+import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
 
 
 // --- Web / Stripe configuration ------------------------------------------
@@ -46,6 +47,12 @@ const Pricing = () => {
       refreshSubscription();
     }
   }, [searchParams, refreshSubscription]);
+
+  // Paywall view event — once per Pricing page mount.
+  useEffect(() => {
+    logAfEvent(AF_EVENTS.paywallViewed, { source_screen: "pricing" });
+  }, []);
+
 
   // --- Stripe (web) handlers ----------------------------------------------
   const handleStripeCheckout = async (priceId: string) => {
@@ -97,9 +104,27 @@ const Pricing = () => {
     const id = info.pkg.identifier;
     setLoading(id);
     try {
+      logAfEvent(AF_EVENTS.initiatedCheckout, {
+        plan_id: info.pkg.identifier,
+        product_id: info.pkg.product?.identifier ?? info.pkg.identifier,
+        product_type: "subscription",
+        price: info.pkg.product?.price ?? null,
+        currency: info.pkg.product?.currencyCode ?? null,
+        store: "appstore",
+        source_screen: "pricing",
+      });
       const result = await paywall.purchase(info.pkg);
       if (result.ok) {
         toast.success("Subscription activated! Welcome aboard 🎉");
+        logAfEvent(AF_EVENTS.purchase, buildPurchaseParams({
+          productId: info.pkg.product?.identifier ?? info.pkg.identifier,
+          productType: "subscription",
+          price: info.pkg.product?.price ?? null,
+          currency: info.pkg.product?.currencyCode ?? null,
+          store: "appstore",
+          orderId: result.transactionId ?? null,
+          sourceScreen: "pricing",
+        }));
         await refreshSubscription();
       } else if (result.cancelled) {
         // User dismissed the sheet — stay quiet.
