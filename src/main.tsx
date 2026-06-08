@@ -33,5 +33,7 @@ if (import.meta.env.DEV) {
 // paint. Awaited deliberately — a few extra ms at cold start is worth
 // the correctness guarantee. No-op on Android / web.
 void ensureInstallMarker().finally(() => {
+  // Kick off the AppsFlyer SDK on cold launch. No-op on web.
+  void initAppsFlyer();
   createRoot(document.getElementById("root")!).render(<App />);
 });
