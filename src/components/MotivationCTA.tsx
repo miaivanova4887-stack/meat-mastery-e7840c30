@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Zap, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import CoachingBooking from "@/components/CoachingBooking";
+import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 
 interface MotivationCTAProps {
   onClick?: () => void;
@@ -12,6 +13,7 @@ const MotivationCTA = ({ onClick }: MotivationCTAProps) => {
   const [coachingOpen, setCoachingOpen] = useState(false);
 
   const handleClick = () => {
+    logAfEvent(AF_EVENTS.coachingCtaTapped, { source_screen: "motivation_cta" });
     if (onClick) {
       onClick();
     } else {
