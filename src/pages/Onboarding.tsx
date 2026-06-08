@@ -8,6 +8,7 @@ import i18n from "@/i18n/index";
 import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 import { Capacitor } from "@capacitor/core";
 import { useHealthConnect } from "@/hooks/useHealthConnect";
+import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 
 interface StepOption {
   label: string;
@@ -320,6 +321,11 @@ const Onboarding = () => {
         ];
         localStorage.setItem(STORAGE_KEY, "true");
         localStorage.setItem("carnivore-onboarding-answers", JSON.stringify(legacyAnswers));
+        logAfEvent(AF_EVENTS.onboardingCompleted, {
+          goal_index: (newAnswers[0] as number) ?? null,
+          sex_index: (newAnswers[1] as number) ?? null,
+          meals_per_day: [1, 2, 3, 4][(newAnswers[7] as number) ?? 2] ?? 3,
+        });
 
         const mealsPerDayVal = [1, 2, 3, 4][(newAnswers[7] as number) ?? 2] ?? 3;
         localStorage.setItem("carnivore-meals-per-day", String(mealsPerDayVal));
