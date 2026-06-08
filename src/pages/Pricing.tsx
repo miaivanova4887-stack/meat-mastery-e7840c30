@@ -153,6 +153,14 @@ const Pricing = () => {
     const id = info.pkg.identifier;
     setLoading(id);
     try {
+      logAfEvent(AF_EVENTS.initiatedCheckout, {
+        product_id: info.pkg.product?.identifier ?? "coaching_call",
+        product_type: "coaching_call",
+        price: info.pkg.product?.price ?? null,
+        currency: info.pkg.product?.currencyCode ?? null,
+        store: "appstore",
+        source_screen: "pricing",
+      });
       const result = await paywall.purchase(info.pkg);
       if (result.cancelled) {
         return;
@@ -161,10 +169,6 @@ const Pricing = () => {
         toast.error(result.error ?? "Purchase failed");
         return;
       }
-      // Prefer the real Apple/Google transaction id surfaced by RC. Fall
-      // back to a synthetic id only if the SDK runtime didn't expose one,
-      // so we still record the purchase. The backend is idempotent on
-      // (user_id, transaction_id).
       const productId = result.productId ?? info.pkg.product?.identifier ?? "coaching_call";
       const transactionId = result.transactionId ?? `rc_${user.id}_${Date.now()}`;
       console.log("coaching:booking-link-requested", {
@@ -172,6 +176,15 @@ const Pricing = () => {
         source: "pricing-page",
         usingRealTxId: Boolean(result.transactionId),
       });
+      logAfEvent(AF_EVENTS.coachingPurchaseSuccess, buildPurchaseParams({
+        productId,
+        productType: "coaching_call",
+        price: info.pkg.product?.price ?? null,
+        currency: info.pkg.product?.currencyCode ?? null,
+        store: "appstore",
+        orderId: transactionId,
+        sourceScreen: "pricing",
+      }));
       const recorded = await recordCoachingPurchase({
         source: "appstore",
         productId,
