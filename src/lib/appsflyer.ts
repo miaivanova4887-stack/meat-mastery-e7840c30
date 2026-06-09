@@ -24,7 +24,20 @@ import { AppsFlyer, AFConstants } from "appsflyer-capacitor-plugin";
 // Same handling pattern as the Supabase publishable key + Firebase config.
 // ---------------------------------------------------------------------------
 const AF_DEV_KEY = "Uk5UhKPSaBzxQTYfqDWZsj";
-const AF_IOS_APP_ID = "6762581416"; // numeric (no "id" prefix)
+const AF_IOS_APP_ID = "6762581416"; // numeric App Store id (no "id" prefix)
+const AF_ANDROID_APP_ID = "com.mi4labs.carnivorex"; // Google Play package name
+
+/**
+ * AppsFlyer's Capacitor plugin requires `appID` on both platforms.
+ * - iOS: numeric App Store id.
+ * - Android: package name (install attribution is keyed off this).
+ * Web returns null and is short-circuited by the `isNative()` guard.
+ */
+function resolveAppId(): string {
+  const p = Capacitor.getPlatform();
+  if (p === "android") return AF_ANDROID_APP_ID;
+  return AF_IOS_APP_ID;
+}
 
 /** Set to true only if RC→AppsFlyer S2S purchase reporting is OFF. */
 export const AF_CLIENT_REVENUE_ENABLED = false;
@@ -58,7 +71,7 @@ export function initAppsFlyer(): Promise<void> {
 
       await AppsFlyer.initSDK({
         devKey: AF_DEV_KEY,
-        appID: AF_IOS_APP_ID,
+        appID: resolveAppId(),
         isDebug: isDev,
         waitForATTUserAuthorization: 0,
         minTimeBetweenSessions: 4,
