@@ -71,7 +71,7 @@ export function initAppsFlyer(): Promise<void> {
 
       await AppsFlyer.initSDK({
         devKey: AF_DEV_KEY,
-        appID: AF_IOS_APP_ID,
+        appID: resolveAppId(),
         isDebug: isDev,
         waitForATTUserAuthorization: 0,
         minTimeBetweenSessions: 4,
