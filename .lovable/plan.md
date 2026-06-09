@@ -1,89 +1,60 @@
-# Android Parity Release — Audit & Plan
+## Goal
+Fix `scripts/build-android-fresh.sh` so the synced-bundle verification only checks markers guaranteed to ship in a Vite **production** build, and resolves the auth-flow version dynamically from `src/lib/authFlowBuild.ts`.
 
-## 1. Recent iOS-era changes → Android impact map
+## Why the script aborts today
+The current `REQUIRED_MARKERS` list contains:
+- `BuildInfo` — only emitted inside `if (import.meta.env.DEV)` in `src/main.tsx`, so Vite tree-shakes it from prod bundles.
+- `authFlow=v8-normalized-callback-parser` — hardcoded to an old version; current value in `src/lib/authFlowBuild.ts` is `v11-20260526-proof-path`.
 
+Both cause false-negative aborts even when the bundle is fresh.
 
-| #   | Recent change                                                                                                                            | Layer                       | Android status                                                                                                                                                                                                                                                                                                   | Action                                                                                                                           |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Coaching purchase flow + pricing fixes (`Coaching.tsx`, `CoachingBooking.tsx`, `Pricing.tsx`, `useNativePaywall`, `coachingPurchase.ts`) | Shared React                | Already shared. `isRevenueCatAvailable()` already returns true on Android; `REVENUECAT_ANDROID_KEY` is set.                                                                                                                                                                                                      | No code change. QA only.                                                                                                         |
-| 2   | Storefront-localized price strings via `product.priceString`                                                                             | Shared (RC SDK)             | RC surfaces Google Play localized prices identically.                                                                                                                                                                                                                                                            | None.                                                                                                                            |
-| 3   | Security migration (revoke column SELECT on `coaching_sessions`)                                                                         | Backend                     | Platform-agnostic.                                                                                                                                                                                                                                                                                               | None.                                                                                                                            |
-| 4   | AppsFlyer SDK integration (`src/lib/appsflyer.ts`, `main.tsx`, event hooks)                                                              | Shared + native             | **Partial**. JS wrapper runs on Android, but: (a) `appID` is hardcoded to the iOS numeric id `6762581416`; (b) `npx cap sync android` has not been run since the plugin was added — `android/app/capacitor.build.gradle` does **not** yet list `appsflyer-capacitor-plugin`, so the Android module isn't linked. | Implement (see §3).                                                                                                              |
-| 5   | iOS `Info.plist` `NSUserTrackingUsageDescription`                                                                                        | iOS-native                  | Not applicable to Android (no ATT on Android).                                                                                                                                                                                                                                                                   | Mark N/A.                                                                                                                        |
-| 6   | `Package.swift` SPM registration of AppsFlyer                                                                                            | iOS-native                  | N/A — Android auto-links via Gradle after `cap sync`.                                                                                                                                                                                                                                                            | Mark N/A.                                                                                                                        |
-| 7   | RC→AppsFlyer S2S revenue-dedup flag (`AF_CLIENT_REVENUE_ENABLED`)                                                                        | Shared                      | Applies identically on Android.                                                                                                                                                                                                                                                                                  | None.                                                                                                                            |
-| 8   | Auth hooks (`af_login` / `af_complete_registration`)                                                                                     | Shared                      | Works on Android once §3 lands.                                                                                                                                                                                                                                                                                  | None.                                                                                                                            |
-| 9   | Onboarding completion + meal-plan + progress events                                                                                      | Shared                      | Same.                                                                                                                                                                                                                                                                                                            | None.                                                                                                                            |
-| 10  | Sign in with Apple groundwork (any iOS-only auth paths)                                                                                  | iOS-native                  | Apple is iOS-only by product definition. Android continues with Google + email via `@capgo/capacitor-social-login` (already wired).                                                                                                                                                                              | Mark N/A; verify Google flow still routes through existing `carnivorex://auth` intent filter (already in `AndroidManifest.xml`). |
-| 11  | Deep link / attribution listeners in `initAppsFlyer()`                                                                                   | Shared                      | Will fire on Android once plugin is linked. They only log — they do not navigate, so no conflict with `useDeepLinks` / `usePushNavigation`.                                                                                                                                                                      | None beyond §3.                                                                                                                  |
-| 12  | Push permission / "open settings" UX                                                                                                     | Shared with platform guards | Android already uses `capacitor-native-settings` + `POST_NOTIFICATIONS` permission. Native FCM **disabled on Android** (`NATIVE_FCM_ENABLED_ANDROID=false`) until `google-services.json` ships.                                                                                                                  | Decision needed (see §5).                                                                                                        |
-| 13  | Pricing / paywall UI fixes                                                                                                               | Shared                      | Same.                                                                                                                                                                                                                                                                                                            | None.                                                                                                                            |
-| 14  | Navigation / app-shell tweaks                                                                                                            | Shared React                | Same.                                                                                                                                                                                                                                                                                                            | None.                                                                                                                            |
+## Patch to `scripts/build-android-fresh.sh`
 
+1. **Resolve `AUTH_FLOW_BUILD` dynamically** right after `cap sync`, before the marker loop:
+   ```bash
+   AUTH_FLOW_BUILD=$(grep -E 'AUTH_FLOW_BUILD\s*=' "$ROOT_DIR/src/lib/authFlowBuild.ts" \
+     | sed -E 's/.*"([^"]+)".*/\1/' | head -1)
+   if [[ -z "$AUTH_FLOW_BUILD" ]]; then
+     echo "❌ Could not resolve AUTH_FLOW_BUILD from src/lib/authFlowBuild.ts"
+     exit 1
+   fi
+   echo "🔖 AUTH_FLOW_BUILD = $AUTH_FLOW_BUILD"
+   ```
 
-## 2. Confirmed already-shared (no Android work)
+2. **Replace `REQUIRED_MARKERS`** with prod-safe literals only. All of these are string arguments to `logAuthDiag(...)` (or `version:` field) and survive Vite/esbuild minification because string literals are preserved:
 
-Coaching flow, paywall UI, pricing strings, RC purchase + restore, AppsFlyer event hooks at all call sites, revenue-dedup flag, deep-link listener registration, security migration, onboarding/meal-plan/progress analytics.
+   ```bash
+   REQUIRED_MARKERS=(
+     "build:auth-flow"
+     "$AUTH_FLOW_BUILD"
+     "callback:start"
+     "callback:setSession-start"
+     "deeplink:launch-url"
+     "oauth:exchange-call"
+   )
+   ```
 
-## 3. Android changes to implement
+   Rationale:
+   - `build:auth-flow` — emitted unconditionally at top of `src/main.tsx` via `logAuthDiag("build:auth-flow", …)`.
+   - `$AUTH_FLOW_BUILD` (e.g. `v11-20260526-proof-path`) — shipped as the `version` value in that same call and as the exported constant string.
+   - `callback:start`, `callback:setSession-start` — unconditional `logAuthDiag` tags inside `AuthCallback.tsx` prod code path.
+   - `deeplink:launch-url` — unconditional `logAuthDiag` tag inside `useDeepLinks.ts`.
+   - `oauth:exchange-call` — unconditional `logAuthDiag` tag inside `AuthCallback.tsx`.
 
-### 3a. AppsFlyer Android linkage
+3. **Remove the `FORBIDDEN_STALE` block.** Its three strings (`"native deep link received"`, `"app resumed, refreshing session"`, `"session before refresh"`) reference a removed pre-v8 implementation; they no longer appear anywhere in `src/` and grepping for them in the synced bundle adds no signal. Deleting this block keeps the script lean without weakening guard rails (the positive `REQUIRED_MARKERS` already prove freshness).
 
-- Edit `src/lib/appsflyer.ts`:
-  - Replace the single `AF_IOS_APP_ID` constant with a per-platform resolver. iOS keeps `"6762581416"`. Android passes the **package name** `"com.mi4labs.carnivorex"` as `appID` (AppsFlyer Capacitor plugin requires the field on both platforms; on Android it's used purely as an identifier — the install is keyed off the package name).
-  - Pass the resolved value into `AppsFlyer.initSDK({ appID, … })`.
-- Run `npx cap sync android` so:
-  - `android/capacitor.settings.gradle` includes `appsflyer-capacitor-plugin`.
-  - `android/app/capacitor.build.gradle` adds the `implementation project(':appsflyer-capacitor-plugin')` line.
-  - Plugin's `AndroidManifest.xml` is merged (it provides `ACCESS_NETWORK_STATE`; `INTERNET` is already declared).
-- No manual edits to `android/app/build.gradle` are needed; the plugin's transitive `af-android-sdk` is declared in its own module.
-- No ProGuard rules required for AppsFlyer SDK 6.18.x at the consumer level (the plugin ships its own consumer rules).
+4. **Keep everything else intact**: patch-package check, speech-recognition gradle patch verification, `minSdkVersion=26` pin, kotlin-android plugin guard, HealthConnect plugin copy + marker checks, icon copy + validation, Kotlin pre-compile check, `assembleDebug --no-build-cache`, APK SHA256, optional `adb install`, post-install logcat tip.
 
-### 3b. Versioning for Play parity release
+## Deliverables after patching
+- **Exact diff** of `scripts/build-android-fresh.sh` (old vs new lines).
+- **Final marker list** as resolved at script runtime (will print `🔖 AUTH_FLOW_BUILD = v11-20260526-proof-path` and the 6 markers).
+- **Rerun commands**:
+  ```bash
+  cd /Users/mia/Desktop/carnivore-coach-pro
+  git pull
+  bun install
+  bash scripts/build-android-fresh.sh
+  ```
 
-- `android/app/build.gradle`: bump `versionCode` (currently `1`) and `versionName` (currently `"1.0"`) to a release candidate aligned with the iOS build. Use `versionCode 2`, `versionName "1.1.0"` (or whatever the next iOS build is — confirm before bump).
-
-### 3c. Verify Android-specific guards untouched
-
-- `pushNativeConfig.ts` — `NATIVE_FCM_ENABLED_ANDROID = false` stays unless §5 is unblocked.
-- Health Connect, portrait lock, TTS, speech recognition patches: not part of the last-10-days iOS scope → no changes.
-
-## 4. Files to be changed
-
-- `src/lib/appsflyer.ts` — per-platform `appID`.
-- `android/app/build.gradle` — version bump.
-- Generated by `npx cap sync android` (no manual edit): `android/capacitor.settings.gradle`, `android/app/capacitor.build.gradle`.
-
-## 5. Open product decisions (blocked items)
-
-- **Push on Android**: shipping the parity release with FCM disabled means Android users get no notifications. Either (a) accept the gap and document it in the Play listing, or (b) add `android/app/google-services.json` and flip `NATIVE_FCM_ENABLED_ANDROID` to `true`. **Out of scope for this task unless you decide to unblock.**
-- **RC↔AppsFlyer S2S**: same flag (`AF_CLIENT_REVENUE_ENABLED=false`) applies to Android. Confirm whether S2S is enabled in AppsFlyer dashboard for the Android app `com.mi4labs.carnivorex`. If not, flip to `true` so Play purchases report revenue.
-- **AppsFlyer dashboard**: ensure the Android app entry `com.mi4labs.carnivorex` exists alongside the iOS app — otherwise events will be dropped server-side.
-
-## 6. Android build & QA checklist (post-implementation)
-
-1. `bun install`
-2. `bun run build`
-3. `npx cap sync android`
-4. Verify `android/app/capacitor.build.gradle` now contains `implementation project(':appsflyer-capacitor-plugin')`.
-5. `bash scripts/build-android-fresh.sh` (per project memory: builds debug APK with the timestamped naming).
-6. Install on a physical device with `adb install -r …`.
-7. Logcat: `adb logcat | rg -i "AppsFlyer|RevenueCat|CarnivoreX"`.
-  - Expect `[AppsFlyer] initSDK ok` and `AppsFlyer_*` native debug lines.
-  - Expect RC `configured platform=android keyPrefix=goog_`.
-8. AppsFlyer dashboard → Real-time → confirm install + `af_login` + `paywall_viewed` for `com.mi4labs.carnivorex`.
-9. Google Play sandbox purchase of Pro monthly → confirm `af_initiated_checkout` then `af_purchase` (or RC S2S event), and that `subscription_started` fires once.
-10. Coaching consumable purchase via Google Play sandbox → `coaching_purchase_success` fires, `record-coaching-purchase` edge function records the session.
-11. Deep link smoke test: open `https://app.carnivorex.app/auth/callback?...` — verify it routes to MainActivity (App Links) and AppsFlyer logs an OAOA/UDL callback (log only — should not change navigation).
-12. Push permission UX: trigger from Settings → confirm Android 13+ system prompt and the "Open settings" fallback opens the app's notification screen (via `capacitor-native-settings`). **Note**: native FCM disabled, so no token will register — this is expected until §5 is resolved.
-13. Verify `versionCode` / `versionName` in the built APK via `aapt dump badging`.
-
-## 7. Remaining parity gaps (explicit)
-
-- Push notifications on Android: gap by design until `google-services.json` is provided.
-- Sign in with Apple: N/A on Android by product definition.
-- ATT prompt: N/A on Android.
-
-## 8. Out of scope
-
-Anything older than ~20 days, Health Connect changes, CMS, recipe AI, exercise/yoga flow, theme refinements, and general Android cleanup unrelated to the recent iOS work.
+## Out of scope
+No changes to `src/main.tsx`, `src/lib/authFlowBuild.ts`, `AuthCallback.tsx`, or any Android/Gradle config. Script-only patch.

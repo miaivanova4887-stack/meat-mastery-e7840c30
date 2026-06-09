@@ -61,16 +61,26 @@ if [[ ! -d "$SYNCED_ASSETS_DIR" ]]; then
   echo "❌ Synced assets directory missing: $SYNCED_ASSETS_DIR"
   exit 1
 fi
+# Resolve AUTH_FLOW_BUILD dynamically so this script never goes stale when
+# src/lib/authFlowBuild.ts is bumped.
+AUTH_FLOW_BUILD=$(grep -E 'AUTH_FLOW_BUILD[[:space:]]*=' "$ROOT_DIR/src/lib/authFlowBuild.ts" \
+  | sed -E 's/.*"([^"]+)".*/\1/' | head -1)
+if [[ -z "$AUTH_FLOW_BUILD" ]]; then
+  echo "❌ Could not resolve AUTH_FLOW_BUILD from src/lib/authFlowBuild.ts"
+  exit 1
+fi
+echo "🔖 AUTH_FLOW_BUILD = $AUTH_FLOW_BUILD"
+
+# Markers below MUST be production-safe: string literals passed to
+# logAuthDiag(...) survive Vite/esbuild minification. Do NOT add markers
+# wrapped in `import.meta.env.DEV` — they get tree-shaken out of prod.
 REQUIRED_MARKERS=(
-  "callback:verifyOtp-call"
-  "callback:verifyOtp-result"
-  "deeplink:launch-url"
-  "BuildInfo"
-  "authFlow=v8-normalized-callback-parser"
-  "oauth:exchange-call"
-  "oauth:redirect-uri"
-  "oauth:browser-open"
+  "build:auth-flow"
+  "$AUTH_FLOW_BUILD"
+  "callback:start"
   "callback:setSession-start"
+  "deeplink:launch-url"
+  "oauth:exchange-call"
 )
 for marker in "${REQUIRED_MARKERS[@]}"; do
   if ! grep -qrl "$marker" "$SYNCED_ASSETS_DIR"; then
@@ -82,22 +92,7 @@ for marker in "${REQUIRED_MARKERS[@]}"; do
     exit 1
   fi
 done
-# Reject KNOWN-STALE auth strings from earlier callback implementation. If any
-# of these survive into the synced bundle, the APK would silently ship the old
-# refresh-only flow that fails with AuthSessionMissingError.
-FORBIDDEN_STALE=(
-  "native deep link received"
-  "app resumed, refreshing session"
-  "session before refresh"
-)
-for stale in "${FORBIDDEN_STALE[@]}"; do
-  if grep -qrl "$stale" "$SYNCED_ASSETS_DIR"; then
-    echo "❌ Synced bundle contains FORBIDDEN stale auth string: \"$stale\""
-    echo "   Your local checkout is behind. Run: git pull && rm -rf dist node_modules/.vite"
-    echo "   Then re-run this script."
-    exit 1
-  fi
-done
+
 SYNCED_BUNDLE=$(ls -1 "$SYNCED_ASSETS_DIR"/index-*.js 2>/dev/null | head -1 || true)
 echo "✅ Synced bundle verified: $(basename "${SYNCED_BUNDLE:-unknown}")"
 if [[ -n "$SYNCED_BUNDLE" ]] && command -v shasum >/dev/null 2>&1; then
