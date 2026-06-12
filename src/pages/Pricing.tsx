@@ -237,7 +237,7 @@ const Pricing = () => {
   // $99.99 and CA shows $129.99 from the same binary). Falls back to the
   // Stripe US literal on web.
   const nativeCoachingPrice = paywall.packages.coaching?.priceString;
-  const coachingBullet = paywall.enabled
+  const coachingBullet = useIosIapForCoaching
     ? (nativeCoachingPrice
         ? `Coaching calls (${nativeCoachingPrice}/session)`
         : "Coaching calls")
@@ -583,7 +583,7 @@ const Pricing = () => {
             Book a 1-on-1 coaching session with a carnivore diet expert.
           </p>
 
-          {useNative ? (() => {
+          {useIosIapForCoaching ? (() => {
             const coachingPkg = paywall.packages.coaching;
             const loadingKey = coachingPkg?.pkg.identifier ?? "coaching_pending";
             const isBusy = loading === loadingKey;
