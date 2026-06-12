@@ -73,7 +73,7 @@ const Pricing = () => {
       });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        await openExternalUrl(data.url, { logTag: "pricing:stripe-checkout" });
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to start checkout";
@@ -89,7 +89,7 @@ const Pricing = () => {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        await openExternalUrl(data.url, { logTag: "pricing:stripe-portal" });
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to open portal";
