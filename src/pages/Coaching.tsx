@@ -6,11 +6,21 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
-import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
+import { Capacitor } from "@capacitor/core";
+
+/**
+ * Coaching purchase routing:
+ * - iOS native app  -> StoreKit consumable via RevenueCat (Apple 3.1.1).
+ * - Android native  -> Stripe checkout (Google Play does not require IAP for
+ *   physical/real-world services like a 1-on-1 coaching call).
+ * - Web             -> Stripe checkout.
+ */
+const useIosIap = (): boolean =>
+  Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
 
 
@@ -19,7 +29,7 @@ const Coaching = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const paywall = useNativePaywall();
-  const useNative = isRevenueCatAvailable();
+  const useNative = useIosIap();
 
   useEffect(() => {
     logAfEvent(AF_EVENTS.paywallViewed, { source_screen: "coaching" });

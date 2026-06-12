@@ -8,12 +8,12 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
-import { isRevenueCatAvailable } from "@/lib/revenuecat";
 import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
 import { getCachedAppleFullName } from "@/lib/appleDisplayName";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
+import { Capacitor } from "@capacitor/core";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -48,14 +48,18 @@ const CoachingBooking = ({
   const location = useLocation();
 
   const paywall = useNativePaywall();
-  const useNative = isRevenueCatAvailable();
+  // Coaching payment routing: ONLY iOS native uses StoreKit IAP. Android
+  // native + web both go through Stripe (Google Play does not require IAP
+  // for real-world services like a 1-on-1 coaching call).
+  const useNative =
+    Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
-  // For already-paid pending sessions, always use the no-payment Cal.com URL
-  // when the original purchase was via Apple (or when we're running on iOS),
-  // otherwise the paid event. Skip payment entirely.
+  // For already-paid pending sessions, use the no-payment Cal.com URL only
+  // when the original purchase was via Apple. Android/web Stripe-paid
+  // sessions go through the paid Cal.com URL flow as before.
   const isAlreadyPaid = mode === "already_paid";
   const isIosPaid =
-    sessionSource === "appstore" || sessionSource === "paid_ios" || useNative;
+    sessionSource === "appstore" || sessionSource === "paid_ios";
   const effectiveInitialScreen: Screen = isAlreadyPaid ? "calcom" : initialScreen;
 
   const [screen, setScreen] = useState<Screen>(effectiveInitialScreen);

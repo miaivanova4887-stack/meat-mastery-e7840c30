@@ -11,6 +11,7 @@ import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
+import { Capacitor } from "@capacitor/core";
 
 
 // --- Web / Stripe configuration ------------------------------------------
@@ -37,9 +38,13 @@ const Pricing = () => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const paywall = useNativePaywall();
 
-  // `paywall.enabled` is true only on native iOS/Android. On web, every buy
-  // button continues to go through Stripe Checkout as before.
+  // `paywall.enabled` is true on native iOS AND Android — used for SUBSCRIPTIONS
+  // (RevenueCat → App Store / Google Play Billing). Coaching is a separate
+  // product: iOS must use StoreKit (Apple 3.1.1), but Android and web both
+  // continue to use Stripe checkout for the 1-on-1 coaching call.
   const useNative = paywall.enabled;
+  const useIosIapForCoaching =
+    Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -68,7 +73,7 @@ const Pricing = () => {
       });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        await openExternalUrl(data.url, { logTag: "pricing:stripe-checkout" });
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to start checkout";
@@ -84,7 +89,7 @@ const Pricing = () => {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        await openExternalUrl(data.url, { logTag: "pricing:stripe-portal" });
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to open portal";
@@ -232,7 +237,7 @@ const Pricing = () => {
   // $99.99 and CA shows $129.99 from the same binary). Falls back to the
   // Stripe US literal on web.
   const nativeCoachingPrice = paywall.packages.coaching?.priceString;
-  const coachingBullet = paywall.enabled
+  const coachingBullet = useIosIapForCoaching
     ? (nativeCoachingPrice
         ? `Coaching calls (${nativeCoachingPrice}/session)`
         : "Coaching calls")
@@ -578,7 +583,7 @@ const Pricing = () => {
             Book a 1-on-1 coaching session with a carnivore diet expert.
           </p>
 
-          {useNative ? (() => {
+          {useIosIapForCoaching ? (() => {
             const coachingPkg = paywall.packages.coaching;
             const loadingKey = coachingPkg?.pkg.identifier ?? "coaching_pending";
             const isBusy = loading === loadingKey;
