@@ -331,6 +331,7 @@ const Pricing = () => {
         disabled: !info,
         loadingKey: info ? info.pkg.identifier : null,
         onBuy: info ? () => handleNativePurchase(info) : null,
+        debug: info?.debug ?? null,
       };
     }
     const priceInfo = TIERS[planTier][billingCycle];
@@ -341,8 +342,15 @@ const Pricing = () => {
       disabled: false,
       loadingKey: priceInfo.priceId,
       onBuy: () => handleStripeCheckout(priceInfo.priceId),
+      debug: null,
     };
   };
+
+  // Android-only diagnostic flag for the temporary on-screen debug block.
+  const showAndroidDebug =
+    useNative &&
+    Capacitor.isNativePlatform() &&
+    Capacitor.getPlatform() === "android";
 
   return (
     <div className="min-h-screen bg-background" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}>
@@ -506,6 +514,33 @@ const Pricing = () => {
                   </li>
                 ))}
               </ul>
+
+              {/* TEMPORARY: Android RC price-mapping diagnostic block.
+                  Remove once Pro/Elite localized prices render correctly. */}
+              {showAndroidDebug && purchase && (
+                <div className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-2 text-[10px] font-mono leading-snug space-y-0.5">
+                  <div className="font-bold text-amber-600 dark:text-amber-400">
+                    ANDROID RC DEBUG · {billingCycle}
+                  </div>
+                  {purchase.debug ? (
+                    <>
+                      <div>packageId: {purchase.debug.packageId}</div>
+                      <div>productId: {purchase.debug.productId ?? "(null)"}</div>
+                      <div>packageExists: {String(purchase.debug.packageExists)}</div>
+                      <div>priceStringExists: {String(purchase.debug.priceStringExists)}</div>
+                      <div>defaultOptionExists: {String(purchase.debug.defaultOptionExists)}</div>
+                      <div>fullPricePhaseExists: {String(purchase.debug.fullPricePhaseExists)}</div>
+                      <div>pricingPhasesExist: {String(purchase.debug.pricingPhasesExist)}</div>
+                      <div>subscriptionOptionsExist: {String(purchase.debug.subscriptionOptionsExist)}</div>
+                      <div>resolvedPrice: {purchase.debug.resolvedPrice || "(empty)"}</div>
+                      <div>resolvedSource: {purchase.debug.resolvedSource}</div>
+                      <div>displayedLabel: {purchase.label}</div>
+                    </>
+                  ) : (
+                    <div>package: (not resolved by RC offering)</div>
+                  )}
+                </div>
+              )}
 
               {plan.tier === "free" ? (
                 isCurrent ? null : (
