@@ -190,15 +190,27 @@ export function useNativePaywall(): NativePaywallState {
         elite_yearly: toInfo(findPackage(off, "elite", "yearly"), "yearly"),
         coaching: toCoachingInfo(findCoachingPackage(off)),
       };
-      console.info("[RC DEBUG] paywall packages", {
-        offeringId: off?.identifier ?? null,
-        resolvedKeys: Object.entries(resolved)
-          .filter(([, v]) => !!v)
-          .map(([k, v]) => `${k}:${v?.priceString || "(no price)"}|src=${v?.debug.resolvedSource}`),
-      });
+      console.info(
+        "[RC DEBUG] paywall packages " +
+          JSON.stringify({
+            offeringId: off?.identifier ?? null,
+            packageCount: off?.availablePackages?.length ?? 0,
+            availableIds: (off?.availablePackages ?? []).map((p) => p.identifier),
+            resolved: Object.fromEntries(
+              Object.entries(resolved).map(([k, v]) => [
+                k,
+                v
+                  ? { price: v.priceString || null, src: v.debug.resolvedSource }
+                  : null,
+              ])
+            ),
+          })
+      );
 
-      // Android-only deep dump of the Pro package raw shape — proves which
-      // RC/Google Play field carries the localized price in the failing APK.
+      // Android-only one-line dump per package so adb logcat shows the real
+      // shape. If `(package not resolved)`, the RC offering returned by Google
+      // Play has no package matching pro_monthly / pro_yearly — fix the
+      // RevenueCat dashboard offering ↔ Play Console product mapping.
       if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
         const dumpPkg = (label: string, info: NativePackageInfo | undefined) => {
           if (!info) {
@@ -207,25 +219,31 @@ export function useNativePaywall(): NativePaywallState {
           }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const product = info.pkg.product as any;
-          console.info(`[RC ANDROID RAW ${label}]`, {
-            packageId: info.pkg.identifier,
-            productId: product?.identifier,
-            debug: info.debug,
-            nullEmptyMatrix: {
-              priceString: product?.priceString || null,
-              defaultOption: product?.defaultOption ? "<present>" : null,
-              fullPricePhase: product?.defaultOption?.fullPricePhase ? "<present>" : null,
-              pricingPhases: product?.defaultOption?.pricingPhases?.length ?? null,
-              subscriptionOptions: Array.isArray(product?.subscriptionOptions)
-                ? product.subscriptionOptions.length
-                : null,
-            },
-            rawPackage: info.pkg,
-            rawProduct: product,
-          });
+          console.info(
+            `[RC ANDROID RAW ${label}] ` +
+              JSON.stringify({
+                packageId: info.pkg.identifier,
+                productId: product?.identifier ?? null,
+                debug: info.debug,
+                nullEmptyMatrix: {
+                  priceString: product?.priceString || null,
+                  defaultOption: product?.defaultOption ? "<present>" : null,
+                  fullPricePhase: product?.defaultOption?.fullPricePhase
+                    ? "<present>"
+                    : null,
+                  pricingPhases:
+                    product?.defaultOption?.pricingPhases?.length ?? null,
+                  subscriptionOptions: Array.isArray(product?.subscriptionOptions)
+                    ? product.subscriptionOptions.length
+                    : null,
+                },
+              })
+          );
         };
         dumpPkg("PRO_MONTHLY", resolved.pro_monthly);
         dumpPkg("PRO_YEARLY", resolved.pro_yearly);
+        dumpPkg("ELITE_MONTHLY", resolved.elite_monthly);
+        dumpPkg("ELITE_YEARLY", resolved.elite_yearly);
       }
 
       setPackages(resolved);
