@@ -238,12 +238,19 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
   } catch (e: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const err = e as any;
-    console.error("[RC DEBUG] getOfferings failed", {
-      message: err?.message,
-      code: err?.code,
-      underlying: err?.underlyingErrorMessage,
-      raw: err,
-    });
+    // Stringify on a single line so adb logcat shows the actual RC error code
+    // instead of `[object Object]`. The RC Android SDK throws here when
+    // Google Play Billing can't surface products (sideloaded build, products
+    // not ACTIVE in Play Console, wrong package name, or RC↔Play mapping off).
+    console.error(
+      "[RC DEBUG] getOfferings failed " +
+        JSON.stringify({
+          message: err?.message ?? null,
+          code: err?.code ?? null,
+          underlying: err?.underlyingErrorMessage ?? null,
+          name: err?.name ?? null,
+        })
+    );
     return null;
   }
 }
