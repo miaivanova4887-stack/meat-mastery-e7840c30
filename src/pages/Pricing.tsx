@@ -11,6 +11,7 @@ import { recordCoachingPurchase } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
+import { Capacitor } from "@capacitor/core";
 
 
 // --- Web / Stripe configuration ------------------------------------------
@@ -37,9 +38,13 @@ const Pricing = () => {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const paywall = useNativePaywall();
 
-  // `paywall.enabled` is true only on native iOS/Android. On web, every buy
-  // button continues to go through Stripe Checkout as before.
+  // `paywall.enabled` is true on native iOS AND Android — used for SUBSCRIPTIONS
+  // (RevenueCat → App Store / Google Play Billing). Coaching is a separate
+  // product: iOS must use StoreKit (Apple 3.1.1), but Android and web both
+  // continue to use Stripe checkout for the 1-on-1 coaching call.
   const useNative = paywall.enabled;
+  const useIosIapForCoaching =
+    Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
