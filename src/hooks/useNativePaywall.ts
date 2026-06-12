@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { Capacitor } from "@capacitor/core";
 import type { PurchasesOffering, PurchasesPackage } from "@revenuecat/purchases-capacitor";
 import {
   isRevenueCatAvailable,
@@ -16,32 +17,45 @@ import {
   type PurchaseResult,
 } from "@/lib/revenuecat";
 
+/**
+ * Per-package diagnostic snapshot. Temporary — used by the on-screen Android
+ * debug block in Pricing to prove which RC/Google Play price field is
+ * actually populated in the failing APK.
+ */
+export interface NativePackageDebug {
+  packageId: string;
+  productId: string | null;
+  packageExists: boolean;
+  priceStringExists: boolean;
+  defaultOptionExists: boolean;
+  fullPricePhaseExists: boolean;
+  pricingPhasesExist: boolean;
+  subscriptionOptionsExist: boolean;
+  resolvedPrice: string;
+  /** Which step of the resolver returned a value: "priceString" | "defaultOption.fullPricePhase" | ... */
+  resolvedSource: string;
+}
+
 export interface NativePackageInfo {
   pkg: PurchasesPackage;
-  /** Localized price string from the App Store, e.g. "$6.99". */
+  /** Localized price string from the App Store / Google Play, e.g. "$6.99". */
   priceString: string;
   /** Per-cycle label, e.g. "$6.99/mo". */
   priceLabel: string;
+  /** Temporary debug data for Android price-mapping diagnosis. */
+  debug: NativePackageDebug;
 }
 
 export interface NativePaywallState {
-  /** True on native iOS/Android; means the Pricing page should show IAP flow. */
   enabled: boolean;
   loading: boolean;
   error: string | null;
   offering: PurchasesOffering | null;
-  /** Resolved packages keyed by tier+cycle. Any key may be undefined if RC doesn't have it yet. */
   packages: {
     pro_monthly?: NativePackageInfo;
     pro_yearly?: NativePackageInfo;
     elite_monthly?: NativePackageInfo;
     elite_yearly?: NativePackageInfo;
-    /**
-     * One-off coaching consumable. Independent of subscription tiers — never
-     * gated by Elite. Undefined until RC returns the offering; if it's still
-     * undefined after `loading` flips to false, the UI shows a disabled
-     * "Coaching unavailable" state instead of a stuck spinner.
-     */
     coaching?: NativePackageInfo;
   };
   refresh: () => Promise<void>;
@@ -49,25 +63,106 @@ export interface NativePaywallState {
   restore: () => Promise<PurchaseResult>;
 }
 
-function toInfo(pkg: PurchasesPackage | null, cycle: "monthly" | "yearly"): NativePackageInfo | undefined {
-  if (!pkg) return undefined;
-  const price = pkg.product?.priceString ?? "";
-  const suffix = cycle === "monthly" ? "/mo" : "/yr";
+// ---------------------------------------------------------------------------
+// Price resolver — handles both iOS (priceString) and Google Play (Subscription
+// Option pricing phases). Order matters: priceString first preserves iOS.
+// ---------------------------------------------------------------------------
+
+interface ResolvedPrice {
+  price: string;
+  source: string;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function pickPhaseFormatted(phases: any[] | null | undefined): string {
+  if (!Array.isArray(phases)) return "";
+  // Prefer the last non-free phase (= full recurring price).
+  for (let i = phases.length - 1; i >= 0; i--) {
+    const formatted = phases[i]?.price?.formatted;
+    const amount = phases[i]?.price?.amountMicros;
+    if (formatted && amount && amount > 0) return formatted as string;
+  }
+  // Fallback to any phase with a formatted string.
+  for (const ph of phases) {
+    if (ph?.price?.formatted) return ph.price.formatted as string;
+  }
+  return "";
+}
+
+function resolveLocalizedPrice(pkg: PurchasesPackage | null): ResolvedPrice {
+  if (!pkg) return { price: "", source: "no-package" };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const product = pkg.product as any;
+  if (!product) return { price: "", source: "no-product" };
+
+  // 1. iOS / generic.
+  if (typeof product.priceString === "string" && product.priceString.trim() !== "") {
+    return { price: product.priceString, source: "priceString" };
+  }
+
+  // 2. Google Play defaultOption.fullPricePhase.
+  const defOpt = product.defaultOption;
+  const defFull = defOpt?.fullPricePhase?.price?.formatted;
+  if (defFull) return { price: defFull as string, source: "defaultOption.fullPricePhase" };
+
+  // 3. Google Play defaultOption.pricingPhases.
+  const defPhases = pickPhaseFormatted(defOpt?.pricingPhases);
+  if (defPhases) return { price: defPhases, source: "defaultOption.pricingPhases" };
+
+  // 4 + 5. Google Play subscriptionOptions[*].
+  const subOpts = Array.isArray(product.subscriptionOptions) ? product.subscriptionOptions : [];
+  for (const opt of subOpts) {
+    const full = opt?.fullPricePhase?.price?.formatted;
+    if (full) return { price: full as string, source: "subscriptionOptions.fullPricePhase" };
+  }
+  for (const opt of subOpts) {
+    const fromPhases = pickPhaseFormatted(opt?.pricingPhases);
+    if (fromPhases) return { price: fromPhases, source: "subscriptionOptions.pricingPhases" };
+  }
+
+  return { price: "", source: "unresolved" };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildDebug(pkg: PurchasesPackage | null, resolved: ResolvedPrice): NativePackageDebug {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const product = (pkg?.product as any) ?? null;
+  const defOpt = product?.defaultOption ?? null;
+  const subOpts = product?.subscriptionOptions ?? null;
   return {
-    pkg,
-    priceString: price,
-    priceLabel: price ? `${price}${suffix}` : suffix,
+    packageId: pkg?.identifier ?? "(none)",
+    productId: product?.identifier ?? null,
+    packageExists: Boolean(pkg),
+    priceStringExists: Boolean(product?.priceString),
+    defaultOptionExists: Boolean(defOpt),
+    fullPricePhaseExists: Boolean(defOpt?.fullPricePhase),
+    pricingPhasesExist: Array.isArray(defOpt?.pricingPhases) && defOpt.pricingPhases.length > 0,
+    subscriptionOptionsExist: Array.isArray(subOpts) && subOpts.length > 0,
+    resolvedPrice: resolved.price,
+    resolvedSource: resolved.source,
   };
 }
 
-/** Consumable price formatter — no /mo or /yr suffix, just the localized price. */
-function toCoachingInfo(pkg: PurchasesPackage | null): NativePackageInfo | undefined {
+function toInfo(pkg: PurchasesPackage | null, cycle: "monthly" | "yearly"): NativePackageInfo | undefined {
   if (!pkg) return undefined;
-  const price = pkg.product?.priceString ?? "";
+  const resolved = resolveLocalizedPrice(pkg);
+  const suffix = cycle === "monthly" ? "/mo" : "/yr";
   return {
     pkg,
-    priceString: price,
-    priceLabel: price || "",
+    priceString: resolved.price,
+    priceLabel: resolved.price ? `${resolved.price}${suffix}` : suffix,
+    debug: buildDebug(pkg, resolved),
+  };
+}
+
+function toCoachingInfo(pkg: PurchasesPackage | null): NativePackageInfo | undefined {
+  if (!pkg) return undefined;
+  const resolved = resolveLocalizedPrice(pkg);
+  return {
+    pkg,
+    priceString: resolved.price,
+    priceLabel: resolved.price || "",
+    debug: buildDebug(pkg, resolved),
   };
 }
 
@@ -99,8 +194,40 @@ export function useNativePaywall(): NativePaywallState {
         offeringId: off?.identifier ?? null,
         resolvedKeys: Object.entries(resolved)
           .filter(([, v]) => !!v)
-          .map(([k, v]) => `${k}:${v?.priceString || "(no price)"}`),
+          .map(([k, v]) => `${k}:${v?.priceString || "(no price)"}|src=${v?.debug.resolvedSource}`),
       });
+
+      // Android-only deep dump of the Pro package raw shape — proves which
+      // RC/Google Play field carries the localized price in the failing APK.
+      if (Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android") {
+        const dumpPkg = (label: string, info: NativePackageInfo | undefined) => {
+          if (!info) {
+            console.info(`[RC ANDROID RAW ${label}] (package not resolved)`);
+            return;
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const product = info.pkg.product as any;
+          console.info(`[RC ANDROID RAW ${label}]`, {
+            packageId: info.pkg.identifier,
+            productId: product?.identifier,
+            debug: info.debug,
+            nullEmptyMatrix: {
+              priceString: product?.priceString || null,
+              defaultOption: product?.defaultOption ? "<present>" : null,
+              fullPricePhase: product?.defaultOption?.fullPricePhase ? "<present>" : null,
+              pricingPhases: product?.defaultOption?.pricingPhases?.length ?? null,
+              subscriptionOptions: Array.isArray(product?.subscriptionOptions)
+                ? product.subscriptionOptions.length
+                : null,
+            },
+            rawPackage: info.pkg,
+            rawProduct: product,
+          });
+        };
+        dumpPkg("PRO_MONTHLY", resolved.pro_monthly);
+        dumpPkg("PRO_YEARLY", resolved.pro_yearly);
+      }
+
       setPackages(resolved);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Failed to load products";
