@@ -284,12 +284,30 @@ const CoachingBooking = ({
   const handleDone = useCallback(async () => {
     // The Cal.com webhook (cal-webhook edge function) is the canonical writer
     // for the booked session — scheduled_at, timezone, attendee info etc.
-    // We intentionally do not insert here to avoid creating duplicate rows.
+    //
+    // For the Android/web Stripe → Cal.com flow we ALSO insert a best-effort
+    // fallback row here (matching the last known-good AAB behavior) so a paid
+    // session is still recorded even if the webhook secret/metadata isn't
+    // configured. The iOS purchase path records via record-coaching-purchase
+    // earlier and must NOT double-insert here.
+    if (!useNative && !isAlreadyPaid && user?.id) {
+      try {
+        await supabase.from("coaching_sessions").insert({
+          user_id: user.id,
+          session_type: "paid",
+          session_month: new Date().toISOString().slice(0, 7),
+          source: "stripe",
+          status: "pending",
+        });
+      } catch (e) {
+        console.warn("[CoachingBooking] fallback session insert failed", e);
+      }
+    }
     logAfEvent(AF_EVENTS.coachingBookingCompleted, {
       source_screen: isAlreadyPaid ? "coaching_pending" : "coaching_booking_modal",
     });
     setScreen("success");
-  }, [isAlreadyPaid]);
+  }, [isAlreadyPaid, useNative, user?.id]);
 
   const close = () => onOpenChange(false);
 
