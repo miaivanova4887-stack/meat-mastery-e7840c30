@@ -36,11 +36,18 @@ serve(async (req) => {
       });
     }
 
-    const liveKey = Deno.env.get("STRIPE_LIVE_SECRET_KEY") || "";
-    if (!liveKey || liveKey.startsWith("sk_test_")) {
-      throw new Error("Live Stripe key is missing or a test key was provided");
+    // Use the same Stripe secret convention as the rest of the payment
+    // backend (create-checkout, check-subscription, customer-portal,
+    // requireTier). Prefer STRIPE_SECRET_KEY; fall back to the legacy
+    // STRIPE_LIVE_SECRET_KEY only if STRIPE_SECRET_KEY is not configured.
+    const stripeKey =
+      Deno.env.get("STRIPE_SECRET_KEY") ||
+      Deno.env.get("STRIPE_LIVE_SECRET_KEY") ||
+      "";
+    if (!stripeKey) {
+      throw new Error("Stripe secret key is not set (STRIPE_SECRET_KEY)");
     }
-    const stripe = new Stripe(liveKey, {
+    const stripe = new Stripe(stripeKey, {
       apiVersion: "2025-08-27.basil",
     });
 
