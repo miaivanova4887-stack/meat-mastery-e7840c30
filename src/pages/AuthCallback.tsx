@@ -427,10 +427,6 @@ const AuthCallback = () => {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-background text-foreground">
       <div className="max-w-sm w-full text-center space-y-4">
-        {/* TEMPORARY PROOF BANNER — confirms which JS bundle is live. */}
-        <div className="text-[10px] font-mono px-2 py-1 rounded bg-primary/10 text-primary border border-primary/30 break-all">
-          AUTH_FLOW_BUILD={AUTH_FLOW_BUILD}
-        </div>
         <div className="w-14 h-14 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center text-2xl">
           🥩
         </div>
