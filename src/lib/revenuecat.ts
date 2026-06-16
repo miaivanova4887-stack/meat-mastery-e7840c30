@@ -7,8 +7,9 @@
  *   CANNOT use Stripe checkout from the iOS native shell.
  * - Web (vite dev / hosted build): continues to use Stripe Checkout via the
  *   existing Supabase edge functions. RC is a no-op here.
- * - Native Android: not wired yet. If/when we ship to Play, we add a Google
- *   SDK key below and the same flow works.
+ * - Native Android (Capacitor): REAL in-app purchases via RevenueCat / Google
+ *   Play Billing for SUBSCRIPTIONS (goog_ SDK key below). Coaching calls are a
+ *   real-world service and continue to use Stripe checkout on Android.
  *
  * All public functions are safe to call on any platform — they silently
  * no-op when RC isn't available so calling code can stay platform-agnostic.
