@@ -1,74 +1,25 @@
-## What the AAB proves
+## Problem
 
-The uploaded working `6.aab` had this Android coaching payment flow:
+In the screen recording, after choosing a Google account the app shows the auth callback screen with an orange debug chip:
 
-1. User taps coaching payment.
-2. App invokes `create-coaching-checkout`.
-3. App opens Stripe Checkout for coaching calls and   RevenueCat/IAP Android for subscriptions.
-4. Stripe returns to `/?coaching_payment=success`.
-5. Home opens the coaching modal on the Cal.com screen.
-6. User taps `Open Cal.com Scheduler`.
-7. User taps `Done`, and the app inserts a `coaching_sessions` row client-side.
+```
+AUTH_FLOW_BUILD=v11-20260526-proof-path
+```
 
-It did **not** contain these current-project additions:
+It appears on both the "Activating your account…" and "Verified! Redirecting…" states, then the user lands on Home signed in. The sign-in flow works correctly — the only defect is this developer-only proof banner leaking into the real user experience. The code itself labels it a `TEMPORARY PROOF BANNER` (`src/pages/AuthCallback.tsx`).
 
-- `record-coaching-purchase`
-- `coaching-session-ios`
-- iOS/no-payment booking URL routing
-- `sessionSource` / already-paid routing
-- client-side purchase recording before Cal.com
+## Fix
 
-## Payment regressions to fix
+Remove the user-visible debug banner from the sign-in/verification callback screen so users only see the clean CarnivoreX 🥩 + status text. Keep the underlying diagnostic logging (used for debugging the OAuth deep-link flow) intact — only the on-screen chip is removed.
 
-### 1. Secret name mismatch
+### Steps
 
-Current subscription/payment functions are split across two Stripe secret names:
+1. **`src/pages/AuthCallback.tsx`** — Delete the proof-banner block (the `AUTH_FLOW_BUILD={AUTH_FLOW_BUILD}` chip and its comment) from the render output. The screen then starts directly with the app icon and "Activating your account…" / "Verified! Redirecting…" text.
 
-- `create-checkout`, `check-subscription`, `customer-portal`, `_shared/requireTier` use `STRIPE_SECRET_KEY`
-- `create-coaching-checkout` now uses `STRIPE_LIVE_SECRET_KEY`
+2. Leave the `AUTH_FLOW_BUILD` constant and the `logAuthDiag(...)` proof logging in place — they are console-only and useful for future native-build verification (per the project's evidence-first build practice). No behavioral change to the actual sign-in logic.
 
-The working AAB only proves the client called `create-coaching-checkout`; the current backend split means coaching can fail even if the normal subscription Stripe key is configured.
+3. **Verify** in the preview that the `/auth/callback` screen no longer renders the orange chip and the sign-in success toast + redirect still fire.
 
-**Fix:** make `create-coaching-checkout` use the same Stripe secret convention as the rest of the payment backend: prefer `STRIPE_SECRET_KEY`, with fallback to `STRIPE_LIVE_SECRET_KEY` only if present.
+### Out of scope (separate, config-only)
 
-### 2. Android coaching behavior drifted from the working AAB
-
-Current Android/web coaching now shares code with newer iOS-specific purchase-recording logic in surrounding components. For Android, the safe target is the AAB behavior: Stripe checkout first, then Cal.com.
-
-**Fix:** preserve Android as Stripe-only for coaching and keep `record-coaching-purchase` out of Android coaching checkout paths.
-
-### 3. AAB success flow inserted a row after scheduling; current flow relies more on webhook/pending-row behavior
-
-The working AAB inserted `coaching_sessions` from the client when the user tapped `Done`. Current code intentionally stopped that and expects Cal.com webhook behavior.
-
-**Fix:** for Android/web success flow only, restore the AAB-compatible fallback insert on `Done` so a booked paid session is recorded even if webhook metadata/secrets are missing. Keep this scoped to the Stripe/Cal.com success path.
-
-### 4. Current remixed project has no user Stripe/runtime payment secrets configured
-
-The current project secret list only shows managed Lovable/backend secrets. No Stripe key is configured in this remixed backend.
-
-**Fix:** after code alignment, request only the Android-relevant runtime secret(s): `STRIPE_SECRET_KEY` first. Do not request Apple keys.
-
-## Implementation steps
-
-1. Update `supabase/functions/create-coaching-checkout/index.ts`
-  - Replace hard dependency on `STRIPE_LIVE_SECRET_KEY` with:
-    - `STRIPE_SECRET_KEY || STRIPE_LIVE_SECRET_KEY`
-  - Keep live/test validation minimal and non-breaking for the known-good flow.
-  - Keep the existing checkout price ID and return URLs.
-2. Update `src/components/CoachingBooking.tsx`
-  - Restore AAB-compatible `Done` behavior for Stripe/Cal.com flow:
-    - insert into `coaching_sessions`
-    - `user_id = current user id`
-    - `session_type = paid`
-    - `session_month = current YYYY-MM`
-  - Keep iOS purchase-recording behavior isolated so it does not affect Android.
-3. Update `src/pages/Coaching.tsx` only if needed
-  - Ensure Android continues to call `create-coaching-checkout` for coaching calls and   RevenueCat/IAP Android for subscriptions.
-4. Add/check runtime secret
-  - If `STRIPE_SECRET_KEY` is missing, open the secure secret form for `STRIPE_SECRET_KEY`.
-  - Do not add Apple secrets for this Android-only project.
-5. Verify
-  - Confirm source references show Android coaching routes to `create-coaching-checkout`.
-  - Confirm all Stripe backend functions can use the same configured secret.
-  - Confirm no Apple secret requirement remains in the Android path.
+The Google "Choose an account → to continue to `…supabase.co`" wording is controlled by the OAuth consent screen / auth domain configuration, not app code. Removing it would require a custom auth domain setup. I can outline that separately if you want it addressed, but it is not part of this code fix.
