@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
-import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { recordCoachingPurchase, startCoachingStripeCheckout } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
 import { getCachedAppleFullName } from "@/lib/appleDisplayName";
