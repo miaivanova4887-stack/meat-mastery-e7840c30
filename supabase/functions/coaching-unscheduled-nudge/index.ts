@@ -41,9 +41,20 @@ const MAX_NUDGES_PER_SESSION = 4;
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+  // Auth: require the service-role bearer token (Supabase cron / internal
+  // callers only). Prevents unauthenticated callers from triggering batch
+  // push notifications outside the cron schedule.
+  const authHeader = req.headers.get("authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token || token !== serviceKey) {
+    return json({ error: "Forbidden" }, 403);
+  }
+
   const admin = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    serviceKey,
     { auth: { persistSession: false } },
   );
 
