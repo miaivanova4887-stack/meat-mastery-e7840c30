@@ -44,6 +44,7 @@ const Pricing = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const paywall = useNativePaywall();
+  const region = useCoachingRegion();
 
   // `paywall.enabled` is true on native iOS AND Android — used for SUBSCRIPTIONS
   // (RevenueCat → App Store / Google Play Billing). Coaching is a separate
