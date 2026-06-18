@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywall";
 import { recordCoachingPurchase, startCoachingStripeCheckout } from "@/lib/coachingPurchase";
+import { useCoachingRegion } from "@/hooks/useCoachingRegion";
+import { CoachingRegionToggle } from "@/components/CoachingRegionToggle";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
