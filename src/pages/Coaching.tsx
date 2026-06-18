@@ -108,7 +108,7 @@ const Coaching = () => {
       }
 
       // Web/Android: shared production coaching Stripe checkout.
-      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout" });
+      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout", country: region.country });
       if (!res.ok) throw new Error(res.error ?? "Failed to start checkout");
     } catch (e: any) {
       toast.error(e?.message || "Failed to start checkout");
