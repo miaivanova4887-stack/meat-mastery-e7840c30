@@ -55,6 +55,7 @@ const CoachingBooking = ({
   // for real-world services like a 1-on-1 coaching call).
   const useNative =
     Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+  const region = useCoachingRegion();
 
   // For already-paid pending sessions, use the no-payment Cal.com URL only
   // when the original purchase was via Apple. Android/web Stripe-paid
