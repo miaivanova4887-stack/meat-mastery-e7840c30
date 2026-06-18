@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywall";
-import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { recordCoachingPurchase, startCoachingStripeCheckout } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
@@ -26,7 +26,12 @@ const TIERS = {
     monthly: { priceId: "price_1TEtmXBqDvgi4jU7C8P9of8n", amount: "$14.99/mo" },
     yearly: { priceId: "price_1TEtmzBqDvgi4jU7rq0QYLjQ", amount: "$99.99/yr" },
   },
-  coaching: { priceId: "price_1TEtnMBqDvgi4jU7ozhwwm9i", amount: "$99.99" },
+  // Coaching is a one-off purchase. On web/Android it is NOT checked out via
+  // `create-checkout`/a price ID here — it routes through the shared
+  // `startCoachingStripeCheckout()` helper (create-coaching-checkout) so every
+  // entry point uses the same live coaching price. Only the display amount
+  // lives here.
+  coaching: { amount: "$99.99" },
 };
 
 const Pricing = () => {
@@ -637,10 +642,27 @@ const Pricing = () => {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => handleStripeCheckout(TIERS.coaching.priceId)}
-              disabled={loading === TIERS.coaching.priceId}
+              onClick={async () => {
+                if (!user) {
+                  toast("Please sign in first");
+                  navigate("/auth");
+                  return;
+                }
+                setLoading("coaching");
+                try {
+                  const res = await startCoachingStripeCheckout({
+                    logTag: "pricing:coaching-checkout",
+                  });
+                  if (!res.ok) {
+                    toast.error(res.error ?? "Couldn't open checkout. Please try again.");
+                  }
+                } finally {
+                  setLoading(null);
+                }
+              }}
+              disabled={loading === "coaching"}
             >
-              {loading === TIERS.coaching.priceId ? (
+              {loading === "coaching" ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 `Book a Call — ${TIERS.coaching.amount}`

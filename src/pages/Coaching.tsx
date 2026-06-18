@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
-import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { recordCoachingPurchase, startCoachingStripeCheckout } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
@@ -104,10 +104,9 @@ const Coaching = () => {
 
       }
 
-      // Web: existing Stripe flow.
-      const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
-      if (error) throw error;
-      if (data?.url) await openExternalUrl(data.url, { logTag: "coaching:stripe-checkout" });
+      // Web/Android: shared production coaching Stripe checkout.
+      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout" });
+      if (!res.ok) throw new Error(res.error ?? "Failed to start checkout");
     } catch (e: any) {
       toast.error(e?.message || "Failed to start checkout");
     } finally {

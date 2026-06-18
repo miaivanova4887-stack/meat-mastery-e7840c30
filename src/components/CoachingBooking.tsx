@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
-import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { recordCoachingPurchase, startCoachingStripeCheckout } from "@/lib/coachingPurchase";
 import { openExternalUrl, copyToClipboard } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachingUrls";
 import { getCachedAppleFullName } from "@/lib/appleDisplayName";
@@ -266,12 +266,11 @@ const CoachingBooking = ({
       }
 
 
-      // Web: existing Stripe one-off flow.
-      const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
-      if (error) throw error;
-      if (data?.url) {
-        await openExternalUrl(data.url, { logTag: "coaching:stripe-checkout" });
-      }
+      // Web/Android: shared production coaching Stripe checkout. Routes through
+      // the same create-coaching-checkout function + live price used by the
+      // homepage, Coaching page, and Pricing page.
+      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout" });
+      if (!res.ok) throw new Error(res.error ?? "Couldn't open checkout");
     } catch (e) {
       console.error("Coaching checkout error:", e);
       toast.error("Couldn't open checkout. Please try again.");
