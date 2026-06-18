@@ -14,6 +14,8 @@ import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachin
 import { getCachedAppleFullName } from "@/lib/appleDisplayName";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
 import { Capacitor } from "@capacitor/core";
+import { useCoachingRegion } from "@/hooks/useCoachingRegion";
+import { CoachingRegionToggle } from "@/components/CoachingRegionToggle";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
