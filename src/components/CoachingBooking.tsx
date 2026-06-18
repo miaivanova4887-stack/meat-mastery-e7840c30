@@ -272,7 +272,7 @@ const CoachingBooking = ({
       // Web/Android: shared production coaching Stripe checkout. Routes through
       // the same create-coaching-checkout function + live price used by the
       // homepage, Coaching page, and Pricing page.
-      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout" });
+      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout", country: region.country });
       if (!res.ok) throw new Error(res.error ?? "Couldn't open checkout");
     } catch (e) {
       console.error("Coaching checkout error:", e);
