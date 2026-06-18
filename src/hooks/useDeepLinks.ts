@@ -33,7 +33,13 @@ import { consumeGoogleOAuthInFlight } from "@/lib/oauthFlowState";
 let lastHandledFp: string | null = null;
 let lastHandledAt = 0;
 const SHORT_DEDUPE_WINDOW_MS = 10_000;
-let browserCloseAttempted = false;
+// Per-flow guard: tracks the fingerprint of the OAuth callback we last
+// closed the in-app browser for. Keyed by `fp` (unique per login attempt
+// via the access_token/code) so every new login dismisses its own browser,
+// while rapid duplicate appUrlOpen bursts for the SAME callback are deduped.
+// A plain boolean here would latch true after the first login and leave the
+// second login's browser open forever (infinite-buffering bug).
+let lastBrowserClosedFp: string | null = null;
 let launchUrlConsumed = false;
 
 export function useDeepLinks() {
@@ -96,8 +102,8 @@ export function useDeepLinks() {
               ageMs: googleFlow.ageMs,
             });
           }
-          if (!browserCloseAttempted) {
-            browserCloseAttempted = true;
+          if (lastBrowserClosedFp !== fp) {
+            lastBrowserClosedFp = fp;
             void Browser.close()
               .then(() => logAuthDiag("oauth:browser-close"))
               .catch((e) =>
