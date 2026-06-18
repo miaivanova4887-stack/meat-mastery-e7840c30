@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useNativePaywall } from "@/hooks/useNativePaywall";
-import { recordCoachingPurchase } from "@/lib/coachingPurchase";
+import { recordCoachingPurchase, startCoachingStripeCheckout } from "@/lib/coachingPurchase";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
