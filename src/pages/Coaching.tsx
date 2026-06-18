@@ -32,6 +32,7 @@ const Coaching = () => {
   const [loading, setLoading] = useState(false);
   const paywall = useNativePaywall();
   const useNative = useIosIap();
+  const region = useCoachingRegion();
 
   useEffect(() => {
     logAfEvent(AF_EVENTS.paywallViewed, { source_screen: "coaching" });
