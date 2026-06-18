@@ -13,7 +13,7 @@ const corsHeaders = {
 // SAME coaching product (prod_UjEolHKfmoeJXD) in LIVE mode; until that price
 // ID is filled in here, CAD safely falls back to the USD price.
 const USD_COACHING_PRICE_ID = "price_1TFm5RBCKK2x5xtVzSHn0acA";
-const CAD_COACHING_PRICE_ID = ""; // TODO: paste the LIVE CAD price_... id (CAD 12999)
+const CAD_COACHING_PRICE_ID = "price_1TjmKyBCKK2x5xtVbvfukFie"; // LIVE CAD price (CAD 12999) on prod_UjEolHKfmoeJXD
 
 function clientIp(req: Request): string | null {
   const xff = req.headers.get("x-forwarded-for");
