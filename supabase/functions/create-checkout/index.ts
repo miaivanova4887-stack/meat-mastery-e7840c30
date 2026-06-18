@@ -9,13 +9,15 @@ const corsHeaders = {
 };
 
 // Server-side allowlist of Stripe Price IDs that can be checked out.
-// Mirrors the IDs surfaced in src/pages/Pricing.tsx. Any other ID is rejected.
+// Mirrors the subscription IDs surfaced in src/pages/Pricing.tsx. Any other
+// ID is rejected. NOTE: the coaching one-off is intentionally NOT here — all
+// coaching-call checkouts go through the dedicated `create-coaching-checkout`
+// function so every entry point uses the same live coaching price.
 const ALLOWED_PRICE_IDS = new Set<string>([
   "price_1TEtllBqDvgi4jU7lMUy48WX", // Pro monthly
   "price_1TEtmCBqDvgi4jU7Bgdijp8o", // Pro yearly
   "price_1TEtmXBqDvgi4jU7C8P9of8n", // Elite monthly
   "price_1TEtmzBqDvgi4jU7rq0QYLjQ", // Elite yearly
-  "price_1TEtnMBqDvgi4jU7ozhwwm9i", // Coaching one-off
 ]);
 
 serve(async (req) => {
