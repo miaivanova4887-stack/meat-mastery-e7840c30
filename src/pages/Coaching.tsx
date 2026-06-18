@@ -11,6 +11,8 @@ import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
 import { Capacitor } from "@capacitor/core";
+import { useCoachingRegion } from "@/hooks/useCoachingRegion";
+import { CoachingRegionToggle } from "@/components/CoachingRegionToggle";
 
 /**
  * Coaching purchase routing:
@@ -30,6 +32,7 @@ const Coaching = () => {
   const [loading, setLoading] = useState(false);
   const paywall = useNativePaywall();
   const useNative = useIosIap();
+  const region = useCoachingRegion();
 
   useEffect(() => {
     logAfEvent(AF_EVENTS.paywallViewed, { source_screen: "coaching" });
@@ -105,7 +108,7 @@ const Coaching = () => {
       }
 
       // Web/Android: shared production coaching Stripe checkout.
-      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout" });
+      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout", country: region.country });
       if (!res.ok) throw new Error(res.error ?? "Failed to start checkout");
     } catch (e: any) {
       toast.error(e?.message || "Failed to start checkout");
@@ -158,10 +161,18 @@ const Coaching = () => {
             <p className="text-2xl font-bold text-foreground">
               {useNative
                 ? (paywall.packages.coaching?.priceString || "Loading price…")
-                : "$99.99"}
+                : region.pricing.display}
             </p>
             <p className="text-xs text-muted-foreground">per 1-hour session</p>
+            {!useNative && (
+              <CoachingRegionToggle
+                country={region.country}
+                onChange={region.setCountry}
+                className="mt-3"
+              />
+            )}
           </div>
+
 
           {!user ? (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2 text-center">

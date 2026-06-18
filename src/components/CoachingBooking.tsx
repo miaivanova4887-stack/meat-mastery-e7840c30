@@ -14,6 +14,8 @@ import { CAL_IOS_NO_PAYMENT_URL, CAL_PAID_URL, buildCalUrl } from "@/lib/coachin
 import { getCachedAppleFullName } from "@/lib/appleDisplayName";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
 import { Capacitor } from "@capacitor/core";
+import { useCoachingRegion } from "@/hooks/useCoachingRegion";
+import { CoachingRegionToggle } from "@/components/CoachingRegionToggle";
 
 type Screen = "info" | "payment" | "calcom" | "success";
 
@@ -53,6 +55,7 @@ const CoachingBooking = ({
   // for real-world services like a 1-on-1 coaching call).
   const useNative =
     Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+  const region = useCoachingRegion();
 
   // For already-paid pending sessions, use the no-payment Cal.com URL only
   // when the original purchase was via Apple. Android/web Stripe-paid
@@ -269,7 +272,7 @@ const CoachingBooking = ({
       // Web/Android: shared production coaching Stripe checkout. Routes through
       // the same create-coaching-checkout function + live price used by the
       // homepage, Coaching page, and Pricing page.
-      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout" });
+      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout", country: region.country });
       if (!res.ok) throw new Error(res.error ?? "Couldn't open checkout");
     } catch (e) {
       console.error("Coaching checkout error:", e);
@@ -278,7 +281,7 @@ const CoachingBooking = ({
     } finally {
       setLoading(false);
     }
-  }, [navigate, onOpenChange, location, useNative, paywall]);
+  }, [navigate, onOpenChange, location, useNative, paywall, region.country]);
 
   const handleDone = useCallback(async () => {
     // The Cal.com webhook (cal-webhook edge function) is the canonical writer
@@ -348,15 +351,22 @@ const CoachingBooking = ({
                 <h2 className="text-lg font-bold text-foreground">{content.title || "Book a Coaching Call"}</h2>
                 <p className="text-sm text-muted-foreground">{content.description || ""}</p>
               </div>
-              <div className="bg-muted/50 rounded-xl p-4 text-center">
+              <div className="bg-muted/50 rounded-xl p-4 text-center space-y-3">
                 <p className="text-sm font-semibold text-foreground">
                   {useNative
                     ? (paywall.packages.coaching?.priceString
                         ? `${paywall.packages.coaching.priceString} per session`
                         : "Loading price…")
-                    : (content.paid_label || "$99.99 per session")}
+                    : `${region.pricing.display} per session`}
                 </p>
+                {!useNative && (
+                  <CoachingRegionToggle
+                    country={region.country}
+                    onChange={region.setCountry}
+                  />
+                )}
               </div>
+
 
               <Button onClick={() => { handlePayment(); setScreen("payment"); }} className="w-full bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-12 font-semibold">
                 {content.pay_button || "Proceed to Payment"}

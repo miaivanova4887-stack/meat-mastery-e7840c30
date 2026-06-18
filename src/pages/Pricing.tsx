@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { useNativePaywall, type NativePackageInfo } from "@/hooks/useNativePaywall";
 import { recordCoachingPurchase, startCoachingStripeCheckout } from "@/lib/coachingPurchase";
+import { useCoachingRegion } from "@/hooks/useCoachingRegion";
+import { CoachingRegionToggle } from "@/components/CoachingRegionToggle";
 import { openExternalUrl } from "@/lib/openExternalUrl";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
 import { logAfEvent, AF_EVENTS, buildPurchaseParams } from "@/lib/appsflyer";
@@ -42,6 +44,7 @@ const Pricing = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const paywall = useNativePaywall();
+  const region = useCoachingRegion();
 
   // `paywall.enabled` is true on native iOS AND Android — used for SUBSCRIPTIONS
   // (RevenueCat → App Store / Google Play Billing). Coaching is a separate
@@ -246,7 +249,7 @@ const Pricing = () => {
     ? (nativeCoachingPrice
         ? `Coaching calls (${nativeCoachingPrice}/session)`
         : "Coaching calls")
-    : `Coaching calls (${TIERS.coaching.amount}/session)`;
+    : `Coaching calls (${region.pricing.display}/session)`;
 
   const plans: {
     tier: SubscriptionTier;
@@ -639,37 +642,45 @@ const Pricing = () => {
               </Button>
             );
           })() : (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={async () => {
-                if (!user) {
-                  toast("Please sign in first");
-                  navigate("/auth");
-                  return;
-                }
-                setLoading("coaching");
-                try {
-                  const res = await startCoachingStripeCheckout({
-                    logTag: "pricing:coaching-checkout",
-                  });
-                  if (!res.ok) {
-                    toast.error(res.error ?? "Couldn't open checkout. Please try again.");
+            <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={async () => {
+                  if (!user) {
+                    toast("Please sign in first");
+                    navigate("/auth");
+                    return;
                   }
-                } finally {
-                  setLoading(null);
-                }
-              }}
-              disabled={loading === "coaching"}
-            >
-              {loading === "coaching" ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                `Book a Call — ${TIERS.coaching.amount}`
-              )}
-            </Button>
+                  setLoading("coaching");
+                  try {
+                    const res = await startCoachingStripeCheckout({
+                      logTag: "pricing:coaching-checkout",
+                      country: region.country,
+                    });
+                    if (!res.ok) {
+                      toast.error(res.error ?? "Couldn't open checkout. Please try again.");
+                    }
+                  } finally {
+                    setLoading(null);
+                  }
+                }}
+                disabled={loading === "coaching"}
+              >
+                {loading === "coaching" ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  `Book a Call — ${region.pricing.display}`
+                )}
+              </Button>
+              <CoachingRegionToggle
+                country={region.country}
+                onChange={region.setCountry}
+              />
+            </div>
           )}
         </div>
+
 
 
         {/* Restore Purchases — required by Apple when IAP is enabled. Only

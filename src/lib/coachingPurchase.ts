@@ -25,10 +25,13 @@ import { openExternalUrl } from "@/lib/openExternalUrl";
  */
 export async function startCoachingStripeCheckout(opts?: {
   logTag?: string;
+  /** Region hint (e.g. "US" | "CA") used to select USD vs CAD coaching price. */
+  country?: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     const { data, error } = await supabase.functions.invoke(
-      "create-coaching-checkout"
+      "create-coaching-checkout",
+      opts?.country ? { body: { country: opts.country } } : undefined
     );
     if (error) throw error;
     if (data?.url) {

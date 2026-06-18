@@ -1,64 +1,86 @@
-# Fix: Coaching-Call Payment Environment Mismatch (Profile opens sandbox)
+# Regional Coaching-Call Pricing (US / Canada)
 
-## Root Cause
+Make the **web + Android Stripe** coaching-call flow charge and display the correct currency by region:
 
-There are **two different coaching-call checkout paths** wired to **two different Stripe price IDs through two different edge functions**. They are not the same flow.
+- **United States (and everyone else):** $99.99 USD
+- **Canada:** $129.99 CAD
+
+Region is decided by **IP geolocation**, with a **user override** so a traveler/VPN user can switch currency. **iOS RevenueCat/StoreKit coaching is completely untouched** — it keeps localizing via `paywall.packages.coaching.priceString`.
+
+---
+
+## Why "Play Store country" can't drive this
+
+There is one app binary served to both the US and Canada Play listings. The Google Play account country is only readable through Google Play Billing (`BillingClient`). Coaching on Android uses **Stripe Checkout (a web redirect)**, which has no access to the Play Store account. So we use the best available proxy: **server-side IP geolocation**, with a manual override.
+
+---
+
+## Blocking manual step (Stripe dashboard) — do this first
+
+The value you provided, `prod_UjEolHKfmoeJXD`, is a **product** ID, not a price ID. Stripe Checkout needs a **price** ID.
+
+1. Open the coaching **Product** `prod_UjEolHKfmoeJXD` in Stripe (**Live** mode).
+2. Add a new **Price**: currency **CAD**, amount **129.99** (i.e. `12999`), **One time**.
+3. Copy the new **`price_...`** ID (starts with `price_`) and send it to me.
+4. Confirm the existing USD price `price_1TFm5RBCKK2x5xtVzSHn0acA` is **USD / 9999** in Live mode.
+
+Until I have the CAD `price_...` ID, the code will safely fall back to USD for everyone (no breakage), and flipping CAD on is a one-line change.
+
+---
+
+## Code changes
+
+### 1. New region helper — `src/lib/coachingRegion.ts`
+Single source of truth for region → currency → display amount.
 
 ```text
-HOMEPAGE (correct / live)
-  Index.tsx → MotivationCTA → CoachingBooking modal → handlePayment()
-    → supabase.functions.invoke("create-coaching-checkout")
-       → price_1TFm5RBCKK2x5xtVzSHn0acA      ← live coaching price
-
-COACHING PAGE (correct / live)
-  Coaching.tsx → handleBookPaid()
-    → supabase.functions.invoke("create-coaching-checkout")
-       → price_1TFm5RBCKK2x5xtVzSHn0acA      ← same live coaching price
-
-PROFILE / MY ACCOUNT (wrong / sandbox)
-  Profile.tsx (button → navigate("/pricing"))
-    → Pricing.tsx → "Book a Call" → handleStripeCheckout(TIERS.coaching.priceId)
-       → supabase.functions.invoke("create-checkout")
-          → price_1TEtnMBqDvgi4jU7ozhwwm9i   ← DIFFERENT coaching price (sandbox/test)
+COACHING_PRICING = {
+  US: { country: "US", currency: "USD", amount: 9999, display: "$99.99" },
+  CA: { country: "CA", currency: "CAD", amount: 12999, display: "$129.99 CAD" },
+}
+DEFAULT = US
 ```
+- `detectCoachingCountry()` — calls the new `detect-country` edge function (IP-based); falls back to `Intl.DateTimeFormat().resolvedOptions()` region (`en-CA` → CA) if the call fails. Returns `"US"` or `"CA"`.
+- `getCoachingPricing(country)` — returns the display string + currency for UI.
+- Stores any user override in `localStorage` (`coaching_region_override`) so the choice sticks.
 
-So the divergence is **not the screen** — it is that the Profile/My Account route goes through the Pricing page, which creates the coaching checkout using a **separate price ID (`price_1TEtnMBqDvgi4jU7ozhwwm9i`) via the generic `create-checkout` function**, instead of the canonical `create-coaching-checkout` function + live price (`price_1TFm5RBCKK2x5xtVzSHn0acA`) used everywhere else. That stale coaching price is the one rendering sandbox checkout.
+### 2. New edge function — `supabase/functions/detect-country/index.ts`
+- Reads the client IP from `x-forwarded-for`, looks up country via a lightweight geo API (e.g. `ipapi.co/<ip>/country/`), returns `{ country: "US" | "CA" | <iso> }`.
+- CORS enabled; no auth required; defaults to `US` on any failure/timeout.
 
-Confirmed shared/consistent (not the problem):
-- Both `create-checkout` and `create-coaching-checkout` read the same `STRIPE_SECRET_KEY`.
-- iOS native path (RevenueCat StoreKit) is intentional and correct; Android + web both use Stripe — also intentional per the working baseline.
+### 3. `supabase/functions/create-coaching-checkout/index.ts` (make region-aware)
+- Parse an optional JSON body: `{ country?: string }`.
+- Re-validate server-side: if no/blank `country`, detect from `x-forwarded-for` (same logic as `detect-country`) so the override is a hint, not blind trust.
+- Select price: `country === "CA"` → CAD price ID, else USD price ID (`price_1TFm5RBCKK2x5xtVzSHn0acA`).
+- Until the CAD `price_...` is provided, the CAD branch falls back to the USD price (guarded by a constant), so nothing breaks.
+- Keep everything else (auth, customer lookup, timeout, success/cancel URLs, metadata) identical; add `currency`/`country` to `metadata` for reconciliation.
 
-## The Fix — standardize on one shared production coaching path
+### 4. `src/lib/coachingPurchase.ts`
+- `startCoachingStripeCheckout()` accepts `{ country?: string }` and passes it in the invoke `body`. All existing callers keep working (param optional).
 
-The homepage/Coaching path (`create-coaching-checkout` + `price_1TFm5RBCKK2x5xtVzSHn0acA`) is the source of truth. Every web/Android coaching-call entry point must use it.
+### 5. UI — show region price + override (web/Android only; iOS branch unchanged)
+On mount, each coaching surface resolves `country` via `detectCoachingCountry()` (respecting any saved override) and renders `getCoachingPricing(country).display`. A small **"Showing prices for: United States ▾ / Canada"** toggle lets the user switch; switching saves the override and updates the displayed amount. The selected country is passed into `startCoachingStripeCheckout({ country })`.
 
-### 1. `src/pages/Pricing.tsx`
-- Change the web/Android coaching "Book a Call" button so it no longer calls `handleStripeCheckout(TIERS.coaching.priceId)`.
-- Make it invoke `supabase.functions.invoke("create-coaching-checkout")` and open `data.url` via `openExternalUrl` — identical to `Coaching.tsx`/`CoachingBooking.tsx`.
-- Remove `coaching` from the `TIERS` checkout config's price usage. Keep only the display amount (`$99.99`) for the label; delete `priceId: "price_1TEtnMBqDvgi4jU7ozhwwm9i"` so the stale test price is gone from the codebase.
+Files to update (replace hardcoded `$99.99` on the **non-iOS** branch only):
+- `src/pages/Coaching.tsx` (line ~161 `: "$99.99"`).
+- `src/components/CoachingBooking.tsx` (line ~357 fallback `"$99.99 per session"`), and pass `country` into the checkout call.
+- `src/pages/Pricing.tsx` — replace static `TIERS.coaching.amount` usage (the bullet + "Book a Call" button label) with the region value, and pass `country` into `startCoachingStripeCheckout`.
 
-### 2. `supabase/functions/create-checkout/index.ts`
-- Remove the coaching one-off price (`price_1TEtnMBqDvgi4jU7ozhwwm9i`) from the allowed-price allowlist. `create-checkout` should only handle subscription prices (Pro/Elite). This guarantees the test coaching price can never be used for a session again.
+---
 
-### 3. (Optional hardening) Extract a shared helper
-- Add `startCoachingStripeCheckout()` to `src/lib/coachingPurchase.ts` that wraps the `create-coaching-checkout` invoke + `openExternalUrl`, and have `Pricing.tsx`, `Coaching.tsx`, and `CoachingBooking.tsx` all call it. This makes "one shared production booking function" literal in code and prevents future drift.
+## Explicitly untouched
+- **iOS RevenueCat/StoreKit** coaching (`useIosIapForCoaching`, `paywall.packages.coaching.priceString`) — App Store handles its own US/CA pricing.
+- Subscription pricing (Pro/Elite) and `create-checkout`.
+- Cal.com scheduling flow and `record-coaching-purchase`.
 
-## What is removed
-- `price_1TEtnMBqDvgi4jU7ozhwwm9i` (the sandbox coaching price) — from `Pricing.tsx` `TIERS.coaching` and from the `create-checkout` allowlist.
-- The Pricing coaching button's dependency on the generic `create-checkout` function.
+---
 
-## Validation checklist
-1. Grep the repo: `price_1TEtnM` no longer appears anywhere; coaching checkout only references `price_1TFm5RBCKK2x5xtVzSHn0acA`.
-2. Profile → "Manage plan"/tier card → /pricing → "Book a Call" now invokes `create-coaching-checkout` (verify via network panel: same function, same returned Stripe URL host/params as homepage).
-3. Homepage MotivationCTA and Coaching page "Book & Pay" still invoke `create-coaching-checkout` (unchanged).
-4. All three return a checkout URL from the **same** Stripe environment (live), confirmed by calling the edge function via the curl tool and inspecting `session.url`.
-5. iOS native coaching purchase (RevenueCat) untouched and still routes to StoreKit, not Stripe.
+## Verification
+- Edge function: call `create-coaching-checkout` with `{country:"CA"}` and `{country:"US"}`, confirm the session uses the matching price/currency (after CAD price ID is added).
+- `detect-country`: confirm it returns `US`/`CA` from a real request and defaults to `US` on failure.
+- UI: confirm US shows `$99.99`, CA shows `$129.99 CAD`, override toggle switches both the label and the charged currency, and the iOS branch still reads StoreKit pricing.
 
-## Items you must verify/set manually (Stripe + Lovable)
-- Confirm `STRIPE_SECRET_KEY` in Lovable Cloud is your **live** secret key (`sk_live_...`). If it is a test key, the homepage is also test and the whole app needs the live key set — this is the one switch that ultimately controls live vs sandbox.
-- Confirm `price_1TFm5RBCKK2x5xtVzSHn0acA` exists in **live** mode in your Stripe dashboard and is priced at $99.99. If the canonical coaching price should be a different live price ID, tell me and I'll point `create-coaching-checkout` at it.
-- The Cal.com paid event (`https://cal.com/carnivorex/coaching-session`) must have its payment configured against the live Stripe connection, not a test connection.
+---
 
-## Technical notes
-- No DB/schema changes. Frontend wiring + one edge-function allowlist edit only.
-- No change to iOS StoreKit/RevenueCat behavior, the `handleDone` fallback insert, or `cal-webhook`.
+## What I need from you to finish CAD
+- The CAD **`price_...`** ID (from the manual Stripe step above). Everything else ships now and defaults to USD safely until that ID is in.
