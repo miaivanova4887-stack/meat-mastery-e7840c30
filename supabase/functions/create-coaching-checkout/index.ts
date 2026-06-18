@@ -97,6 +97,28 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
+    // Determine the billing region. The client may send a country hint
+    // (manual override / its own detection), but we re-validate server-side via
+    // IP geolocation when no explicit hint is provided so the override is a
+    // hint, not blind trust.
+    let countryHint = "";
+    try {
+      const body = await req.json().catch(() => ({}));
+      countryHint = String(body?.country ?? "").toUpperCase();
+    } catch (_e) {
+      countryHint = "";
+    }
+    const country =
+      countryHint === "CA" || countryHint === "US"
+        ? countryHint
+        : await detectCountryFromIp(req);
+
+    const priceId =
+      country === "CA" && CAD_COACHING_PRICE_ID
+        ? CAD_COACHING_PRICE_ID
+        : USD_COACHING_PRICE_ID;
+    const currency = priceId === CAD_COACHING_PRICE_ID ? "CAD" : "USD";
+
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Stripe checkout timed out after 8 seconds")), 8000)
     );
@@ -106,11 +128,16 @@ serve(async (req) => {
       stripe.checkout.sessions.create({
         customer: customerId,
         customer_email: customerId ? undefined : user.email,
-        line_items: [{ price: "price_1TFm5RBCKK2x5xtVzSHn0acA", quantity: 1 }],
+        line_items: [{ price: priceId, quantity: 1 }],
         mode: "payment",
         success_url: `${origin}/?coaching_payment=success`,
         cancel_url: `${origin}/?coaching_payment=cancelled`,
-        metadata: { userId: user.id, type: "coaching_session" },
+        metadata: {
+          userId: user.id,
+          type: "coaching_session",
+          country,
+          currency,
+        },
       }),
       timeoutPromise,
     ]);
