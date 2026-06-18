@@ -9,6 +9,41 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { CAL_IOS_NO_PAYMENT_URL } from "@/lib/coachingUrls";
+import { openExternalUrl } from "@/lib/openExternalUrl";
+
+/**
+ * Single shared production entry point for the web/Android coaching-call
+ * Stripe checkout. EVERY non-iOS coaching "Book a Call" CTA (homepage,
+ * Coaching page, Pricing/My Account) MUST call this so the checkout is always
+ * created by the same `create-coaching-checkout` function against the same
+ * live coaching price. Do NOT re-introduce per-screen price IDs or route
+ * coaching through the generic `create-checkout` function — that caused the
+ * Profile/My Account path to open a stale (sandbox) coaching price.
+ *
+ * Returns { ok } so callers can decide how to surface a failure. The function
+ * itself opens the returned Stripe URL via openExternalUrl (native-safe).
+ */
+export async function startCoachingStripeCheckout(opts?: {
+  logTag?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { data, error } = await supabase.functions.invoke(
+      "create-coaching-checkout"
+    );
+    if (error) throw error;
+    if (data?.url) {
+      await openExternalUrl(data.url, {
+        logTag: opts?.logTag ?? "coaching:stripe-checkout",
+      });
+      return { ok: true };
+    }
+    return { ok: false, error: "No checkout URL returned" };
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "Couldn't open checkout";
+    console.error("[startCoachingStripeCheckout] failed", e);
+    return { ok: false, error: msg };
+  }
+}
 
 export interface RecordCoachingPurchaseInput {
   source: "appstore" | "stripe";
