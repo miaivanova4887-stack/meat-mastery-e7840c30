@@ -642,10 +642,27 @@ const Pricing = () => {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => handleStripeCheckout(TIERS.coaching.priceId)}
-              disabled={loading === TIERS.coaching.priceId}
+              onClick={async () => {
+                if (!user) {
+                  toast("Please sign in first");
+                  navigate("/auth");
+                  return;
+                }
+                setLoading("coaching");
+                try {
+                  const res = await startCoachingStripeCheckout({
+                    logTag: "pricing:coaching-checkout",
+                  });
+                  if (!res.ok) {
+                    toast.error(res.error ?? "Couldn't open checkout. Please try again.");
+                  }
+                } finally {
+                  setLoading(null);
+                }
+              }}
+              disabled={loading === "coaching"}
             >
-              {loading === TIERS.coaching.priceId ? (
+              {loading === "coaching" ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
                 `Book a Call — ${TIERS.coaching.amount}`
