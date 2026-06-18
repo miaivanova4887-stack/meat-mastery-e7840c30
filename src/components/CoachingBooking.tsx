@@ -281,7 +281,7 @@ const CoachingBooking = ({
     } finally {
       setLoading(false);
     }
-  }, [navigate, onOpenChange, location, useNative, paywall]);
+  }, [navigate, onOpenChange, location, useNative, paywall, region.country]);
 
   const handleDone = useCallback(async () => {
     // The Cal.com webhook (cal-webhook edge function) is the canonical writer
