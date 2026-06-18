@@ -161,10 +161,18 @@ const Coaching = () => {
             <p className="text-2xl font-bold text-foreground">
               {useNative
                 ? (paywall.packages.coaching?.priceString || "Loading price…")
-                : "$99.99"}
+                : region.pricing.display}
             </p>
             <p className="text-xs text-muted-foreground">per 1-hour session</p>
+            {!useNative && (
+              <CoachingRegionToggle
+                country={region.country}
+                onChange={region.setCountry}
+                className="mt-3"
+              />
+            )}
           </div>
+
 
           {!user ? (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2 text-center">
