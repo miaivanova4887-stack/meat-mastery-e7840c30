@@ -246,7 +246,7 @@ const Pricing = () => {
     ? (nativeCoachingPrice
         ? `Coaching calls (${nativeCoachingPrice}/session)`
         : "Coaching calls")
-    : `Coaching calls (${TIERS.coaching.amount}/session)`;
+    : `Coaching calls (${region.pricing.display}/session)`;
 
   const plans: {
     tier: SubscriptionTier;
