@@ -266,12 +266,11 @@ const CoachingBooking = ({
       }
 
 
-      // Web: existing Stripe one-off flow.
-      const { data, error } = await supabase.functions.invoke("create-coaching-checkout");
-      if (error) throw error;
-      if (data?.url) {
-        await openExternalUrl(data.url, { logTag: "coaching:stripe-checkout" });
-      }
+      // Web/Android: shared production coaching Stripe checkout. Routes through
+      // the same create-coaching-checkout function + live price used by the
+      // homepage, Coaching page, and Pricing page.
+      const res = await startCoachingStripeCheckout({ logTag: "coaching:stripe-checkout" });
+      if (!res.ok) throw new Error(res.error ?? "Couldn't open checkout");
     } catch (e) {
       console.error("Coaching checkout error:", e);
       toast.error("Couldn't open checkout. Please try again.");
