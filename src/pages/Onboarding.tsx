@@ -220,7 +220,75 @@ const steps: OnboardingStep[] = [
   },
 ];
 
+// Built-in fallback copy for the health-targets step. The CMS
+// (content_blocks page=onboarding, section=health_targets) overrides
+// these when rows exist; without them the step used to render blank.
+const DEFAULT_HEALTH_TARGET_LABELS: Record<"en" | "fr", Record<string, string>> = {
+  en: {
+    subtitle: "Select everything that applies — we'll personalize your plan around it",
+    cat_metabolic: "Metabolic health",
+    cat_inflammation: "Inflammation",
+    cat_gut: "Gut health",
+    cat_mental: "Mind & mood",
+    cat_energy: "Energy & performance",
+    cat_hormonal: "Hormonal health",
+    blood_pressure: "Blood pressure",
+    insulin_sensitivity: "Insulin sensitivity",
+    chronic_inflammation: "Chronic inflammation",
+    joint_pain: "Joint pain",
+    autoimmune: "Autoimmune symptoms",
+    skin_issues: "Skin issues",
+    bloating: "Bloating",
+    food_sensitivities: "Food sensitivities",
+    mental_clarity: "Mental clarity",
+    brain_fog: "Brain fog",
+    mood: "Mood stability",
+    sleep: "Sleep quality",
+    sustained_energy: "Sustained energy",
+    athletic_performance: "Athletic performance",
+    recovery: "Recovery",
+    muscle_mass: "Muscle mass",
+    hormone_balance: "Hormone balance",
+    thyroid: "Thyroid function",
+    testosterone: "Testosterone",
+    fertility: "Fertility",
+  },
+  fr: {
+    subtitle: "Sélectionnez tout ce qui s'applique — nous personnaliserons votre plan",
+    cat_metabolic: "Santé métabolique",
+    cat_inflammation: "Inflammation",
+    cat_gut: "Santé intestinale",
+    cat_mental: "Esprit & humeur",
+    cat_energy: "Énergie & performance",
+    cat_hormonal: "Santé hormonale",
+    blood_pressure: "Tension artérielle",
+    insulin_sensitivity: "Sensibilité à l'insuline",
+    chronic_inflammation: "Inflammation chronique",
+    joint_pain: "Douleurs articulaires",
+    autoimmune: "Symptômes auto-immuns",
+    skin_issues: "Problèmes de peau",
+    bloating: "Ballonnements",
+    food_sensitivities: "Sensibilités alimentaires",
+    mental_clarity: "Clarté mentale",
+    brain_fog: "Brouillard mental",
+    mood: "Stabilité de l'humeur",
+    sleep: "Qualité du sommeil",
+    sustained_energy: "Énergie durable",
+    athletic_performance: "Performance sportive",
+    recovery: "Récupération",
+    muscle_mass: "Masse musculaire",
+    hormone_balance: "Équilibre hormonal",
+    thyroid: "Fonction thyroïdienne",
+    testosterone: "Testostérone",
+    fertility: "Fertilité",
+  },
+};
+
+const defaultHealthTargetLabels = () =>
+  DEFAULT_HEALTH_TARGET_LABELS[i18n.language?.startsWith("fr") ? "fr" : "en"];
+
 // Versioned key — bumped to v3 so any device whose localStorage was
+
 // restored from an iCloud/device backup (which still carries the v2
 // flag) is forced through onboarding again on a fresh install.
 // Legacy keys are removed on mount to prevent re-bypass.
@@ -246,7 +314,10 @@ const Onboarding = () => {
 
   // Health targets state (step 3)
   const [healthTargets, setHealthTargets] = useState<string[]>([]);
-  const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(new Map());
+  const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(
+    () => new Map(Object.entries(defaultHealthTargetLabels()))
+  );
+
 
   // First-mount diagnostics for logcat — confirms whether the gate
   // actually let onboarding render and what the persisted flag was.
@@ -260,7 +331,9 @@ const Onboarding = () => {
     try { LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k)); } catch {}
   }, []);
 
-  // Fetch health target labels from content_blocks
+  // Fetch health target labels from content_blocks — merged ON TOP of the
+  // built-in defaults so the step never renders empty when the CMS rows
+  // are missing (e.g. a fresh/remixed backend).
   useEffect(() => {
     const locale = i18n.language?.startsWith("fr") ? "fr" : "en";
     (supabase as any)
@@ -270,13 +343,18 @@ const Onboarding = () => {
       .eq("section", "health_targets")
       .eq("locale", locale)
       .then(({ data }: { data: { key: string; value: string }[] | null }) => {
-        if (data) {
-          const map = new Map<string, string>();
-          data.forEach((row) => map.set(row.key, row.value));
-          setHealthTargetLabels(map);
+        if (data && data.length > 0) {
+          setHealthTargetLabels((prev) => {
+            const map = new Map(prev);
+            data.forEach((row) => {
+              if (row.value && row.value.trim() !== "") map.set(row.key, row.value);
+            });
+            return map;
+          });
         }
       });
   }, []);
+
 
   const toggleHealthTarget = (key: string) => {
     setHealthTargets((prev) =>
