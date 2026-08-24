@@ -98,23 +98,34 @@ echo "✅ Synced bundle verified: $(basename "${SYNCED_BUNDLE:-unknown}")"
 if [[ -n "$SYNCED_BUNDLE" ]] && command -v shasum >/dev/null 2>&1; then
   echo "🔐 Bundle SHA256: $(shasum -a 256 "$SYNCED_BUNDLE" | awk '{print $1}')"
 fi
-
-# Capacitor sync regenerates android/variables.gradle with minSdkVersion = 24,
-# but androidx.health.connect:connect-client requires minSdk >= 26. Re-pin it
-# here so every fresh build self-heals.
+# Capacitor sync regenerates android/variables.gradle with its own defaults
+# (minSdkVersion = 24). We re-pin all three SDK levels here so every fresh
+# build self-heals:
+#   minSdk 26     -> androidx.health.connect:connect-client requires >= 26
+#   compileSdk 36 -> Android 16 APIs
+#   targetSdk 36  -> Google Play requirement from Aug 30, 2026
 VARIABLES_GRADLE="$ANDROID_DIR/variables.gradle"
-echo "🔎 Pinning minSdkVersion = 26 in variables.gradle (Health Connect requirement)..."
+echo "🔎 Pinning SDK levels in variables.gradle (min 26 / compile 36 / target 36)..."
 if [[ ! -f "$VARIABLES_GRADLE" ]]; then
   echo "❌ Missing $VARIABLES_GRADLE after cap sync"
   exit 1
 fi
-sed -i.bak -E 's/(minSdkVersion[[:space:]]*=[[:space:]]*)[0-9]+/\126/' "$VARIABLES_GRADLE"
+sed -i.bak -E \
+  -e 's/(minSdkVersion[[:space:]]*=[[:space:]]*)[0-9]+/\126/' \
+  -e 's/(compileSdkVersion[[:space:]]*=[[:space:]]*)[0-9]+/\136/' \
+  -e 's/(targetSdkVersion[[:space:]]*=[[:space:]]*)[0-9]+/\136/' \
+  "$VARIABLES_GRADLE"
 rm -f "$VARIABLES_GRADLE.bak"
-if ! grep -qE "minSdkVersion[[:space:]]*=[[:space:]]*26" "$VARIABLES_GRADLE"; then
-  echo "❌ Failed to pin minSdkVersion = 26 in $VARIABLES_GRADLE"
-  exit 1
-fi
-echo "✅ minSdkVersion = 26 confirmed"
+for pin in "minSdkVersion:26" "compileSdkVersion:36" "targetSdkVersion:36"; do
+  key="${pin%%:*}"
+  want="${pin##*:}"
+  if ! grep -qE "${key}[[:space:]]*=[[:space:]]*${want}" "$VARIABLES_GRADLE"; then
+    echo "❌ Failed to pin ${key} = ${want} in $VARIABLES_GRADLE"
+    exit 1
+  fi
+  echo "✅ ${key} = ${want} confirmed"
+done
+echo "🔐 SDK fingerprint: $(grep -E '(min|compile|target)SdkVersion[[:space:]]*=' "$VARIABLES_GRADLE" | tr -d ' ' | tr '\n' ' ')"
 
 APP_GRADLE="$ANDROID_DIR/app/build.gradle"
 echo "🔎 Verifying kotlin-android plugin is applied in app/build.gradle..."
