@@ -59,7 +59,7 @@
  *    android {
  *        compileSdk 36
  *        defaultConfig {
- *            targetSdkVersion 35
+ *            targetSdkVersion 36
  *        }
  *    }
  */
