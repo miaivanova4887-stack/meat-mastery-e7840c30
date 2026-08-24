@@ -260,7 +260,9 @@ const Onboarding = () => {
     try { LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k)); } catch {}
   }, []);
 
-  // Fetch health target labels from content_blocks
+  // Fetch health target labels from content_blocks — merged ON TOP of the
+  // built-in defaults so the step never renders empty when the CMS rows
+  // are missing (e.g. a fresh/remixed backend).
   useEffect(() => {
     const locale = i18n.language?.startsWith("fr") ? "fr" : "en";
     (supabase as any)
@@ -270,13 +272,18 @@ const Onboarding = () => {
       .eq("section", "health_targets")
       .eq("locale", locale)
       .then(({ data }: { data: { key: string; value: string }[] | null }) => {
-        if (data) {
-          const map = new Map<string, string>();
-          data.forEach((row) => map.set(row.key, row.value));
-          setHealthTargetLabels(map);
+        if (data && data.length > 0) {
+          setHealthTargetLabels((prev) => {
+            const map = new Map(prev);
+            data.forEach((row) => {
+              if (row.value && row.value.trim() !== "") map.set(row.key, row.value);
+            });
+            return map;
+          });
         }
       });
   }, []);
+
 
   const toggleHealthTarget = (key: string) => {
     setHealthTargets((prev) =>
