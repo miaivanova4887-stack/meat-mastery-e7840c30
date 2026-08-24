@@ -815,7 +815,7 @@ const Onboarding = () => {
                       >
                         <CatIcon size={14} strokeWidth={1.5} />
                       </div>
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      <span className="text-[14px] font-medium text-foreground leading-tight">
                         {healthTargetLabels.get(cat.catKey) || cat.catKey}
                       </span>
                     </div>
