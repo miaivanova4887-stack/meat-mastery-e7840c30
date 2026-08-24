@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.protect_coaching_session_payment_fields() FROM PUBLIC, anon, authenticated;
