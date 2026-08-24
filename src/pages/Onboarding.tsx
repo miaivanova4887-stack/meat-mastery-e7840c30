@@ -246,7 +246,10 @@ const Onboarding = () => {
 
   // Health targets state (step 3)
   const [healthTargets, setHealthTargets] = useState<string[]>([]);
-  const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(new Map());
+  const [healthTargetLabels, setHealthTargetLabels] = useState<Map<string, string>>(
+    () => new Map(Object.entries(defaultHealthTargetLabels()))
+  );
+
 
   // First-mount diagnostics for logcat — confirms whether the gate
   // actually let onboarding render and what the persisted flag was.
