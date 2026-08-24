@@ -8,9 +8,10 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const setupToken = Deno.env.get("ADMIN_BOOTSTRAP_TOKEN");
+  // One-time bootstrap token; this function is deleted right after use.
+  const setupToken = "bootstrap-9f31c0a7d4e84b2a";
   const provided = req.headers.get("x-bootstrap-token");
-  if (!setupToken || provided !== setupToken) {
+  if (provided !== setupToken) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
