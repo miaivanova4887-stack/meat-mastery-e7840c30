@@ -884,9 +884,7 @@ const Onboarding = () => {
                               }`}
                             >
                               <span
-                                className={`flex-1 min-w-0 text-[14px] font-medium text-left leading-tight ${
-                                  selected ? "text-foreground" : "text-foreground/80"
-                                }`}
+                                className="flex-1 min-w-0 text-[14px] font-medium text-left leading-tight text-foreground"
                               >
                                 {healthTargetLabels.get(targetKey) || targetKey}
                               </span>
