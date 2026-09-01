@@ -7,14 +7,13 @@ import { reconcileCachedAppleName } from "@/lib/appleDisplayName";
 import { logAfEvent, setAppsFlyerUserId, AF_EVENTS, AF_PARAMS } from "@/lib/appsflyer";
 
 /** Where verification / recovery emails should send users back to.
- * Always app.carnivorex.app so the link works for both the installed
- * Android app (via App Links) and the published web app. The bare
- * lovable.app preview origin is intentionally NOT used because the
- * marketing site sits on the root carnivorex.app domain and we keep
- * a single canonical auth-callback host. */
+ * Always aos.carnivorex.app: it is this project's canonical published
+ * domain, it is in the auth redirect allow-list, and it is registered as
+ * an Android App Link so the installed app intercepts the link. */
 function resolveAuthRedirect(path: "/auth/callback" | "/reset-password"): string {
-  return `https://app.carnivorex.app${path}`;
+  return `https://aos.carnivorex.app${path}`;
 }
+
 
 interface AuthContextType {
   user: User | null;
