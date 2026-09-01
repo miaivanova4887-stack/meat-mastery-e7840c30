@@ -1,66 +1,38 @@
-# Play Console declarations for this submission
+# Device exclusion rules — recommendation
 
-What to declare (and what to exclude) for CarnivoreX, based on what the app actually ships.
+This page is the Play Console **Device catalogue → Device exclusion rules**. It has nothing to do with the data safety or content declarations; it only controls which physical devices are allowed to install the app. Nothing here requires code changes.
 
-## 1. Data safety form
+## What each setting does
 
-Declare collected + linked to identity (account required):
-- Email address and name (account creation, Google sign-in)
-- Health & fitness: steps, heart rate, weight, calories (Health Connect reads), plus logged meals/progress
-- App activity / app interactions and diagnostics (Firebase Analytics)
-- Device or other IDs (Firebase/FCM push tokens, AppsFlyer attribution)
-- Photos (only if the user takes a food photo — collected, optional)
-- Audio: voice input for Smart Log — declare only if audio leaves the device; if speech is transcribed on-device and only text is stored, declare "not collected" and say so in the description
-- Purchase history (coaching call payments via Stripe, subscriptions via RevenueCat)
+- **Exclusion rules** — filters on hardware attributes (RAM, SDK level, screen size, OpenGL, CPU model). Any device matching a rule cannot install or update the app, and it also disappears from your install base.
+- **Play Integrity** — hides the app from devices that fail Google's device-integrity check (uncertified, rooted, emulators). Separate from exclusion rules and off unless configured.
+- **Android Go devices** — Include or Exclude the low-memory Android Go edition (1–2 GB RAM, memory-restricted WebView).
 
-For every item: encrypted in transit = Yes, users can request deletion = Yes (in-app account deletion exists).
+## Recommendation for CarnivoreX
 
-Exclude / mark "not collected":
-- Precise or approximate location
-- Contacts, calendar, SMS, call logs
-- Installed apps list, files & docs
-- Financial info beyond purchase history (card data never touches the app — Stripe/Google Play handle it)
+| Setting | Recommendation |
+| --- | --- |
+| RAM rule | Change `<= 2048 MB` to **`<= 1024 MB`** |
+| Android Go devices | Keep **Exclude** |
+| Play Integrity | Leave **unconfigured** for now |
+| Other rules | Add none |
 
-Do not tick "Data shared with third parties" for analytics/attribution processors unless you treat AppsFlyer as sharing; declare processors as collection, not sharing, and keep the Privacy Policy consistent with whatever you tick.
+Reasoning:
 
-## 2. Health Connect declaration form
+- **RAM 2048 MB is too aggressive.** It removes every 2 GB device, which is still a large share of budget Android phones in emerging markets and some older Samsung/Motorola models in North America. This app is a Capacitor WebView app with images and a Health Connect read path — it is heavier than a native list app, but it runs fine in 2 GB. Excluding at 1024 MB removes only the genuinely unusable devices.
+- **Keep Android Go excluded.** Go edition caps WebView memory and background processes; a React/WebView app with photo assets and voice capture reliably produces bad reviews and OOM crashes there. Excluding it protects the rating without meaningful install loss.
+- **Do not enable Play Integrity exclusion yet.** It silently blocks users on legitimately uncertified devices and on emulators — including the emulators you use for testing. Revisit only if you see subscription or coaching-payment abuse.
+- **No SDK-level rule needed.** `minSdkVersion 26` already handles the floor, so an SDK exclusion rule would be redundant.
+- **No screen-size rule needed.** Tablets are already handled in the manifest (`resizeableActivity="false"` with the portrait lock), so there is no reason to hard-block large screens from installing.
 
-Required because the app reads Health Connect data. Declare:
-- Permissions requested: READ_STEPS, READ_HEART_RATE, READ_WEIGHT, READ_ACTIVE_CALORIES_BURNED, READ_TOTAL_CALORIES_BURNED (read-only, no writes)
-- Use case: display the user's own fitness metrics inside their progress dashboard
-- Confirm no advertising or resale use of health data, and record a demo video of the permission prompt + where the data appears
+## Steps in Play Console
 
-## 3. Permissions declarations
+1. Device catalogue → Device exclusion rules.
+2. On the existing RAM rule, change the value dropdown from `2048 MB` to `1024 MB`.
+3. Leave `Android Go devices` on **Exclude**.
+4. Do not touch **Play Integrity → Configure**.
+5. Save, then check the reported "Devices excluded" count — it should drop to a small number.
 
-Sensitive-permission forms to complete or exclude:
-- No declaration needed: INTERNET, POST_NOTIFICATIONS, camera, microphone (all standard/runtime, tied to visible features)
-- Excluded — never add these, they trigger extra review: QUERY_ALL_PACKAGES, SMS/Call Log, MANAGE_EXTERNAL_STORAGE, foreground service types, exact alarms, all-files access, accessibility
-- The only `<queries>` entry is the Health Connect package, which is the documented allowed use
+## If you prefer a stricter posture
 
-## 4. Content and policy declarations
-
-- Ads: **No** — the app serves no advertising (AppsFlyer is attribution only, not ad serving)
-- App access: provide the reviewer test credentials, since content is behind sign-in
-- Content rating questionnaire: no violence/sexual content/gambling; select the health & fitness category
-- Target audience: 18+ only — exclude children's audiences so Families policy and Play's teacher-approved rules don't apply
-- Health apps declaration: not a medical device, no diagnosis/treatment claims; point to the in-app wellness disclaimer
-- News, COVID-19 contact tracing, financial features, VPN, government app: all **No**
-- Data deletion URL: required — link the in-app account deletion path plus a web-facing deletion request page
-- Government/medical claims: exclude any wording implying treatment of disease in the store listing
-
-## 5. Payments declarations
-
-- Subscriptions must use Google Play billing (RevenueCat wraps it) — already the case on Android
-- Coaching calls go through Stripe. This is only compliant if the coaching call is a real-world one-to-one service, not digital in-app content. Declare it as a physical/real-world service; if Play challenges it, the fallback is routing coaching purchases through Play billing on Android too.
-- Do not include external payment links for subscriptions anywhere in the Android build
-
-## 6. Countries and distribution exclusions
-
-- Include US and Canada, since coaching pricing is only defined for USD and CAD
-- Exclude countries where Stripe coaching checkout has no configured currency, or ship coaching as USD-only there
-- Exclude Wear OS, Android TV, Auto and Chromebook form factors — the app is portrait phone-locked (`resizeableActivity="false"`)
-
-## Notes
-
-- No code changes are part of this; it is entirely Play Console form work.
-- One open question decides two answers: whether voice audio is uploaded for transcription, and whether AppsFlyer counts as sharing. Confirm both before submitting, because the Data safety form must match the Privacy Policy exactly.
+If your priority is protecting the store rating over reach, keep `<= 2048 MB`. That is a valid choice; just be aware it materially reduces reachable devices and cannot be undone retroactively for users who already lost access to updates.
