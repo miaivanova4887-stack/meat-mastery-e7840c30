@@ -331,7 +331,7 @@ const Auth = () => {
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: unconfirmedEmail,
-        options: { emailRedirectTo: "https://app.carnivorex.app/auth/callback" },
+        options: { emailRedirectTo: "https://aos.carnivorex.app/auth/callback" },
       });
       if (error) {
         toast.error(error.message);
