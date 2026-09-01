@@ -33,6 +33,7 @@ import ShoppingBag from "./pages/ShoppingBag";
 import Onboarding from "./pages/Onboarding";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import NativeAuthBridge from "./pages/NativeAuthBridge";
 import ResetPassword from "./pages/ResetPassword";
 import Community from "./pages/Community";
 import ProfilePage from "./pages/Profile";
@@ -179,6 +180,7 @@ const App = () => {
                 <Route path="/shopping-bag" element={<ShoppingBag />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/auth/native-callback" element={<NativeAuthBridge />} />
                 <Route path="/callback" element={<AuthCallback />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/community" element={<Community />} />
