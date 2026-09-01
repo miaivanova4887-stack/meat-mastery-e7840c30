@@ -221,17 +221,21 @@ const Auth = () => {
     }
 
     // Web: hosted /auth/callback page runs the PKCE code exchange.
-    // Native android: use the custom URL scheme so the OAuth broker
-    // hands the callback directly to the app via the Capacitor intent filter.
+    // Native android: the auth server's redirect allow-list rejects custom
+    // schemes (carnivorex://...) — it only accepts https URLs with a public
+    // TLD and no wildcards. So we send the callback to the canonical https
+    // host, which is registered as a verified Android App Link
+    // (autoVerify + /.well-known/assetlinks.json). Android hands the URL to
+    // the installed app via appUrlOpen, and useDeepLinks routes it to
+    // /auth/callback inside the app WebView (where the PKCE verifier lives).
     //
-    // Required Supabase Auth → URL Configuration → Redirect URLs:
-    //   - carnivorex://callback           (current canonical native callback)
-    //   - carnivorex://auth/callback      (legacy, kept for backward compatibility)
-    //   - https://app.carnivorex.app/auth/callback (web + email confirmation)
+    // Required auth → URL Configuration → Redirect URLs:
+    //   - https://aos.carnivorex.app/** (published domain, native + web)
     const redirectTo =
       platform === "web"
         ? `${window.location.origin}/auth/callback`
-        : "carnivorex://callback";
+        : "https://aos.carnivorex.app/auth/callback";
+
     logAuthDiag("oauth:click", { provider, platform, isNative });
     logAuthDiag("oauth:redirect-uri", { redirectTo });
     if (provider === "google") {
