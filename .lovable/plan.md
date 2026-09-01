@@ -30,7 +30,7 @@ Add a temporary admin-only edge function `stripe-config-check` that:
 Run it once; if it reports test mode or a missing price, update `STRIPE_SECRET_KEY` to the live key from the original project's Stripe dashboard and/or correct the price IDs, then re-run until both prices resolve as active LIVE prices in the correct currencies.
 
 Step 2 — set the missing Cal.com webhook secret
-Request `CAL_WEBHOOK_SECRET` via the secure form, using the same value configured on the Cal.com webhook, and re-point the Cal.com webhook URL at this project's `cal-webhook` function.
+Following [Cal.com's webhook guide](https://cal.com/docs/developing/guides/automation/webhooks#2021-10-20) (secret set on the webhook, signature sent as `X-Cal-Signature-256` = HMAC-SHA256 of the raw body), request `CAL_WEBHOOK_SECRET` via the secure form, using the same value configured on the Cal.com webhook, and re-point the Cal.com webhook URL at this project's `cal-webhook` function.
 
 Step 3 — end-to-end coaching payment test
 With the app signed in on Android, tap Book a Call, capture the checkout URL mode (`checkout.stripe.com` live session vs test), complete a real charge, and confirm: `coaching_sessions` row created, Cal.com booking recorded, success redirect handled.
