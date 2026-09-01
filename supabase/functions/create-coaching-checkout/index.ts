@@ -48,6 +48,10 @@ async function detectCountryFromIp(req: Request): Promise<string> {
   return "US";
 }
 
+const log = (step: string, details?: Record<string, unknown>) => {
+  console.info(`[COACHING-CHECKOUT] ${step}${details ? " " + JSON.stringify(details) : ""}`);
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -59,6 +63,10 @@ serve(async (req) => {
   );
 
   try {
+    log("function started", {
+      hasStripeSecretKey: !!Deno.env.get("STRIPE_SECRET_KEY"),
+      hasStripeLiveSecretKey: !!Deno.env.get("STRIPE_LIVE_SECRET_KEY"),
+    });
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Authorization header required" }), {
@@ -70,6 +78,7 @@ serve(async (req) => {
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
     if (!user?.email) {
+      log("auth failed");
       return new Response(JSON.stringify({ error: "Authentication required" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 401,
@@ -85,8 +94,20 @@ serve(async (req) => {
       Deno.env.get("STRIPE_LIVE_SECRET_KEY") ||
       "";
     if (!stripeKey) {
+      log("no stripe key configured");
       throw new Error("Stripe secret key is not set (STRIPE_SECRET_KEY)");
     }
+    log("user authenticated", {
+      userId: user.id,
+      keyName: Deno.env.get("STRIPE_SECRET_KEY")
+        ? "STRIPE_SECRET_KEY"
+        : "STRIPE_LIVE_SECRET_KEY",
+      keyMode: stripeKey.startsWith("sk_live_")
+        ? "live"
+        : stripeKey.startsWith("sk_test_")
+        ? "test"
+        : "unknown",
+    });
     const stripe = new Stripe(stripeKey, {
       apiVersion: "2025-08-27.basil",
     });
@@ -118,6 +139,7 @@ serve(async (req) => {
         ? CAD_COACHING_PRICE_ID
         : USD_COACHING_PRICE_ID;
     const currency = priceId === CAD_COACHING_PRICE_ID ? "CAD" : "USD";
+    log("resolved price", { country, priceId, currency, hasCustomer: !!customerId });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Stripe checkout timed out after 8 seconds")), 8000)
@@ -142,14 +164,29 @@ serve(async (req) => {
       timeoutPromise,
     ]);
 
+    log("session created", { sessionId: session.id, hasUrl: !!session.url });
+
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
-    const msg = (error as Error).message;
+    const err = error as { message?: string; type?: string; code?: string; param?: string; statusCode?: number };
+    const msg = err?.message ?? "Unknown error";
+    log("FAILED", {
+      message: msg,
+      stripeType: err?.type ?? null,
+      stripeCode: err?.code ?? null,
+      stripeParam: err?.param ?? null,
+      stripeStatus: err?.statusCode ?? null,
+    });
     const status = msg.includes("timed out") ? 504 : 500;
-    return new Response(JSON.stringify({ error: msg }), {
+    return new Response(JSON.stringify({
+      error: msg,
+      stripeType: err?.type ?? null,
+      stripeCode: err?.code ?? null,
+      stripeParam: err?.param ?? null,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status,
     });
