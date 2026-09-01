@@ -340,9 +340,23 @@ export interface PurchaseResult {
 
 export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseResult> {
   if (!isRevenueCatAvailable() || !configured) {
-    return { ok: false, error: "In-app purchases are only available in the mobile app." };
+    console.warn("[RC PURCHASE] blocked", {
+      available: isRevenueCatAvailable(),
+      configured,
+      platform: Capacitor.getPlatform(),
+    });
+    return {
+      ok: false,
+      error: !isRevenueCatAvailable()
+        ? "In-app purchases are only available in the mobile app."
+        : "In-app purchases are not ready yet. Please reopen the app and try again.",
+    };
   }
   try {
+    console.info("[RC PURCHASE] start", {
+      packageId: pkg.identifier,
+      productId: pkg.product?.identifier ?? null,
+    });
     const result = await Purchases.purchasePackage({ aPackage: pkg });
     // Defensively read the transaction fields at runtime — older RC builds
     // may omit `transaction` even when current types declare it.
@@ -382,8 +396,18 @@ export async function purchasePackage(pkg: PurchasesPackage): Promise<PurchaseRe
     if (err?.userCancelled || err?.code === "1" /* PURCHASE_CANCELLED */) {
       return { ok: false, cancelled: true };
     }
-    console.error("[revenuecat] purchase failed", err);
-    return { ok: false, error: err?.message ?? "Purchase failed" };
+    console.error("[RC PURCHASE] failed " + JSON.stringify({
+      packageId: pkg.identifier,
+      productId: pkg.product?.identifier ?? null,
+      message: err?.message ?? null,
+      code: err?.code ?? null,
+      underlyingErrorMessage: err?.underlyingErrorMessage ?? null,
+      readableErrorCode: err?.readableErrorCode ?? null,
+    }), err);
+    const reason = [err?.message, err?.underlyingErrorMessage]
+      .filter(Boolean)
+      .join(" — ");
+    return { ok: false, error: reason || "Purchase failed" };
   }
 }
 

@@ -276,7 +276,7 @@ const CoachingBooking = ({
       if (!res.ok) throw new Error(res.error ?? "Couldn't open checkout");
     } catch (e) {
       console.error("Coaching checkout error:", e);
-      toast.error("Couldn't open checkout. Please try again.");
+      toast.error(e instanceof Error && e.message ? e.message : "Couldn't open checkout. Please try again.");
       setScreen("info");
     } finally {
       setLoading(false);

@@ -383,7 +383,26 @@ const Pricing = () => {
             ))}
           </div>
         )}
+        {/* Store products failed to load — without this the Buy buttons just
+            read "Unavailable" with no explanation, which looks like nothing
+            happens when tapped. Surfaces the real reason instead. */}
+        {useNative && !paywall.loading && !paywall.packages.pro_monthly && !paywall.packages.elite_monthly && (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-xs text-foreground space-y-2">
+            <p className="font-semibold">Store products couldn't be loaded</p>
+            <p className="text-muted-foreground">
+              {paywall.error ??
+                "The app store returned no subscription products for this build. Install the app from a Google Play testing track and try again."}
+            </p>
+            <button
+              onClick={() => void paywall.refresh()}
+              className="underline font-medium"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {/* Billing toggle */}
+
         <div className="flex items-center justify-center gap-2">
           {(["monthly", "yearly"] as const).map((cycle) => (
             <button
