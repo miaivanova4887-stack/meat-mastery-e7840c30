@@ -33,13 +33,36 @@ export async function startCoachingStripeCheckout(opts?: {
       "create-coaching-checkout",
       opts?.country ? { body: { country: opts.country } } : undefined
     );
-    if (error) throw error;
+    if (error) {
+      // supabase-js collapses non-2xx responses into a generic
+      // "Edge Function returned a non-2xx status code" message. Read the real
+      // body so the user (and adb logcat) sees the actual Stripe failure.
+      let detail = "";
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ctx = (error as any)?.context;
+        if (ctx && typeof ctx.json === "function") {
+          const body = await ctx.json();
+          detail = [body?.error, body?.stripeCode, body?.stripeParam]
+            .filter(Boolean)
+            .join(" · ");
+        }
+      } catch {
+        /* body already consumed or not JSON */
+      }
+      console.error("[startCoachingStripeCheckout] function error", {
+        message: error.message,
+        detail,
+      });
+      return { ok: false, error: detail || error.message || "Couldn't open checkout" };
+    }
     if (data?.url) {
       await openExternalUrl(data.url, {
         logTag: opts?.logTag ?? "coaching:stripe-checkout",
       });
       return { ok: true };
     }
+    console.error("[startCoachingStripeCheckout] no url in response", data);
     return { ok: false, error: "No checkout URL returned" };
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Couldn't open checkout";
@@ -47,6 +70,7 @@ export async function startCoachingStripeCheckout(opts?: {
     return { ok: false, error: msg };
   }
 }
+
 
 export interface RecordCoachingPurchaseInput {
   source: "appstore" | "stripe";
