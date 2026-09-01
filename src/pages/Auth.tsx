@@ -221,20 +221,23 @@ const Auth = () => {
     }
 
     // Web: hosted /auth/callback page runs the PKCE code exchange.
+    //
     // Native android: the auth server's redirect allow-list rejects custom
-    // schemes (carnivorex://...) — it only accepts https URLs with a public
-    // TLD and no wildcards. So we send the callback to the canonical https
-    // host, which is registered as a verified Android App Link
-    // (autoVerify + /.well-known/assetlinks.json). Android hands the URL to
-    // the installed app via appUrlOpen, and useDeepLinks routes it to
-    // /auth/callback inside the app WebView (where the PKCE verifier lives).
+    // schemes (carnivorex://...) — https only, public TLD, no wildcards. And
+    // Android does NOT hand a verified https App Link back to the app that
+    // opened the Chrome Custom Tab, so pointing straight at /auth/callback
+    // leaves the user on the web page. So we send the callback to an https
+    // BRIDGE page which then performs a page-initiated navigation to
+    // carnivorex://callback — that hop IS delivered to the installed app via
+    // appUrlOpen, and useDeepLinks routes it to /auth/callback inside the app
+    // WebView (where the PKCE verifier lives).
     //
     // Required auth → URL Configuration → Redirect URLs:
     //   - https://aos.carnivorex.app/** (published domain, native + web)
     const redirectTo =
       platform === "web"
         ? `${window.location.origin}/auth/callback`
-        : "https://aos.carnivorex.app/auth/callback";
+        : "https://aos.carnivorex.app/auth/native-callback";
 
     logAuthDiag("oauth:click", { provider, platform, isNative });
     logAuthDiag("oauth:redirect-uri", { redirectTo });
