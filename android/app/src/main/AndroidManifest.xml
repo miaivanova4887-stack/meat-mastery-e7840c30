@@ -44,11 +44,19 @@
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
 
-            <!-- Android App Link: deep link auth verification back into the installed app. -->
+            <!-- Android App Link: deep link auth verification back into the installed app.
+                 aos.carnivorex.app is this project's canonical published host and the
+                 OAuth/email callback target; app.carnivorex.app is kept for legacy links. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="aos.carnivorex.app"
+                      android:pathPrefix="/auth/callback" />
+                <data android:scheme="https"
+                      android:host="aos.carnivorex.app"
+                      android:pathPrefix="/reset-password" />
                 <data android:scheme="https"
                       android:host="app.carnivorex.app"
                       android:pathPrefix="/auth/callback" />
@@ -56,6 +64,7 @@
                       android:host="app.carnivorex.app"
                       android:pathPrefix="/reset-password" />
             </intent-filter>
+
 
             <!-- Custom scheme deep link for OAuth callback (Google sign-in). Separate from the
                  https App Link filter above; combining schemes in one filter breaks autoVerify. -->
