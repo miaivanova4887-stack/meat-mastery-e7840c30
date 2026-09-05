@@ -19,7 +19,7 @@ import { Capacitor } from "@capacitor/core";
 // --- Web / Stripe configuration ------------------------------------------
 // Bump when shipping a diagnostic build so the on-device panel proves which
 // binary is installed.
-const BUILD_TAG = "1.1.4 (12)";
+const BUILD_TAG = "1.1.5 (13)";
 // These price IDs drive Stripe Checkout on the web. On native iOS we ignore
 
 // them entirely and use RevenueCat's App Store Connect products instead.
@@ -57,6 +57,20 @@ const Pricing = () => {
   const useNative = paywall.enabled;
   const useIosIapForCoaching =
     Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+
+  // Store-specific wording. The same paywall ships to both stores, so the
+  // billing copy must name the right account/store instead of always saying
+  // "Apple ID" (which is wrong and confusing on Android).
+  const isAndroidNative =
+    Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+  const storeAccountLabel = isAndroidNative ? "Google Play account" : "Apple ID";
+  const storeSettingsLabel = isAndroidNative
+    ? "Google Play subscription settings"
+    : "Apple ID Account Settings";
+  const storeName = isAndroidNative ? "Google Play" : "App Store";
+  const storeManageUrl = isAndroidNative
+    ? "https://play.google.com/store/account/subscriptions"
+    : "https://apps.apple.com/account/subscriptions";
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -233,7 +247,7 @@ const Pricing = () => {
         if (result.summary?.isActive) {
           toast.success("Purchases restored 🎉");
         } else {
-          toast("No previous purchases found on this Apple ID.");
+          toast(`No previous purchases found on this ${storeAccountLabel}.`);
         }
         await refreshSubscription();
       } else {
@@ -446,7 +460,7 @@ const Pricing = () => {
               Subscription terms
             </p>
             <ul className="text-[11px] text-muted-foreground leading-relaxed space-y-1 list-disc pl-4">
-              <li>Payment is charged to your Apple ID at confirmation of purchase.</li>
+              <li>Payment is charged to your {storeAccountLabel} at confirmation of purchase.</li>
               <li>
                 Your subscription automatically renews unless auto-renew is
                 turned off at least 24 hours before the end of the current
@@ -458,7 +472,7 @@ const Pricing = () => {
               </li>
               <li>
                 You can manage your subscription and turn off auto-renew in
-                your Apple ID Account Settings after purchase.
+                your {storeSettingsLabel} after purchase.
               </li>
               <li>
                 No free trial is offered; any unused portion of a free trial,
@@ -576,11 +590,11 @@ const Pricing = () => {
                     variant="outline"
                     className="w-full gap-2"
                     onClick={() => {
-                      window.open("https://apps.apple.com/account/subscriptions", "_blank");
+                      window.open(storeManageUrl, "_blank");
                     }}
                   >
                     <ExternalLink size={14} />
-                    Manage in App Store
+                    Manage in {storeName}
                   </Button>
                 ) : (
                   <Button
@@ -740,7 +754,7 @@ const Pricing = () => {
             </Button>
             <p className="text-[10px] text-muted-foreground/70 text-center mt-2 leading-relaxed px-4">
               Subscriptions auto-renew unless cancelled at least 24 hours before the period ends.
-              Manage or cancel anytime in your Apple ID settings.
+              Manage or cancel anytime in your {storeSettingsLabel}.
             </p>
             <div className="flex items-center justify-center gap-3 mt-2 text-[11px]">
               <button
