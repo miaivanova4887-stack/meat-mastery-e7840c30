@@ -17,7 +17,11 @@ import { Capacitor } from "@capacitor/core";
 
 
 // --- Web / Stripe configuration ------------------------------------------
+// Bump when shipping a diagnostic build so the on-device panel proves which
+// binary is installed.
+const BUILD_TAG = "1.1.4 (12)";
 // These price IDs drive Stripe Checkout on the web. On native iOS we ignore
+
 // them entirely and use RevenueCat's App Store Connect products instead.
 const TIERS = {
   pro: {
