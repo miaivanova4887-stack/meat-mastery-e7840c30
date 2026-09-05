@@ -393,6 +393,20 @@ const Pricing = () => {
               {paywall.error ??
                 "The app store returned no subscription products for this build. Install the app from a Google Play testing track and try again."}
             </p>
+            {paywall.diagnostics && (
+              <div className="rounded-lg bg-background/60 p-2 font-mono text-[10px] leading-relaxed text-muted-foreground space-y-0.5 break-all">
+                <div>build: {BUILD_TAG}</div>
+                <div>sdkConfigured: {String(paywall.diagnostics.configured)}</div>
+                <div>currentOffering: {paywall.diagnostics.currentId ?? "(none)"}</div>
+                <div>allOfferings: {paywall.diagnostics.allIds.join(", ") || "(none)"}</div>
+                <div>productCount: {paywall.diagnostics.packageCount}</div>
+                <div>packages: {paywall.diagnostics.packageIds.join(", ") || "(none)"}</div>
+                <div>products: {paywall.diagnostics.productIds.join(", ") || "(none)"}</div>
+                <div>errCode: {paywall.diagnostics.errorCode ?? "(none)"}</div>
+                <div>errMsg: {paywall.diagnostics.errorMessage ?? "(none)"}</div>
+                <div>errUnderlying: {paywall.diagnostics.errorUnderlying ?? "(none)"}</div>
+              </div>
+            )}
             <button
               onClick={() => void paywall.refresh()}
               className="underline font-medium"
@@ -401,6 +415,7 @@ const Pricing = () => {
             </button>
           </div>
         )}
+
         {/* Billing toggle */}
 
         <div className="flex items-center justify-center gap-2">
