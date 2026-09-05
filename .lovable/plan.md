@@ -1,38 +1,51 @@
-# Device exclusion rules — recommendation
+# Subscription plans show "Unavailable" in the Play Store internal-test build
 
-This page is the Play Console **Device catalogue → Device exclusion rules**. It has nothing to do with the data safety or content declarations; it only controls which physical devices are allowed to install the app. Nothing here requires code changes.
+## What we know
 
-## What each setting does
+- The plans loaded correctly in an earlier Play Store build, so this is a regression in the app build, not a new Play Store or RevenueCat dashboard setting.
+- The screen shows "Unavailable" with no error text, which means the product list came back empty or the lookup failed silently — the app never received prices from Google Play.
+- Nothing in the app's product identifiers or store keys changed in the code: the same Android store key and the same plan identifiers (`pro_monthly`, `elite_monthly`, etc.) are still in place.
 
-- **Exclusion rules** — filters on hardware attributes (RAM, SDK level, screen size, OpenGL, CPU model). Any device matching a rule cannot install or update the app, and it also disappears from your install base.
-- **Play Integrity** — hides the app from devices that fail Google's device-integrity check (uncertified, rooted, emulators). Separate from exclusion rules and off unless configured.
-- **Android Go devices** — Include or Exclude the low-memory Android Go edition (1–2 GB RAM, memory-restricted WebView).
+Because the failure only shows on a store-installed release build, the reason is not visible from the code alone. The plan therefore makes the failure readable first, then fixes the confirmed cause.
 
-## Recommendation for CarnivoreX
+## Step 1 — Make the failure visible on the device (no guessing)
 
-| Setting | Recommendation |
-| --- | --- |
-| RAM rule | Change `<= 2048 MB` to **`<= 1024 MB`** |
-| Android Go devices | Keep **Exclude** |
-| Play Integrity | Leave **unconfigured** for now |
-| Other rules | Add none |
+Release builds can't be inspected remotely, so the diagnosis has to appear on screen.
 
-Reasoning:
+- Add a small, admin-only diagnostic panel on the Plans screen that shows exactly what came back from the store: the offering name, how many plans were returned, the plan identifiers, and the raw failure code/message when the lookup fails.
+- One tap on Retry then tells us which of the two situations we are in:
+  - the lookup **failed** (a store/config error code is shown), or
+  - the lookup **succeeded but returned zero plans** (a store-side availability problem).
 
-- **RAM 2048 MB is too aggressive.** It removes every 2 GB device, which is still a large share of budget Android phones in emerging markets and some older Samsung/Motorola models in North America. This app is a Capacitor WebView app with images and a Health Connect read path — it is heavier than a native list app, but it runs fine in 2 GB. Excluding at 1024 MB removes only the genuinely unusable devices.
-- **Keep Android Go excluded.** Go edition caps WebView memory and background processes; a React/WebView app with photo assets and voice capture reliably produces bad reviews and OOM crashes there. Excluding it protects the rating without meaningful install loss.
-- **Do not enable Play Integrity exclusion yet.** It silently blocks users on legitimately uncertified devices and on emulators — including the emulators you use for testing. Revisit only if you see subscription or coaching-payment abuse.
-- **No SDK-level rule needed.** `minSdkVersion 26` already handles the floor, so an SDK exclusion rule would be redundant.
-- **No screen-size rule needed.** Tablets are already handled in the manifest (`resizeableActivity="false"` with the portrait lock), so there is no reason to hard-block large screens from installing.
+Only the panel is added; the purchase flow itself is untouched.
 
-## Steps in Play Console
+## Step 2 — Rule out release-build stripping
 
-1. Device catalogue → Device exclusion rules.
-2. On the existing RAM rule, change the value dropdown from `2048 MB` to `1024 MB`.
-3. Leave `Android Go devices` on **Exclude**.
-4. Do not touch **Play Integrity → Configure**.
-5. Save, then check the reported "Devices excluded" count — it should drop to a small number.
+The release build shrinks and renames code (`minifyEnabled`/`shrinkResources`), and there are currently **no keep rules** for the purchases or Google Play Billing libraries in `android/app/proguard-rules.pro`. That is a plausible way a build that worked before starts returning nothing, and it costs nothing to close off.
 
-## If you prefer a stricter posture
+- Add explicit keep rules for the RevenueCat and Google Play Billing classes.
+- Confirm by comparison: install the debug build (unshrunk) and the release build side by side. If plans load on debug but not release, stripping is the cause and the keep rules are the fix.
 
-If your priority is protecting the store rating over reach, keep `<= 2048 MB`. That is a valid choice; just be aware it materially reduces reachable devices and cannot be undone retroactively for users who already lost access to updates.
+## Step 3 — Compare against the last build that worked
+
+- Read the version code and the bundled plugin versions out of the previously working `.aab` you still have, and compare them with the current build (`versionCode 11`, Android 16 target, Capacitor 8.3.1, purchases plugin 13).
+- If the purchases plugin or Capacitor version moved between those two builds, pin back to the versions from the working bundle.
+
+## Step 4 — Store-side checks (only if Step 1 points there)
+
+If the diagnostic shows the lookup succeeded with zero plans, the cause is store-side rather than in the app. Then verify, in this order:
+
+- The subscription products and their base plans are **Active** in Play Console (a base plan can be inactive even when the product is active).
+- The offering is still marked **Current** in RevenueCat, with every plan attached to the `pro` / `elite` entitlements.
+- RevenueCat's Play Store credentials are still valid — a revoked or expired service-account key makes plans silently disappear while every dashboard screen still looks correct.
+- The test account is on the internal-testing tester list and installed via the Play opt-in link (Play Billing returns nothing for accounts outside the track).
+
+## Step 5 — Rebuild and verify
+
+Bump the version code, rebuild the AAB, upload to the internal track, and confirm on device that real prices appear and the Google payment sheet opens. I will give you the exact line-by-line terminal commands for the rebuild.
+
+## Technical notes
+
+- Files touched in Steps 1–2: `src/pages/Pricing.tsx`, `src/hooks/useNativePaywall.ts`, `src/lib/revenuecat.ts` (diagnostic surfacing only), `android/app/proguard-rules.pro`, and `android/app/build.gradle` for the version bump.
+- No change to product identifiers, entitlement names, store keys, or the purchase/restore logic.
+- The coaching call keeps using the existing card checkout on Android; only subscriptions go through in-app purchases.
