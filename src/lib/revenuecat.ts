@@ -218,23 +218,66 @@ export async function getEntitlements(): Promise<RcEntitlementSummary> {
 // Offerings (products to show in the paywall)
 // ---------------------------------------------------------------------------
 
+/**
+ * Diagnostics from the most recent `getCurrentOffering()` call. Release builds
+ * (Play Store installs) can't be inspected with remote debugging, so the
+ * paywall reads this to render the real reason on screen instead of a silent
+ * "Unavailable".
+ */
+export interface OfferingsDiagnostics {
+  configured: boolean;
+  currentId: string | null;
+  allIds: string[];
+  chosenId: string | null;
+  packageCount: number;
+  packageIds: string[];
+  productIds: string[];
+  /** Populated only when the store lookup threw. */
+  errorMessage: string | null;
+  errorCode: string | null;
+  errorUnderlying: string | null;
+}
+
+let lastOfferingsDiagnostics: OfferingsDiagnostics | null = null;
+
+export function getLastOfferingsDiagnostics(): OfferingsDiagnostics | null {
+  return lastOfferingsDiagnostics;
+}
+
 export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
-  if (!isRevenueCatAvailable() || !configured) return null;
+  if (!isRevenueCatAvailable() || !configured) {
+    lastOfferingsDiagnostics = {
+      configured,
+      currentId: null,
+      allIds: [],
+      chosenId: null,
+      packageCount: 0,
+      packageIds: [],
+      productIds: [],
+      errorMessage: configured ? null : "Store SDK not configured on this build",
+      errorCode: null,
+      errorUnderlying: null,
+    };
+    return null;
+  }
   try {
     const { current, all } = await Purchases.getOfferings();
     const chosen = DEFAULT_OFFERING && all?.[DEFAULT_OFFERING] ? all[DEFAULT_OFFERING] : current ?? null;
-    console.info("[RC DEBUG] offerings", {
+    lastOfferingsDiagnostics = {
+      configured: true,
       currentId: current?.identifier ?? null,
       allIds: Object.keys(all ?? {}),
       chosenId: chosen?.identifier ?? null,
       packageCount: chosen?.availablePackages?.length ?? 0,
-      packages: (chosen?.availablePackages ?? []).map((p) => ({
-        identifier: p.identifier,
-        productId: p.product?.identifier,
-        priceString: p.product?.priceString,
-        period: (p.product as { subscriptionPeriod?: string })?.subscriptionPeriod,
-      })),
-    });
+      packageIds: (chosen?.availablePackages ?? []).map((p) => p.identifier),
+      productIds: (chosen?.availablePackages ?? []).map(
+        (p) => p.product?.identifier ?? "(no product)"
+      ),
+      errorMessage: null,
+      errorCode: null,
+      errorUnderlying: null,
+    };
+    console.info("[RC DEBUG] offerings " + JSON.stringify(lastOfferingsDiagnostics));
     return chosen;
   } catch (e: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,18 +286,23 @@ export async function getCurrentOffering(): Promise<PurchasesOffering | null> {
     // instead of `[object Object]`. The RC Android SDK throws here when
     // Google Play Billing can't surface products (sideloaded build, products
     // not ACTIVE in Play Console, wrong package name, or RC↔Play mapping off).
-    console.error(
-      "[RC DEBUG] getOfferings failed " +
-        JSON.stringify({
-          message: err?.message ?? null,
-          code: err?.code ?? null,
-          underlying: err?.underlyingErrorMessage ?? null,
-          name: err?.name ?? null,
-        })
-    );
+    lastOfferingsDiagnostics = {
+      configured: true,
+      currentId: null,
+      allIds: [],
+      chosenId: null,
+      packageCount: 0,
+      packageIds: [],
+      productIds: [],
+      errorMessage: err?.message ?? String(e),
+      errorCode: err?.code != null ? String(err.code) : (err?.readableErrorCode ?? null),
+      errorUnderlying: err?.underlyingErrorMessage ?? null,
+    };
+    console.error("[RC DEBUG] getOfferings failed " + JSON.stringify(lastOfferingsDiagnostics));
     return null;
   }
 }
+
 
 /**
  * Find a package within an offering by our own semantic key. We expect the RC
