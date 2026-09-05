@@ -14,7 +14,9 @@ import {
   findCoachingPackage,
   purchasePackage,
   restorePurchases,
+  getLastOfferingsDiagnostics,
   type PurchaseResult,
+  type OfferingsDiagnostics,
 } from "@/lib/revenuecat";
 
 /**
@@ -58,6 +60,8 @@ export interface NativePaywallState {
     elite_yearly?: NativePackageInfo;
     coaching?: NativePackageInfo;
   };
+  /** Raw store lookup diagnostics — rendered on device for release builds. */
+  diagnostics: OfferingsDiagnostics | null;
   refresh: () => Promise<void>;
   purchase: (pkg: PurchasesPackage) => Promise<PurchaseResult>;
   restore: () => Promise<PurchaseResult>;
@@ -172,6 +176,7 @@ export function useNativePaywall(): NativePaywallState {
   const [error, setError] = useState<string | null>(null);
   const [offering, setOffering] = useState<PurchasesOffering | null>(null);
   const [packages, setPackages] = useState<NativePaywallState["packages"]>({});
+  const [diagnostics, setDiagnostics] = useState<OfferingsDiagnostics | null>(null);
 
   const refresh = useCallback(async () => {
     if (!enabled) {
@@ -182,7 +187,22 @@ export function useNativePaywall(): NativePaywallState {
     setError(null);
     try {
       const off = await getCurrentOffering();
+      const diag = getLastOfferingsDiagnostics();
+      setDiagnostics(diag);
       setOffering(off);
+      // getCurrentOffering() never throws — it returns null and records the
+      // reason. Without this the paywall showed "Unavailable" with no error.
+      if (!off) {
+        setError(
+          diag?.errorMessage
+            ? `Store error${diag.errorCode ? ` (${diag.errorCode})` : ""}: ${diag.errorMessage}`
+            : "Google Play returned no subscription products for this account/build."
+        );
+      } else if ((off.availablePackages?.length ?? 0) === 0) {
+        setError(
+          `Offering "${off.identifier}" is current but contains no products — check that the Play Console base plans are active and attached in RevenueCat.`
+        );
+      }
       const resolved = {
         pro_monthly: toInfo(findPackage(off, "pro", "monthly"), "monthly"),
         pro_yearly: toInfo(findPackage(off, "pro", "yearly"), "yearly"),
@@ -265,6 +285,7 @@ export function useNativePaywall(): NativePaywallState {
     error,
     offering,
     packages,
+    diagnostics,
     refresh,
     purchase: purchasePackage,
     restore: restorePurchases,
