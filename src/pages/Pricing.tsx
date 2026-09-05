@@ -58,6 +58,20 @@ const Pricing = () => {
   const useIosIapForCoaching =
     Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
+  // Store-specific wording. The same paywall ships to both stores, so the
+  // billing copy must name the right account/store instead of always saying
+  // "Apple ID" (which is wrong and confusing on Android).
+  const isAndroidNative =
+    Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
+  const storeAccountLabel = isAndroidNative ? "Google Play account" : "Apple ID";
+  const storeSettingsLabel = isAndroidNative
+    ? "Google Play subscription settings"
+    : "Apple ID Account Settings";
+  const storeName = isAndroidNative ? "Google Play" : "App Store";
+  const storeManageUrl = isAndroidNative
+    ? "https://play.google.com/store/account/subscriptions"
+    : "https://apps.apple.com/account/subscriptions";
+
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       toast.success("Subscription activated! Welcome aboard 🎉");
