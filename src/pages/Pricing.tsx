@@ -247,7 +247,7 @@ const Pricing = () => {
         if (result.summary?.isActive) {
           toast.success("Purchases restored 🎉");
         } else {
-          toast("No previous purchases found on this Apple ID.");
+          toast(`No previous purchases found on this ${storeAccountLabel}.`);
         }
         await refreshSubscription();
       } else {
@@ -460,7 +460,7 @@ const Pricing = () => {
               Subscription terms
             </p>
             <ul className="text-[11px] text-muted-foreground leading-relaxed space-y-1 list-disc pl-4">
-              <li>Payment is charged to your Apple ID at confirmation of purchase.</li>
+              <li>Payment is charged to your {storeAccountLabel} at confirmation of purchase.</li>
               <li>
                 Your subscription automatically renews unless auto-renew is
                 turned off at least 24 hours before the end of the current
@@ -472,7 +472,7 @@ const Pricing = () => {
               </li>
               <li>
                 You can manage your subscription and turn off auto-renew in
-                your Apple ID Account Settings after purchase.
+                your {storeSettingsLabel} after purchase.
               </li>
               <li>
                 No free trial is offered; any unused portion of a free trial,
@@ -590,11 +590,11 @@ const Pricing = () => {
                     variant="outline"
                     className="w-full gap-2"
                     onClick={() => {
-                      window.open("https://apps.apple.com/account/subscriptions", "_blank");
+                      window.open(storeManageUrl, "_blank");
                     }}
                   >
                     <ExternalLink size={14} />
-                    Manage in App Store
+                    Manage in {storeName}
                   </Button>
                 ) : (
                   <Button
@@ -754,7 +754,7 @@ const Pricing = () => {
             </Button>
             <p className="text-[10px] text-muted-foreground/70 text-center mt-2 leading-relaxed px-4">
               Subscriptions auto-renew unless cancelled at least 24 hours before the period ends.
-              Manage or cancel anytime in your Apple ID settings.
+              Manage or cancel anytime in your {storeSettingsLabel}.
             </p>
             <div className="flex items-center justify-center gap-3 mt-2 text-[11px]">
               <button
