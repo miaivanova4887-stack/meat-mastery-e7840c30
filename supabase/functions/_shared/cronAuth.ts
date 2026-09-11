@@ -17,21 +17,17 @@ async function loadCronSecret(): Promise<string | null> {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !serviceKey) return null;
   const admin = createClient(url, serviceKey, {
-    db: { schema: "private" },
     auth: { persistSession: false },
   });
-  const { data, error } = await admin
-    .from("internal_config")
-    .select("value")
-    .eq("key", "cron_secret")
-    .maybeSingle();
+  const { data, error } = await admin.rpc("cron_secret");
   if (error) {
     console.error("[cronAuth] cron_secret lookup failed", error.message);
     return null;
   }
-  cachedCronSecret = (data?.value as string | undefined) ?? null;
+  cachedCronSecret = (data as string | null) ?? null;
   return cachedCronSecret;
 }
+
 
 /** True when the request comes from pg_cron or a service-role caller. */
 export async function isCronAuthorized(req: Request): Promise<boolean> {
