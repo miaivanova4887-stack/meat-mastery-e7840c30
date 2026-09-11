@@ -31,24 +31,30 @@ So testing could never have produced a notification.
 ## Fix plan
 
 Step 1 — Restore account records (backend only)
+
 - Re-create the automatic hook that inserts an account record when someone signs up.
 - Backfill records for the 2 existing sign-ups so they become addressable.
 
 Step 2 — Add the Firebase sending credential
+
 - You provide the Firebase service account JSON for the `carnivore-84bd2` Firebase project (Firebase console > Project settings > Service accounts > Generate new private key).
 - I store it as `FIREBASE_SERVICE_ACCOUNT` and verify a send request is accepted.
 
 Step 3 — Add the Android Firebase config file
+
 - You download `google-services.json` for the Android app `com.mi4labs.carnivorex` from the same Firebase project.
 - I place it in the Android project so the build wires Firebase in.
 
 Step 4 — Turn Android notifications on
+
 - Flip the Android switch on, keep the existing permission flow, and confirm the device token is saved after granting permission.
 
 Step 5 — Web notifications (optional, tell me if you want it)
+
 - Generate a web push key pair and store both halves so browser notifications work as well.
 
 Step 6 — Verify end to end (evidence-first)
+
 - Rebuild the Android app, install, grant permission.
 - Confirm a token row appears and the account is marked as allowing notifications.
 - Send a test message from the admin screen and confirm both the delivery report and the notification on the phone.
@@ -62,3 +68,5 @@ Step 6 — Verify end to end (evidence-first)
 - `fcm-send` filters `profiles.push_consent = 'granted'` then joins `device_tokens` on platform android/ios — both empty today.
 - Missing trigger: `on_auth_user_created` calling `public.handle_new_user()` on `auth.users` (the function exists; the trigger does not). Migration will create it plus an idempotent backfill insert.
 - Blocked items needing your input: Firebase service account JSON, `google-services.json`, and (if wanted) VAPID keys.
+
+User notes: please also verify and activate auto-triggered notifications
