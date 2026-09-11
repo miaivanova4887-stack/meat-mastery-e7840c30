@@ -2,7 +2,7 @@
 
 ## What I checked
 
-- Your account (mia.ivanova.4887@gmail.com) exists and shows **notifications allowed**, recorded today at 19:57 UTC.
+- Your account ([mia.ivanova.4887@gmail.com](mailto:mia.ivanova.4887@gmail.com)) exists and shows **notifications allowed**, recorded today at 19:57 UTC.
 - The list of registered phones is **completely empty** — zero entries, for every user.
 - The backend service that records a phone has **never been called even once** (no request history at all).
 
@@ -12,7 +12,7 @@ So the permission prompt worked, but the app never asked the notification servic
 
 Android push delivery was switched on in the app only today at 19:48 UTC, together with the Firebase Android configuration file it needs. Any app version installed on your phone before that has push delivery compiled off: it still asks for the notification permission and saves your answer (which is exactly the record we see), but it deliberately skips the step that requests a delivery address. No address means nothing to send to.
 
-The current source is version 1.1.6 (build 14) and includes the Firebase configuration. Your test device is almost certainly running 1.1.5 (build 13) or earlier.
+The current source is version 1.1.6 (build 14) and includes the Firebase configuration. Your test device is almost certainly running 1.1.5 (build 13) or earlier. User input: no, my test device run the latest build you have just made today downloaded via stream install
 
 ## Plan
 
