@@ -57,10 +57,12 @@ export default function NotificationConsentSheet({
         }
         console.info("[PushDecision] sheet os-perm=", osPerm);
         if (osPerm === "granted") {
-          try { await savePushConsent("granted", prefs); } catch (e) {
-            console.warn("[PushDecision] sheet save granted failed", e);
+          try {
+            const result = await requestNativePush();
+            granted = result === "granted";
+          } catch (e) {
+            console.warn("[PushDecision] sheet granted registration retry failed", e);
           }
-          granted = true;
         } else {
           try {
             const result = await requestNativePush();

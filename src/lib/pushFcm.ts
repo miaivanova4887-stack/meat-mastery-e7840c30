@@ -39,6 +39,7 @@ export type NativePushPermission =
 let listenersBound = false;
 let fcmTokenListenerBound = false;
 let appStateListenerBound = false;
+let authRegistrationListenerBound = false;
 
 // ---------------------------------------------------------------------------
 // Push-tap deep linking
@@ -183,9 +184,10 @@ async function registerDeviceTokenWithBackend(token: string, platform: "android"
       console.info("[Push] skipping token register — no session");
       return;
     }
-    await supabase.functions.invoke("register-device-token", {
+    const { error } = await supabase.functions.invoke("register-device-token", {
       body: { token, platform },
     });
+    if (error) throw error;
     console.info(`[Push] device token persisted platform=${platform} len=${token.length}`);
   } catch (e) {
     console.error("[Push] token register failed", e);
@@ -275,7 +277,6 @@ function bindListenersOnce(platform: "android" | "ios") {
 
 function bindAppStateListenerOnce(platform: "android" | "ios") {
   if (appStateListenerBound) return;
-  if (platform !== "ios") return; // only iOS rotates tokens & benefits from re-register
   appStateListenerBound = true;
   try {
     CapApp.addListener("appStateChange", async ({ isActive }) => {
@@ -288,10 +289,40 @@ function bindAppStateListenerOnce(platform: "android" | "ios") {
         console.warn("[Push] resume re-register failed — swallowed", e);
       }
     });
-    console.info("[Push] appStateChange listener bound (iOS)");
+    console.info(`[Push] appStateChange listener bound platform=${platform}`);
   } catch (e) {
     console.warn("[Push] appStateChange bind failed", e);
   }
+}
+
+async function retryNativeRegistrationIfGranted(source: "startup" | "auth"): Promise<void> {
+  if (!Capacitor.isNativePlatform() || !isNativeFcmEnabled()) return;
+  const platform = Capacitor.getPlatform() as "android" | "ios";
+  bindListenersOnce(platform);
+  bindAppStateListenerOnce(platform);
+  try {
+    const permission = await getNativePushPermission();
+    console.info(`[Push] automatic registration check source=${source} platform=${platform} permission=${permission}`);
+    if (permission !== "granted") return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.info(`[Push] automatic registration deferred source=${source} reason=no-session`);
+      return;
+    }
+    await withTimeout(PushNotifications.register(), 4000, `register(${source})`);
+    console.info(`[Push] automatic register returned source=${source} platform=${platform}`);
+  } catch (e) {
+    console.warn(`[Push] automatic registration failed source=${source}`, e);
+  }
+}
+
+function bindAuthRegistrationListenerOnce() {
+  if (authRegistrationListenerBound) return;
+  authRegistrationListenerBound = true;
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (!session || (event !== "SIGNED_IN" && event !== "TOKEN_REFRESHED" && event !== "INITIAL_SESSION")) return;
+    window.setTimeout(() => void retryNativeRegistrationIfGranted("auth"), 0);
+  });
 }
 
 export async function requestNativePush(): Promise<PushConsentState> {
@@ -398,7 +429,11 @@ if (typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.g
 if (typeof window !== "undefined") {
   const isNative = Capacitor.isNativePlatform();
   console.info("[PushTap] module loaded", { isNative, platform: isNative ? Capacitor.getPlatform() : "web" });
-  if (isNative) bindActionListenerOnce();
+  if (isNative) {
+    bindActionListenerOnce();
+    bindAuthRegistrationListenerOnce();
+    window.setTimeout(() => void retryNativeRegistrationIfGranted("startup"), 0);
+  }
 }
 
 export async function triggerPushEvent(
