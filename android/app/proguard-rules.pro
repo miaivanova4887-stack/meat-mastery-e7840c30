@@ -46,3 +46,20 @@
 # Kotlin metadata + coroutines used by the purchases SDK.
 -keep class kotlin.Metadata { *; }
 -dontwarn kotlinx.coroutines.**
+
+# ---------------------------------------------------------------------------
+# Firebase Cloud Messaging (push notifications)
+# The FCM SDK registers services/receivers via the manifest and uses
+# reflection for its components; shrinking them stops token registration and
+# silently drops incoming messages in release builds.
+# ---------------------------------------------------------------------------
+-keep class com.google.firebase.** { *; }
+-keep interface com.google.firebase.** { *; }
+-keepclassmembers class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+
+-keep class com.google.android.gms.common.** { *; }
+-dontwarn com.google.android.gms.**
+
+-keep class com.google.firebase.messaging.FirebaseMessagingService { *; }
+-keep class * extends com.google.firebase.messaging.FirebaseMessagingService { *; }
