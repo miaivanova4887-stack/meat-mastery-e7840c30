@@ -4,6 +4,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendFcmToToken } from "../_shared/fcm.ts";
 import { pickLocalized, normalizeLocale, type LocalizedString } from "../_shared/i18nStep.ts";
+import { isCronAuthorized } from "../_shared/cronAuth.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -34,13 +36,11 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-  // Auth: require service-role bearer token (Supabase cron / internal callers).
-  // Prevents unauthenticated callers from triggering batch FCM sends.
-  const authHeader = req.headers.get("authorization") ?? "";
-  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-  if (!token || token !== serviceKey) {
+  // Auth: service-role bearer token or the pg_cron shared token.
+  if (!(await isCronAuthorized(req))) {
     return json({ error: "Forbidden" }, 403);
   }
+
 
   const admin = createClient(supabaseUrl, serviceKey);
 
