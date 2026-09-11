@@ -39,6 +39,7 @@ export type NativePushPermission =
 let listenersBound = false;
 let fcmTokenListenerBound = false;
 let appStateListenerBound = false;
+let authRegistrationListenerBound = false;
 
 // ---------------------------------------------------------------------------
 // Push-tap deep linking
@@ -294,6 +295,36 @@ function bindAppStateListenerOnce(platform: "android" | "ios") {
   }
 }
 
+async function retryNativeRegistrationIfGranted(source: "startup" | "auth"): Promise<void> {
+  if (!Capacitor.isNativePlatform() || !isNativeFcmEnabled()) return;
+  const platform = Capacitor.getPlatform() as "android" | "ios";
+  bindListenersOnce(platform);
+  bindAppStateListenerOnce(platform);
+  try {
+    const permission = await getNativePushPermission();
+    console.info(`[Push] automatic registration check source=${source} platform=${platform} permission=${permission}`);
+    if (permission !== "granted") return;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.info(`[Push] automatic registration deferred source=${source} reason=no-session`);
+      return;
+    }
+    await withTimeout(PushNotifications.register(), 4000, `register(${source})`);
+    console.info(`[Push] automatic register returned source=${source} platform=${platform}`);
+  } catch (e) {
+    console.warn(`[Push] automatic registration failed source=${source}`, e);
+  }
+}
+
+function bindAuthRegistrationListenerOnce() {
+  if (authRegistrationListenerBound) return;
+  authRegistrationListenerBound = true;
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (!session || (event !== "SIGNED_IN" && event !== "TOKEN_REFRESHED" && event !== "INITIAL_SESSION")) return;
+    window.setTimeout(() => void retryNativeRegistrationIfGranted("auth"), 0);
+  });
+}
+
 export async function requestNativePush(): Promise<PushConsentState> {
   if (!Capacitor.isNativePlatform()) {
     console.info("[PushDecision] source=requestNativePush branch=skip reason=not-native");
@@ -398,7 +429,11 @@ if (typeof window !== "undefined" && Capacitor.isNativePlatform() && Capacitor.g
 if (typeof window !== "undefined") {
   const isNative = Capacitor.isNativePlatform();
   console.info("[PushTap] module loaded", { isNative, platform: isNative ? Capacitor.getPlatform() : "web" });
-  if (isNative) bindActionListenerOnce();
+  if (isNative) {
+    bindActionListenerOnce();
+    bindAuthRegistrationListenerOnce();
+    window.setTimeout(() => void retryNativeRegistrationIfGranted("startup"), 0);
+  }
 }
 
 export async function triggerPushEvent(
