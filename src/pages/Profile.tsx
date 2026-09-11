@@ -1157,7 +1157,7 @@ const Profile = () => {
 
                     // Native ON: branch purely on current OS permission state.
                     try {
-                      const { getNativePushPermission, requestNativePush, savePushConsent } =
+                      const { getNativePushPermission, requestNativePush } =
                         await import("@/lib/pushFcm");
                       const permBefore = await getNativePushPermission();
                       console.info("[NotifSettings] toggle v=true permBefore", { traceId, permBefore });
@@ -1166,8 +1166,12 @@ const Profile = () => {
                         // SIWA→email-login case: OS already granted, never prompt again.
                         console.info("[NotifSettings] action=already-granted", { traceId });
                         updateNotifPref("enabled", true);
-                        try { await savePushConsent("granted", {}); } catch {}
-                        toast.success("Notifications enabled");
+                        const result = await requestNativePush();
+                        if (result === "granted") {
+                          toast.success("Notifications enabled");
+                        } else {
+                          toast.error("Could not register this device for notifications.");
+                        }
                       } else if (permBefore === "prompt" || permBefore === "prompt-with-rationale") {
                         console.info("[NotifSettings] action=request-native", { traceId });
                         let result: string = "denied";

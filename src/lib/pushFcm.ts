@@ -183,9 +183,10 @@ async function registerDeviceTokenWithBackend(token: string, platform: "android"
       console.info("[Push] skipping token register — no session");
       return;
     }
-    await supabase.functions.invoke("register-device-token", {
+    const { error } = await supabase.functions.invoke("register-device-token", {
       body: { token, platform },
     });
+    if (error) throw error;
     console.info(`[Push] device token persisted platform=${platform} len=${token.length}`);
   } catch (e) {
     console.error("[Push] token register failed", e);
@@ -275,7 +276,6 @@ function bindListenersOnce(platform: "android" | "ios") {
 
 function bindAppStateListenerOnce(platform: "android" | "ios") {
   if (appStateListenerBound) return;
-  if (platform !== "ios") return; // only iOS rotates tokens & benefits from re-register
   appStateListenerBound = true;
   try {
     CapApp.addListener("appStateChange", async ({ isActive }) => {
@@ -288,7 +288,7 @@ function bindAppStateListenerOnce(platform: "android" | "ios") {
         console.warn("[Push] resume re-register failed — swallowed", e);
       }
     });
-    console.info("[Push] appStateChange listener bound (iOS)");
+    console.info(`[Push] appStateChange listener bound platform=${platform}`);
   } catch (e) {
     console.warn("[Push] appStateChange bind failed", e);
   }

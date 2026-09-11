@@ -8,7 +8,7 @@
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
-import { getNativePushPermission, savePushConsent } from "@/lib/pushFcm";
+import { getNativePushPermission, requestNativePush, savePushConsent } from "@/lib/pushFcm";
 
 export type PushDecisionSource =
   | "shell"
@@ -128,8 +128,8 @@ export async function auditPushDecision(
   }
   console.info(`[PushDecision] source=${source} branch=os osPermission=${osPerm}`);
   if (osPerm === "granted") {
-    try { await savePushConsent("granted"); } catch (e) {
-      console.warn(`[PushDecision] source=${source} branch=os-reconcile-failed`, e);
+    try { await requestNativePush(); } catch (e) {
+      console.warn(`[PushDecision] source=${source} branch=os-registration-retry-failed`, e);
     }
     try { sessionStorage.setItem(SESSION_FLAG, "1"); } catch {}
     console.info(`[PushDecision] source=${source} branch=suppress reason=os-already-granted`);
