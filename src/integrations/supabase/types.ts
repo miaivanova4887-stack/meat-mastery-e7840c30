@@ -937,6 +937,7 @@ export type Database = {
       }
     }
     Functions: {
+      cron_secret: { Args: never; Returns: string }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
