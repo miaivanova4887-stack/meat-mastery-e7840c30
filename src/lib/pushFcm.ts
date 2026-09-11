@@ -6,8 +6,9 @@
 // the FCM registration token. We listen to that here and persist the token
 // in device_tokens (platform='ios') via the register-device-token edge fn.
 //
-// Android path: native FCM is currently disabled (no google-services.json
-// shipping yet); register() is a no-op until that lands.
+// Android path: enabled. android/app/google-services.json ships in the APK
+// (Firebase project carnivore-84bd2), so register() yields an FCM token via
+// the PushNotifications 'registration' event, persisted with platform='android'.
 
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";

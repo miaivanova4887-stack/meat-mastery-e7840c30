@@ -4,13 +4,15 @@
 // Firebase, APNs token is forwarded to FCM, and FCM registration tokens are
 // surfaced to JS via a `fcm-token` window event.
 //
-// Android: disabled until android/app/google-services.json is added to the
-// APK. Calling PushNotifications.register() without it crashes the WebView.
+// Android: enabled. android/app/google-services.json ships in the app
+// (Firebase project carnivore-84bd2, package com.mi4labs.carnivorex), so the
+// google-services Gradle plugin is applied and PushNotifications.register()
+// can obtain an FCM token safely.
 
 import { Capacitor } from "@capacitor/core";
 
 export const NATIVE_FCM_ENABLED_IOS = true;
-export const NATIVE_FCM_ENABLED_ANDROID = false;
+export const NATIVE_FCM_ENABLED_ANDROID = true;
 
 export function isNativeFcmEnabled(): boolean {
   if (!Capacitor.isNativePlatform()) return false;
