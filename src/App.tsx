@@ -60,6 +60,7 @@ import { useEdgeSwipeBack } from "./hooks/useEdgeSwipeBack";
 import { useTabSwipe } from "./hooks/useTabSwipe";
 import { useDeepLinks } from "./hooks/useDeepLinks";
 import { usePushNavigation } from "./hooks/usePushNavigation";
+import { useAppUpdatePrompt } from "./hooks/useAppUpdatePrompt";
 import PushConsentFallbackHost from "./components/PushConsentFallbackHost";
 
 const queryClient = new QueryClient();
