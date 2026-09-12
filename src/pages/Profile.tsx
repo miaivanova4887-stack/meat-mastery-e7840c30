@@ -23,6 +23,7 @@ import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 import { CoachingReminderSettings } from "@/components/CoachingReminderSettings";
 import CoachingSessionsList from "@/components/CoachingSessionsList";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
+import { PROFILE_TO_SERVER_PREF_KEY, mergeServerPrefs } from "@/lib/notificationPrefs";
 // Push consent fallback now lives in PushConsentFallbackHost (App-level shell).
 
 interface Profile {
