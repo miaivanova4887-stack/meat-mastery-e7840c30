@@ -65,7 +65,7 @@ export async function maybePromptAppUpdate(
     }
 
     if (info.flexibleUpdateAllowed) {
-      const result = await AppUpdate.startFlexibleAppUpdate();
+      const result = await AppUpdate.startFlexibleUpdate();
       // CANCELED / anything other than OK → user dismissed; snooze 24h.
       if (result.code !== 0) {
         writeTs(SNOOZE_KEY, now() + SNOOZE_MS);
