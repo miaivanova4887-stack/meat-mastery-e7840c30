@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
 import { isNativeFcmEnabled, NATIVE_FCM_ENABLED_IOS } from "@/lib/pushNativeConfig";
 import { normalizeLocale } from "@/lib/locale";
+import { mergeServerPrefs } from "@/lib/notificationPrefs";
 
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return await new Promise<T>((resolve, reject) => {

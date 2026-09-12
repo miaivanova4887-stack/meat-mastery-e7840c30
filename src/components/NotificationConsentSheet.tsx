@@ -11,6 +11,7 @@ import {
 } from "@/lib/pushFcm";
 import { subscribeToPush } from "@/lib/pushNotifications";
 import { openAppSettings } from "@/lib/openAppSettings";
+import { sheetPrefsToServerPrefs } from "@/lib/notificationPrefs";
 import { toast } from "sonner";
 
 interface NotificationConsentSheetProps {
