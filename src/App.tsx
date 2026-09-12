@@ -103,6 +103,12 @@ function PushNavHandler() {
   return null;
 }
 
+/** Prompts for a Play Store update when a newer version is available. */
+function AppUpdateHandler() {
+  useAppUpdatePrompt();
+  return null;
+}
+
 /** Handles Android hardware back button for in-app navigation */
 function BackButtonHandler() {
   const navigate = useNavigate();
