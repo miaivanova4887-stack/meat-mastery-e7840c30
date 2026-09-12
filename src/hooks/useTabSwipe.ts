@@ -107,6 +107,9 @@ export function useTabSwipe() {
       const target = e.target as Element | null;
       if (hasHorizontalScrollAncestor(target)) return;
 
+      // Stand down for drag controls (quantity sliders, range inputs, etc.).
+      if (isNoSwipeTarget(target)) return;
+
       startX = t.clientX;
       startY = t.clientY;
       startTime = performance.now();
