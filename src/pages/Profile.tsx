@@ -211,10 +211,10 @@ const Profile = () => {
             .select("notification_preferences")
             .eq("id", user.id)
             .maybeSingle();
-          const merged = {
-            ...((row?.notification_preferences as Record<string, unknown>) || {}),
-            [serverKey]: value,
-          };
+          const merged = mergeServerPrefs(
+            row?.notification_preferences as Record<string, unknown>,
+            { [serverKey]: value },
+          );
           await supabase
             .from("profiles")
             .update({ notification_preferences: merged as any })
