@@ -32,6 +32,15 @@ function isTabRoute(pathname: string): pathname is TabPath {
   return (TAB_ORDER as readonly string[]).includes(pathname);
 }
 
+// Interactive drag controls (sliders, range inputs, opt-out containers) own
+// horizontal gestures themselves — page-swipe must never hijack them.
+const NO_SWIPE_SELECTOR =
+  '[data-no-tab-swipe], [role="slider"], input[type="range"], [data-radix-slider-thumb], [data-slot="slider"], .no-tab-swipe';
+
+function isNoSwipeTarget(el: Element | null): boolean {
+  return !!el?.closest?.(NO_SWIPE_SELECTOR);
+}
+
 // Returns true if `el` or any ancestor up to the document has horizontal
 // scrolling available (scrollWidth > clientWidth and overflow-x is scroll/auto).
 // Used to bail out of page-swipe so we don't hijack internal carousels.
@@ -97,6 +106,9 @@ export function useTabSwipe() {
       // Stand down if the touch began inside an internal horizontal scroller.
       const target = e.target as Element | null;
       if (hasHorizontalScrollAncestor(target)) return;
+
+      // Stand down for drag controls (quantity sliders, range inputs, etc.).
+      if (isNoSwipeTarget(target)) return;
 
       startX = t.clientX;
       startY = t.clientY;
