@@ -5,9 +5,11 @@ I checked the live setup. The reminder could not have been sent — two things a
 ## What I found
 
 1. **No daily reminder exists on the server.** The table of automated notification campaigns is completely empty. The "Daily reminder to log meals at 7pm" only lives as a switch in the app's profile screen; nothing on the server was ever created to actually send it. (The manual test push worked because that path doesn't use campaigns.)
-2. **The account's notification choices were never saved to the server.** For mia.ivanova.4887@gmail.com, permission is granted and the phone is registered, but the saved preference list is empty. The sender only picks accounts whose "daily meal reminder" preference is explicitly on, so this account would be skipped even once a reminder exists. Preferences are only written when the switch is toggled in the app — they aren't written on first sign-in with defaults.
+2. **The account's notification choices were never saved to the server.** For [mia.ivanova.4887@gmail.com](mailto:mia.ivanova.4887@gmail.com), permission is granted and the phone is registered, but the saved preference list is empty. The sender only picks accounts whose "daily meal reminder" preference is explicitly on, so this account would be skipped even once a reminder exists. Preferences are only written when the switch is toggled in the app — they aren't written on first sign-in with defaults.
 
 Timezone (Toronto) and the every-hour/every-5-minute automatic senders are correctly in place, so once the two gaps above are closed, 7pm local will fire.
+
+Additionally check and fix automated push notifications - Streak Reminders, Weekly progress summary, Coaching calls reminder 1 hr in advance, New recipes & meal ideas, Fasting and ketosis updates , Coaching tips -- provide copy and any creatives used for my reference
 
 ## Fix plan
 
