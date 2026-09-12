@@ -99,11 +99,14 @@ Deno.serve(async (req) => {
       const occurrence = computeOccurrenceUtc(sched, hhmm, tz);
       if (!occurrence) continue;
 
-      // Only enqueue if occurrence is in the recent past (now - 30min … now).
-      // pg_cron runs every 15 min; window gives slack for one missed tick.
+      // Only enqueue if occurrence is in the recent past (now - 60min … now).
+      // The reconciler runs hourly, so the window must cover a full hour or
+      // reminder times that fall between ticks (e.g. 19:30) are never picked
+      // up. Re-enqueues are prevented by the UNIQUE
+      // (campaign_id, user_id, scheduled_for) index.
       const nowMs = Date.now();
       const ageMs = nowMs - occurrence.getTime();
-      if (ageMs < 0 || ageMs > 30 * 60_000) continue;
+      if (ageMs < 0 || ageMs > 60 * 60_000) continue;
 
       const { error: insErr } = await admin
         .from("push_campaign_runs")

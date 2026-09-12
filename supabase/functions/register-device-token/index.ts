@@ -61,5 +61,34 @@ Deno.serve(async (req) => {
     console.error("register-device-token upsert error", error);
     return json({ error: "Insert failed" }, 500);
   }
+
+  // Safety net: a device registered against a profile with no notification
+  // preferences would never match any scheduled campaign. Seed defaults once.
+  try {
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("notification_preferences")
+      .eq("id", user.id)
+      .maybeSingle();
+    const prefs = (profile?.notification_preferences ?? {}) as Record<string, unknown>;
+    if (Object.keys(prefs).length === 0) {
+      await admin.from("profiles").update({
+        notification_preferences: {
+          daily_meal_reminder: true,
+          reminder_time: "19:00",
+          streak_reminder: true,
+          weekly_summary: true,
+          recipe_ideas: true,
+          fasting_updates: true,
+          coaching_tips: true,
+          marketing: false,
+        },
+      }).eq("id", user.id);
+      console.log("[register-device-token] seeded default notification prefs", user.id);
+    }
+  } catch (e) {
+    console.warn("[register-device-token] prefs seed skipped", String(e));
+  }
+
   return json({ ok: true });
 });
