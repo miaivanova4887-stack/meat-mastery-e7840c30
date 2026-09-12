@@ -23,6 +23,7 @@ import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 import { CoachingReminderSettings } from "@/components/CoachingReminderSettings";
 import CoachingSessionsList from "@/components/CoachingSessionsList";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
+import { PROFILE_TO_SERVER_PREF_KEY, mergeServerPrefs } from "@/lib/notificationPrefs";
 // Push consent fallback now lives in PushConsentFallbackHost (App-level shell).
 
 interface Profile {
@@ -190,12 +191,7 @@ const Profile = () => {
 
   // Mirror these UI keys → server-side notification_preferences JSONB keys
   // that the push-reconcile / push-scheduler edge functions read.
-  const SERVER_PREF_KEYS: Record<string, string> = {
-    dailyReminder: "daily_meal_reminder",
-    streakReminder: "streak_reminder",
-    weeklySummary: "weekly_summary",
-    reminderTime: "reminder_time",
-  };
+  const SERVER_PREF_KEYS: Record<string, string> = PROFILE_TO_SERVER_PREF_KEY;
 
   const updateNotifPref = (key: string, value: boolean | string) => {
     setNotifPrefs((prev: any) => {
@@ -216,10 +212,10 @@ const Profile = () => {
             .select("notification_preferences")
             .eq("id", user.id)
             .maybeSingle();
-          const merged = {
-            ...((row?.notification_preferences as Record<string, unknown>) || {}),
-            [serverKey]: value,
-          };
+          const merged = mergeServerPrefs(
+            row?.notification_preferences as Record<string, unknown>,
+            { [serverKey]: value },
+          );
           await supabase
             .from("profiles")
             .update({ notification_preferences: merged as any })

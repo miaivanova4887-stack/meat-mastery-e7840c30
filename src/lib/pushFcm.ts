@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
 import { isNativeFcmEnabled, NATIVE_FCM_ENABLED_IOS } from "@/lib/pushNativeConfig";
 import { normalizeLocale } from "@/lib/locale";
+import { mergeServerPrefs } from "@/lib/notificationPrefs";
 
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return await new Promise<T>((resolve, reject) => {
@@ -142,7 +143,7 @@ export function consumePersistedPushNav(maxAgeMs = 60_000): string | null {
 
 export async function savePushConsent(
   state: PushConsentState,
-  preferences?: Record<string, boolean>,
+  preferences?: Record<string, unknown>,
 ): Promise<void> {
   setLocalPushConsent(state);
   const { data: { user } } = await supabase.auth.getUser();
@@ -155,14 +156,32 @@ export async function savePushConsent(
     const stored = localStorage.getItem("carnivore-language");
     locale = normalizeLocale(stored || navigator.language);
   } catch {}
+
+  // Always write a complete canonical preference set. Scheduled campaigns gate
+  // on individual keys, so a profile with `{}` receives nothing at all.
+  let existingPrefs: Record<string, unknown> | null = null;
+  try {
+    const { data: row } = await supabase
+      .from("profiles")
+      .select("notification_preferences")
+      .eq("id", user.id)
+      .maybeSingle();
+    existingPrefs = (row?.notification_preferences as Record<string, unknown>) ?? null;
+  } catch (e) {
+    console.warn("[Push] existing prefs read failed", e);
+  }
+  const mergedPrefs = mergeServerPrefs(existingPrefs, preferences ?? null);
+
   const patch = {
     push_consent: state,
     push_consent_at: new Date().toISOString(),
     timezone,
     locale,
-    ...(preferences ? { notification_preferences: preferences } : {}),
+    notification_preferences: mergedPrefs as never,
   };
-  await supabase.from("profiles").update(patch).eq("id", user.id);
+  const { error } = await supabase.from("profiles").update(patch).eq("id", user.id);
+  if (error) console.warn("[Push] savePushConsent update failed", error.message);
+  else console.info("[Push] notification prefs saved keys=", Object.keys(mergedPrefs).length);
 }
 
 export async function getNativePushPermission(): Promise<NativePushPermission> {

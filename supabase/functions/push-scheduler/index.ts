@@ -112,6 +112,10 @@ Deno.serve(async (req) => {
       .eq("user_id", run.user_id)
       .in("platform", ["android", "ios"]);
 
+    if (!tokens || tokens.length === 0) {
+      console.warn("[push-scheduler] no device token for user", run.user_id);
+    }
+
     let stepSent = false;
     const invalidTokens: string[] = [];
     for (const t of tokens ?? []) {
