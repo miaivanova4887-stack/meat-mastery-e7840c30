@@ -80,7 +80,7 @@ export default function NotificationConsentSheet({
         }
       }
       console.info("[PushDecision] sheet-enable result granted=", granted);
-      try { await savePushConsent(granted ? "granted" : "denied", prefs); } catch (e) {
+      try { await savePushConsent(granted ? "granted" : "denied", sheetPrefsToServerPrefs(prefs)); } catch (e) {
         console.warn("[PushDecision] sheet final savePushConsent failed", e);
       }
       if (granted) {
@@ -109,7 +109,7 @@ export default function NotificationConsentSheet({
   const handleSkip = async () => {
     setBusy(true);
     try {
-      await savePushConsent("denied", prefs);
+      await savePushConsent("denied", sheetPrefsToServerPrefs(prefs));
       onComplete?.(false);
       onClose();
     } finally {

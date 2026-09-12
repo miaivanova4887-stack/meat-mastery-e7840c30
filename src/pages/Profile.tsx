@@ -190,12 +190,7 @@ const Profile = () => {
 
   // Mirror these UI keys → server-side notification_preferences JSONB keys
   // that the push-reconcile / push-scheduler edge functions read.
-  const SERVER_PREF_KEYS: Record<string, string> = {
-    dailyReminder: "daily_meal_reminder",
-    streakReminder: "streak_reminder",
-    weeklySummary: "weekly_summary",
-    reminderTime: "reminder_time",
-  };
+  const SERVER_PREF_KEYS: Record<string, string> = PROFILE_TO_SERVER_PREF_KEY;
 
   const updateNotifPref = (key: string, value: boolean | string) => {
     setNotifPrefs((prev: any) => {
