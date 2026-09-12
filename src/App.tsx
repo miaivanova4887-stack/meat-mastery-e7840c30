@@ -163,6 +163,7 @@ const App = () => {
               <TabSwipeHandler />
               <DeepLinkHandler />
               <PushNavHandler />
+              <AppUpdateHandler />
               <PushConsentFallbackHost />
               <Routes>
                 <Route path="/onboarding" element={<Onboarding />} />
