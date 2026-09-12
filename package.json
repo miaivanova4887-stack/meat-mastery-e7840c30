@@ -28,6 +28,7 @@
     "@capacitor/ios": "^8.3.0",
     "@capacitor/push-notifications": "^8.0.3",
     "@capacitor/share": "^8.0.1",
+    "@capawesome/capacitor-app-update": "^8.0.5",
     "@capgo/capacitor-social-login": "^8.3.22",
     "@hookform/resolvers": "^3.10.0",
     "@lovable.dev/cloud-auth-js": "^1.1.2",

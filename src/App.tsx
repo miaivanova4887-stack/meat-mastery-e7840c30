@@ -60,6 +60,7 @@ import { useEdgeSwipeBack } from "./hooks/useEdgeSwipeBack";
 import { useTabSwipe } from "./hooks/useTabSwipe";
 import { useDeepLinks } from "./hooks/useDeepLinks";
 import { usePushNavigation } from "./hooks/usePushNavigation";
+import { useAppUpdatePrompt } from "./hooks/useAppUpdatePrompt";
 import PushConsentFallbackHost from "./components/PushConsentFallbackHost";
 
 const queryClient = new QueryClient();
@@ -100,6 +101,12 @@ function DeepLinkHandler() {
 /** Routes push-notification taps into React Router. */
 function PushNavHandler() {
   usePushNavigation();
+  return null;
+}
+
+/** Prompts for a Play Store update when a newer version is available. */
+function AppUpdateHandler() {
+  useAppUpdatePrompt();
   return null;
 }
 
@@ -156,6 +163,7 @@ const App = () => {
               <TabSwipeHandler />
               <DeepLinkHandler />
               <PushNavHandler />
+              <AppUpdateHandler />
               <PushConsentFallbackHost />
               <Routes>
                 <Route path="/onboarding" element={<Onboarding />} />
