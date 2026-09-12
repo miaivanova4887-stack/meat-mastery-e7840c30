@@ -65,6 +65,16 @@
                       android:pathPrefix="/reset-password" />
             </intent-filter>
 
+            <!-- AppsFlyer OneLink App Link: attribution / deferred deep links.
+                 Kept as its own filter so it cannot affect autoVerify of the
+                 auth-callback hosts above. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https"
+                      android:host="carnivorex.onelink.me" />
+            </intent-filter>
 
             <!-- Custom scheme deep link for OAuth callback (Google sign-in). Separate from the
                  https App Link filter above; combining schemes in one filter breaks autoVerify. -->
