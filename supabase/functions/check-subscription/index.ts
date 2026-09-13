@@ -88,10 +88,7 @@ serve(async (req) => {
 
     if (subscriptions.data.length === 0) {
       logStep("No active subscription");
-      return new Response(JSON.stringify({ subscribed: false, tier: "free" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+      return respond({ subscribed: false, tier: "free" });
     }
 
     // Determine tier from product IDs
@@ -130,14 +127,11 @@ serve(async (req) => {
 
     logStep("Determined tier", { tier, productId });
 
-    return new Response(JSON.stringify({
+    return respond({
       subscribed: tier !== "free",
       tier,
       product_id: productId,
       subscription_end: subscriptionEnd,
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
