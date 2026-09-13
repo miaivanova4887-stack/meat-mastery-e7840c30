@@ -22,6 +22,7 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getRevenueCatTier } from "./revenuecat.ts";
+import { getManualTier } from "./manualEntitlement.ts";
 
 export type SubscriptionTier = "free" | "pro" | "elite";
 
@@ -124,15 +125,19 @@ export async function requireTier(
     }
 
     if (tier === null) {
+      // --- Manual admin grant (no purchase). null = none. ---
+      const manualTier = await getManualTier(user.id);
+
       // --- RevenueCat (in-app purchases). null = lookup unavailable. ---
       const rcTier = await getRevenueCatTier(user.id);
+
 
       // --- Stripe (web purchases) ---
       let stripeTier: SubscriptionTier | null = null;
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeKey) {
         logStep("ERROR STRIPE_SECRET_KEY not set");
-        if (rcTier === null) {
+        if (rcTier === null && manualTier === null) {
           return jsonResponse({ error: "server_misconfigured" }, 500);
         }
       } else {
@@ -173,15 +178,19 @@ export async function requireTier(
 
       // Neither store could answer — that's a technical failure, not a tier
       // decision. Tell the client so it doesn't show an upgrade prompt.
-      if (rcTier === null && stripeTier === null) {
+      if (rcTier === null && stripeTier === null && manualTier === null) {
         return jsonResponse({ error: "subscription_check_failed" }, 500);
       }
 
       const rcRank = rcTier ? TIER_RANK[rcTier] : 0;
       const stripeRank = stripeTier ? TIER_RANK[stripeTier] : 0;
-      tier = rcRank >= stripeRank
-        ? (rcTier as SubscriptionTier)
-        : (stripeTier as SubscriptionTier);
+      const manualRank = manualTier ? TIER_RANK[manualTier] : 0;
+      const best = Math.max(rcRank, stripeRank, manualRank);
+      tier = manualRank === best
+        ? (manualTier as SubscriptionTier)
+        : rcRank === best
+          ? (rcTier as SubscriptionTier)
+          : (stripeTier as SubscriptionTier);
 
       // Only cache when both stores answered; a partial answer could be a
       // temporary outage and we don't want to pin a downgraded tier for 60s.
@@ -192,7 +201,7 @@ export async function requireTier(
           expiresAt: now() + TIER_CACHE_TTL_MS,
         });
       }
-      logStep("tier resolved", { userId: user.id, tier, rcTier, stripeTier });
+      logStep("tier resolved", { userId: user.id, tier, rcTier, stripeTier, manualTier });
     }
 
     // ---------- 3. Compare against requirement ----------
