@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { getManualTier } from "../_shared/manualEntitlement.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -52,15 +53,28 @@ serve(async (req) => {
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Manual admin-granted access (public.manual_entitlements) wins when it is
+    // higher than what Stripe reports.
+    const manualTier = await getManualTier(user.id);
+    const TIER_RANK: Record<string, number> = { free: 0, pro: 1, elite: 2 };
+    const respond = (payload: { subscribed: boolean; tier: string; product_id?: string | null; subscription_end?: string | null }) => {
+      let body = payload;
+      if (manualTier && TIER_RANK[manualTier] > TIER_RANK[payload.tier]) {
+        body = { subscribed: true, tier: manualTier, product_id: null, subscription_end: null };
+        logStep("Manual entitlement applied", { userId: user.id, tier: manualTier });
+      }
+      return new Response(JSON.stringify(body), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    };
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
       logStep("No customer found");
-      return new Response(JSON.stringify({ subscribed: false, tier: "free" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+      return respond({ subscribed: false, tier: "free" });
     }
 
     const customerId = customers.data[0].id;
