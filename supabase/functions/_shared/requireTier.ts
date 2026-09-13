@@ -182,15 +182,14 @@ export async function requireTier(
         return jsonResponse({ error: "subscription_check_failed" }, 500);
       }
 
-      const rcRank = rcTier ? TIER_RANK[rcTier] : 0;
-      const stripeRank = stripeTier ? TIER_RANK[stripeTier] : 0;
-      const manualRank = manualTier ? TIER_RANK[manualTier] : 0;
-      const best = Math.max(rcRank, stripeRank, manualRank);
-      tier = manualRank === best
-        ? (manualTier as SubscriptionTier)
-        : rcRank === best
-          ? (rcTier as SubscriptionTier)
-          : (stripeTier as SubscriptionTier);
+      const candidates: SubscriptionTier[] = [manualTier, rcTier, stripeTier]
+        .filter((t): t is SubscriptionTier => t !== null);
+      // At least one source answered (checked above); default to free defensively.
+      tier = candidates.reduce<SubscriptionTier>(
+        (best, t) => (TIER_RANK[t] > TIER_RANK[best] ? t : best),
+        "free",
+      );
+
 
       // Only cache when both stores answered; a partial answer could be a
       // temporary outage and we don't want to pin a downgraded tier for 60s.
