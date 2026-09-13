@@ -125,8 +125,12 @@ export async function requireTier(
     }
 
     if (tier === null) {
+      // --- Manual admin grant (no purchase). null = none. ---
+      const manualTier = await getManualTier(user.id);
+
       // --- RevenueCat (in-app purchases). null = lookup unavailable. ---
       const rcTier = await getRevenueCatTier(user.id);
+
 
       // --- Stripe (web purchases) ---
       let stripeTier: SubscriptionTier | null = null;
