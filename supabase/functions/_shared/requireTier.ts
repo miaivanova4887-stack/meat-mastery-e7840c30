@@ -137,7 +137,7 @@ export async function requireTier(
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeKey) {
         logStep("ERROR STRIPE_SECRET_KEY not set");
-        if (rcTier === null) {
+        if (rcTier === null && manualTier === null) {
           return jsonResponse({ error: "server_misconfigured" }, 500);
         }
       } else {
@@ -178,7 +178,7 @@ export async function requireTier(
 
       // Neither store could answer — that's a technical failure, not a tier
       // decision. Tell the client so it doesn't show an upgrade prompt.
-      if (rcTier === null && stripeTier === null) {
+      if (rcTier === null && stripeTier === null && manualTier === null) {
         return jsonResponse({ error: "subscription_check_failed" }, 500);
       }
 
