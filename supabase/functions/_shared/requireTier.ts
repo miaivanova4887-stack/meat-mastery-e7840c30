@@ -21,6 +21,7 @@
 // (esm.sh/stripe@18.5.0, esm.sh/@supabase/supabase-js@2). Do not bump.
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getRevenueCatTier } from "./revenuecat.ts";
 
 export type SubscriptionTier = "free" | "pro" | "elite";
 
@@ -111,7 +112,10 @@ export async function requireTier(
       return jsonResponse({ error: "unauthorized", reason: "no_email" }, 401);
     }
 
-    // ---------- 2. Resolve tier (cache → Stripe) ----------
+    // ---------- 2. Resolve tier (cache → RevenueCat + Stripe) ----------
+    // Subscriptions can come from either store: RevenueCat (Google Play /
+    // App Store in-app purchases) or Stripe (web). We take the higher of the
+    // two, mirroring src/contexts/SubscriptionContext.tsx.
     let tier: SubscriptionTier | null = null;
     const cached = tierCache.get(user.id);
     if (cached && cached.expiresAt > now() && cached.email === user.email) {
@@ -120,55 +124,75 @@ export async function requireTier(
     }
 
     if (tier === null) {
+      // --- RevenueCat (in-app purchases). null = lookup unavailable. ---
+      const rcTier = await getRevenueCatTier(user.id);
+
+      // --- Stripe (web purchases) ---
+      let stripeTier: SubscriptionTier | null = null;
       const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
       if (!stripeKey) {
         logStep("ERROR STRIPE_SECRET_KEY not set");
-        return jsonResponse({ error: "server_misconfigured" }, 500);
+        if (rcTier === null) {
+          return jsonResponse({ error: "server_misconfigured" }, 500);
+        }
+      } else {
+        try {
+          const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+          const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+
+          if (customers.data.length === 0) {
+            stripeTier = "free";
+          } else {
+            const customerId = customers.data[0].id;
+            const subscriptions = await stripe.subscriptions.list({
+              customer: customerId,
+              status: "active",
+              limit: 10,
+            });
+
+            let resolved: SubscriptionTier = "free";
+            for (const sub of subscriptions.data) {
+              const subProductId = sub.items.data[0]?.price?.product as string | undefined;
+              if (subProductId && ELITE_PRODUCTS.includes(subProductId)) {
+                resolved = "elite";
+                break; // elite wins — no need to keep looking
+              } else if (subProductId && PRO_PRODUCTS.includes(subProductId)) {
+                resolved = "pro";
+                // keep looping in case a higher-tier elite sub exists
+              }
+            }
+            stripeTier = resolved;
+          }
+        } catch (stripeErr) {
+          logStep("ERROR stripe lookup failed", {
+            err: stripeErr instanceof Error ? stripeErr.message : String(stripeErr),
+          });
+          stripeTier = null;
+        }
       }
 
-      try {
-        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-
-        if (customers.data.length === 0) {
-          tier = "free";
-        } else {
-          const customerId = customers.data[0].id;
-          const subscriptions = await stripe.subscriptions.list({
-            customer: customerId,
-            status: "active",
-            limit: 10,
-          });
-
-          let resolved: SubscriptionTier = "free";
-          for (const sub of subscriptions.data) {
-            const subProductId = sub.items.data[0]?.price?.product as string | undefined;
-            if (subProductId && ELITE_PRODUCTS.includes(subProductId)) {
-              resolved = "elite";
-              break; // elite wins — no need to keep looking
-            } else if (subProductId && PRO_PRODUCTS.includes(subProductId)) {
-              resolved = "pro";
-              // keep looping in case a higher-tier elite sub exists
-            }
-          }
-          tier = resolved;
-        }
-      } catch (stripeErr) {
-        // If Stripe is unavailable we fail closed on paid tiers to avoid
-        // accidentally granting access, but return 500 so the client knows it
-        // wasn't actually a tier decision.
-        logStep("ERROR stripe lookup failed", {
-          err: stripeErr instanceof Error ? stripeErr.message : String(stripeErr),
-        });
+      // Neither store could answer — that's a technical failure, not a tier
+      // decision. Tell the client so it doesn't show an upgrade prompt.
+      if (rcTier === null && stripeTier === null) {
         return jsonResponse({ error: "subscription_check_failed" }, 500);
       }
 
-      tierCache.set(user.id, {
-        tier,
-        email: user.email,
-        expiresAt: now() + TIER_CACHE_TTL_MS,
-      });
-      logStep("tier resolved from stripe", { userId: user.id, tier });
+      const rcRank = rcTier ? TIER_RANK[rcTier] : 0;
+      const stripeRank = stripeTier ? TIER_RANK[stripeTier] : 0;
+      tier = rcRank >= stripeRank
+        ? (rcTier as SubscriptionTier)
+        : (stripeTier as SubscriptionTier);
+
+      // Only cache when both stores answered; a partial answer could be a
+      // temporary outage and we don't want to pin a downgraded tier for 60s.
+      if (rcTier !== null && stripeTier !== null) {
+        tierCache.set(user.id, {
+          tier,
+          email: user.email,
+          expiresAt: now() + TIER_CACHE_TTL_MS,
+        });
+      }
+      logStep("tier resolved", { userId: user.id, tier, rcTier, stripeTier });
     }
 
     // ---------- 3. Compare against requirement ----------
