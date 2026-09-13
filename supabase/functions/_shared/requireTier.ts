@@ -22,6 +22,7 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getRevenueCatTier } from "./revenuecat.ts";
+import { getManualTier } from "./manualEntitlement.ts";
 
 export type SubscriptionTier = "free" | "pro" | "elite";
 
@@ -179,9 +180,13 @@ export async function requireTier(
 
       const rcRank = rcTier ? TIER_RANK[rcTier] : 0;
       const stripeRank = stripeTier ? TIER_RANK[stripeTier] : 0;
-      tier = rcRank >= stripeRank
-        ? (rcTier as SubscriptionTier)
-        : (stripeTier as SubscriptionTier);
+      const manualRank = manualTier ? TIER_RANK[manualTier] : 0;
+      const best = Math.max(rcRank, stripeRank, manualRank);
+      tier = manualRank === best
+        ? (manualTier as SubscriptionTier)
+        : rcRank === best
+          ? (rcTier as SubscriptionTier)
+          : (stripeTier as SubscriptionTier);
 
       // Only cache when both stores answered; a partial answer could be a
       // temporary outage and we don't want to pin a downgraded tier for 60s.
@@ -192,7 +197,7 @@ export async function requireTier(
           expiresAt: now() + TIER_CACHE_TTL_MS,
         });
       }
-      logStep("tier resolved", { userId: user.id, tier, rcTier, stripeTier });
+      logStep("tier resolved", { userId: user.id, tier, rcTier, stripeTier, manualTier });
     }
 
     // ---------- 3. Compare against requirement ----------
