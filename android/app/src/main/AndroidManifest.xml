@@ -73,7 +73,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https"
-                      android:host="carnivorex.onelink.me" />
+                      android:host="carnivorex.onelink.me"
+                      android:pathPrefix="/kWuX" />
             </intent-filter>
 
             <!-- Custom scheme deep link for OAuth callback (Google sign-in). Separate from the
