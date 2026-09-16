@@ -5,14 +5,13 @@
 Two separate things, and only one of them is in the app.
 
 1. **Ownership check.** The marketing-link domain does publish an ownership file, and it lists your Play signing key (starts with A7:2B:BF:99). So ownership itself is set up correctly. Google's report is from the currently published build and re-validates only after a new version goes out.
-
 2. **The link Google tested redirects.** Your app currently claims the *entire* domain `carnivorex.onelink.me`, including its bare root address. That root address answers with an error and every marketing short link is by design a redirect (it sends people to the app or to the store). Google tests the broadest address the app claims, so it reports "non-redirect URL failed" and shows the link as not working.
 
 The fix is to stop claiming the whole domain and claim only the exact link path your marketing links use.
 
 ## What I need from you
 
-The template code in your real link — for example, in `https://carnivorex.onelink.me/AbCd/xyz123` the code is `AbCd`. Paste one of your live links and I'll use it.
+The template code in your real link — for example, in `https://carnivorex.onelink.me/AbCd/xyz123` the code is `AbCd`. Paste one of your live links and I'll use it. --> [https://carnivorex.onelink.me/kWuX/88ew8g3t](https://carnivorex.onelink.me/kWuX/88ew8g3t)
 
 ## What I'll change
 
