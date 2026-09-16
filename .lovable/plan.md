@@ -1,25 +1,30 @@
-# Set up Google Search Console for aos.carnivorex.app
+# Fix the "Deep links not working" warning for carnivorex.onelink.me
 
-Goal: get your site verified in Google Search Console so you can see how people find CarnivoreX in Google search, and make sure Google has your page list.
+## What's actually wrong
 
-## Steps
+Two separate things, and only one of them is in the app.
 
-1. Connect your Google account (a card will appear in chat for you to approve). This links the account that will own the Search Console property.
-2. Request a verification code from Google for `https://aos.carnivorex.app/`.
-3. Add that verification tag to the site's page head, and add a sitemap file listing the public pages if one isn't already valid for this address.
-4. Publish the site once so both go live.
-5. Ask Google to verify, add the property to your Search Console account, and submit the sitemap.
-6. Confirm verification succeeded and report what Google shows.
+1. **Ownership check.** The marketing-link domain does publish an ownership file, and it lists your Play signing key (starts with A7:2B:BF:99). So ownership itself is set up correctly. Google's report is from the currently published build and re-validates only after a new version goes out.
 
-## Notes
+2. **The link Google tested redirects.** Your app currently claims the *entire* domain `carnivorex.onelink.me`, including its bare root address. That root address answers with an error and every marketing short link is by design a redirect (it sends people to the app or to the store). Google tests the broadest address the app claims, so it reports "non-redirect URL failed" and shows the link as not working.
 
-- Only one publish is needed — the verification tag and sitemap ship together.
-- Nothing about the mobile apps changes; no rebuild and no Play Store resubmission.
-- Existing page titles, descriptions, and indexing rules stay untouched.
-- Search Console data starts accumulating after verification; expect a day or two before the first numbers appear.
+The fix is to stop claiming the whole domain and claim only the exact link path your marketing links use.
 
-## Technical details
+## What I need from you
 
-- Verification method: `META` tag in `index.html` `<head>`, via the Site Verification API through the Google Search Console connector.
-- Property type: URL-prefix (`SITE`) at `https://aos.carnivorex.app/`. No DNS record required. A broader domain-level property is optional and not part of this plan.
-- Sitemap: `public/sitemap.xml` with the public routes (home, guide, recipes, pricing, coaching, legal pages), referenced from `public/robots.txt`; submitted to the verified property after publish.
+The template code in your real link — for example, in `https://carnivorex.onelink.me/AbCd/xyz123` the code is `AbCd`. Paste one of your live links and I'll use it.
+
+## What I'll change
+
+- In the Android link rules, replace the domain-wide marketing rule with one scoped to that template path only (`/AbCd` and anything under it). The sign-in link rules and the custom `carnivorex://` rule stay untouched.
+- Bump the version to 20 / 1.2.2, since link rules only take effect in a new build.
+
+## What you'll do after
+
+- Build and upload version 20 to Play. I'll give you the commands one line at a time.
+- In Play Console, after the new version is live, the deep-link report re-checks the path and the warning clears. Google's note is accurate: existing users must update before the links open the app for them.
+- In AppsFlyer, keep the Android app's SHA-256 list as-is; it already carries the right key.
+
+## Note on expectations
+
+Attribution short links are redirects by nature. Scoping the claim to the template path is what makes Google's check pass. If you later want a link that is fully yours end to end (`aos.carnivorex.app/...`), that's a branded-domain setup in AppsFlyer plus a matching app rule — separate task, say the word.
