@@ -61,12 +61,15 @@ export function initAppsFlyer(): Promise<void> {
       // routing in App.tsx.
       AppsFlyer.addListener(AFConstants.CONVERSION_CALLBACK, (e) => {
         if (isDev) console.info("[AppsFlyer] conversion", e);
+        setPendingMarketingRoute(routeFromAppsFlyerPayload(e));
       });
       AppsFlyer.addListener(AFConstants.OAOA_CALLBACK, (e) => {
         if (isDev) console.info("[AppsFlyer] app-open-attribution", e);
+        setPendingMarketingRoute(routeFromAppsFlyerPayload(e));
       });
       AppsFlyer.addListener(AFConstants.UDL_CALLBACK, (e) => {
         if (isDev) console.info("[AppsFlyer] unified-deeplink", e);
+        setPendingMarketingRoute(routeFromAppsFlyerPayload(e));
       });
 
       await AppsFlyer.initSDK({
