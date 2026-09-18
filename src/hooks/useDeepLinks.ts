@@ -53,6 +53,14 @@ export function useDeepLinks() {
 
     const routeAuthUrl = (rawUrl: string, source: "live" | "cold") => {
       try {
+        // AppsFlyer OneLink (marketing / attribution) links are not auth
+        // callbacks — route them to their destination and stop here.
+        if (isMarketingDeepLinkUrl(rawUrl)) {
+          const marketingRoute = routeFromMarketingUrl(rawUrl);
+          logAuthDiag("deeplink:marketing", { source, route: marketingRoute ?? "none" });
+          if (marketingRoute) navigate(marketingRoute, { replace: false });
+          return;
+        }
         const parsed = normalizeAuthCallbackUrl(rawUrl);
         logAuthDiag("deeplink:received", {
           source,
