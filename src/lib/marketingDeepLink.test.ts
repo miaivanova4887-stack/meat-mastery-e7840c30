@@ -15,6 +15,10 @@ describe("marketing deep-link routing", () => {
   it("keeps authentication links outside marketing routing", () => {
     expect(isMarketingDeepLinkUrl("carnivorex://auth?code=redacted")).toBe(false);
     expect(isMarketingDeepLinkUrl("carnivorex://callback#access_token=redacted")).toBe(false);
+    expect(isMarketingDeepLinkUrl("carnivorex:///callback#access_token=redacted")).toBe(false);
+    expect(isMarketingDeepLinkUrl("carnivorex://reset-password?token_hash=redacted")).toBe(false);
+    expect(routeFromMarketingUrl("carnivorex:///callback#access_token=redacted")).toBe(null);
+    expect(routeFromMarketingUrl("carnivorex://reset-password?token_hash=redacted")).toBe(null);
   });
 
   it("routes known destinations from the custom-scheme host", () => {
