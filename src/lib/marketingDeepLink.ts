@@ -12,6 +12,8 @@
  */
 
 const ONELINK_HOSTS = new Set(["carnivorex.onelink.me"]);
+const MARKETING_SCHEME = "carnivorex:";
+const AUTH_SCHEME_HOSTS = new Set(["auth", "callback"]);
 
 /** Allow-listed marketing destinations → in-app routes. */
 const ROUTE_MAP: Record<string, string> = {
@@ -50,7 +52,8 @@ let pendingRoute: string | null = null;
 export function isMarketingDeepLinkUrl(rawUrl: string): boolean {
   try {
     const u = new URL(rawUrl);
-    return ONELINK_HOSTS.has(u.host);
+    if (ONELINK_HOSTS.has(u.host)) return true;
+    return u.protocol === MARKETING_SCHEME && !AUTH_SCHEME_HOSTS.has(u.host);
   } catch {
     return false;
   }
@@ -75,19 +78,26 @@ export function resolveMarketingRoute(value: string | null | undefined): string 
 export function routeFromMarketingUrl(rawUrl: string): string | null {
   try {
     const u = new URL(rawUrl);
-    if (!ONELINK_HOSTS.has(u.host)) return null;
+    const isOneLink = ONELINK_HOSTS.has(u.host);
+    const isMarketingScheme =
+      u.protocol === MARKETING_SCHEME && !AUTH_SCHEME_HOSTS.has(u.host);
+    if (!isOneLink && !isMarketingScheme) return null;
     const candidates = [
       u.searchParams.get("deep_link_value"),
       u.searchParams.get("af_dp"),
       u.searchParams.get("deep_link_sub1"),
       u.searchParams.get("route"),
       u.searchParams.get("path"),
+      isMarketingScheme ? u.host : null,
+      isMarketingScheme ? u.pathname : null,
     ];
     for (const c of candidates) {
       const resolved = resolveMarketingRoute(c);
       if (resolved) return resolved;
     }
-    return null;
+    // A bare OneLink has no destination in its URL. AppsFlyer may deliver the
+    // destination asynchronously; home is the deterministic immediate fallback.
+    return isOneLink ? "/" : null;
   } catch {
     return null;
   }
