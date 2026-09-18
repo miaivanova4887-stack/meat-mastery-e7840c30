@@ -18,6 +18,10 @@
 
 import { Capacitor } from "@capacitor/core";
 import { AppsFlyer, AFConstants } from "appsflyer-capacitor-plugin";
+import {
+  routeFromAppsFlyerPayload,
+  setPendingMarketingRoute,
+} from "./marketingDeepLink";
 
 // ---------------------------------------------------------------------------
 // Configuration — these are client-side identifiers, not server secrets.
