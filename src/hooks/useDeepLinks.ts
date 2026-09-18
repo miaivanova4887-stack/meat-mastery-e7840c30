@@ -187,7 +187,26 @@ export function useDeepLinks() {
       });
     });
 
+    // Destinations delivered by the AppsFlyer SDK (deferred deep links /
+    // unified deep link) arrive asynchronously after init.
+    const onMarketingRoute = (e: Event) => {
+      const route = (e as CustomEvent<string>).detail;
+      if (typeof route === "string" && route) {
+        logAuthDiag("deeplink:marketing-sdk", { route });
+        navigate(route, { replace: false });
+      }
+    };
+    window.addEventListener(MARKETING_DEEPLINK_EVENT, onMarketingRoute);
+
+    // If the SDK resolved a destination before this hook mounted.
+    const alreadyPending = consumePendingMarketingRoute();
+    if (alreadyPending) {
+      logAuthDiag("deeplink:marketing-pending", { route: alreadyPending });
+      navigate(alreadyPending, { replace: false });
+    }
+
     return () => {
+      window.removeEventListener(MARKETING_DEEPLINK_EVENT, onMarketingRoute);
       void urlOpenSub.then((s) => s.remove());
       void resumeSub.then((s) => s.remove());
     };
