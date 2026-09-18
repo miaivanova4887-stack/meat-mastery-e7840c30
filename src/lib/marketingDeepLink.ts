@@ -68,6 +68,7 @@ let pendingRoute: string | null = null;
 
 export function isMarketingDeepLinkUrl(rawUrl: string): boolean {
   try {
+    if (isAuthDeepLink(rawUrl)) return false;
     const u = new URL(rawUrl);
     if (ONELINK_HOSTS.has(u.host)) return true;
     return u.protocol === MARKETING_SCHEME && !AUTH_SCHEME_HOSTS.has(u.host);
