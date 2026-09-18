@@ -11,9 +11,26 @@
  * navigates. Auth deep links are handled separately and are never touched here.
  */
 
+import { normalizeAuthCallbackUrl } from "./authCallbackGuard";
+
 const ONELINK_HOSTS = new Set(["carnivorex.onelink.me"]);
 const MARKETING_SCHEME = "carnivorex:";
-const AUTH_SCHEME_HOSTS = new Set(["auth", "callback"]);
+const AUTH_SCHEME_HOSTS = new Set(["auth", "callback", "reset-password"]);
+
+/**
+ * Authentication deep links must never be treated as marketing links —
+ * they arrive in several shapes (carnivorex://callback#…,
+ * carnivorex:///callback#…, carnivorex://reset-password?…) and are handled
+ * exclusively by the auth callback pipeline.
+ */
+function isAuthDeepLink(rawUrl: string): boolean {
+  try {
+    if (normalizeAuthCallbackUrl(rawUrl).isAuthRoute) return true;
+  } catch {
+    /* fall through */
+  }
+  return false;
+}
 
 /** Allow-listed marketing destinations → in-app routes. */
 const ROUTE_MAP: Record<string, string> = {
