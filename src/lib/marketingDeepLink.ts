@@ -95,6 +95,7 @@ export function resolveMarketingRoute(value: string | null | undefined): string 
 /** Pull a destination out of a raw OneLink https URL's query parameters. */
 export function routeFromMarketingUrl(rawUrl: string): string | null {
   try {
+    if (isAuthDeepLink(rawUrl)) return null;
     const u = new URL(rawUrl);
     const isOneLink = ONELINK_HOSTS.has(u.host);
     const isMarketingScheme =
