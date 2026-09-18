@@ -14,6 +14,12 @@ import {
   storeCallbackHandoff,
 } from "@/lib/authCallbackGuard";
 import { consumeGoogleOAuthInFlight } from "@/lib/oauthFlowState";
+import {
+  MARKETING_DEEPLINK_EVENT,
+  consumePendingMarketingRoute,
+  isMarketingDeepLinkUrl,
+  routeFromMarketingUrl,
+} from "@/lib/marketingDeepLink";
 
 /**
  * Wires native deep-link handling.
