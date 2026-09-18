@@ -77,6 +77,16 @@
                       android:pathPrefix="/kWuX" />
             </intent-filter>
 
+            <!-- AppsFlyer resolves installed-device OneLinks to carnivorex://<destination>.
+                 A scheme-only filter accepts every allow-listed marketing destination;
+                 useDeepLinks keeps auth/callback handling separate inside the app. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="carnivorex" />
+            </intent-filter>
+
             <!-- Custom scheme deep link for OAuth callback (Google sign-in). Separate from the
                  https App Link filter above; combining schemes in one filter breaks autoVerify. -->
             <intent-filter>
