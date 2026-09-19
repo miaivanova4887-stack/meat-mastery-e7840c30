@@ -250,6 +250,13 @@ function bindActionListenerOnce() {
       console.info("[PushTap] data keys", Object.keys(data), "values", data);
       const path = resolvePushNavPath(data);
       console.info("[PushTap] actionPerformed resolved", { path, type: data?.type });
+      // AppsFlyer attribution: every push tap surfaces as a `push_opened`
+      // in-app event carrying the destination URI (path) and campaign type.
+      logAfEvent(AF_EVENTS.pushOpened, {
+        af_content_type: "push",
+        path: path ?? null,
+        type: typeof data?.type === "string" ? data.type : null,
+      });
       if (path) queuePushNav(path);
       else console.warn("[PushTap] actionPerformed dropped — no path resolvable");
     });
