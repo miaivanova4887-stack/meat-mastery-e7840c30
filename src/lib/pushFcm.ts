@@ -18,6 +18,7 @@ import { setLocalPushConsent } from "@/lib/pushConsentLocal";
 import { isNativeFcmEnabled, NATIVE_FCM_ENABLED_IOS } from "@/lib/pushNativeConfig";
 import { normalizeLocale } from "@/lib/locale";
 import { mergeServerPrefs } from "@/lib/notificationPrefs";
+import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return await new Promise<T>((resolve, reject) => {
@@ -198,16 +199,20 @@ export async function getNativePushPermission(): Promise<NativePushPermission> {
 
 async function registerDeviceTokenWithBackend(token: string, platform: "android" | "ios") {
   try {
+    // Push delivery is gated by consent, not sign-in: register the token even
+    // without a session so opted-in anonymous devices still get reminders.
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.info("[Push] skipping token register — no session");
-      return;
-    }
+    let timezone = "UTC";
+    try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch {}
+    let locale = "en";
+    try {
+      locale = localStorage.getItem("carnivore-language") || navigator.language || "en";
+    } catch {}
     const { error } = await supabase.functions.invoke("register-device-token", {
-      body: { token, platform },
+      body: { token, platform, timezone, locale },
     });
     if (error) throw error;
-    console.info(`[Push] device token persisted platform=${platform} len=${token.length}`);
+    console.info(`[Push] device token persisted platform=${platform} len=${token.length} anonymous=${!session}`);
   } catch (e) {
     console.error("[Push] token register failed", e);
   }
@@ -245,6 +250,13 @@ function bindActionListenerOnce() {
       console.info("[PushTap] data keys", Object.keys(data), "values", data);
       const path = resolvePushNavPath(data);
       console.info("[PushTap] actionPerformed resolved", { path, type: data?.type });
+      // AppsFlyer attribution: every push tap surfaces as a `push_opened`
+      // in-app event carrying the destination URI (path) and campaign type.
+      logAfEvent(AF_EVENTS.pushOpened, {
+        af_content_type: "push",
+        path: path ?? null,
+        type: typeof data?.type === "string" ? data.type : null,
+      });
       if (path) queuePushNav(path);
       else console.warn("[PushTap] actionPerformed dropped — no path resolvable");
     });
@@ -323,11 +335,7 @@ async function retryNativeRegistrationIfGranted(source: "startup" | "auth"): Pro
     const permission = await getNativePushPermission();
     console.info(`[Push] automatic registration check source=${source} platform=${platform} permission=${permission}`);
     if (permission !== "granted") return;
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.info(`[Push] automatic registration deferred source=${source} reason=no-session`);
-      return;
-    }
+    // No session requirement: consent alone qualifies the device for pushes.
     await withTimeout(PushNotifications.register(), 4000, `register(${source})`);
     console.info(`[Push] automatic register returned source=${source} platform=${platform}`);
   } catch (e) {

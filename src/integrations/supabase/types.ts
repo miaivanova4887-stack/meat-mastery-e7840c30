@@ -377,27 +377,33 @@ export type Database = {
           created_at: string
           id: string
           last_seen_at: string
+          locale: string
           platform: string
+          timezone: string
           token: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           app_version?: string | null
           created_at?: string
           id?: string
           last_seen_at?: string
+          locale?: string
           platform: string
+          timezone?: string
           token: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           app_version?: string | null
           created_at?: string
           id?: string
           last_seen_at?: string
+          locale?: string
           platform?: string
+          timezone?: string
           token?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -712,6 +718,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      push_anon_sends: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          scheduled_for: string
+          token: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          scheduled_for: string
+          token: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          scheduled_for?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_anon_sends_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "push_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_campaign_runs: {
         Row: {
