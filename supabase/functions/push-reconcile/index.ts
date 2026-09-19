@@ -9,6 +9,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isCronAuthorized } from "../_shared/cronAuth.ts";
+import { sendFcmToToken } from "../_shared/fcm.ts";
+import { pickLocalized, normalizeLocale, type LocalizedString } from "../_shared/i18nStep.ts";
 
 
 const corsHeaders = {
@@ -32,9 +34,17 @@ interface Schedule {
   use_profile_reminder_time?: boolean;
 }
 
+interface CampaignStep {
+  title: LocalizedString;
+  body?: LocalizedString;
+  data?: Record<string, string>;
+  preference_key?: string;
+}
+
 interface CampaignRow {
   id: string;
   schedule: Schedule;
+  steps?: CampaignStep[];
 }
 
 Deno.serve(async (req) => {
@@ -56,7 +66,7 @@ Deno.serve(async (req) => {
   // Pull active scheduled campaigns
   const { data: campaigns, error } = await admin
     .from("push_campaigns")
-    .select("id, schedule")
+    .select("id, schedule, steps")
     .eq("active", true)
     .eq("trigger_type", "scheduled");
   if (error) {
