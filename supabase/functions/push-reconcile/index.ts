@@ -138,9 +138,68 @@ Deno.serve(async (req) => {
         enqueued++;
       }
     }
+
+    // ---- Anonymous (consent-only, not signed in) devices -------------------
+    // Tokens registered without a session live in device_tokens with
+    // user_id NULL. They get the default reminder set (everything except
+    // marketing), sent directly here instead of via push_campaign_runs
+    // (which requires a user id). Dedup via push_anon_sends.
+    const anonStep = Array.isArray(c.steps) ? c.steps[0] : undefined;
+    const anonPrefKey = anonStep?.preference_key ?? sched.preference_key;
+    if (anonStep && anonPrefKey !== "marketing") {
+      const { data: anonTokens, error: tErr } = await admin
+        .from("device_tokens")
+        .select("token, timezone, locale")
+        .is("user_id", null)
+        .in("platform", ["android", "ios"])
+        .limit(1000);
+      if (tErr) {
+        console.error("anon token query", tErr);
+      }
+      for (const t of anonTokens ?? []) {
+        const occurrence = computeOccurrenceUtc(sched, sched.local_time, t.timezone || "UTC");
+        if (!occurrence) continue;
+        const ageMs = Date.now() - occurrence.getTime();
+        if (ageMs < 0 || ageMs > 60 * 60_000) continue;
+
+        // Idempotency: unique (token, campaign_id, scheduled_for).
+        const { error: dedupErr } = await admin
+          .from("push_anon_sends")
+          .insert({
+            token: t.token,
+            campaign_id: c.id,
+            scheduled_for: occurrence.toISOString(),
+          });
+        if (dedupErr) {
+          if (dedupErr.code !== "23505") {
+            console.warn("anon dedup insert err", c.id, dedupErr.message);
+          }
+          continue; // already sent (or record failed — don't risk duplicates)
+        }
+
+        const locale = normalizeLocale(t.locale);
+        try {
+          const r = await sendFcmToToken(
+            t.token,
+            {
+              title: pickLocalized(anonStep.title, locale),
+              body: pickLocalized(anonStep.body, locale),
+            },
+            anonStep.data,
+          );
+          if (r.ok) {
+            sent++;
+          } else if (r.invalid) {
+            await admin.from("device_tokens").delete().eq("token", t.token);
+          }
+        } catch (e) {
+          console.error("anon send err", e);
+        }
+      }
+    }
   }
 
-  return json({ ok: true, processed, enqueued });
+  return json({ ok: true, processed, enqueued, sent });
 });
 
 /**
