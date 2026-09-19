@@ -1,0 +1,1 @@
+CREATE POLICY "push_anon_sends_service_only" ON public.push_anon_sends FOR ALL TO authenticated, anon USING (false) WITH CHECK (false);
