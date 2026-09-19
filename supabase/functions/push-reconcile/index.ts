@@ -76,6 +76,7 @@ Deno.serve(async (req) => {
 
   let enqueued = 0;
   let processed = 0;
+  let sent = 0;
 
   for (const c of (campaigns ?? []) as CampaignRow[]) {
     processed++;
