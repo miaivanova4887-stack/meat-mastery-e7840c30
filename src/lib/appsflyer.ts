@@ -142,6 +142,7 @@ export const AF_EVENTS = {
   coachingBookingCompleted: "coaching_booking_completed",
   mealPlanGenerated: "meal_plan_generated",
   progressLogged: "progress_logged",
+  pushOpened: "push_opened",
 } as const;
 
 // AppsFlyer predefined event-param keys.
