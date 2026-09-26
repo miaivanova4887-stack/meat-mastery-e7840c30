@@ -20,6 +20,8 @@ const BodySchema = z.object({
   app_version: z.string().max(64).optional(),
   timezone: z.string().max(64).optional(),
   locale: z.string().max(16).optional(),
+  push_consent: z.enum(["unset", "granted", "denied"]).optional(),
+  notification_preferences: z.record(z.boolean()).optional(),
 });
 
 function isValidTimezone(tz: string): boolean {
@@ -88,6 +90,8 @@ Deno.serve(async (req) => {
       locale,
       last_seen_at: nowIso,
     };
+    if (parsed.data.push_consent) patch.push_consent = parsed.data.push_consent;
+    if (parsed.data.notification_preferences) patch.notification_preferences = parsed.data.notification_preferences;
     if (userId) patch.user_id = userId;
     ({ error } = await admin.from("device_tokens").update(patch).eq("id", existing.id));
   } else {
@@ -99,6 +103,8 @@ Deno.serve(async (req) => {
       timezone,
       locale,
       last_seen_at: nowIso,
+      push_consent: parsed.data.push_consent ?? "unset",
+      notification_preferences: parsed.data.notification_preferences ?? {},
     }));
   }
 

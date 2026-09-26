@@ -150,8 +150,10 @@ Deno.serve(async (req) => {
     if (anonStep && anonPrefKey !== "marketing") {
       const { data: anonTokens, error: tErr } = await admin
         .from("device_tokens")
-        .select("token, timezone, locale")
+        .select("token, timezone, locale, notification_preferences")
         .is("user_id", null)
+        .eq("push_consent", "granted")
+        .eq(`notification_preferences->>${anonPrefKey}`, "true")
         .in("platform", ["android", "ios"])
         .limit(1000);
       if (tErr) {
