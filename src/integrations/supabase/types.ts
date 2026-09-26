@@ -378,7 +378,9 @@ export type Database = {
           id: string
           last_seen_at: string
           locale: string
+          notification_preferences: Json
           platform: string
+          push_consent: string
           timezone: string
           token: string
           user_id: string | null
@@ -389,7 +391,9 @@ export type Database = {
           id?: string
           last_seen_at?: string
           locale?: string
+          notification_preferences?: Json
           platform: string
+          push_consent?: string
           timezone?: string
           token: string
           user_id?: string | null
@@ -400,7 +404,9 @@ export type Database = {
           id?: string
           last_seen_at?: string
           locale?: string
+          notification_preferences?: Json
           platform?: string
+          push_consent?: string
           timezone?: string
           token?: string
           user_id?: string | null

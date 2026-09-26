@@ -1,3 +1,4 @@
+import { getLocalPushConsent } from "@/lib/pushConsentLocal";
 // Native FCM push integration via @capacitor/push-notifications + Firebase iOS.
 // Web push remains handled by src/lib/pushNotifications.ts (VAPID).
 //
@@ -147,6 +148,12 @@ export async function savePushConsent(
   preferences?: Record<string, unknown>,
 ): Promise<void> {
   setLocalPushConsent(state);
+  try {
+    const merged = mergeServerPrefs(getLocalPrefs(), preferences ?? null);
+    localStorage.setItem(LOCAL_PREFS_KEY, JSON.stringify(merged));
+  } catch {}
+  // Sync the device-level choice so signed-out phones respect it too.
+  if (lastToken) void registerDeviceTokenWithBackend(lastToken.token, lastToken.platform);
   const { data: { user } } = await supabase.auth.getUser();
   console.info("[Push] savePushConsent local=", state, "userPresent=", !!user);
   if (!user) return;
@@ -197,7 +204,20 @@ export async function getNativePushPermission(): Promise<NativePushPermission> {
   }
 }
 
+const LOCAL_PREFS_KEY = "carnivore-push-prefs-v1";
+let lastToken: { token: string; platform: "android" | "ios" } | null = null;
+
+function getLocalPrefs(): Record<string, unknown> | null {
+  try {
+    const raw = localStorage.getItem(LOCAL_PREFS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 async function registerDeviceTokenWithBackend(token: string, platform: "android" | "ios") {
+  lastToken = { token, platform };
   try {
     // Push delivery is gated by consent, not sign-in: register the token even
     // without a session so opted-in anonymous devices still get reminders.
@@ -209,7 +229,16 @@ async function registerDeviceTokenWithBackend(token: string, platform: "android"
       locale = localStorage.getItem("carnivore-language") || navigator.language || "en";
     } catch {}
     const { error } = await supabase.functions.invoke("register-device-token", {
-      body: { token, platform, timezone, locale },
+      body: {
+        token,
+        platform,
+        timezone,
+        locale,
+        push_consent: getLocalPushConsent(),
+        notification_preferences: Object.fromEntries(
+          Object.entries(getLocalPrefs() ?? {}).filter(([, v]) => typeof v === "boolean"),
+        ),
+      },
     });
     if (error) throw error;
     console.info(`[Push] device token persisted platform=${platform} len=${token.length} anonymous=${!session}`);

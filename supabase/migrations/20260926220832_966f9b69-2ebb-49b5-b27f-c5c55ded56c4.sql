@@ -1,0 +1,1 @@
+ALTER TABLE public.device_tokens ADD COLUMN IF NOT EXISTS push_consent text NOT NULL DEFAULT 'unset', ADD COLUMN IF NOT EXISTS notification_preferences jsonb NOT NULL DEFAULT '{}'::jsonb;
