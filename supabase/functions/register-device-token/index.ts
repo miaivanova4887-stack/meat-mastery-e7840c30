@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       last_seen_at: nowIso,
     };
     if (parsed.data.push_consent) patch.push_consent = parsed.data.push_consent;
-    if (parsed.data.notification_preferences) patch.notification_preferences = parsed.data.notification_preferences;
+    if (parsed.data.notification_preferences && Object.keys(parsed.data.notification_preferences).length) patch.notification_preferences = parsed.data.notification_preferences;
     if (userId) patch.user_id = userId;
     ({ error } = await admin.from("device_tokens").update(patch).eq("id", existing.id));
   } else {
