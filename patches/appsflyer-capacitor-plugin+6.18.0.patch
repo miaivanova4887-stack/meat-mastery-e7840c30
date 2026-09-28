@@ -1,0 +1,13 @@
+diff --git a/node_modules/appsflyer-capacitor-plugin/android/build.gradle b/node_modules/appsflyer-capacitor-plugin/android/build.gradle
+index 3333333..4444444 100644
+--- a/node_modules/appsflyer-capacitor-plugin/android/build.gradle
++++ b/node_modules/appsflyer-capacitor-plugin/android/build.gradle
+@@ -169,7 +169,7 @@ android {
+     buildTypes {
+         release {
+             minifyEnabled = false
+-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
++            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+         }
+     }
+     lint {
