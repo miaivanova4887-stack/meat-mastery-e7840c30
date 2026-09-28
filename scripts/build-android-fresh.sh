@@ -48,6 +48,27 @@ if grep -q "getDefaultProguardFile('proguard-android.txt')" "$PLUGIN_GRADLE"; th
 fi
 echo "✅ Patch verified: proguard-android-optimize.txt present"
 
+# Google Play's DEX "Optimisation" score drops to 0% if ANY module references
+# the SDK's proguard-android.txt, because that template contains -dontoptimize
+# and ProGuard/R8 merge configuration globally across every subproject.
+echo "🔎 Verifying no module disables R8 optimization (-dontoptimize)..."
+OFFENDERS="$(grep -rl "getDefaultProguardFile('proguard-android.txt')" \
+  "$ROOT_DIR/node_modules" "$ANDROID_DIR" --include=build.gradle --include=*.gradle 2>/dev/null || true)"
+if [[ -n "$OFFENDERS" ]]; then
+  echo "❌ These Gradle files still use 'proguard-android.txt' (implies -dontoptimize):"
+  echo "$OFFENDERS"
+  echo "   Add a patch-package patch swapping it for 'proguard-android-optimize.txt'."
+  exit 1
+fi
+DONTOPT="$(grep -rl "^[[:space:]]*-dontoptimize" \
+  "$ANDROID_DIR" "$ROOT_DIR/node_modules" --include=*.pro --include=*.txt 2>/dev/null || true)"
+if [[ -n "$DONTOPT" ]]; then
+  echo "❌ Found an explicit -dontoptimize rule in:"
+  echo "$DONTOPT"
+  exit 1
+fi
+echo "✅ R8 optimization enabled project-wide (no -dontoptimize)"
+
 echo "🔄 Syncing Capacitor Android project..."
 npx cap sync android
 
