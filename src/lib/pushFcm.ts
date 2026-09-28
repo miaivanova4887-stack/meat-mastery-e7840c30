@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { setLocalPushConsent } from "@/lib/pushConsentLocal";
 import { isNativeFcmEnabled, NATIVE_FCM_ENABLED_IOS } from "@/lib/pushNativeConfig";
 import { normalizeLocale } from "@/lib/locale";
-import { mergeServerPrefs } from "@/lib/notificationPrefs";
+import { mergeServerPrefs, DEFAULT_SERVER_NOTIFICATION_PREFS } from "@/lib/notificationPrefs";
 import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
@@ -235,8 +235,13 @@ async function registerDeviceTokenWithBackend(token: string, platform: "android"
         timezone,
         locale,
         push_consent: getLocalPushConsent(),
+        // Devices that opted in before per-device prefs existed have no local
+        // prefs: fall back to the defaults they implicitly accepted.
         notification_preferences: Object.fromEntries(
-          Object.entries(getLocalPrefs() ?? {}).filter(([, v]) => typeof v === "boolean"),
+          Object.entries(
+            getLocalPrefs() ??
+              (getLocalPushConsent() === "granted" ? DEFAULT_SERVER_NOTIFICATION_PREFS : {}),
+          ).filter(([, v]) => typeof v === "boolean"),
         ),
       },
     });
