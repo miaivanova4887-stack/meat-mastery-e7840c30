@@ -449,6 +449,8 @@ const Onboarding = () => {
           try { selectedCuisines.push(...JSON.parse(storedCustom)); } catch {}
         }
         localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
+        markOnboardingUpdated();
+
 
         // Save to profile if authenticated (including wellness consent)
         const saveProfile = async () => {
