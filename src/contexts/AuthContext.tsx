@@ -100,6 +100,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setTimeout(() => { void reconcileLocalConsent(nextUser.id); }, 0);
       setTimeout(() => { reconcileCachedAppleName(nextUser.id); }, 0);
       setAppsFlyerUserId(nextUser.id);
+      // Deferred cloud backup / restore of onboarding answers.
+      syncOnboardingBackup(nextUser.id);
     };
 
     const isCallbackPath = () => {
