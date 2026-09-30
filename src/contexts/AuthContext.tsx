@@ -5,6 +5,7 @@ import type { User, Session } from "@supabase/supabase-js";
 import { getLocalPushConsent } from "@/lib/pushConsentLocal";
 import { reconcileCachedAppleName } from "@/lib/appleDisplayName";
 import { logAfEvent, setAppsFlyerUserId, AF_EVENTS, AF_PARAMS } from "@/lib/appsflyer";
+import { syncOnboardingBackup } from "@/lib/onboardingBackup";
 
 /** Where verification / recovery emails should send users back to.
  * Always aos.carnivorex.app: it is this project's canonical published
