@@ -475,6 +475,10 @@ const Onboarding = () => {
 
           window.dispatchEvent(new Event("profile-update"));
 
+          // Reserve copy of the onboarding answers (deferred, best effort).
+          void backupOnboardingNow();
+
+
           // On native Android, prompt for Health Connect first; the
           // push opt-in sheet is shown right after (regardless of HC
           // grant), but only if the shared decision audit says eligible.
