@@ -9,6 +9,7 @@ import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 import { Capacitor } from "@capacitor/core";
 import { useHealthConnect } from "@/hooks/useHealthConnect";
 import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
+import { backupOnboardingNow, markOnboardingUpdated } from "@/lib/onboardingBackup";
 
 interface StepOption {
   label: string;
