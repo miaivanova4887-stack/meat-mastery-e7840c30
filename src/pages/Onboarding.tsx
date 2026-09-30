@@ -9,6 +9,7 @@ import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 import { Capacitor } from "@capacitor/core";
 import { useHealthConnect } from "@/hooks/useHealthConnect";
 import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
+import { backupOnboardingNow, markOnboardingUpdated } from "@/lib/onboardingBackup";
 
 interface StepOption {
   label: string;
@@ -448,6 +449,8 @@ const Onboarding = () => {
           try { selectedCuisines.push(...JSON.parse(storedCustom)); } catch {}
         }
         localStorage.setItem("carnivore-cuisines", JSON.stringify(selectedCuisines));
+        markOnboardingUpdated();
+
 
         // Save to profile if authenticated (including wellness consent)
         const saveProfile = async () => {
@@ -471,6 +474,10 @@ const Onboarding = () => {
           }
 
           window.dispatchEvent(new Event("profile-update"));
+
+          // Reserve copy of the onboarding answers (deferred, best effort).
+          void backupOnboardingNow();
+
 
           // On native Android, prompt for Health Connect first; the
           // push opt-in sheet is shown right after (regardless of HC
