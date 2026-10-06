@@ -165,6 +165,9 @@ const BarcodeScanner = () => {
       { category: "diet_trends" as const, metric: "protein", value: result.protein * quantity, unit: "g", notes: note, recorded_at: now },
       { category: "diet_trends" as const, metric: "fat", value: result.fat * quantity, unit: "g", notes: note, recorded_at: now },
     ];
+    if (result.carbs > 0) {
+      entries.push({ category: "diet_trends" as const, metric: "carbs", value: result.carbs * quantity, unit: "g", notes: note, recorded_at: now });
+    }
     Promise.all(entries.map((e) => addEntry.mutateAsync(e)))
       .then(() => { toast.success(`${result.name} logged to progress`); setResult(null); setQuantity(1); })
       .catch(() => toast.error("Failed to log nutrients"));

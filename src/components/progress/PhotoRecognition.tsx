@@ -155,6 +155,8 @@ const PhotoRecognition = () => {
       { category: "diet_trends", metric: "protein", value: (parseFloat(result.protein) || 0) * quantity, unit: "g", notes: note, recorded_at: now },
       { category: "diet_trends", metric: "fat", value: (parseFloat(result.fat) || 0) * quantity, unit: "g", notes: note, recorded_at: now },
     ];
+    const carbs = (parseFloat((result as any).carbs) || 0) * quantity;
+    if (carbs > 0) entries.push({ category: "diet_trends", metric: "carbs", value: carbs, unit: "g", notes: note, recorded_at: now });
 
     Promise.all(entries.map((e) => addEntry.mutateAsync(e)))
       .then(() => {
@@ -290,7 +292,7 @@ const PhotoRecognition = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="grid grid-cols-4 gap-2 text-center">
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.cal) || 0) * quantity)}</p>
               <p className="text-[10px] text-muted-foreground">{t("progress.calories")}</p>
@@ -302,6 +304,10 @@ const PhotoRecognition = () => {
             <div className="bg-muted rounded-lg p-2">
               <p className="text-lg font-bold text-foreground">{Math.round((parseFloat(result.fat) || 0) * quantity)}</p>
               <p className="text-[10px] text-muted-foreground">{t("progress.fat")}</p>
+            </div>
+            <div className="bg-muted rounded-lg p-2">
+              <p className="text-lg font-bold text-foreground">{Math.round((parseFloat((result as any).carbs) || 0) * quantity)}</p>
+              <p className="text-[10px] text-muted-foreground">{t("progress.carbs")}</p>
             </div>
           </div>
           <div className="flex gap-2">

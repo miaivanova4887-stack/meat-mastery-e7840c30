@@ -18,15 +18,17 @@ const NutrientBreakdown = () => {
     const cal = todayEntries.filter((e) => e.metric === "calories").reduce((s, e) => s + Number(e.value), 0);
     const protein = todayEntries.filter((e) => e.metric === "protein").reduce((s, e) => s + Number(e.value), 0);
     const fat = todayEntries.filter((e) => e.metric === "fat").reduce((s, e) => s + Number(e.value), 0);
+    const carbs = todayEntries.filter((e) => e.metric === "carbs").reduce((s, e) => s + Number(e.value), 0);
     const meals = todayEntries.filter((e) => e.metric === "calories" && e.notes?.includes("[meal-sync]")).length;
 
-    return { cal, protein, fat, meals };
+    return { cal, protein, fat, carbs, meals };
   }, [entries]);
 
   const macros = [
     { label: t("progress.calories"), value: today.cal, unit: "kcal", color: "from-[hsl(var(--flame))] to-[hsl(var(--gold))]", icon: "🔥" },
     { label: t("progress.protein"), value: today.protein, unit: "g", color: "from-[hsl(var(--primary))] to-[hsl(var(--ember))]", icon: "🥩" },
     { label: t("progress.fat"), value: today.fat, unit: "g", color: "from-[hsl(var(--gold))] to-[hsl(var(--flame))]", icon: "🧈" },
+    { label: t("progress.carbs"), value: today.carbs, unit: "g", color: "from-[hsl(var(--ember))] to-[hsl(var(--gold))]", icon: "🌾" },
   ];
 
   return (
@@ -39,7 +41,7 @@ const NutrientBreakdown = () => {
           </span>
         )}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         {macros.map((m) => (
           <div
             key={m.label}

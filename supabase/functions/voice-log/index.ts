@@ -63,7 +63,7 @@ Categories and metrics:
 - mood: mood_score (0-4), energy_level (0-4), sleep_quality (0-4), mental_clarity (0-4)
 - symptoms: headache (0-4), bloating (0-4), joint_pain (0-4), fatigue (0-4), cravings (0-4)
 
-For food descriptions, estimate calories, protein, and fat based on typical carnivore portions.
+For food descriptions, estimate calories, protein, fat AND carbs for ANY food mentioned, including non-carnivore foods (fruit, vegetables, rice, bread, pasta, sweets, drinks). Always emit a carbs entry when the food contains carbohydrates. Fried egg ≈ 90 cal, 6g protein, 7g fat each; chicken hearts 100g ≈ 185 cal, 26g protein, 8g fat.
 Common carnivore foods reference: ribeye steak 300g ≈ 900 cal, 75g protein, 65g fat; ground beef 200g ≈ 500 cal, 40g protein, 35g fat; eggs 2 ≈ 140 cal, 12g protein, 10g fat; bacon 100g ≈ 540 cal, 37g protein, 42g fat; salmon 200g ≈ 400 cal, 40g protein, 25g fat.
 
 For mood/symptoms, interpret words like "great" = 4, "good" = 3, "okay/moderate" = 2, "bad/low" = 1, "terrible" = 0.
