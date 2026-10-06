@@ -19,6 +19,8 @@ interface FoodItem {
   cal: number;
   protein: number;
   fat: number;
+  /** Grams of carbohydrate per refGrams (non-carnivore foods). */
+  carbs?: number;
   /**
    * Logical grouping used to suppress generic fallbacks when a specific cut
    * of the same animal already matched. For example, if the user says
@@ -47,6 +49,43 @@ interface FoodItem {
  * rounded from USDA FoodData Central + common cut averages.
  */
 const FOOD_DB: FoodItem[] = [
+  // --- Chicken organs FIRST so the generic "chicken" fallback can't claim them ---
+  { keywords: ["chicken liver", "chicken livers"],            displayName: "chicken liver", refGrams: 100, cal: 165, protein: 24, fat: 7, group: "chicken" },
+  { keywords: ["chicken hearts", "chicken heart"],            displayName: "chicken hearts", refGrams: 100, cal: 185, protein: 26, fat: 8, group: "chicken" },
+
+  // --- Non-carnivore foods (carbs tracked) ---
+  { keywords: ["sweet potato", "sweet potatoes"],             displayName: "sweet potato",  refGrams: 150, cal: 135, protein: 2, fat: 0, carbs: 31 },
+  { keywords: ["french fries", "fries", "chips"],             displayName: "fries",         refGrams: 150, cal: 470, protein: 5, fat: 23, carbs: 60 },
+  { keywords: ["potato", "potatoes"],                          displayName: "potato",        refGrams: 150, cal: 130, protein: 3, fat: 0, carbs: 30 },
+  { keywords: ["rice"],                                        displayName: "cooked rice",   refGrams: 150, cal: 195, protein: 4, fat: 0, carbs: 42 },
+  { keywords: ["pasta", "spaghetti", "noodles"],               displayName: "cooked pasta",  refGrams: 150, cal: 235, protein: 9, fat: 1, carbs: 46 },
+  { keywords: ["oatmeal", "oats", "porridge"],                 displayName: "oatmeal",       refGrams: 250, cal: 170, protein: 6, fat: 3, carbs: 29 },
+  { keywords: ["bread", "toast"],                              displayName: "bread (slice)", refGrams: 30,  cal: 80,  protein: 3, fat: 1, carbs: 14 },
+  { keywords: ["sourdough"],                                   displayName: "sourdough (slice)", refGrams: 50, cal: 130, protein: 5, fat: 1, carbs: 25 },
+  { keywords: ["tortilla", "wrap"],                            displayName: "tortilla",      refGrams: 50,  cal: 150, protein: 4, fat: 4, carbs: 25 },
+  { keywords: ["pizza"],                                       displayName: "pizza (slice)", refGrams: 110, cal: 285, protein: 12, fat: 10, carbs: 36 },
+  { keywords: ["banana", "bananas"],                           displayName: "banana",        refGrams: 120, cal: 105, protein: 1, fat: 0, carbs: 27 },
+  { keywords: ["apple", "apples"],                             displayName: "apple",         refGrams: 180, cal: 95,  protein: 0, fat: 0, carbs: 25 },
+  { keywords: ["orange", "oranges"],                           displayName: "orange",        refGrams: 130, cal: 62,  protein: 1, fat: 0, carbs: 15 },
+  { keywords: ["berries", "blueberries", "strawberries", "raspberries"], displayName: "berries", refGrams: 150, cal: 70, protein: 1, fat: 0, carbs: 17 },
+  { keywords: ["mango"],                                       displayName: "mango",         refGrams: 165, cal: 100, protein: 1, fat: 1, carbs: 25 },
+  { keywords: ["grapes"],                                      displayName: "grapes",        refGrams: 150, cal: 104, protein: 1, fat: 0, carbs: 27 },
+  { keywords: ["avocado", "avocados"],                         displayName: "avocado",       refGrams: 150, cal: 240, protein: 3, fat: 22, carbs: 13 },
+  { keywords: ["honey"],                                       displayName: "honey (tbsp)",  refGrams: 21,  cal: 64,  protein: 0, fat: 0, carbs: 17 },
+  { keywords: ["broccoli"],                                    displayName: "broccoli",      refGrams: 100, cal: 35,  protein: 2, fat: 0, carbs: 7 },
+  { keywords: ["salad", "lettuce", "spinach"],                 displayName: "salad greens",  refGrams: 100, cal: 20,  protein: 2, fat: 0, carbs: 3 },
+  { keywords: ["carrot", "carrots"],                           displayName: "carrots",       refGrams: 100, cal: 41,  protein: 1, fat: 0, carbs: 10 },
+  { keywords: ["beans", "lentils", "chickpeas"],               displayName: "legumes",       refGrams: 150, cal: 175, protein: 12, fat: 1, carbs: 30 },
+  { keywords: ["yogurt", "yoghurt"],                           displayName: "yogurt",        refGrams: 170, cal: 150, protein: 9, fat: 8, carbs: 11 },
+  { keywords: ["nuts", "almonds", "peanuts", "walnuts"],       displayName: "nuts",          refGrams: 30,  cal: 175, protein: 6, fat: 15, carbs: 6 },
+  { keywords: ["peanut butter"],                               displayName: "peanut butter", refGrams: 32,  cal: 190, protein: 7, fat: 16, carbs: 7 },
+  { keywords: ["chocolate"],                                   displayName: "chocolate",     refGrams: 40,  cal: 215, protein: 3, fat: 13, carbs: 24 },
+  { keywords: ["cookie", "cookies"],                           displayName: "cookie",        refGrams: 30,  cal: 145, protein: 2, fat: 7, carbs: 20 },
+  { keywords: ["ice cream"],                                   displayName: "ice cream",     refGrams: 100, cal: 210, protein: 4, fat: 11, carbs: 24 },
+  { keywords: ["cereal"],                                      displayName: "cereal",        refGrams: 40,  cal: 150, protein: 3, fat: 1, carbs: 33 },
+  { keywords: ["soda", "coke", "cola"],                        displayName: "soda (can)",    refGrams: 330, cal: 140, protein: 0, fat: 0, carbs: 35 },
+  { keywords: ["orange juice", "juice"],                       displayName: "juice (glass)", refGrams: 250, cal: 110, protein: 2, fat: 0, carbs: 26 },
+
   // --- Beef cuts (specific first) ---
   { keywords: ["ribeye", "rib eye", "rib-eye"],            displayName: "ribeye steak",   refGrams: 300, cal: 900, protein: 75, fat: 65, group: "beef" },
   { keywords: ["sirloin", "top sirloin"],                   displayName: "sirloin steak",  refGrams: 300, cal: 630, protein: 78, fat: 33, group: "beef" },
@@ -90,8 +129,6 @@ const FOOD_DB: FoodItem[] = [
   { keywords: ["lamb"],                                       displayName: "lamb (approx.)", refGrams: 200, cal: 500, protein: 45, fat: 35, approximated: true, group: "lamb" },
 
   // --- Organ meats ---
-  { keywords: ["chicken liver"],                              displayName: "chicken liver", refGrams: 100, cal: 165, protein: 24, fat: 7 },
-  { keywords: ["chicken hearts", "chicken heart"],            displayName: "chicken hearts", refGrams: 100, cal: 185, protein: 26, fat: 8 },
   { keywords: ["liver", "beef liver"],                       displayName: "beef liver",    refGrams: 100, cal: 135, protein: 21, fat: 4 },
   { keywords: ["heart", "beef heart"],                        displayName: "beef heart",   refGrams: 100, cal: 110, protein: 17, fat: 4 },
   { keywords: ["kidney", "beef kidney"],                      displayName: "kidney",       refGrams: 100, cal: 105, protein: 17, fat: 3 },
