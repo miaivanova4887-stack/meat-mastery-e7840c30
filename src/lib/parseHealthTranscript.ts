@@ -740,30 +740,22 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
     }
   }
 
-  // --- Fried eggs (count-based, includes cooking fat) ---
-  const friedMatch = lower.match(/(?:(\d+)\s*)?(?:fried|sunny side up|over easy)\s*eggs?/);
-  if (friedMatch) {
-    const count = parseInt(friedMatch[1] || "", 10) || (/eggs/.test(friedMatch[0]) ? 2 : 1);
-    const note = `${count} fried egg(s)`;
-    entries.push({ category: "diet_trends", metric: "calories", value: 90 * count, unit: "kcal", notes: note });
-    entries.push({ category: "diet_trends", metric: "protein", value: 6 * count, unit: "g", notes: note });
-    entries.push({ category: "diet_trends", metric: "fat", value: Math.round(7 * count), unit: "g", notes: note });
-  }
-
-  // --- Eggs (count-based) ---
-  const eggMatch = lower.match(/(\d+)\s*eggs?/);
-  if (friedMatch) {
-    // already logged above
-  } else if (eggMatch) {
-    const count = parseInt(eggMatch[1], 10) || 1;
-    entries.push({ category: "diet_trends", metric: "calories", value: EGG.cal * count, unit: "kcal", notes: `${count} egg(s)` });
-    entries.push({ category: "diet_trends", metric: "protein", value: EGG.protein * count, unit: "g", notes: `${count} egg(s)` });
-    entries.push({ category: "diet_trends", metric: "fat", value: EGG.fat * count, unit: "g", notes: `${count} egg(s)` });
-  } else if (!matched.has("egg") && (findWord(lower, "egg") !== -1 || findWord(lower, "eggs") !== -1)) {
-    // "eggs" without a count → assume 2
-    entries.push({ category: "diet_trends", metric: "calories", value: 140, unit: "kcal", notes: "2 egg(s)" });
-    entries.push({ category: "diet_trends", metric: "protein", value: 12, unit: "g", notes: "2 egg(s)" });
-    entries.push({ category: "diet_trends", metric: "fat", value: 10, unit: "g", notes: "2 egg(s)" });
+  // --- Eggs (count-based; fried includes cooking fat) ---
+  // Reads the quantity before ("3 large scrambled eggs", "fried 3 eggs") or
+  // after ("eggs x3", "eggs: 4", "eggs, 3 of them"). Defaults to 1.
+  if (!matched.has("egg") && /\beggs?\b/.test(lower)) {
+    const ADJ = "(?:large|small|medium|big|jumbo|whole|fried|scrambled|boiled|hard-boiled|soft-boiled|hard|soft|poached|raw|organic|duck|chicken|free-range|pastured|sunny side up|over easy|of)";
+    const before = lower.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:${ADJ}\\s+){0,4}eggs?\\b`));
+    const after = lower.match(/\beggs?\s*(?:x|×|:|-)?\s*(\d+)\b(?!\s*(?:g|grams?|ml|kg|oz)\b)/)
+      || lower.match(/\beggs?\b[^,.;]*?[,\s]+(\d+)\s+of\s+them\b/);
+    let count = parseFloat((before?.[1] ?? after?.[1]) || "") || 1;
+    count = Math.min(Math.max(count, 0.5), 24);
+    const fried = /(?:fried|sunny side up|over easy)\s+(?:\d+\s+)?(?:[a-z-]+\s+){0,2}eggs?\b|\beggs?\s+(?:fried|sunny side up|over easy)\b/.test(lower);
+    const per = fried ? { cal: 90, protein: 6, fat: 7 } : EGG;
+    const note = `${count} ${fried ? "fried " : ""}egg(s)`;
+    entries.push({ category: "diet_trends", metric: "calories", value: Math.round(per.cal * count), unit: "kcal", notes: note });
+    entries.push({ category: "diet_trends", metric: "protein", value: Math.round(per.protein * count), unit: "g", notes: note });
+    entries.push({ category: "diet_trends", metric: "fat", value: Math.round(per.fat * count), unit: "g", notes: note });
   }
 
   // --- Fluids / hydration ---
