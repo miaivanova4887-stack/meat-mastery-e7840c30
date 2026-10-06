@@ -453,3 +453,33 @@ describe("parseHealthTranscript — frappuccino & generic drink sizing", () => {
     expect(kcalFor("large milkshake")).toBe(688);
   });
 });
+
+describe("parseHealthTranscript — nut varieties", () => {
+  const get = (t: string, m: string) => parseHealthTranscript(t).entries.filter((e) => e.metric === m);
+  it.each([
+    ["almonds", "almonds", 170, 6],
+    ["walnuts", "walnuts", 195, 4],
+    ["cashews", "cashews", 165, 9],
+    ["macadamia nuts", "macadamia nuts", 215, 4],
+    ["pecans", "pecans", 205, 4],
+    ["pistachios", "pistachios", 170, 8],
+    ["brazil nuts", "brazil nuts", 200, 4],
+    ["peanuts", "peanuts", 170, 5],
+    ["mixed nuts", "nuts (approx.)", 180, 6],
+    ["nuts", "nuts (approx.)", 180, 6],
+  ])("'%s' logs %s", (t, name, kcal, carbs) => {
+    const cal = get(t, "calories");
+    expect(cal).toHaveLength(1);
+    expect(cal[0].notes).toContain(name);
+    expect(cal[0].value).toBe(kcal);
+    expect(get(t, "carbs")[0].value).toBe(carbs);
+  });
+  it("scales '60g almonds'", () => {
+    expect(get("60g almonds", "calories")[0].value).toBe(340);
+  });
+  it("peanut butter isn't logged as peanuts", () => {
+    const cal = get("peanut butter", "calories");
+    expect(cal).toHaveLength(1);
+    expect(cal[0].notes).toContain("peanut butter");
+  });
+});
