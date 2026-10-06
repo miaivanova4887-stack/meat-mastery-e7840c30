@@ -66,6 +66,7 @@ const FOOD_DB: FoodItem[] = [
   { keywords: ["pizza"],                                       displayName: "pizza (slice)", refGrams: 110, cal: 285, protein: 12, fat: 10, carbs: 36 },
   { keywords: ["banana", "bananas"],                           displayName: "banana",        refGrams: 120, cal: 105, protein: 1, fat: 0, carbs: 27 },
   { keywords: ["apple", "apples"],                             displayName: "apple",         refGrams: 180, cal: 95,  protein: 0, fat: 0, carbs: 25 },
+  { keywords: ["orange juice", "juice"],                       displayName: "juice (glass)", refGrams: 250, cal: 110, protein: 2, fat: 0, carbs: 26 },
   { keywords: ["orange", "oranges"],                           displayName: "orange",        refGrams: 130, cal: 62,  protein: 1, fat: 0, carbs: 15 },
   { keywords: ["berries", "blueberries", "strawberries", "raspberries"], displayName: "berries", refGrams: 150, cal: 70, protein: 1, fat: 0, carbs: 17 },
   { keywords: ["mango"],                                       displayName: "mango",         refGrams: 165, cal: 100, protein: 1, fat: 1, carbs: 25 },
@@ -84,7 +85,6 @@ const FOOD_DB: FoodItem[] = [
   { keywords: ["ice cream"],                                   displayName: "ice cream",     refGrams: 100, cal: 210, protein: 4, fat: 11, carbs: 24 },
   { keywords: ["cereal"],                                      displayName: "cereal",        refGrams: 40,  cal: 150, protein: 3, fat: 1, carbs: 33 },
   { keywords: ["soda", "coke", "cola"],                        displayName: "soda (can)",    refGrams: 330, cal: 140, protein: 0, fat: 0, carbs: 35 },
-  { keywords: ["orange juice", "juice"],                       displayName: "juice (glass)", refGrams: 250, cal: 110, protein: 2, fat: 0, carbs: 26 },
 
   // --- Beef cuts (specific first) ---
   { keywords: ["ribeye", "rib eye", "rib-eye"],            displayName: "ribeye steak",   refGrams: 300, cal: 900, protein: 75, fat: 65, group: "beef" },
@@ -733,13 +733,26 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
       entries.push({ category: "diet_trends", metric: "calories", value: Math.round(food.cal * scale), unit: "kcal", notes: note });
       entries.push({ category: "diet_trends", metric: "protein", value: Math.round(food.protein * scale), unit: "g", notes: note });
       entries.push({ category: "diet_trends", metric: "fat", value: Math.round(food.fat * scale), unit: "g", notes: note });
+      if (food.carbs) entries.push({ category: "diet_trends", metric: "carbs", value: Math.round(food.carbs * scale), unit: "g", notes: note });
       break; // one match per food item
     }
   }
 
+  // --- Fried eggs (count-based, includes cooking fat) ---
+  const friedMatch = lower.match(/(?:(\d+)\s*)?(?:fried|sunny side up|over easy)\s*eggs?/);
+  if (friedMatch) {
+    const count = parseInt(friedMatch[1] || "", 10) || (/eggs/.test(friedMatch[0]) ? 2 : 1);
+    const note = `${count} fried egg(s)`;
+    entries.push({ category: "diet_trends", metric: "calories", value: 90 * count, unit: "kcal", notes: note });
+    entries.push({ category: "diet_trends", metric: "protein", value: 6 * count, unit: "g", notes: note });
+    entries.push({ category: "diet_trends", metric: "fat", value: Math.round(7 * count), unit: "g", notes: note });
+  }
+
   // --- Eggs (count-based) ---
   const eggMatch = lower.match(/(\d+)\s*eggs?/);
-  if (eggMatch) {
+  if (friedMatch) {
+    // already logged above
+  } else if (eggMatch) {
     const count = parseInt(eggMatch[1], 10) || 1;
     entries.push({ category: "diet_trends", metric: "calories", value: EGG.cal * count, unit: "kcal", notes: `${count} egg(s)` });
     entries.push({ category: "diet_trends", metric: "protein", value: EGG.protein * count, unit: "g", notes: `${count} egg(s)` });
@@ -995,6 +1008,12 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
       if (surroundingText.includes(word)) { severity = val; break; }
     }
     entries.push({ category: "symptoms", metric: symptom.replace(/\s+/g, "_"), value: severity, unit: "severity" });
+  }
+
+  // --- Explicit carbs: "30g carbs" / "40 grams of carbs" ---
+  const carbMatch = lower.match(/(\d+(?:\.\d+)?)\s*(?:g|grams?)?\s*(?:of\s+)?(?:carbs|carbohydrates?)\b/);
+  if (carbMatch && !entries.some((e) => e.metric === "carbs")) {
+    entries.push({ category: "diet_trends", metric: "carbs", value: parseFloat(carbMatch[1]), unit: "g" });
   }
 
   // --- Calorie-only input: "2000 calories" / "2000 cal" / "2000 kcal" ---
