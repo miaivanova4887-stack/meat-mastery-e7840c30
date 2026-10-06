@@ -10,6 +10,7 @@ import { Capacitor } from "@capacitor/core";
 import { useHealthConnect } from "@/hooks/useHealthConnect";
 import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 import { backupOnboardingNow, markOnboardingUpdated } from "@/lib/onboardingBackup";
+import { skipOnboarding } from "@/lib/onboardingSchedule";
 
 interface StepOption {
   label: string;
@@ -664,6 +665,17 @@ const Onboarding = () => {
         <span className="text-[10px] font-medium text-muted-foreground tracking-wider tabular-nums">
           {step + 1}/{totalSteps}
         </span>
+        <button
+          type="button"
+          onClick={() => {
+            skipOnboarding();
+            logAfEvent("onboarding_skipped" as any, { step: step + 1 } as any);
+            navigate("/", { replace: true });
+          }}
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {i18n.language?.startsWith("fr") ? "Passer" : "Skip"}
+        </button>
       </div>
 
       {/* Content */}

@@ -27,6 +27,7 @@ import iconAthletic from "@/assets/icon-athletic.png";
 import iconAthleticFemale from "@/assets/icon-athletic-female.png";
 import ThemeToggle from "@/components/ThemeToggle";
 import { isOnboardingComplete } from "./Onboarding";
+import { shouldShowOnboarding } from "@/lib/onboardingSchedule";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import type { Goal } from "@/contexts/UserProfileContext";
 // Push consent fallback is now hosted globally via PushConsentFallbackHost in App.tsx.
@@ -95,8 +96,9 @@ const Index = () => {
   }, [searchParams, setSearchParams]);
 
   const onbComplete = isOnboardingComplete();
-  console.info("[Index] gate: onboardingComplete=", onbComplete);
-  if (!onbComplete) {
+  const showOnb = shouldShowOnboarding();
+  console.info("[Index] gate: onboardingComplete=", onbComplete, "showOnboarding=", showOnb);
+  if (showOnb) {
     return <Navigate to="/onboarding" replace />;
   }
 
