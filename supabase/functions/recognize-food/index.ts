@@ -33,7 +33,7 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a food recognition AI for a carnivore diet app. Analyze the food photo and identify the dish.
+    const systemPrompt = `You are a food recognition AI for a nutrition tracking app. Analyze the food photo and identify ALL foods present, including non-carnivore items (fruit, vegetables, grains, bread, sweets, sauces, drinks, packaged products). Never refuse or ignore a food because it is not carnivore.
 
 Return ONLY valid JSON (no markdown):
 {
@@ -41,6 +41,7 @@ Return ONLY valid JSON (no markdown):
   "cal": "estimated calories (number only)",
   "protein": "estimated protein in grams (e.g. 45g)",
   "fat": "estimated fat in grams (e.g. 30g)",
+  "carbs": "estimated carbohydrates in grams (e.g. 20g, 0g if none)",
   "time": "estimated cook time",
   "serving": "estimated serving size",
   "ingredients": [{"name": "ingredient", "amount": "amount"}],
@@ -48,8 +49,8 @@ Return ONLY valid JSON (no markdown):
   "confidence": "high|medium|low"
 }
 
-Be realistic with macro estimates. If the food is not clearly identifiable, set confidence to "low".
-Diet tier context: ${dietTier || "strict carnivore"}.`;
+Be realistic with macro estimates for the whole plate shown. If the food is not clearly identifiable, set confidence to "low".
+User's diet tier (context only, do not change estimates): ${dietTier || "strict carnivore"}.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
