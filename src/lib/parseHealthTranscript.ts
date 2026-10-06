@@ -90,8 +90,9 @@ const FOOD_DB: FoodItem[] = [
   { keywords: ["lamb"],                                       displayName: "lamb (approx.)", refGrams: 200, cal: 500, protein: 45, fat: 35, approximated: true, group: "lamb" },
 
   // --- Organ meats ---
-  { keywords: ["liver", "beef liver"],                       displayName: "beef liver",    refGrams: 100, cal: 135, protein: 21, fat: 4 },
   { keywords: ["chicken liver"],                              displayName: "chicken liver", refGrams: 100, cal: 165, protein: 24, fat: 7 },
+  { keywords: ["chicken hearts", "chicken heart"],            displayName: "chicken hearts", refGrams: 100, cal: 185, protein: 26, fat: 8 },
+  { keywords: ["liver", "beef liver"],                       displayName: "beef liver",    refGrams: 100, cal: 135, protein: 21, fat: 4 },
   { keywords: ["heart", "beef heart"],                        displayName: "beef heart",   refGrams: 100, cal: 110, protein: 17, fat: 4 },
   { keywords: ["kidney", "beef kidney"],                      displayName: "kidney",       refGrams: 100, cal: 105, protein: 17, fat: 3 },
 
