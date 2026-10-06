@@ -703,6 +703,8 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
       if (idx === -1) continue;
       if (matched.has(kw)) continue;
       if (overlapsExisting(idx, idx + kw.length)) continue;
+      // "hot chocolate" is a drink handled in the fluids section.
+      if (kw === "chocolate" && lower.slice(Math.max(0, idx - 4), idx) === "hot ") continue;
 
       matched.add(kw);
       matchedSpans.push([idx, idx + kw.length]);
