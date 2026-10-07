@@ -757,7 +757,9 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
     const before = lower.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:${ADJ}\\s+){0,4}eggs?\\b`));
     const after = lower.match(/\beggs?\s*(?:x|×|:|-)?\s*(\d+)\b(?!\s*(?:g|grams?|ml|kg|oz)\b)/)
       || lower.match(/\beggs?\b[^,.;]*?[,\s]+(\d+)\s+of\s+them\b/);
-    let count = parseFloat((before?.[1] ?? after?.[1]) || "") || 1;
+    // No number: plural "eggs" → 2, singular "egg"/"an egg" → 1.
+    const defaultCount = /\beggs\b/.test(lower) ? 2 : 1;
+    let count = parseFloat((before?.[1] ?? after?.[1]) || "") || defaultCount;
     count = Math.min(Math.max(count, 0.5), 24);
     const fried = /(?:fried|sunny side up|over easy)\s+(?:\d+\s+)?(?:[a-z-]+\s+){0,2}eggs?\b|\beggs?\s+(?:fried|sunny side up|over easy)\b/.test(lower);
     const per = fried ? { cal: 90, protein: 6, fat: 7 } : EGG;
