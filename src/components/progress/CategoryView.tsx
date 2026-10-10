@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { useDeleteEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useTranslation } from "react-i18next";
+import { getProgressGoalComparison } from "@/lib/progressGoal";
 
 const RANGE_OPTIONS = [
   { label: "1 W", days: 7 },
@@ -84,9 +85,9 @@ const CategoryView = ({ category }: Props) => {
     return Math.round(convertVal(rawAvg) * 10) / 10;
   }, [metricEntries, useImperial]);
 
-  const goalPct = currentGoal && latestValue != null
-    ? Math.round((latestValue / currentGoal.target_value) * 100)
-    : null;
+  const comparison = getProgressGoalComparison(metricEntries, category, currentGoal?.target_value);
+  const goalPct = currentGoal ? comparison.percentage : null;
+  const isDiet = category === "diet_trends";
 
   // Translate metric label
   const metricLabel = (key: string) => t(`progress.metrics.${key}`, { defaultValue: key });
@@ -152,20 +153,25 @@ const CategoryView = ({ category }: Props) => {
         <div className="relative overflow-hidden bg-card rounded-xl p-4 border border-border">
           <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--gold))] to-[hsl(var(--flame))] opacity-[0.06]" />
           <div className="relative">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("progress.goal")}</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{isDiet ? t("progress.dailyGoal") : t("progress.goal")}</p>
             <p className="text-3xl font-bold text-foreground mt-1.5">
               {currentGoal ? (useImperial ? convertVal(currentGoal.target_value) : currentGoal.target_value) : "—"}
             </p>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">{displayUnit()}</span>
               {goalPct != null && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                <span
+                  aria-label={t("progress.percentOfGoal", { percent: goalPct })}
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                   goalPct >= 100 ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"
                 }`}>
                   {goalPct}%
                 </span>
               )}
             </div>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              {t(isDiet ? "progress.todayTotal" : "progress.latestReading")}: {comparison.value === null ? "—" : convertVal(comparison.value)} {comparison.value === null ? "" : displayUnit()}
+            </p>
           </div>
         </div>
       </div>
