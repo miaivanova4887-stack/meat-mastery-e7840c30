@@ -530,6 +530,42 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_insights: {
+        Row: {
+          answers: string[]
+          created_at: string
+          device_id: string
+          event_type: string
+          id: string
+          platform: string | null
+          question: string | null
+          step: number | null
+          user_id: string | null
+        }
+        Insert: {
+          answers?: string[]
+          created_at?: string
+          device_id: string
+          event_type: string
+          id?: string
+          platform?: string | null
+          question?: string | null
+          step?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          answers?: string[]
+          created_at?: string
+          device_id?: string
+          event_type?: string
+          id?: string
+          platform?: string | null
+          question?: string | null
+          step?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       page_layouts: {
         Row: {
           blocks: Json

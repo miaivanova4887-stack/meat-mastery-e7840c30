@@ -9,6 +9,7 @@ import NotificationConsentSheet from "@/components/NotificationConsentSheet";
 import { Capacitor } from "@capacitor/core";
 import { useHealthConnect } from "@/hooks/useHealthConnect";
 import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
+import { trackOnboarding } from "@/lib/onboardingInsights";
 import { backupOnboardingNow, markOnboardingUpdated } from "@/lib/onboardingBackup";
 import { skipOnboarding } from "@/lib/onboardingSchedule";
 
@@ -387,6 +388,19 @@ const Onboarding = () => {
       }
       setAnswers(newAnswers);
 
+      // Onboarding insights (admin analytics)
+      if (current.type === "options") {
+        const idxs = selection === undefined ? [] : Array.isArray(selection) ? selection : [selection];
+        const labels = idxs.map((i) => current.options[i]?.label).filter(Boolean) as string[];
+        if (step === 3 && healthTargets.length) labels.push(...healthTargets);
+        trackOnboarding("step_answered", step + 1, current.title, labels.length ? labels : ["(none)"]);
+      } else if (current.type === "input") {
+        trackOnboarding("step_answered", step + 1, current.title, current.fields.map((f) => (inputValues[f.key] ? `${f.label}: filled` : `${f.label}: empty`)));
+      }
+      if (step >= totalSteps - 1) {
+        trackOnboarding("completed", totalSteps, null, []);
+      }
+
       if (step < totalSteps - 1) {
         setStep(step + 1);
         setMultiSelected([]);
@@ -670,6 +684,7 @@ const Onboarding = () => {
           onClick={() => {
             skipOnboarding();
             logAfEvent("onboarding_skipped" as any, { step: step + 1 } as any);
+            trackOnboarding("skipped", step + 1, current.type === "consent" ? current.title : current.title, []);
             navigate("/", { replace: true });
           }}
           className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"

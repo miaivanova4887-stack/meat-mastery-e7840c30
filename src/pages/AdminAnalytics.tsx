@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format, subDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import OnboardingInsights from "@/components/admin/OnboardingInsights";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(142 76% 36%)", "hsl(45 93% 47%)", "hsl(221 83% 53%)"];
 
@@ -529,7 +530,7 @@ const AdminAnalytics = () => {
 
       <div className="px-4 pt-4 space-y-4">
         <Tabs defaultValue="overview">
-          <TabsList className="w-full grid grid-cols-5">
+          <TabsList className="w-full grid grid-cols-6">
             <TabsTrigger value="overview" className="text-xs">Overview</TabsTrigger>
             <TabsTrigger value="live" className="text-xs gap-1">
               <Radio size={12} className="text-emerald-500" /> Live
@@ -543,7 +544,12 @@ const AdminAnalytics = () => {
             <TabsTrigger value="retention" className="text-xs gap-1">
               <RotateCcw size={12} /> Retention
             </TabsTrigger>
+            <TabsTrigger value="onboarding" className="text-xs">Onboard</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="onboarding" className="mt-4">
+            <OnboardingInsights />
+          </TabsContent>
 
           <TabsContent value="live" className="space-y-4 mt-4">
             {/* Live metrics */}
