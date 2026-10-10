@@ -62,6 +62,14 @@ repositories {
     }
 }
 
+// RevenueCat's Amazon Appstore module ships a consumer rule with -dontoptimize,
+// which disables R8 optimization for the WHOLE app (Play DEX score 0%).
+// We only sell via Google Play, so exclude it.
+configurations.all {
+    exclude group: 'com.revenuecat.purchases', module: 'purchases-store-amazon'
+    exclude group: 'com.amazon.device', module: 'amazon-appstore-sdk'
+}
+
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"

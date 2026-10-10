@@ -63,3 +63,7 @@
 
 -keep class com.google.firebase.messaging.FirebaseMessagingService { *; }
 -keep class * extends com.google.firebase.messaging.FirebaseMessagingService { *; }
+
+# Amazon store module is excluded (see build.gradle); silence missing refs.
+-dontwarn com.amazon.**
+-dontwarn com.revenuecat.purchases.amazon.**
