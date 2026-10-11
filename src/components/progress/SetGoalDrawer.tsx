@@ -39,7 +39,7 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
+      <DrawerContent className="max-h-[90vh] flex flex-col">
         <DrawerHeader className="text-left">
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -51,7 +51,7 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
             </div>
           </div>
         </DrawerHeader>
-        <div className="px-4 space-y-3 pb-2">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 space-y-3 pb-2">
           {metrics.filter((m) => m.unit !== "0-4").map((m) => (
             <div key={m.key} className="bg-card rounded-lg p-3 border border-border">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">{m.icon} {m.label}</p>
@@ -69,7 +69,7 @@ const SetGoalDrawer = ({ open, onOpenChange, category }: Props) => {
             </div>
           ))}
         </div>
-        <DrawerFooter className="flex-row gap-3">
+        <DrawerFooter className="flex-row gap-3 shrink-0" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}>
           <DrawerClose asChild>
             <Button variant="outline" className="flex-1">{t("common.cancel")}</Button>
           </DrawerClose>

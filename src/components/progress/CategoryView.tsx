@@ -154,7 +154,7 @@ const CategoryView = ({ category }: Props) => {
           <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--gold))] opacity-[0.06]" />
           <div className="relative">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{t("progress.dailyAvg")}</p>
-            <p className="text-3xl font-bold text-foreground mt-1.5">{avg ?? "—"}</p>
+            <p className={`text-3xl mt-1.5 ${avg == null ? "font-normal text-muted-foreground/60" : "font-bold text-foreground"}`}>{avg ?? "—"}</p>
             <span className="text-xs text-muted-foreground">{displayUnit()}</span>
           </div>
         </div>
@@ -162,7 +162,7 @@ const CategoryView = ({ category }: Props) => {
           <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--gold))] to-[hsl(var(--flame))] opacity-[0.06]" />
           <div className="relative">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{isDiet ? t("progress.dailyGoal") : t("progress.goal")}</p>
-            <p className="text-3xl font-bold text-foreground mt-1.5">
+            <p className={`text-3xl mt-1.5 ${currentGoal ? "font-bold text-foreground" : "font-normal text-muted-foreground/60"}`}>
               {currentGoal ? (useImperial ? convertVal(currentGoal.target_value) : currentGoal.target_value) : "—"}
             </p>
             <div className="flex items-center gap-2">

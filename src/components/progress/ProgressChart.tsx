@@ -102,6 +102,8 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
       return entryDate >= rangeStart && entryDate <= new Date();
     });
 
+    if (filtered.length === 0) return [];
+
     const mode = getAggMode(rangeDays);
 
     // Subjective 0–4 check-ins: plot every entry on short ranges.
