@@ -71,15 +71,12 @@ const AddEntryDrawer = ({ open, onOpenChange, category, metricKey }: Props) => {
             // fat / carbs — stay on one line across every iPhone width (SE,
             // mini, Pro, Pro Max). For categories with 2–3 metrics the grid
             // collapses naturally.
-            <div
-              className="grid gap-1.5"
-              style={{ gridTemplateColumns: `repeat(${metrics.length}, minmax(0, 1fr))` }}
-            >
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide -mx-4 px-4">
               {metrics.map((m) => (
                 <button
                   key={m.key}
                   onClick={() => { setSelectedMetric(m.key); setValue(""); }}
-                  className={`px-2 py-1.5 rounded-full text-[11px] font-medium transition-all truncate ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                     selectedMetric === m.key
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground"
