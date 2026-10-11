@@ -8,8 +8,8 @@ android {
         applicationId "com.mi4labs.carnivorex"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 28
-        versionName "1.2.10"
+        versionCode 30
+        versionName "1.2.12"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -87,6 +87,11 @@ dependencies {
 
     // Kotlin standard library (required because the Health Connect plugin is written in Kotlin)
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+    // Firebase Analytics (GA4) — activates automatic native events
+    // (first_open, session_start, screen_view, os_update) via google-services.json.
+    implementation platform('com.google.firebase:firebase-bom:33.5.1')
+    implementation 'com.google.firebase:firebase-analytics'
 }
 
 apply from: 'capacitor.build.gradle'
