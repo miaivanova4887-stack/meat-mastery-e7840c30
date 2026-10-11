@@ -83,7 +83,13 @@ function generateAllBucketKeys(rangeDays: number, mode: AggMode, firstDataDate?:
   return [...new Set(keys)].sort();
 }
 
+const SCALE_METRICS = new Set(["mood_score", "energy_level", "sleep_quality", "mental_clarity"]);
+const EMOJI_AXIS_METRICS = new Set(["mood_score", "energy_level", "mental_clarity"]);
+const EMOJI_TICKS = ["😖", "😟", "😐", "😊", "😄"];
+
 const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))", rangeDays = 30, sumValues = false }: Props) => {
+  const isScale = SCALE_METRICS.has(metricKey);
+  const emojiAxis = EMOJI_AXIS_METRICS.has(metricKey);
   const data = useMemo(() => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
@@ -97,6 +103,15 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
     });
 
     const mode = getAggMode(rangeDays);
+
+    // Subjective 0–4 check-ins: plot every entry on short ranges.
+    if (isScale && mode === "daily") {
+      return filtered.map((e) => ({
+        date: format(new Date(e.recorded_at), "MMM d, h:mm a"),
+        value: Number(e.value),
+      }));
+    }
+
 
     // Build buckets from data
     const buckets = new Map<string, number[]>();
@@ -125,7 +140,7 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
         value,
       };
     });
-  }, [entries, metricKey, rangeDays, sumValues]);
+  }, [entries, metricKey, rangeDays, sumValues, isScale]);
 
   if (data.length === 0) {
     return (
@@ -155,9 +170,17 @@ const ProgressChart = ({ entries, metricKey, goal, color = "hsl(var(--primary))"
             tickLine={false}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: emojiAxis ? 14 : 10, fill: "hsl(var(--muted-foreground))" }}
             axisLine={false}
             tickLine={false}
+            {...(isScale
+              ? {
+                  domain: [0, 4] as [number, number],
+                  ticks: [0, 1, 2, 3, 4],
+                  allowDecimals: false,
+                  ...(emojiAxis ? { tickFormatter: (v: number) => EMOJI_TICKS[v] ?? String(v) } : {}),
+                }
+              : {})}
           />
           <Tooltip
             contentStyle={{
