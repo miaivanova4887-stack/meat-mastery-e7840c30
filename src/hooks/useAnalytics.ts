@@ -27,8 +27,20 @@ export function useTrackEvent() {
 
   return useCallback(
     (eventType: string, eventData: Record<string, unknown> = {}, pagePath?: string) => {
-      if (!user) return; // Only track authenticated users
       const platform = detectPlatform();
+      // GA4: mirror every event (works for signed-out users too).
+      // GA4 event names: max 40 chars, [a-z0-9_], must start with a letter.
+      const gaName = eventType.toLowerCase().replace(/[^a-z0-9_]/g, "_").slice(0, 40);
+      if (/^[a-z]/.test(gaName)) {
+        const params: Record<string, string | number | boolean> = { platform };
+        for (const [k, v] of Object.entries(eventData)) {
+          if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") {
+            params[k.slice(0, 40)] = v;
+          }
+        }
+        logGaEvent(gaName, params);
+      }
+      if (!user) return; // Supabase analytics_events: only authenticated users
       (supabase as any)
         .from("analytics_events")
         .insert({
@@ -53,6 +65,11 @@ export function usePageViewTracker() {
   useEffect(() => {
     if (location.pathname !== lastPath.current) {
       lastPath.current = location.pathname;
+      // GA4 screen_view for every route change (all users, signed in or out).
+      logGaEvent("screen_view", {
+        firebase_screen: location.pathname,
+        platform: detectPlatform(),
+      });
       trackEvent("page_view", { path: location.pathname });
     }
   }, [location.pathname, trackEvent]);
