@@ -22,6 +22,23 @@ export const firebaseAnalytics = isAnalyticsSupported().then((yes) =>
   yes ? getAnalytics(firebaseApp) : null
 );
 
+/**
+ * Log a custom event to GA4 (Firebase Analytics).
+ * Fire-and-forget; silently no-ops when analytics is unsupported
+ * (e.g. SSR, or browsers without the required APIs).
+ */
+export function logGaEvent(
+  eventName: string,
+  params?: Record<string, string | number | boolean>
+): void {
+  void firebaseAnalytics.then((analytics) => {
+    if (!analytics) return;
+    import("firebase/analytics").then(({ logEvent }) => {
+      logEvent(analytics, eventName, params);
+    });
+  });
+}
+
 // Auth
 export const firebaseAuth = getAuth(firebaseApp);
 
