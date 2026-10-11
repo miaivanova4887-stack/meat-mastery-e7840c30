@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
-import { Plus, Crosshair, Trash2 } from "lucide-react";
+import { Plus, Crosshair, Trash2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProgressEntries, useProgressGoals, METRICS, type ProgressCategory } from "@/hooks/useProgress";
 import ProgressChart from "./ProgressChart";
 import AddEntryDrawer from "./AddEntryDrawer";
 import SetGoalDrawer from "./SetGoalDrawer";
+import WellnessCheckInDrawer from "./WellnessCheckInDrawer";
 import { format } from "date-fns";
 import { useDeleteEntry } from "@/hooks/useProgress";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -72,22 +73,29 @@ const CategoryView = ({ category }: Props) => {
     return currentMeta.unit;
   };
 
+  const isDiet = category === "diet_trends";
+  const isMood = category === "mood";
+  const [showCheckIn, setShowCheckIn] = useState(false);
+
   const avg = useMemo(() => {
     if (metricEntries.length === 0) return null;
-    const dailyMap = new Map<string, number>();
+    // Diet: sum per day. Everything else: average within the day first.
+    const dailyMap = new Map<string, { sum: number; n: number }>();
     for (const e of metricEntries) {
       const d = new Date(e.recorded_at);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      dailyMap.set(key, (dailyMap.get(key) || 0) + Number(e.value));
+      const cur = dailyMap.get(key) || { sum: 0, n: 0 };
+      cur.sum += Number(e.value);
+      cur.n += 1;
+      dailyMap.set(key, cur);
     }
-    const dailyTotals = Array.from(dailyMap.values());
-    const rawAvg = dailyTotals.reduce((s, v) => s + v, 0) / dailyTotals.length;
+    const daily = Array.from(dailyMap.values()).map(({ sum, n }) => (isDiet ? sum : sum / n));
+    const rawAvg = daily.reduce((s, v) => s + v, 0) / daily.length;
     return Math.round(convertVal(rawAvg) * 10) / 10;
-  }, [metricEntries, useImperial]);
+  }, [metricEntries, useImperial, isDiet]);
 
   const comparison = getProgressGoalComparison(metricEntries, category, currentGoal?.target_value);
   const goalPct = currentGoal ? comparison.percentage : null;
-  const isDiet = category === "diet_trends";
 
   // Translate metric label
   const metricLabel = (key: string) => t(`progress.metrics.${key}`, { defaultValue: key });
@@ -221,16 +229,30 @@ const CategoryView = ({ category }: Props) => {
 
       {/* Action buttons */}
       <div className="flex gap-3">
-        <Button onClick={() => setShowAdd(true)} className="flex-1 gap-2 h-11 shadow-md shadow-primary/10">
-          <Plus size={16} /> {t("progress.addEntry")}
-        </Button>
-        <Button variant="outline" onClick={() => setShowGoal(true)} className="gap-2 h-11">
-          <Crosshair size={16} /> {t("progress.goals")}
-        </Button>
+        {isMood ? (
+          <>
+            <Button onClick={() => setShowCheckIn(true)} className="flex-1 gap-2 h-11 shadow-md shadow-primary/10">
+              <Sparkles size={16} /> Daily Check-In
+            </Button>
+            <Button variant="outline" onClick={() => setShowAdd(true)} className="gap-2 h-11">
+              <Plus size={16} /> {t("progress.addEntry")}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button onClick={() => setShowAdd(true)} className="flex-1 gap-2 h-11 shadow-md shadow-primary/10">
+              <Plus size={16} /> {t("progress.addEntry")}
+            </Button>
+            <Button variant="outline" onClick={() => setShowGoal(true)} className="gap-2 h-11">
+              <Crosshair size={16} /> {t("progress.goals")}
+            </Button>
+          </>
+        )}
       </div>
 
       <AddEntryDrawer open={showAdd} onOpenChange={setShowAdd} category={category} />
       <SetGoalDrawer open={showGoal} onOpenChange={setShowGoal} category={category} />
+      {isMood && <WellnessCheckInDrawer open={showCheckIn} onOpenChange={setShowCheckIn} />}
     </div>
   );
 };
