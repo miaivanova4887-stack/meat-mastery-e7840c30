@@ -1,4 +1,8 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  addGuestEntry, deleteGuestEntry, getGuestEntries, getGuestGoals, syncGuestProgress, upsertGuestGoal,
+} from "@/lib/guestProgress";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -75,15 +79,32 @@ export const CATEGORY_META: Record<ProgressCategory, { label: string; icon: stri
 
 export function useProgressEntries(category: ProgressCategory, days = 30) {
   const { user } = useAuth();
+  const qc = useQueryClient();
   // Use local midnight to avoid UTC date-shift issues
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
   const since = start.toISOString();
 
+  // Upload device-only (guest) entries the first time the user is signed in.
+  useEffect(() => {
+    if (!user) return;
+    void syncGuestProgress(user.id).then((synced) => {
+      if (synced) {
+        qc.invalidateQueries({ queryKey: ["progress-entries"] });
+        qc.invalidateQueries({ queryKey: ["progress-goals"] });
+      }
+    });
+  }, [user, qc]);
+
   return useQuery({
-    queryKey: ["progress-entries", category, days, user?.id],
+    queryKey: ["progress-entries", category, days, user?.id ?? "guest"],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) {
+        const sinceMs = start.getTime();
+        return getGuestEntries()
+          .filter((e) => e.category === category && new Date(e.recorded_at).getTime() >= sinceMs)
+          .sort((a, b) => a.recorded_at.localeCompare(b.recorded_at)) as ProgressEntry[];
+      }
       const { data, error } = await supabase
         .from("progress_entries")
         .select("*")
@@ -96,16 +117,15 @@ export function useProgressEntries(category: ProgressCategory, days = 30) {
         (entry) => (entry.notes || "").trim().toLowerCase() !== "sample"
       );
     },
-    enabled: !!user,
   });
 }
 
 export function useProgressGoals(category: ProgressCategory) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["progress-goals", category, user?.id],
+    queryKey: ["progress-goals", category, user?.id ?? "guest"],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return getGuestGoals().filter((g) => g.category === category) as ProgressGoal[];
       const { data, error } = await supabase
         .from("progress_goals")
         .select("*")
@@ -114,7 +134,6 @@ export function useProgressGoals(category: ProgressCategory) {
       if (error) throw error;
       return data as ProgressGoal[];
     },
-    enabled: !!user,
   });
 }
 
@@ -123,7 +142,10 @@ export function useAddEntry() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (entry: { category: string; metric: string; value: number; unit: string; notes?: string; recorded_at?: string }) => {
-      if (!user) throw new Error("Not signed in");
+      if (!user) {
+        addGuestEntry(entry);
+        return entry;
+      }
       const { error } = await supabase.from("progress_entries").insert({
         user_id: user.id,
         category: entry.category,
@@ -153,7 +175,10 @@ export function useUpsertGoal() {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (goal: { category: string; metric: string; target_value: number; unit: string }) => {
-      if (!user) throw new Error("Not signed in");
+      if (!user) {
+        upsertGuestGoal(goal);
+        return;
+      }
       const { error } = await supabase.from("progress_goals").upsert(
         { user_id: user.id, category: goal.category, metric: goal.metric, target_value: goal.target_value, unit: goal.unit, updated_at: new Date().toISOString() },
         { onConflict: "user_id,category,metric" }
@@ -172,6 +197,7 @@ export function useDeleteEntry() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
+      if (deleteGuestEntry(id)) return;
       const { error } = await supabase.from("progress_entries").delete().eq("id", id);
       if (error) throw error;
     },
