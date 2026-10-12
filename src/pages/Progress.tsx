@@ -66,6 +66,8 @@ const Progress = () => {
           </button>
         </div>
       </div>
+      {guestBanner}
+
 
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-4 space-y-5">
         {/* Today's Nutrition Breakdown */}
