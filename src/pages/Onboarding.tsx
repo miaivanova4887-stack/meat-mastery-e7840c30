@@ -307,6 +307,10 @@ const Onboarding = () => {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number | number[]>>({});
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  // Default to lb/in for North American devices.
+  const [imperial, setImperial] = useState<boolean>(() => {
+    try { return /^(en-US|en-CA)/i.test(navigator.language) || /America\//.test(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch { return false; }
+  });
   const [multiSelected, setMultiSelected] = useState<number[]>([]);
   const [customCuisine, setCustomCuisine] = useState("");
   const [transitioning, setTransitioning] = useState(false);
