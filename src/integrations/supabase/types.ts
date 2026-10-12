@@ -885,6 +885,36 @@ export type Database = {
         }
         Relationships: []
       }
+      push_open_events: {
+        Row: {
+          created_at: string
+          device_id: string
+          id: string
+          path: string | null
+          platform: string | null
+          push_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_id: string
+          id?: string
+          path?: string | null
+          platform?: string | null
+          push_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_id?: string
+          id?: string
+          path?: string | null
+          platform?: string | null
+          push_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           created_at: string
