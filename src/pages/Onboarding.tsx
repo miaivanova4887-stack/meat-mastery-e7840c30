@@ -424,12 +424,18 @@ const Onboarding = () => {
         const mealsPerDayVal = [1, 2, 3, 4][(newAnswers[7] as number) ?? 2] ?? 3;
         localStorage.setItem("carnivore-meals-per-day", String(mealsPerDayVal));
 
+        // Imperial entries are stored in metric (in → cm, lb → kg).
+        const conv = (v: string | undefined, f: number) => {
+          const n = parseFloat(v || "");
+          if (!v || !isFinite(n)) return v || "";
+          return imperial ? String(Math.round(n * f * 10) / 10) : v;
+        };
         const bodyData = {
           sex: newAnswers[1] ?? 0,
           age: inputValues.age || "",
-          height: inputValues.height || "",
-          weight: inputValues.weight || "",
-          goalWeight: inputValues.goalWeight || "",
+          height: conv(inputValues.height, 2.54),
+          weight: conv(inputValues.weight, 0.453592),
+          goalWeight: conv(inputValues.goalWeight, 0.453592),
           healthTarget: "",
         };
         localStorage.setItem("carnivore-onboarding-body", JSON.stringify(bodyData));
@@ -550,11 +556,11 @@ const Onboarding = () => {
     setInputValues((prev) => ({ ...prev, [key]: value }));
   };
 
-  const isInputStepValid = () => {
-    if (current.type !== "input") return true;
-    if (step === 3) return true;
-    return current.fields.some((f) => (inputValues[f.key] || "").trim() !== "");
-  };
+  // Body details (step 3) are optional — never trap the user on this step.
+  const isInputStepValid = () => true;
+  const isBodyStep = step === 2;
+  const bodyStepEmpty =
+    isBodyStep && current.type === "input" && current.fields.every((f) => !(inputValues[f.key] || "").trim());
 
   const canSkip = current.type === "options" && current.multiSelect && (current as OptionStep).allowSkip;
   const showCustomInput = current.type === "options" && (current as OptionStep).allowCustom;
@@ -795,6 +801,27 @@ const Onboarding = () => {
               );
             })}
 
+          {/* Unit toggle for body details */}
+          {isBodyStep && current.type === "input" && (
+            <div className="flex items-center justify-between pb-1">
+              <span className="text-[12px] text-muted-foreground">
+                {i18n.language?.startsWith("fr") ? "Facultatif — modifiable à tout moment" : "All optional — edit anytime in your profile"}
+              </span>
+              <div className="flex rounded-lg border border-border/40 overflow-hidden text-[11px] font-semibold">
+                {[false, true].map((imp) => (
+                  <button
+                    key={String(imp)}
+                    type="button"
+                    onClick={() => setImperial(imp)}
+                    className={`px-3 py-1.5 transition-colors ${imperial === imp ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
+                  >
+                    {imp ? "lb / in" : "kg / cm"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Input fields */}
           {current.type === "input" &&
             current.fields.map((field, i) => (
@@ -809,8 +836,12 @@ const Onboarding = () => {
                 <div className="flex items-center gap-2">
                   <input
                     type={field.type || "text"}
-                    inputMode={field.type === "number" ? "numeric" : undefined}
-                    placeholder={field.placeholder}
+                    inputMode={field.type === "number" ? "decimal" : undefined}
+                    placeholder={
+                      imperial && field.unit === "kg" ? `e.g. ${field.key === "goalWeight" ? 160 : 175}`
+                      : imperial && field.unit === "cm" ? "e.g. 69"
+                      : field.placeholder
+                    }
                     value={inputValues[field.key] || ""}
                     onChange={(e) => handleInputChange(field.key, e.target.value)}
                     className="flex-1 h-12 rounded-xl border border-border/40 bg-card px-4 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary/30 transition-all"
@@ -818,7 +849,7 @@ const Onboarding = () => {
                   />
                   {field.unit && (
                     <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap uppercase tracking-wider">
-                      {field.unit}
+                      {imperial && field.unit === "kg" ? "lb" : imperial && field.unit === "cm" ? "in" : field.unit}
                     </span>
                   )}
                 </div>
@@ -987,7 +1018,7 @@ const Onboarding = () => {
                   }
                 }}
               >
-                {isLastStep ? "Get Started" : multiSelected.length === 0 && canSkip ? "Skip" : "Continue"}
+                {isLastStep ? "Get Started" : bodyStepEmpty ? (i18n.language?.startsWith("fr") ? "Passer cette étape" : "Skip this step") : multiSelected.length === 0 && canSkip ? "Skip" : "Continue"}
                 <ChevronRight size={16} strokeWidth={2} />
               </Button>
             </div>
