@@ -1,11 +1,12 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
 import { sendFcmToToken } from "../_shared/fcm.ts";
+import { isCronAuthorized } from "../_shared/cronAuth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-cron-secret",
 };
 
 function json(data: unknown, status = 200) {
@@ -29,6 +30,9 @@ const BodySchema = z.object({
   data: z.record(z.string()).optional(),
   // Allow internal callers (scheduler, event-trigger) to bypass admin check
   internal_secret: z.string().optional(),
+  // Anonymous broadcast: only device_tokens with no account, optional tz filter
+  anonymous_only: z.boolean().optional(),
+  timezones: z.array(z.string().max(64)).max(50).optional(),
 });
 
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -48,9 +52,11 @@ Deno.serve(async (req) => {
   }
   const body = parsed.data;
 
-  // Auth: admin (via JWT) OR internal call (service role secret)
+  // Auth: admin (via JWT) OR internal call (service role secret / pg_cron)
   let isAuthorized = false;
   if (body.internal_secret && body.internal_secret === SERVICE_ROLE_KEY) {
+    isAuthorized = true;
+  } else if (await isCronAuthorized(req)) {
     isAuthorized = true;
   } else {
     const auth = req.headers.get("authorization");
@@ -73,6 +79,35 @@ Deno.serve(async (req) => {
     }
   }
   if (!isAuthorized) return json({ error: "Forbidden" }, 403);
+
+  if (body.anonymous_only) {
+    let q = admin
+      .from("device_tokens")
+      .select("token, platform, timezone")
+      .is("user_id", null)
+      .in("platform", ["android", "ios"]);
+    if (body.timezones?.length) q = q.in("timezone", body.timezones);
+    const { data: anon, error: anonErr } = await q;
+    if (anonErr) return json({ error: "Token query failed" }, 500);
+    let sent = 0, failed = 0;
+    const invalid: string[] = [];
+    for (const t of anon ?? []) {
+      try {
+        const r = await sendFcmToToken(
+          t.token,
+          { title: body.title, body: body.body },
+          body.data,
+        );
+        if (r.ok) sent++;
+        else { failed++; if (r.invalid) invalid.push(t.token); }
+      } catch (e) { failed++; console.error("send error", e); }
+    }
+    if (invalid.length) {
+      await admin.from("device_tokens").delete().in("token", invalid);
+    }
+    console.log("anonymous broadcast", { timezones: body.timezones, sent, failed });
+    return json({ sent, failed, eligible: anon?.length ?? 0, cleaned: invalid.length });
+  }
 
   // Build candidate user_ids
   let userIds: string[] | null = null;
