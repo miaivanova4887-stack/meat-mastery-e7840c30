@@ -4,6 +4,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
+import androidx.activity.EdgeToEdge;
 import com.getcapacitor.BridgeActivity;
 import app.lovable.plugins.healthconnect.HealthConnectPlugin;
 
@@ -46,6 +47,10 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(HealthConnectPlugin.class);
+    // Draw edge-to-edge on every Android version (not just 15+), using the
+    // modern androidx API instead of deprecated status/nav-bar colour calls.
+    // The web layer already pads for safe-area insets.
+    EdgeToEdge.enable(this);
     applyPhonePortraitLock("before-super");
     super.onCreate(savedInstanceState);
     applyPhonePortraitLock("after-super");

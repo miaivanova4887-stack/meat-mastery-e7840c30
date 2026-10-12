@@ -196,7 +196,10 @@ if [[ -d "$ICON_SRC" ]]; then
   for folder in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
     dest="$RES_DIR/$folder"
     mkdir -p "$dest"
-    cp "$ICON_SRC/$folder/"*.png "$dest/"
+    # Icons ship as WebP (Play "bitmap optimisation"); drop any stale PNG twin
+    # so Android doesn't fail with a duplicate-resource error.
+    rm -f "$dest/"ic_launcher*.png
+    cp "$ICON_SRC/$folder/"*.webp "$dest/"
   done
 
   # Copy adaptive icon XMLs
