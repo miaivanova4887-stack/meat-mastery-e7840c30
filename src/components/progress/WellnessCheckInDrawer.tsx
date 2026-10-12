@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { addGuestEntry } from "@/lib/guestProgress";
 
 const DIMENSIONS = [
   { key: "mood_score", label: "Mood", states: [["😖", "Very Low"], ["😟", "Low"], ["😐", "Neutral"], ["😊", "Good"], ["😄", "Great"]] },
@@ -37,17 +38,20 @@ const WellnessCheckInDrawer = ({ open, onOpenChange }: Props) => {
   const reset = () => { setRatings({}); setTags([]); setNote(""); };
 
   const save = async () => {
-    if (!user) { toast.error("Please sign in first"); return; }
     const keys = Object.keys(ratings);
     if (!keys.length) return;
     setSaving(true);
     const recorded_at = new Date().toISOString();
     const notes = buildCheckInNotes(tags, note);
-    const { error } = await supabase.from("progress_entries").insert(
-      keys.map((metric) => ({ user_id: user.id, category: "mood", metric, value: ratings[metric], unit: "0-4", notes, recorded_at }))
-    );
+    if (!user) {
+      keys.forEach((metric) => addGuestEntry({ category: "mood", metric, value: ratings[metric], unit: "0-4", notes, recorded_at }));
+    } else {
+      const { error } = await supabase.from("progress_entries").insert(
+        keys.map((metric) => ({ user_id: user.id, category: "mood", metric, value: ratings[metric], unit: "0-4", notes, recorded_at }))
+      );
+      if (error) { setSaving(false); toast.error(error.message); return; }
+    }
     setSaving(false);
-    if (error) { toast.error(error.message); return; }
     await qc.invalidateQueries({ queryKey: ["progress-entries"] });
     toast.success("Check-in saved");
     reset();

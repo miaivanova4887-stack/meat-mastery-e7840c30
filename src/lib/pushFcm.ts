@@ -269,6 +269,30 @@ function bindFcmTokenListenerOnce() {
 
 let actionListenerBound = false;
 
+/** Fire-and-forget push-open record (anonymous or signed in) for admin open-rate stats. */
+function recordPushOpen(path: string | null, type: string | null) {
+  void (async () => {
+    try {
+      let deviceId = localStorage.getItem("carnivore-insights-device-id");
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem("carnivore-insights-device-id", deviceId);
+      }
+      const { data } = await supabase.auth.getSession();
+      await (supabase as any).from("push_open_events").insert({
+        device_id: deviceId,
+        user_id: data.session?.user?.id ?? null,
+        push_type: type ? type.slice(0, 80) : null,
+        path: path ? path.slice(0, 300) : null,
+        platform: Capacitor.getPlatform(),
+      });
+      void import("@/lib/firebase").then((m) =>
+        m.logGaEvent("push_opened", { path: path ?? "", type: type ?? "" }),
+      );
+    } catch {/* never block navigation */}
+  })();
+}
+
 function bindActionListenerOnce() {
   if (actionListenerBound) return;
   if (!Capacitor.isNativePlatform()) return;
@@ -291,6 +315,7 @@ function bindActionListenerOnce() {
         path: path ?? null,
         type: typeof data?.type === "string" ? data.type : null,
       });
+      recordPushOpen(path, typeof data?.type === "string" ? data.type : null);
       if (path) queuePushNav(path);
       else console.warn("[PushTap] actionPerformed dropped — no path resolvable");
     });

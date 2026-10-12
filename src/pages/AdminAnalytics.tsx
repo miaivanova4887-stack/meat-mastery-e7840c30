@@ -9,6 +9,7 @@ import { format, subDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import OnboardingInsights from "@/components/admin/OnboardingInsights";
+import PushOpenStats from "@/components/admin/PushOpenStats";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(142 76% 36%)", "hsl(45 93% 47%)", "hsl(221 83% 53%)"];
 
@@ -548,6 +549,7 @@ const AdminAnalytics = () => {
           </TabsList>
 
           <TabsContent value="onboarding" className="mt-4">
+            <PushOpenStats />
             <OnboardingInsights />
           </TabsContent>
 

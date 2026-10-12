@@ -33,17 +33,15 @@ const Progress = () => {
   });
   const { healthData, isConnected: isHealthConnected } = useHealthConnect();
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 pb-24">
-        <p className="text-foreground font-bold text-lg mb-2">{t("progress.signInToTrack")}</p>
-        <p className="text-muted-foreground text-sm mb-6 text-center max-w-sm leading-relaxed">
-          {t("progress.signInDesc")}
-        </p>
-        <Button onClick={() => navigate("/auth")}>{t("common.signIn")}</Button>
-      </div>
-    );
-  }
+  // Guests can log on this device; entries upload to their account on sign-in.
+  const guestBanner = !user ? (
+    <div className="mx-4 mt-3 rounded-xl border border-border/40 bg-card p-3 flex items-center gap-3">
+      <p className="flex-1 text-xs text-muted-foreground leading-snug">
+        {t("progress.guestSaved", "Saved on this phone. Sign in to back up your entries — they'll move to your account automatically.")}
+      </p>
+      <Button size="sm" variant="outline" onClick={() => navigate("/auth?returnTo=/progress")}>{t("common.signIn")}</Button>
+    </div>
+  ) : null;
 
   const meta = CATEGORY_META[category];
 
@@ -68,6 +66,8 @@ const Progress = () => {
           </button>
         </div>
       </div>
+      {guestBanner}
+
 
       <div className="mx-auto w-full max-w-3xl lg:max-w-5xl px-4 pt-4 space-y-5">
         {/* Today's Nutrition Breakdown */}
