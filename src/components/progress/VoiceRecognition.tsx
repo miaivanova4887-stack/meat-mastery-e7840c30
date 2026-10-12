@@ -343,6 +343,11 @@ const VoiceRecognition = () => {
           rows={2}
           className="flex-1 min-h-[44px] resize-none text-sm"
           autoFocus
+          onFocus={(e) => {
+            // Keep the field visible above the keyboard once it opens.
+            const el = e.currentTarget;
+            setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+          }}
         />
         <Button
           size="icon"

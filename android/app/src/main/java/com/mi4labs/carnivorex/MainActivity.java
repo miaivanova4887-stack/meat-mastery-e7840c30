@@ -47,12 +47,14 @@ public class MainActivity extends BridgeActivity {
   @Override
   public void onCreate(Bundle savedInstanceState) {
     registerPlugin(HealthConnectPlugin.class);
-    // Draw edge-to-edge on every Android version (not just 15+), using the
-    // modern androidx API instead of deprecated status/nav-bar colour calls.
-    // The web layer already pads for safe-area insets.
-    EdgeToEdge.enable(this);
+    // Switch off the splash theme BEFORE any decor view exists so no native
+    // ActionBar (the white top banner in v33) can ever be attached.
+    setTheme(R.style.AppTheme_NoActionBar);
     applyPhonePortraitLock("before-super");
     super.onCreate(savedInstanceState);
+    // Edge-to-edge must run after super.onCreate: calling it earlier creates
+    // the decor view with the launch theme and freezes an ActionBar in place.
+    EdgeToEdge.enable(this);
     applyPhonePortraitLock("after-super");
   }
 
