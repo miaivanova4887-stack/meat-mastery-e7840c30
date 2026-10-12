@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Flame, BookOpen, CalendarDays, User, TrendingUp } from "lucide-react";
@@ -12,11 +13,41 @@ import { useTranslation } from "react-i18next";
  * containing block (transforms / backdrop-filters) so the static anchor is
  * sufficient.
  */
+function useKeyboardOpen() {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const isTextField = (el: Element | null) =>
+      !!el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit", "range", "date"].includes((el as HTMLInputElement).type)) || (el as HTMLElement).isContentEditable);
+    const baseline = { h: window.innerHeight };
+    const check = () => {
+      const vv = window.visualViewport;
+      const h = vv ? vv.height : window.innerHeight;
+      if (!isTextField(document.activeElement)) baseline.h = Math.max(baseline.h, window.innerHeight);
+      const shrunk = h < baseline.h * 0.8;
+      setOpen(isTextField(document.activeElement) && shrunk);
+    };
+    const onFocusIn = () => setTimeout(check, 250);
+    const onFocusOut = () => setTimeout(check, 100);
+    window.visualViewport?.addEventListener("resize", check);
+    window.addEventListener("resize", check);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      window.visualViewport?.removeEventListener("resize", check);
+      window.removeEventListener("resize", check);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
+  return open;
+}
+
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t } = useTranslation();
+  const keyboardOpen = useKeyboardOpen();
 
   const tabs = [
     { path: "/", icon: Flame, label: t("nav.home") },
@@ -27,6 +58,9 @@ const BottomNav = () => {
 
   if (location.pathname === "/onboarding" || location.pathname === "/recipe-coach") return null;
   if (typeof document === "undefined") return null;
+  // Hide while the on-screen keyboard is open so the bar never floats over
+  // the meal-logging field (seen on Android when typing).
+  if (keyboardOpen) return null;
 
   const nav = (
     <nav
