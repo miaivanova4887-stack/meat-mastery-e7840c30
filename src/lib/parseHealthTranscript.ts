@@ -1,3 +1,5 @@
+import { recipes } from "@/data/recipes";
+
 interface ParsedEntry {
   category: string;
   metric: string;
@@ -111,6 +113,9 @@ const FOOD_DB: FoodItem[] = [
   // said. "beef" covers phrases like "grass fed beef 200gr" where the user
   // names the protein without a specific cut; "steak" covers the same for
   // steak-shaped meat.
+  { keywords: ["beef stew", "beef pot roast", "pot roast"], displayName: "beef stew", refGrams: 300, cal: 570, protein: 58, fat: 36, carbs: 2, group: "beef" },
+  { keywords: ["lamb stew"],                                  displayName: "lamb stew", refGrams: 300, cal: 560, protein: 42, fat: 38, carbs: 4, group: "lamb" },
+  { keywords: ["stew"],                                       displayName: "stew (approx.)", refGrams: 300, cal: 550, protein: 50, fat: 35, carbs: 3, approximated: true, group: "stew" },
   { keywords: ["beef"],                                      displayName: "beef (approx.)",  refGrams: 200, cal: 500, protein: 50, fat: 35, approximated: true, group: "beef" },
   { keywords: ["steak", "beef steak"],                       displayName: "steak (approx.)", refGrams: 300, cal: 750, protein: 78, fat: 42, approximated: true, group: "beef" },
 
@@ -673,6 +678,42 @@ function normaliseWordNumbers(input: string): string {
   return s;
 }
 
+/*
+ * Every catalogue recipe is also a loggable food: typing a recipe name
+ * ("beef cheek stew", "2 servings of reverse-seared ribeye") logs that
+ * recipe's own per-serving macros. Matched before FOOD_DB so the full
+ * recipe name wins over its individual words.
+ */
+const ANIMAL_GROUPS = ["beef", "pork", "chicken", "turkey", "lamb", "cheese", "nuts"];
+function servingGrams(serving: string): number {
+  const oz = serving.match(/(\d+(?:\.\d+)?)\s*oz/i);
+  if (oz) return Math.round(parseFloat(oz[1]) * 28.35);
+  const g = serving.match(/(\d+(?:\.\d+)?)\s*g\b/i);
+  if (g) return Math.round(parseFloat(g[1]));
+  return 300;
+}
+const num = (v: string) => parseFloat(String(v).replace(/[^\d.]/g, "")) || 0;
+const RECIPE_FOODS: FoodItem[] = recipes
+  .map((r) => {
+    const base = r.name.toLowerCase().trim();
+    const kws = new Set<string>([base]);
+    kws.add(base.replace(/\s*\(.*?\)\s*/g, " ").replace(/\s+/g, " ").trim());
+    kws.add(base.replace(/&/g, "and").replace(/\s+/g, " ").trim());
+    kws.add(base.replace(/-/g, " "));
+    const group = ANIMAL_GROUPS.find((a) => base.includes(a));
+    return {
+      keywords: [...kws].filter((k) => k.length >= 4).sort((a, b) => b.length - a.length),
+      displayName: r.name,
+      refGrams: servingGrams(r.serving),
+      cal: num(r.cal),
+      protein: num(r.protein),
+      fat: num(r.fat),
+      group,
+    } as FoodItem;
+  })
+  .filter((f) => f.cal > 0)
+  .sort((a, b) => b.keywords[0].length - a.keywords[0].length);
+
 export function parseHealthTranscript(transcript: string): ParsedResult {
   const entries: ParsedEntry[] = [];
   // Normalise: strip common provenance/modifier phrases that users say but
@@ -700,7 +741,7 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
   const matchedGroups = new Set<string>();
 
   // --- Food matching ---
-  for (const food of FOOD_DB) {
+  for (const food of [...RECIPE_FOODS, ...FOOD_DB]) {
     // Suppress the generic fallback if any specific cut from the same group
     // already matched. Non-approximated items always go through so we can
     // correctly log multiple specific cuts in the same category.
