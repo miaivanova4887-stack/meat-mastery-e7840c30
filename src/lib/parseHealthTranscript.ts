@@ -711,7 +711,9 @@ const RECIPE_FOODS: FoodItem[] = recipes
       group,
     } as FoodItem;
   })
-  .filter((f) => f.cal > 0)
+  // Skip recipes whose name is already a core food ("Bone Broth"), so the
+  // hand-tuned per-gram entry keeps winning for plain food names.
+  .filter((f) => f.cal > 0 && !f.keywords.some((k) => FOOD_DB.some((d) => d.keywords.includes(k))))
   .sort((a, b) => b.keywords[0].length - a.keywords[0].length);
 
 export function parseHealthTranscript(transcript: string): ParsedResult {
