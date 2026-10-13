@@ -45,15 +45,15 @@ const NutrientBreakdown = () => {
         {macros.map((m) => (
           <div
             key={m.label}
-            className="relative overflow-hidden rounded-xl p-3 border border-border bg-card"
+            className="relative overflow-hidden rounded-xl px-2 py-3 border border-border bg-card min-w-0"
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${m.color} opacity-[0.06]`} />
-            <div className="relative">
+            <div className="relative min-w-0">
               <span className="text-lg">{m.icon}</span>
               <p className="text-xl font-bold text-foreground mt-1">
                 {m.value > 0 ? Math.round(m.value) : "—"}
               </p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-normal whitespace-nowrap">
                 {m.label}
               </p>
             </div>
