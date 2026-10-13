@@ -344,9 +344,17 @@ const VoiceRecognition = () => {
           className="flex-1 min-h-[44px] resize-none text-sm"
           autoFocus
           onFocus={(e) => {
-            // Keep the field visible above the keyboard once it opens.
+            // Keep the field just below the sticky header once the keyboard
+            // opens (centering pushed it behind the header on Android).
             const el = e.currentTarget;
-            setTimeout(() => el.scrollIntoView({ block: "center", behavior: "smooth" }), 300);
+            setTimeout(() => {
+              const rect = el.getBoundingClientRect();
+              const vh = window.visualViewport?.height ?? window.innerHeight;
+              const headerOffset = 120;
+              if (rect.top < headerOffset || rect.bottom > vh - 16) {
+                window.scrollBy({ top: rect.top - headerOffset, behavior: "smooth" });
+              }
+            }, 350);
           }}
         />
         <Button
