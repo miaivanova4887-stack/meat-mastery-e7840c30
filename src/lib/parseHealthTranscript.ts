@@ -795,7 +795,14 @@ export function parseHealthTranscript(transcript: string): ParsedResult {
   // --- Eggs (count-based; fried includes cooking fat) ---
   // Reads the quantity before ("3 large scrambled eggs", "fried 3 eggs") or
   // after ("eggs x3", "eggs: 4", "eggs, 3 of them"). Defaults to 1.
-  if (!matched.has("egg") && /\beggs?\b/.test(lower)) {
+  // Skip when the word "egg(s)" sits inside an already-matched recipe span
+  // (e.g. "steak and eggs", "deviled eggs") — the recipe's macros already
+  // include its eggs, so counting them again would double-log.
+  const eggWordMatch = lower.match(/\beggs?\b/);
+  const eggInsideRecipe =
+    eggWordMatch &&
+    matchedSpans.some(([s, e]) => eggWordMatch.index! >= s && eggWordMatch.index! < e);
+  if (!matched.has("egg") && !eggInsideRecipe && /\beggs?\b/.test(lower)) {
     const ADJ = "(?:large|small|medium|big|jumbo|whole|fried|scrambled|boiled|hard-boiled|soft-boiled|hard|soft|poached|raw|organic|duck|chicken|free-range|pastured|sunny side up|over easy|of)";
     const before = lower.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(?:${ADJ}\\s+){0,4}eggs?\\b`));
     const after = lower.match(/\beggs?\s*(?:x|×|:|-)?\s*(\d+)\b(?!\s*(?:g|grams?|ml|kg|oz)\b)/)
