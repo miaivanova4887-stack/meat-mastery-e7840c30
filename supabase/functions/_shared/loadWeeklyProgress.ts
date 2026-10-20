@@ -2,7 +2,6 @@ import { aggregateWeeklyProgress, previousWeekWindow, weeklyProgressCopy, type W
 
 // Structural subset keeps this loader testable in Vite without importing Deno's SDK.
 interface WeeklyQuery {
-  select(columns: string): WeeklyQuery;
   eq(column: string, value: string): WeeklyQuery;
   in(column: string, values: string[]): WeeklyQuery;
   gte(column: string, value: string): WeeklyQuery;
@@ -11,7 +10,7 @@ interface WeeklyQuery {
   range(start: number, end: number): PromiseLike<{ data: WeeklyEntry[] | null; error: unknown }>;
   maybeSingle(): PromiseLike<{ data: { unit: string; target_value: number } | null; error: unknown }>;
 }
-interface WeeklyDatabase { from(table: string): WeeklyQuery }
+interface WeeklyDatabase { from(table: string): { select(columns: string): WeeklyQuery } }
 
 export async function loadWeeklyProgress(
   admin: WeeklyDatabase, userId: string, anchor: Date, timezone: string, locale: string,
