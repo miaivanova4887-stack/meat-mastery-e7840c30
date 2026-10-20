@@ -11,13 +11,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { isCronAuthorized } from "../_shared/cronAuth.ts";
 import { sendFcmToToken } from "../_shared/fcm.ts";
 import { pickLocalized, normalizeLocale, type LocalizedString } from "../_shared/i18nStep.ts";
-
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { suppressServerWeekly } from "../_shared/weeklyProgress.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -150,7 +145,7 @@ Deno.serve(async (req) => {
     if (anonStep && anonPrefKey !== "marketing") {
       const { data: anonTokens, error: tErr } = await admin
         .from("device_tokens")
-        .select("token, timezone, locale, notification_preferences")
+        .select("token, timezone, locale, notification_preferences, weekly_local_scheduled_for")
         .is("user_id", null)
         .eq("push_consent", "granted")
         .eq(`notification_preferences->>${anonPrefKey}`, "true")
@@ -164,6 +159,7 @@ Deno.serve(async (req) => {
         if (!occurrence) continue;
         const ageMs = Date.now() - occurrence.getTime();
         if (ageMs < 0 || ageMs > 60 * 60_000) continue;
+        if (suppressServerWeekly(t.weekly_local_scheduled_for, occurrence, anonPrefKey)) continue;
 
         // Idempotency: unique (token, campaign_id, scheduled_for).
         const { error: dedupErr } = await admin

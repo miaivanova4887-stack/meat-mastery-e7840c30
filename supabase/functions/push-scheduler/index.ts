@@ -5,13 +5,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { sendFcmToToken } from "../_shared/fcm.ts";
 import { pickLocalized, normalizeLocale, type LocalizedString } from "../_shared/i18nStep.ts";
 import { isCronAuthorized } from "../_shared/cronAuth.ts";
-
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { loadWeeklyProgress } from "../_shared/loadWeeklyProgress.ts";
+import { suppressServerWeekly } from "../_shared/weeklyProgress.ts";
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -48,7 +44,7 @@ Deno.serve(async (req) => {
   const nowIso = new Date().toISOString();
   const { data: runs, error } = await admin
     .from("push_campaign_runs")
-    .select("id, campaign_id, user_id, current_step, push_campaigns(steps, active)")
+    .select("id, campaign_id, user_id, current_step, scheduled_for, push_campaigns(steps, active, schedule)")
     .eq("status", "pending")
     .lte("next_send_at", nowIso)
     .limit(200);
@@ -63,7 +59,7 @@ Deno.serve(async (req) => {
   for (const run of runs ?? []) {
     processed++;
     // deno-lint-ignore no-explicit-any
-    const campaign = (run as any).push_campaigns as { steps: CampaignStep[]; active: boolean } | null;
+    const campaign = (run as any).push_campaigns as { steps: CampaignStep[]; active: boolean; schedule?: { preference_key?: string } } | null;
     if (!campaign || !campaign.active) {
       await admin.from("push_campaign_runs")
         .update({ status: "cancelled" })
@@ -83,7 +79,7 @@ Deno.serve(async (req) => {
     // Verify consent + preference
     const { data: profile } = await admin
       .from("profiles")
-      .select("push_consent, notification_preferences, locale")
+      .select("push_consent, notification_preferences, locale, timezone")
       .eq("id", run.user_id)
       .maybeSingle();
     if (!profile || profile.push_consent !== "granted") {
@@ -102,13 +98,31 @@ Deno.serve(async (req) => {
     }
 
     const locale = normalizeLocale(profile.locale as string | null);
-    const localizedTitle = pickLocalized(step.title, locale);
-    const localizedBody = pickLocalized(step.body, locale);
+    let localizedTitle = pickLocalized(step.title, locale);
+    let localizedBody = pickLocalized(step.body, locale);
+    const isWeekly = campaign.schedule?.preference_key === "weekly_summary";
+    const occurrence = new Date(run.scheduled_for ?? nowIso);
+    if (isWeekly) {
+      // Scheduled campaign preference must still be enabled at delivery time.
+      if (profile.notification_preferences?.weekly_summary !== true) {
+        await scheduleNext(admin, run.id, idx, steps);
+        continue;
+      }
+      try {
+        const summary = await loadWeeklyProgress(admin, run.user_id, occurrence, profile.timezone || "UTC", locale);
+        localizedTitle = summary.title;
+        localizedBody = summary.body;
+      } catch (e) {
+        console.error("[weekly-summary] aggregation failed", String(e));
+        await admin.from("push_campaign_runs").update({ last_error: "weekly_aggregation_failed" }).eq("id", run.id);
+        continue; // Retry on next existing scheduler tick; never invent zero counts.
+      }
+    }
 
     // Get this user's FCM tokens
     const { data: tokens } = await admin
       .from("device_tokens")
-      .select("token, platform")
+      .select("token, platform, push_consent, notification_preferences, weekly_local_scheduled_for")
       .eq("user_id", run.user_id)
       .in("platform", ["android", "ios"]);
 
@@ -119,11 +133,13 @@ Deno.serve(async (req) => {
     let stepSent = false;
     const invalidTokens: string[] = [];
     for (const t of tokens ?? []) {
+      if (isWeekly && (t.push_consent !== "granted" || t.notification_preferences?.weekly_summary !== true ||
+        suppressServerWeekly(t.weekly_local_scheduled_for, occurrence, "weekly_summary"))) continue;
       try {
         const r = await sendFcmToToken(
           t.token,
           { title: localizedTitle, body: localizedBody },
-          step.data,
+          isWeekly ? { ...step.data, path: "/progress", type: "weekly_summary" } : step.data,
         );
         if (r.ok) {
           stepSent = true;

@@ -20,6 +20,8 @@ import { isNativeFcmEnabled, NATIVE_FCM_ENABLED_IOS } from "@/lib/pushNativeConf
 import { normalizeLocale } from "@/lib/locale";
 import { mergeServerPrefs, DEFAULT_SERVER_NOTIFICATION_PREFS } from "@/lib/notificationPrefs";
 import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
+import { LocalNotifications } from "@capacitor/local-notifications";
+import { refreshGuestWeeklyReminder, WEEKLY_REMINDER_ID } from "@/lib/weeklyGuestReminder";
 
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return await new Promise<T>((resolve, reject) => {
@@ -228,12 +230,23 @@ async function registerDeviceTokenWithBackend(token: string, platform: "android"
     try {
       locale = localStorage.getItem("carnivore-language") || navigator.language || "en";
     } catch {}
+    let localWeeklyOccurrence: string | null = null;
+    try {
+      localWeeklyOccurrence = await refreshGuestWeeklyReminder({
+        signedIn: !!session, consent: getLocalPushConsent(),
+        enabled: (getLocalPrefs() ?? DEFAULT_SERVER_NOTIFICATION_PREFS).weekly_summary === true,
+        timezone, locale,
+      });
+    } catch (e) {
+      console.warn("[WeeklyPush] local scheduling unavailable", e);
+    }
     const { error } = await supabase.functions.invoke("register-device-token", {
       body: {
         token,
         platform,
         timezone,
         locale,
+        weekly_local_scheduled_for: localWeeklyOccurrence,
         push_consent: getLocalPushConsent(),
         // Devices that opted in before per-device prefs existed have no local
         // prefs: fall back to the defaults they implicitly accepted.
@@ -406,6 +419,10 @@ function bindAuthRegistrationListenerOnce() {
   if (authRegistrationListenerBound) return;
   authRegistrationListenerBound = true;
   supabase.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT") {
+      window.setTimeout(() => { if (lastToken) void registerDeviceTokenWithBackend(lastToken.token, lastToken.platform); }, 0);
+      return;
+    }
     if (!session || (event !== "SIGNED_IN" && event !== "TOKEN_REFRESHED" && event !== "INITIAL_SESSION")) return;
     window.setTimeout(() => void retryNativeRegistrationIfGranted("auth"), 0);
   });
@@ -519,6 +536,24 @@ if (typeof window !== "undefined") {
     bindActionListenerOnce();
     bindAuthRegistrationListenerOnce();
     window.setTimeout(() => void retryNativeRegistrationIfGranted("startup"), 0);
+    // Debounce multi-row meal/check-in writes so the notification sees all rows.
+    let weeklyRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+    const refreshWeekly = () => {
+      clearTimeout(weeklyRefreshTimer);
+      weeklyRefreshTimer = setTimeout(() => {
+        if (lastToken) void registerDeviceTokenWithBackend(lastToken.token, lastToken.platform);
+      }, 500);
+    };
+    window.addEventListener("guest-progress-updated", refreshWeekly);
+    window.addEventListener("languageChanged", refreshWeekly);
+    if (Capacitor.getPlatform() === "android") {
+      void LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
+        if (action.notification.id !== WEEKLY_REMINDER_ID) return;
+        queuePushNav("/progress");
+        recordPushOpen("/progress", "weekly_summary");
+        logAfEvent(AF_EVENTS.pushOpened, { path: "/progress", type: "weekly_summary", af_content_type: "local" });
+      });
+    }
   }
 }
 
