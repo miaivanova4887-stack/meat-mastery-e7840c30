@@ -13,8 +13,11 @@ interface WeeklyQuery {
 interface WeeklyDatabase { from(table: string): { select(columns: string): WeeklyQuery } }
 
 export async function loadWeeklyProgress(
-  admin: WeeklyDatabase, userId: string, anchor: Date, timezone: string, locale: string,
+  database: unknown, userId: string, anchor: Date, timezone: string, locale: string,
 ) {
+  // Internal caller supplies an SDK client; this boundary avoids recursively
+  // expanding PostgREST generic query types across browser/Deno compilers.
+  const admin = database as WeeklyDatabase;
   const window = previousWeekWindow(anchor, timezone);
   const entries: WeeklyEntry[] = [];
   // Explicit pagination: a heavy week can exceed the API's 1,000-row cap.

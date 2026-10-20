@@ -20,7 +20,8 @@ export async function refreshGuestWeeklyReminder(options: {
   const stats = aggregateWeeklyProgress(getGuestEntries(), goal?.target_value ?? null, occurrence, options.timezone, now);
   const copy = weeklyProgressCopy(stats, options.locale);
   await LocalNotifications.schedule({ notifications: [{
-    id: WEEKLY_REMINDER_ID, ...copy, schedule: { at: occurrence },
+    id: WEEKLY_REMINDER_ID, ...copy, isExactNotification: false,
+    schedule: { at: occurrence, allowWhileIdle: true },
     extra: { path: "/progress", type: "weekly_summary" },
   }] });
   const pending = await LocalNotifications.getPending();

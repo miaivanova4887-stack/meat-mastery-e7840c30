@@ -35,6 +35,7 @@ describe("guest weekly delivery lifecycle", () => {
     expect(await refreshGuestWeeklyReminder(options, now)).toBe("2026-10-19T13:00:00.000Z");
     const scheduled = native.schedule.mock.calls[0][0].notifications[0];
     expect(scheduled.id).toBe(WEEKLY_REMINDER_ID);
+    expect(scheduled.isExactNotification).toBe(false);
     expect(scheduled.extra.path).toBe("/progress");
     // Count calculations are tested separately; verify the actual scheduling payload
     // uses those calculations, without asserting marketing copy.

@@ -3,11 +3,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { loadWeeklyProgress } from "../_shared/loadWeeklyProgress.ts";
 import { aggregateWeeklyProgress, previousWeekWindow } from "../_shared/weeklyProgress.ts";
 
-Deno.test("weekly loader accepts the real SDK without sending pushes", () => {
-  const client = createClient("https://example.supabase.co", "test-key");
-  // Compile-time compatibility check without invoking the database or FCM.
-  const acceptsSdk: Parameters<typeof loadWeeklyProgress>[0] = client;
-  assertEquals(typeof acceptsSdk.from, "function");
+Deno.test("weekly loader reads through the real SDK with non-sending fixtures", async () => {
+  const client = createClient("https://example.supabase.co", "test-key", {
+    global: { fetch: async (url) => new Response(JSON.stringify(String(url).includes("progress_goals")
+      ? null : [{ category: "diet_trends", metric: "calories", value: 650, recorded_at: "2026-10-18T16:00:00Z" }]),
+      { headers: { "Content-Type": "application/json" } }) },
+  });
+  const summary = await loadWeeklyProgress(client, "user", new Date("2026-10-19T13:00:00Z"), "America/Toronto", "en");
+  assertEquals(summary.stats.meals, 1);
+  assertEquals(summary.stats.checkIns, 0);
 });
 
 Deno.test("weekly meal and wellness counts use local seven-day boundaries", () => {
