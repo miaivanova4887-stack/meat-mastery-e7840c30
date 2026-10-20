@@ -1,8 +1,20 @@
-import type { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { aggregateWeeklyProgress, previousWeekWindow, weeklyProgressCopy, type WeeklyEntry } from "./weeklyProgress.ts";
 
+// Structural subset keeps this loader testable in Vite without importing Deno's SDK.
+interface WeeklyQuery {
+  select(columns: string): WeeklyQuery;
+  eq(column: string, value: string): WeeklyQuery;
+  in(column: string, values: string[]): WeeklyQuery;
+  gte(column: string, value: string): WeeklyQuery;
+  lt(column: string, value: string): WeeklyQuery;
+  order(column: string): WeeklyQuery;
+  range(start: number, end: number): PromiseLike<{ data: WeeklyEntry[] | null; error: unknown }>;
+  maybeSingle(): PromiseLike<{ data: { unit: string; target_value: number } | null; error: unknown }>;
+}
+interface WeeklyDatabase { from(table: string): WeeklyQuery }
+
 export async function loadWeeklyProgress(
-  admin: ReturnType<typeof createClient>, userId: string, anchor: Date, timezone: string, locale: string,
+  admin: WeeklyDatabase, userId: string, anchor: Date, timezone: string, locale: string,
 ) {
   const window = previousWeekWindow(anchor, timezone);
   const entries: WeeklyEntry[] = [];
