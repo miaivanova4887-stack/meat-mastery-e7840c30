@@ -1,0 +1,2 @@
+ALTER TABLE public.device_tokens ADD COLUMN IF NOT EXISTS weekly_local_scheduled_for timestamptz;
+COMMENT ON COLUMN public.device_tokens.weekly_local_scheduled_for IS 'Upcoming locally scheduled guest weekly reminder. Suppress only this occurrence of the generic FCM weekly summary; contains no health data.';

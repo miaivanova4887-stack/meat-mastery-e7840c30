@@ -1,11 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.23.8";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -22,6 +17,7 @@ const BodySchema = z.object({
   locale: z.string().max(16).optional(),
   push_consent: z.enum(["unset", "granted", "denied"]).optional(),
   notification_preferences: z.record(z.boolean()).optional(),
+  weekly_local_scheduled_for: z.string().datetime().nullable().optional(),
 });
 
 function isValidTimezone(tz: string): boolean {
@@ -69,6 +65,13 @@ Deno.serve(async (req) => {
     ? parsed.data.timezone
     : "UTC";
   const locale = parsed.data.locale?.toLowerCase().startsWith("fr") ? "fr" : "en";
+  const localWeekly = !userId && parsed.data.push_consent === "granted" &&
+    parsed.data.notification_preferences?.weekly_summary === true
+    ? parsed.data.weekly_local_scheduled_for ?? null : null;
+  if (localWeekly) {
+    const delay = new Date(localWeekly).getTime() - Date.now();
+    if (delay <= 0 || delay > 8 * 24 * 60 * 60_000) return json({ error: "Weekly reminder must be within the next eight days" }, 400);
+  }
 
   const admin = createClient(supabaseUrl, serviceKey);
   const nowIso = new Date().toISOString();
@@ -93,6 +96,8 @@ Deno.serve(async (req) => {
     if (parsed.data.push_consent) patch.push_consent = parsed.data.push_consent;
     if (parsed.data.notification_preferences && Object.keys(parsed.data.notification_preferences).length) patch.notification_preferences = parsed.data.notification_preferences;
     if (userId) patch.user_id = userId;
+    // Only updated clients send this field; preserve legacy registration behavior.
+    if (parsed.data.weekly_local_scheduled_for !== undefined) patch.weekly_local_scheduled_for = localWeekly;
     ({ error } = await admin.from("device_tokens").update(patch).eq("id", existing.id));
   } else {
     ({ error } = await admin.from("device_tokens").insert({
@@ -105,6 +110,7 @@ Deno.serve(async (req) => {
       last_seen_at: nowIso,
       push_consent: parsed.data.push_consent ?? "unset",
       notification_preferences: parsed.data.notification_preferences ?? {},
+      weekly_local_scheduled_for: localWeekly,
     }));
   }
 

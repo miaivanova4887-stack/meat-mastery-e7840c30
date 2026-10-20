@@ -384,6 +384,7 @@ export type Database = {
           timezone: string
           token: string
           user_id: string | null
+          weekly_local_scheduled_for: string | null
         }
         Insert: {
           app_version?: string | null
@@ -397,6 +398,7 @@ export type Database = {
           timezone?: string
           token: string
           user_id?: string | null
+          weekly_local_scheduled_for?: string | null
         }
         Update: {
           app_version?: string | null
@@ -410,6 +412,7 @@ export type Database = {
           timezone?: string
           token?: string
           user_id?: string | null
+          weekly_local_scheduled_for?: string | null
         }
         Relationships: []
       }

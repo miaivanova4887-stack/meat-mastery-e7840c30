@@ -19,6 +19,7 @@ function read<T>(key: string): T[] {
 }
 function write(key: string, v: unknown[]) {
   try { localStorage.setItem(key, JSON.stringify(v)); } catch {/* ignore */}
+  window.dispatchEvent(new Event("guest-progress-updated"));
 }
 
 export const getGuestEntries = () => read<GuestEntry>(ENTRIES_KEY);
