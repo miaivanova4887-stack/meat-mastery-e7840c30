@@ -12,9 +12,9 @@ it("saving a four-rating guest check-in creates one weekly check-in, not four", 
   const client = new QueryClient();
   render(<QueryClientProvider client={client}><WellnessCheckInDrawer open onOpenChange={() => {}} /></QueryClientProvider>);
   for (const label of ["Mood: Good", "Energy: High", "Sleep Quality: Good", "Mental Clarity: Clear"]) {
-    fireEvent.click(screen.getByRole("button", { name: label, exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: label }));
   }
-  fireEvent.click(screen.getByRole("button", { name: "Save Check-In", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Save Check-In" }));
   await waitFor(() => expect(getGuestEntries()).toHaveLength(4));
   const now = new Date();
   const anchor = nextMondayMorning(now, "America/Toronto");
