@@ -29,6 +29,13 @@
       "when": 1791774714756,
       "tag": "0003_push_open_events",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792459685364,
+      "tag": "0004_device_weekly_local_delivery",
+      "breakpoints": true
     }
   ]
 }
