@@ -5,6 +5,7 @@ import { aggregateWeeklyProgress, previousWeekWindow } from "../_shared/weeklyPr
 
 Deno.test("weekly loader reads through the real SDK with non-sending fixtures", async () => {
   const client = createClient("https://example.supabase.co", "test-key", {
+    auth: { autoRefreshToken: false, persistSession: false },
     global: { fetch: async (url) => new Response(JSON.stringify(String(url).includes("progress_goals")
       ? null : [{ category: "diet_trends", metric: "calories", value: 650, recorded_at: "2026-10-18T16:00:00Z" }]),
       { headers: { "Content-Type": "application/json" } }) },
