@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { aggregateWeeklyProgress, previousWeekWindow, weeklyProgressCopy, type WeeklyEntry } from "./weeklyProgress.ts";
 
 export async function loadWeeklyProgress(

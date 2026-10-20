@@ -22,6 +22,7 @@ import { mergeServerPrefs, DEFAULT_SERVER_NOTIFICATION_PREFS } from "@/lib/notif
 import { logAfEvent, AF_EVENTS } from "@/lib/appsflyer";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import { refreshGuestWeeklyReminder, WEEKLY_REMINDER_ID } from "@/lib/weeklyGuestReminder";
+import i18n from "@/i18n";
 
 async function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return await new Promise<T>((resolve, reject) => {
@@ -545,7 +546,7 @@ if (typeof window !== "undefined") {
       }, 500);
     };
     window.addEventListener("guest-progress-updated", refreshWeekly);
-    window.addEventListener("languageChanged", refreshWeekly);
+    i18n.on("languageChanged", refreshWeekly);
     if (Capacitor.getPlatform() === "android") {
       void LocalNotifications.addListener("localNotificationActionPerformed", (action) => {
         if (action.notification.id !== WEEKLY_REMINDER_ID) return;

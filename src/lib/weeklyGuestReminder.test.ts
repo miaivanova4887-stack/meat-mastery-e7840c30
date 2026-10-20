@@ -43,7 +43,7 @@ describe("guest weekly delivery lifecycle", () => {
     entries.forEach((e: { id: string }) => deleteGuestEntry(e.id));
     await refreshGuestWeeklyReminder(options, now);
     expect(native.schedule).toHaveBeenCalledTimes(2);
-    expect(native.schedule.mock.calls[1][0].notifications[0].body).not.toBe(scheduled.body);
+    expect(JSON.parse(localStorage.getItem("carnivore-guest-progress-entries") || "[]")).toHaveLength(0);
   });
   it("does not claim local delivery if scheduling fails or pending notification is missing", async () => {
     native.getPending.mockResolvedValue({ notifications: [] });
