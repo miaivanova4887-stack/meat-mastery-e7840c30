@@ -8,6 +8,9 @@ import { isCronAuthorized } from "../_shared/cronAuth.ts";
 import { loadWeeklyProgress } from "../_shared/loadWeeklyProgress.ts";
 import { suppressServerWeekly } from "../_shared/weeklyProgress.ts";
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+const PreviewSchema = z.object({ mode: z.literal("preview") }).strict();
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -31,6 +34,25 @@ Deno.serve(async (req) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const body = req.method === "POST" ? await req.json().catch(() => null) : null;
+  if (body?.mode === "preview") {
+    if (!PreviewSchema.safeParse(body).success) return json({ error: "Invalid preview request" }, 400);
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const authorization = req.headers.get("authorization");
+    if (!anonKey || !authorization) return json({ error: "Sign in required" }, 401);
+    const client = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authorization } } });
+    const { data: { user }, error: authError } = await client.auth.getUser();
+    if (authError || !user) return json({ error: "Sign in required" }, 401);
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { data: profile } = await admin.from("profiles").select("timezone, locale").eq("id", user.id).maybeSingle();
+    try {
+      const summary = await loadWeeklyProgress(admin, user.id, new Date(), profile?.timezone || "UTC", profile?.locale || "en");
+      return json({ ...summary, preview: true, sent: 0 });
+    } catch (e) {
+      console.error("[weekly-preview] read failed", String(e));
+      return json({ error: "Weekly progress could not be read" }, 500);
+    }
+  }
 
   // Auth: service-role bearer token or the pg_cron shared token.
   if (!(await isCronAuthorized(req))) {
